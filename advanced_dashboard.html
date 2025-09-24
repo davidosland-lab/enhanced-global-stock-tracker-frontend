@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Stock Market Prediction Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .phase-badge {
+            display: inline-block;
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin: 10px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .controls-panel {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .control-row {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .control-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #2c3e50;
+        }
+
+        .control-group input, .control-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .control-group input:focus, .control-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .predict-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .predict-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .predict-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+        }
+
+        .prediction-summary {
+            text-align: center;
+            padding: 30px;
+            background: linear-gradient(135deg, #74b9ff, #0984e3);
+            color: white;
+            border-radius: 15px;
+            margin-bottom: 25px;
+        }
+
+        .prediction-value {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 10px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .prediction-direction {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+
+        .confidence-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 15px 0;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00b894, #00cec9);
+            border-radius: 10px;
+            transition: width 0.8s ease;
+        }
+
+        .metrics-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+
+        .metric {
+            text-align: center;
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+
+        .metric-label {
+            font-size: 0.9rem;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+
+        .model-weights {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .weight-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid;
+        }
+
+        .weight-lstm { border-left-color: #e74c3c; }
+        .weight-rf { border-left-color: #27ae60; }
+        .weight-quantile { border-left-color: #3498db; }
+        .weight-arima { border-left-color: #f39c12; }
+
+        .weight-bar {
+            width: 100px;
+            height: 8px;
+            background: #ecf0f1;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-left: 10px;
+        }
+
+        .weight-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.6s ease;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 20px;
+        }
+
+        .feature-importance {
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .feature-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #ecf0f1;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+
+        .loading::after {
+            content: '...';
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60% { content: '...'; }
+            80%, 100% { content: '....'; }
+        }
+
+        .error {
+            background: linear-gradient(135deg, #ff7675, #d63031);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .phase-info {
+            background: linear-gradient(135deg, #00b894, #00cec9);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+
+        .phase-fixes {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .fix-item {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #fdcb6e;
+        }
+
+        .social-sentiment {
+            display: flex;
+            justify-content: space-around;
+            margin: 15px 0;
+        }
+
+        .sentiment-item {
+            text-align: center;
+            flex: 1;
+        }
+
+        .sentiment-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        @media (max-width: 768px) {
+            .control-row {
+                flex-direction: column;
+            }
+            
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .metrics-row {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="header">
+            <h1>🚀 Advanced Stock Market Prediction Dashboard</h1>
+            <p>AI-Powered Financial Forecasting with Phase 1 Critical Improvements</p>
+            
+            <!-- Navigation -->
+            <div style="display: flex; justify-content: center; gap: 15px; margin: 20px 0; flex-wrap: wrap;">
+                <a href="/advanced_dashboard.html" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                    🎯 Phase 1 Dashboard (Current)
+                </a>
+                <a href="/enhanced_predictions.html" style="background: linear-gradient(135deg, #00b894, #00cec9); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                    📊 Enhanced Interface
+                </a>
+                <a href="/prediction.html" style="background: linear-gradient(135deg, #74b9ff, #0984e3); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                    🤖 Basic Predictions
+                </a>
+                <a href="/index.html" style="background: linear-gradient(135deg, #fd79a8, #e84393); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                    🌍 Global Tracker
+                </a>
+                <a href="/docs" style="background: linear-gradient(135deg, #95a5a6, #7f8c8d); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                    📚 API Docs
+                </a>
+            </div>
+            
+            <div class="phase-badge">🚨 Phase 1: LSTM Fixes + Performance Weighting + Confidence Calibration</div>
+        </div>
+
+        <div class="phase-info">
+            <h3>🎯 Phase 1 Critical Improvements Status</h3>
+            <div class="phase-fixes">
+                <div class="fix-item">
+                    <strong>✅ P1_001: LSTM Bug Fixes</strong><br>
+                    Fixed 0% accuracy with improved sequence windowing & feature scaling
+                </div>
+                <div class="fix-item">
+                    <strong>✅ P1_002: Performance-Based Weighting</strong><br>
+                    Optimal weights: Quantile 45%, RF 30%, LSTM 10%, ARIMA 15%
+                </div>
+                <div class="fix-item">
+                    <strong>✅ P1_003: Confidence Calibration</strong><br>
+                    Enhanced reliability with temperature scaling & model agreement
+                </div>
+            </div>
+        </div>
+
+        <div class="controls-panel">
+            <div class="control-row">
+                <div class="control-group">
+                    <label for="symbolInput">Stock Symbol</label>
+                    <input type="text" id="symbolInput" placeholder="AAPL" value="AAPL">
+                </div>
+                <div class="control-group">
+                    <label for="timeframeSelect">Prediction Timeframe</label>
+                    <select id="timeframeSelect">
+                        <option value="1d">Intraday (1 day)</option>
+                        <option value="5d" selected>Short-term (5 days)</option>
+                        <option value="30d">Medium-term (30 days)</option>
+                        <option value="90d">Long-term (90 days)</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>&nbsp;</label>
+                    <button class="predict-btn" onclick="generatePrediction()">
+                        🎯 Generate Advanced Prediction
+                    </button>
+                </div>
+            </div>
+            <div class="control-row">
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="includeSocial" checked> Include Social Media Sentiment
+                    </label>
+                </div>
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="includeConflicts" checked> Include Global Conflict Monitoring
+                    </label>
+                </div>
+                <div class="control-group">
+                    <label>
+                        <input type="checkbox" id="showDebug" checked> Show Phase 1 Debug Info
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div id="predictionResults" style="display: none;">
+            <div class="prediction-summary" id="summaryCard">
+                <div class="prediction-direction" id="direction">📈 BULLISH</div>
+                <div class="prediction-value" id="predictionValue">+2.45%</div>
+                <div>Expected Return (Phase 1 Enhanced)</div>
+                <div class="confidence-bar">
+                    <div class="confidence-fill" id="confidenceFill"></div>
+                </div>
+                <div id="confidenceText">Confidence: 73.5%</div>
+            </div>
+
+            <div class="results-grid">
+                <div class="card">
+                    <h3>📊 Key Metrics</h3>
+                    <div class="metrics-row">
+                        <div class="metric">
+                            <div class="metric-value" id="volatility">2.1%</div>
+                            <div class="metric-label">Volatility</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-value" id="riskReturn">1.17</div>
+                            <div class="metric-label">Risk-Adj Return</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-value" id="probUp">68%</div>
+                            <div class="metric-label">Prob. Upward</div>
+                        </div>
+                    </div>
+                    <div id="confidenceInterval">
+                        <strong>95% Confidence Interval:</strong> <span id="intervalRange">+1.2% to +3.7%</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>⚖️ Model Ensemble Weights (Phase 1 Optimized)</h3>
+                    <div class="model-weights" id="modelWeights">
+                        <!-- Weights will be populated dynamically -->
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>🎯 Confidence Analysis</h3>
+                    <div class="chart-container">
+                        <canvas id="confidenceChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>📈 Feature Importance</h3>
+                    <div class="feature-importance" id="featureImportance">
+                        <!-- Features will be populated dynamically -->
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>🌐 Social Media Sentiment</h3>
+                    <div class="social-sentiment" id="socialSentiment">
+                        <div class="sentiment-item">
+                            <div class="sentiment-icon">📱</div>
+                            <div><strong>Twitter/X</strong></div>
+                            <div id="twitterSentiment">Loading...</div>
+                        </div>
+                        <div class="sentiment-item">
+                            <div class="sentiment-icon">🔴</div>
+                            <div><strong>Reddit</strong></div>
+                            <div id="redditSentiment">Loading...</div>
+                        </div>
+                        <div class="sentiment-item">
+                            <div class="sentiment-icon">📊</div>
+                            <div><strong>Overall</strong></div>
+                            <div id="overallSentiment">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>⚠️ Global Risk Factors</h3>
+                    <div id="globalRisks">
+                        <div class="loading">Loading global conflict data</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="loadingIndicator" class="card loading" style="display: none;">
+            Generating advanced prediction using Phase 1 enhanced models
+        </div>
+
+        <div id="errorMessage" class="error" style="display: none;"></div>
+    </div>
+
+    <script>
+        let predictionChart = null;
+        
+        async function generatePrediction() {
+            const symbol = document.getElementById('symbolInput').value.toUpperCase();
+            const timeframe = document.getElementById('timeframeSelect').value;
+            const includeSocial = document.getElementById('includeSocial').checked;
+            const includeConflicts = document.getElementById('includeConflicts').checked;
+            const showDebug = document.getElementById('showDebug').checked;
+            
+            if (!symbol) {
+                showError('Please enter a stock symbol');
+                return;
+            }
+            
+            showLoading(true);
+            hideError();
+            
+            try {
+                // Generate advanced prediction
+                const predictionResponse = await fetch(`/api/advanced-prediction/${symbol}?timeframe=${timeframe}&include_social=${includeSocial}&include_conflicts=${includeConflicts}`);
+                
+                if (!predictionResponse.ok) {
+                    throw new Error(`Prediction failed: ${predictionResponse.status}`);
+                }
+                
+                const prediction = await predictionResponse.json();
+                
+                // Get social sentiment if enabled
+                let socialData = null;
+                if (includeSocial) {
+                    try {
+                        const socialResponse = await fetch(`/api/social-sentiment/${symbol}?hours_back=24`);
+                        if (socialResponse.ok) {
+                            socialData = await socialResponse.json();
+                        }
+                    } catch (e) {
+                        console.log('Social data unavailable:', e);
+                    }
+                }
+                
+                // Get global conflicts if enabled
+                let conflictData = null;
+                if (includeConflicts) {
+                    try {
+                        const conflictResponse = await fetch('/api/global-conflicts');
+                        if (conflictResponse.ok) {
+                            conflictData = await conflictResponse.json();
+                        }
+                    } catch (e) {
+                        console.log('Conflict data unavailable:', e);
+                    }
+                }
+                
+                displayPredictionResults(prediction, socialData, conflictData, showDebug);
+                
+            } catch (error) {
+                console.error('Prediction error:', error);
+                showError(`Error generating prediction: ${error.message}`);
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        function displayPredictionResults(prediction, socialData, conflictData, showDebug) {
+            // Show results section
+            document.getElementById('predictionResults').style.display = 'block';
+            
+            // Update summary
+            const direction = prediction.direction || 'sideways';
+            const expectedReturn = prediction.expected_return || 0;
+            const confidence = (1 - (prediction.uncertainty_score || 0.5)) * 100;
+            
+            document.getElementById('direction').innerHTML = getDirectionIcon(direction) + ' ' + direction.toUpperCase();
+            document.getElementById('predictionValue').textContent = formatPercentage(expectedReturn);
+            document.getElementById('confidenceText').textContent = `Confidence: ${confidence.toFixed(1)}%`;
+            
+            // Update confidence bar
+            const confidenceFill = document.getElementById('confidenceFill');
+            confidenceFill.style.width = `${confidence}%`;
+            
+            // Update metrics
+            document.getElementById('volatility').textContent = formatPercentage(prediction.volatility_estimate || 0.02);
+            document.getElementById('riskReturn').textContent = (prediction.risk_adjusted_return || 0).toFixed(2);
+            document.getElementById('probUp').textContent = `${((prediction.probability_up || 0.5) * 100).toFixed(0)}%`;
+            
+            // Update confidence interval
+            if (prediction.confidence_interval) {
+                const [lower, upper] = prediction.confidence_interval;
+                document.getElementById('intervalRange').textContent = `${formatPercentage(lower)} to ${formatPercentage(upper)}`;
+            }
+            
+            // Update model weights (Phase 1 feature)
+            displayModelWeights(prediction.model_ensemble_weights || {});
+            
+            // Update feature importance
+            displayFeatureImportance(prediction.feature_importance || {});
+            
+            // Update social sentiment
+            if (socialData) {
+                displaySocialSentiment(socialData);
+            } else {
+                document.getElementById('twitterSentiment').textContent = 'Not available';
+                document.getElementById('redditSentiment').textContent = 'Not available';
+                document.getElementById('overallSentiment').textContent = 'Not available';
+            }
+            
+            // Update global risks
+            if (conflictData) {
+                displayGlobalRisks(conflictData);
+            } else {
+                document.getElementById('globalRisks').innerHTML = '<div>Global risk data not available</div>';
+            }
+            
+            // Create confidence chart
+            createConfidenceChart(confidence, prediction.uncertainty_score || 0.5);
+            
+            // Log debug info if enabled
+            if (showDebug) {
+                console.log('Phase 1 Prediction Debug:', {
+                    prediction,
+                    socialData,
+                    conflictData,
+                    confidence,
+                    modelWeights: prediction.model_ensemble_weights
+                });
+            }
+        }
+        
+        function displayModelWeights(weights) {
+            const container = document.getElementById('modelWeights');
+            container.innerHTML = '';
+            
+            const modelNames = {
+                'lstm': { name: 'LSTM Neural Network', class: 'weight-lstm', color: '#e74c3c' },
+                'random_forest': { name: 'Random Forest', class: 'weight-rf', color: '#27ae60' },
+                'quantile_regression': { name: 'Quantile Regression', class: 'weight-quantile', color: '#3498db' },
+                'arima': { name: 'ARIMA', class: 'weight-arima', color: '#f39c12' }
+            };
+            
+            Object.entries(weights).forEach(([model, weight]) => {
+                const modelInfo = modelNames[model] || { name: model, class: '', color: '#95a5a6' };
+                const percentage = (weight * 100).toFixed(1);
+                
+                const weightItem = document.createElement('div');
+                weightItem.className = `weight-item ${modelInfo.class}`;
+                weightItem.innerHTML = `
+                    <div>
+                        <strong>${modelInfo.name}</strong>
+                        <span style="color: #7f8c8d;">(Phase 1 Optimized)</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-weight: bold;">${percentage}%</span>
+                        <div class="weight-bar">
+                            <div class="weight-fill" style="width: ${percentage}%; background: ${modelInfo.color};"></div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(weightItem);
+            });
+        }
+        
+        function displayFeatureImportance(features) {
+            const container = document.getElementById('featureImportance');
+            container.innerHTML = '';
+            
+            const sortedFeatures = Object.entries(features)
+                .sort(([,a], [,b]) => b - a)
+                .slice(0, 10); // Top 10 features
+            
+            sortedFeatures.forEach(([feature, importance]) => {
+                const featureItem = document.createElement('div');
+                featureItem.className = 'feature-item';
+                featureItem.innerHTML = `
+                    <span>${feature.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
+                    <span style="font-weight: bold;">${(importance * 100).toFixed(1)}%</span>
+                `;
+                container.appendChild(featureItem);
+            });
+            
+            if (sortedFeatures.length === 0) {
+                container.innerHTML = '<div class="feature-item">Feature importance data not available</div>';
+            }
+        }
+        
+        function displaySocialSentiment(socialData) {
+            document.getElementById('twitterSentiment').innerHTML = formatSentiment(socialData.twitter_sentiment);
+            document.getElementById('redditSentiment').innerHTML = formatSentiment(socialData.reddit_sentiment);
+            document.getElementById('overallSentiment').innerHTML = formatSentiment(socialData.overall_sentiment);
+        }
+        
+        function displayGlobalRisks(conflictData) {
+            const container = document.getElementById('globalRisks');
+            
+            if (conflictData.active_conflicts && conflictData.active_conflicts.length > 0) {
+                const riskHtml = conflictData.active_conflicts
+                    .slice(0, 5) // Show top 5 risks
+                    .map(conflict => `
+                        <div style="margin-bottom: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #ff6b6b;">
+                            <strong>${conflict.region}</strong>: ${conflict.description}
+                            <div style="font-size: 0.9em; color: #7f8c8d;">Risk Level: ${conflict.severity}/5</div>
+                        </div>
+                    `).join('');
+                
+                container.innerHTML = riskHtml;
+            } else {
+                container.innerHTML = '<div>No significant global risks detected</div>';
+            }
+        }
+        
+        function createConfidenceChart(confidence, uncertainty) {
+            const ctx = document.getElementById('confidenceChart').getContext('2d');
+            
+            if (predictionChart) {
+                predictionChart.destroy();
+            }
+            
+            predictionChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Confidence', 'Uncertainty'],
+                    datasets: [{
+                        data: [confidence, 100 - confidence],
+                        backgroundColor: ['#00b894', '#e17055'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+        
+        function getDirectionIcon(direction) {
+            switch(direction.toLowerCase()) {
+                case 'up': case 'bullish': return '📈';
+                case 'down': case 'bearish': return '📉';
+                default: return '➡️';
+            }
+        }
+        
+        function formatPercentage(value) {
+            return `${value >= 0 ? '+' : ''}${(value * 100).toFixed(2)}%`;
+        }
+        
+        function formatSentiment(sentiment) {
+            if (typeof sentiment === 'object' && sentiment.score !== undefined) {
+                const score = sentiment.score;
+                const label = sentiment.label || 'neutral';
+                const emoji = score > 0.1 ? '😊' : score < -0.1 ? '😞' : '😐';
+                return `${emoji} ${label} (${score.toFixed(2)})`;
+            }
+            return 'Not available';
+        }
+        
+        function showLoading(show) {
+            document.getElementById('loadingIndicator').style.display = show ? 'block' : 'none';
+            document.querySelector('.predict-btn').disabled = show;
+        }
+        
+        function showError(message) {
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+        
+        // Initialize with default prediction on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto-generate prediction for AAPL after 2 seconds
+            setTimeout(() => {
+                generatePrediction();
+            }, 2000);
+        });
+        
+        // Handle enter key in symbol input
+        document.getElementById('symbolInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                generatePrediction();
+            }
+        });
+    </script>
+</body>
+</html>
