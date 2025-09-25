@@ -6,6 +6,20 @@
 [build.environment]
   # Static deployment - no runtime required
 
+# API proxy to Railway backend - MUST BE FIRST!
+[[redirects]]
+  from = "/api/*"
+  to = "https://web-production-68eaf.up.railway.app/api/:splat"
+  status = 200
+  force = true
+
+# Direct health endpoint proxy
+[[redirects]]
+  from = "/health"  
+  to = "https://web-production-68eaf.up.railway.app/health"
+  status = 200
+  force = true
+
 # Enhanced Phase 4 routing
 [[redirects]]
   from = "/phase4"
@@ -26,20 +40,6 @@
   from = "/performance"
   to = "/prediction_performance_dashboard.html"
   status = 200
-
-# API proxy to Railway backend - FIXED
-[[redirects]]
-  from = "/api/*"
-  to = "https://web-production-68eaf.up.railway.app/api/:splat"
-  status = 200
-  force = true
-
-# Direct health endpoint proxy
-[[redirects]]
-  from = "/health"
-  to = "https://web-production-68eaf.up.railway.app/health"
-  status = 200
-  force = true
 
 # Security and performance headers
 [[headers]]
@@ -66,8 +66,9 @@
   [headers.values]
     Cache-Control = "public, max-age=86400"
 
-# SPA fallback and error handling
+# SPA fallback - MUST BE LAST! 
 [[redirects]]
   from = "/*"
-  to = "/404.html"
-  status = 404
+  to = "/index.html"
+  status = 200
+
