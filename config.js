@@ -7,5 +7,8 @@ window.CONFIG = {
     REFRESH_INTERVAL: 300000,
     
     // Enable debug logging
-    DEBUG: false
+    DEBUG: false,
+    
+    // Frontend URL
+    FRONTEND_URL: 'https://egsmtver110.netlify.app'
 };
