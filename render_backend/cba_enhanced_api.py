@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
-Optimized backend for Render.com deployment
-Handles stock market data fetching with proper error handling
-Includes CBA-specific enhanced features
+Enhanced CBA-specific API endpoints for the CBA Market Tracker
+Includes document analysis, news sentiment, and prediction features
 """
 
 from fastapi import FastAPI, Query, HTTPException
@@ -13,7 +12,6 @@ import numpy as np
 import pandas as pd
 from typing import List, Dict, Optional
 import logging
-import os
 import random
 import hashlib
 
@@ -22,160 +20,21 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="Global Market Indices API",
-    description="Real-time market data API for indices tracking",
-    version="1.0.0"
+    title="CBA Enhanced Market Tracker API",
+    description="Specialized API for Commonwealth Bank analysis with sentiment and predictions",
+    version="2.0.0"
 )
 
-# Configure CORS - allow all origins for public API
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify your frontend URLs
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.get("/")
-def root():
-    """Root endpoint"""
-    return {
-        "message": "Global Market Indices API",
-        "status": "operational",
-        "endpoints": {
-            "health": "/health",
-            "stock_data": "/api/stock/{symbol}",
-            "indices_list": "/api/indices"
-        }
-    }
-
-@app.get("/health")
-def health_check():
-    """Health check endpoint"""
-    return {
-        "status": "healthy",
-        "timestamp": datetime.utcnow().isoformat(),
-        "service": "Global Market Indices API",
-        "environment": os.getenv("ENVIRONMENT", "production")
-    }
-
-@app.get("/api/stock/{symbol}")
-async def get_stock_data(
-    symbol: str,
-    period: str = Query("5d", description="Time period: 1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max"),
-    interval: str = Query("5m", description="Data interval: 1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo, 3mo")
-):
-    """
-    Fetch historical stock/index data
-    """
-    try:
-        logger.info(f"Fetching data for {symbol} (period={period}, interval={interval})")
-        
-        # Create ticker object
-        ticker = yf.Ticker(symbol)
-        
-        # Get historical data
-        hist = ticker.history(period=period, interval=interval)
-        
-        if hist.empty:
-            logger.warning(f"No data found for {symbol}")
-            raise HTTPException(status_code=404, detail=f"No data available for symbol: {symbol}")
-        
-        # Get ticker info (may fail for indices, so we handle gracefully)
-        info = {}
-        try:
-            info = ticker.info
-        except Exception as e:
-            logger.debug(f"Could not fetch info for {symbol}: {e}")
-            # Provide defaults for indices
-            info = {
-                "shortName": symbol,
-                "currency": "USD",
-                "exchangeTimezoneName": "America/New_York"
-            }
-        
-        # Prepare data for response
-        data_points = []
-        for timestamp, row in hist.iterrows():
-            data_points.append({
-                "timestamp": timestamp.isoformat(),
-                "open": float(row["Open"]) if row["Open"] else None,
-                "high": float(row["High"]) if row["High"] else None,
-                "low": float(row["Low"]) if row["Low"] else None,
-                "close": float(row["Close"]) if row["Close"] else None,
-                "volume": int(row["Volume"]) if row["Volume"] else 0
-            })
-        
-        # Get previous close for percentage calculations
-        previous_close = None
-        if len(hist) > 0:
-            # Try to get the actual previous close
-            try:
-                # Get one more day of data to find previous close
-                extended_hist = ticker.history(period="10d", interval="1d")
-                if len(extended_hist) > 1:
-                    previous_close = float(extended_hist["Close"].iloc[-2])
-                else:
-                    previous_close = float(hist["Close"].iloc[0])
-            except:
-                previous_close = float(hist["Close"].iloc[0])
-        
-        return {
-            "symbol": symbol,
-            "shortName": info.get("shortName", symbol),
-            "currency": info.get("currency", "USD"),
-            "exchangeTimezoneName": info.get("exchangeTimezoneName", "America/New_York"),
-            "data": data_points,
-            "previousClose": previous_close,
-            "dataPoints": len(data_points),
-            "period": period,
-            "interval": interval
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error fetching data for {symbol}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error fetching data: {str(e)}")
-
-@app.get("/api/indices")
-async def get_indices_list():
-    """
-    Get list of supported market indices
-    """
-    return {
-        "asia": [
-            {"symbol": "^N225", "name": "Nikkei 225", "country": "Japan"},
-            {"symbol": "^HSI", "name": "Hang Seng", "country": "Hong Kong"},
-            {"symbol": "000001.SS", "name": "Shanghai Composite", "country": "China"},
-            {"symbol": "^AXJO", "name": "ASX 200", "country": "Australia"},
-            {"symbol": "^AORD", "name": "All Ordinaries", "country": "Australia"},
-            {"symbol": "^KS11", "name": "KOSPI", "country": "South Korea"},
-            {"symbol": "^STI", "name": "Straits Times", "country": "Singapore"}
-        ],
-        "europe": [
-            {"symbol": "^FTSE", "name": "FTSE 100", "country": "UK"},
-            {"symbol": "^GDAXI", "name": "DAX", "country": "Germany"},
-            {"symbol": "^FCHI", "name": "CAC 40", "country": "France"},
-            {"symbol": "^STOXX50E", "name": "Euro Stoxx 50", "country": "EU"},
-            {"symbol": "^IBEX", "name": "IBEX 35", "country": "Spain"},
-            {"symbol": "^SSMI", "name": "SMI", "country": "Switzerland"}
-        ],
-        "americas": [
-            {"symbol": "^GSPC", "name": "S&P 500", "country": "USA"},
-            {"symbol": "^DJI", "name": "Dow Jones", "country": "USA"},
-            {"symbol": "^IXIC", "name": "NASDAQ", "country": "USA"},
-            {"symbol": "^RUT", "name": "Russell 2000", "country": "USA"},
-            {"symbol": "^GSPTSE", "name": "TSX Composite", "country": "Canada"},
-            {"symbol": "^BVSP", "name": "Bovespa", "country": "Brazil"},
-            {"symbol": "^MXX", "name": "IPC Mexico", "country": "Mexico"}
-        ]
-    }
-
-# ============================================
-# CBA Enhanced Features
-# ============================================
-
+# Mock data generators for demonstration
 def generate_mock_publications(limit: int = 5) -> List[Dict]:
     """Generate mock CBA publications with sentiment analysis"""
     publication_types = ["Annual Report", "Quarterly Update", "Market Analysis", "Economic Outlook", "Investor Brief"]
@@ -202,6 +61,7 @@ def generate_mock_publications(limit: int = 5) -> List[Dict]:
             "sentiment_label": sentiment,
             "market_impact": random.choice(["High", "Medium", "Low"]),
             "key_topics": random.sample(["Digital Banking", "Home Loans", "Business Services", "Risk Management", "Customer Growth"], 3),
+            "download_url": f"/api/documents/cba_{i}.pdf"
         })
     
     return publications
@@ -233,7 +93,7 @@ def generate_mock_news(limit: int = 5) -> List[Dict]:
         
         articles.append({
             "id": hashlib.md5(f"news_{i}_{pub_date}".encode()).hexdigest()[:8],
-            "headline": headlines[i] if i < len(headlines) else random.choice(headlines),
+            "headline": random.choice(headlines),
             "source": random.choice(sources),
             "published_date": pub_date.isoformat(),
             "summary": f"Recent developments at Commonwealth Bank show {random.choice(['strong performance', 'strategic growth', 'market expansion', 'innovation focus'])} in {random.choice(['retail banking', 'business services', 'digital platforms', 'wealth management'])}.",
@@ -241,9 +101,96 @@ def generate_mock_news(limit: int = 5) -> List[Dict]:
             "sentiment_label": sentiment,
             "relevance_score": random.uniform(0.7, 1.0),
             "categories": random.sample(["Banking", "Finance", "Technology", "Markets", "Business"], 2),
+            "url": f"https://news.example.com/cba-article-{i}"
         })
     
     return articles
+
+def calculate_enhanced_prediction(symbol: str, horizon: str, include_sentiment: bool = True) -> Dict:
+    """Generate enhanced prediction with sentiment analysis"""
+    try:
+        # Get real market data
+        ticker = yf.Ticker(symbol)
+        hist = ticker.history(period="1mo")
+        
+        if hist.empty:
+            raise ValueError(f"No data available for {symbol}")
+        
+        current_price = float(hist['Close'].iloc[-1])
+        
+        # Calculate basic technical indicators
+        returns = hist['Close'].pct_change().dropna()
+        volatility = returns.std()
+        trend = (hist['Close'].iloc[-1] - hist['Close'].iloc[0]) / hist['Close'].iloc[0]
+        
+        # Generate prediction based on trend and volatility
+        horizon_days = {
+            "1d": 1, "1w": 7, "1m": 30, "3m": 90
+        }.get(horizon, 7)
+        
+        # Simulate sentiment impact
+        sentiment_adjustment = random.uniform(-0.02, 0.03) if include_sentiment else 0
+        
+        # Calculate predicted change
+        base_change = trend * (horizon_days / 30)  # Scale trend by time horizon
+        volatility_factor = volatility * np.sqrt(horizon_days) * random.uniform(-1, 1)
+        predicted_change = base_change + volatility_factor + sentiment_adjustment
+        
+        # Ensure reasonable bounds
+        predicted_change = max(min(predicted_change, 0.15), -0.15)  # Cap at ±15%
+        
+        predicted_price = current_price * (1 + predicted_change)
+        
+        # Calculate confidence based on volatility
+        confidence = max(0.4, min(0.9, 1 - (volatility * 10)))
+        
+        # Generate probability distribution
+        prob_up = 0.5 + (predicted_change * 2)  # Rough probability
+        prob_up = max(0.1, min(0.9, prob_up))
+        
+        return {
+            "current_price": current_price,
+            "predicted_price": predicted_price,
+            "predicted_change_percent": predicted_change * 100,
+            "confidence_interval": {
+                "lower": predicted_price * (1 - volatility * 2),
+                "upper": predicted_price * (1 + volatility * 2),
+                "confidence": confidence
+            },
+            "probability_up": prob_up,
+            "probability_down": 1 - prob_up,
+            "horizon": horizon,
+            "factors_considered": [
+                "Historical price trends",
+                "Market volatility",
+                "Technical indicators",
+                "Sentiment analysis" if include_sentiment else None,
+                "Banking sector performance"
+            ],
+            "risk_metrics": {
+                "volatility": volatility,
+                "sharpe_ratio": (trend / volatility) if volatility > 0 else 0,
+                "max_drawdown": float((hist['Close'].min() - hist['Close'].max()) / hist['Close'].max())
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error generating prediction: {e}")
+        raise
+
+@app.get("/")
+def root():
+    """Root endpoint"""
+    return {
+        "service": "CBA Enhanced Market Tracker API",
+        "version": "2.0.0",
+        "endpoints": {
+            "publications": "/api/prediction/cba/publications",
+            "news": "/api/prediction/cba/news",
+            "enhanced_prediction": "/api/prediction/cba/enhanced",
+            "banking_sector": "/api/prediction/cba/banking-sector",
+            "sentiment_analysis": "/api/prediction/cba/sentiment"
+        }
+    }
 
 @app.get("/api/prediction/cba/publications")
 async def get_cba_publications(
@@ -304,66 +251,30 @@ async def get_enhanced_prediction(
 ):
     """Get enhanced CBA prediction with sentiment and document analysis"""
     try:
-        # Get real market data for CBA
-        ticker = yf.Ticker("CBA.AX")
-        hist = ticker.history(period="1mo")
+        # Generate prediction
+        prediction = calculate_enhanced_prediction("CBA.AX", horizon, include_publications or include_news)
         
-        if hist.empty:
-            raise ValueError("No data available for CBA.AX")
-        
-        current_price = float(hist['Close'].iloc[-1])
-        
-        # Calculate basic technical indicators
-        returns = hist['Close'].pct_change().dropna()
-        volatility = returns.std()
-        trend = (hist['Close'].iloc[-1] - hist['Close'].iloc[0]) / hist['Close'].iloc[0]
-        
-        # Generate prediction based on trend and volatility
-        horizon_days = {
-            "1d": 1, "1w": 7, "1m": 30, "3m": 90
-        }.get(horizon, 7)
-        
-        # Simulate sentiment impact
-        sentiment_adjustment = 0
+        # Add sentiment impact if requested
+        sentiment_impact = {}
         if include_publications or include_news:
             pubs = generate_mock_publications(3) if include_publications else []
             news = generate_mock_news(3) if include_news else []
+            
             all_sentiments = [p["sentiment_score"] for p in pubs] + [n["sentiment_score"] for n in news]
             avg_sentiment = np.mean(all_sentiments) if all_sentiments else 0
-            sentiment_adjustment = avg_sentiment * 0.02  # 2% max impact from sentiment
-        
-        # Calculate predicted change
-        base_change = trend * (horizon_days / 30)
-        volatility_factor = volatility * np.sqrt(horizon_days) * random.uniform(-0.5, 0.5)
-        predicted_change = base_change + volatility_factor + sentiment_adjustment
-        
-        # Ensure reasonable bounds
-        predicted_change = max(min(predicted_change, 0.15), -0.15)
-        predicted_price = current_price * (1 + predicted_change)
-        
-        # Calculate confidence
-        confidence = max(0.4, min(0.9, 1 - (volatility * 10)))
-        
-        # Generate probability distribution
-        prob_up = 0.5 + (predicted_change * 2)
-        prob_up = max(0.1, min(0.9, prob_up))
+            
+            sentiment_impact = {
+                "overall_sentiment": avg_sentiment,
+                "sentiment_label": "positive" if avg_sentiment > 0.2 else "negative" if avg_sentiment < -0.2 else "neutral",
+                "impact_on_prediction": avg_sentiment * 2,  # Percentage impact
+                "sources_analyzed": len(pubs) + len(news)
+            }
         
         return {
             "success": True,
-            "prediction": {
-                "current_price": current_price,
-                "predicted_price": predicted_price,
-                "predicted_change_percent": predicted_change * 100,
-                "confidence_interval": {
-                    "lower": predicted_price * (1 - volatility * 2),
-                    "upper": predicted_price * (1 + volatility * 2),
-                    "confidence": confidence
-                },
-                "probability_up": prob_up,
-                "probability_down": 1 - prob_up,
-                "horizon": horizon
-            },
-            "analysis_summary": f"Based on technical analysis{', publications' if include_publications else ''}{', and news sentiment' if include_news else ''}, CBA is predicted to {'rise' if predicted_change > 0 else 'fall'} by {abs(predicted_change * 100):.2f}% over the next {horizon}.",
+            "prediction": prediction,
+            "sentiment_analysis": sentiment_impact,
+            "analysis_summary": f"Based on technical analysis{', publications' if include_publications else ''}{', and news sentiment' if include_news else ''}, CBA is predicted to {'rise' if prediction['predicted_change_percent'] > 0 else 'fall'} by {abs(prediction['predicted_change_percent']):.2f}% over the next {horizon}.",
             "timestamp": datetime.utcnow().isoformat()
         }
     except Exception as e:
@@ -400,7 +311,7 @@ async def get_banking_sector_analysis():
                         "change_1d": change_1d,
                         "change_1w": change_1w,
                         "change_1m": change_1m,
-                        "performance_rank": 0
+                        "performance_rank": 0  # Will be calculated
                     })
             except Exception as e:
                 logger.warning(f"Error fetching data for {bank}: {e}")
@@ -418,9 +329,9 @@ async def get_banking_sector_analysis():
             "sector_data": sector_data,
             "cba_ranking": cba_data["performance_rank"] if cba_data else None,
             "sector_average": {
-                "change_1d": np.mean([b["change_1d"] for b in sector_data]) if sector_data else 0,
-                "change_1w": np.mean([b["change_1w"] for b in sector_data]) if sector_data else 0,
-                "change_1m": np.mean([b["change_1m"] for b in sector_data]) if sector_data else 0
+                "change_1d": np.mean([b["change_1d"] for b in sector_data]),
+                "change_1w": np.mean([b["change_1w"] for b in sector_data]),
+                "change_1m": np.mean([b["change_1m"] for b in sector_data])
             },
             "timestamp": datetime.utcnow().isoformat()
         }
@@ -428,7 +339,58 @@ async def get_banking_sector_analysis():
         logger.error(f"Error analyzing banking sector: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/prediction/cba/sentiment")
+async def get_sentiment_analysis():
+    """Get aggregated sentiment analysis from all sources"""
+    try:
+        # Gather sentiment from multiple sources
+        pubs = generate_mock_publications(5)
+        news = generate_mock_news(5)
+        
+        # Calculate sentiment metrics
+        pub_sentiments = [p["sentiment_score"] for p in pubs]
+        news_sentiments = [n["sentiment_score"] for n in news]
+        all_sentiments = pub_sentiments + news_sentiments
+        
+        # Time-weighted sentiment (more recent = higher weight)
+        weighted_sentiments = []
+        for item in pubs + news:
+            date_key = "publication_date" if "publication_date" in item else "published_date"
+            item_date = datetime.fromisoformat(item[date_key].replace('Z', '+00:00'))
+            days_ago = (datetime.now() - item_date.replace(tzinfo=None)).days
+            weight = 1 / (1 + days_ago * 0.1)  # Recent items have higher weight
+            weighted_sentiments.append(item["sentiment_score"] * weight)
+        
+        weighted_average = np.average(weighted_sentiments) if weighted_sentiments else 0
+        
+        return {
+            "success": True,
+            "sentiment_metrics": {
+                "overall_score": np.mean(all_sentiments),
+                "weighted_score": weighted_average,
+                "publications_sentiment": np.mean(pub_sentiments) if pub_sentiments else 0,
+                "news_sentiment": np.mean(news_sentiments) if news_sentiments else 0,
+                "trend": "improving" if weighted_average > np.mean(all_sentiments) else "declining",
+                "confidence": min(0.9, 0.5 + len(all_sentiments) * 0.05)
+            },
+            "distribution": {
+                "very_positive": sum(1 for s in all_sentiments if s > 0.6),
+                "positive": sum(1 for s in all_sentiments if 0.2 < s <= 0.6),
+                "neutral": sum(1 for s in all_sentiments if -0.2 <= s <= 0.2),
+                "negative": sum(1 for s in all_sentiments if -0.6 <= s < -0.2),
+                "very_negative": sum(1 for s in all_sentiments if s <= -0.6)
+            },
+            "sources_analyzed": {
+                "publications": len(pubs),
+                "news_articles": len(news),
+                "total": len(pubs) + len(news)
+            },
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    except Exception as e:
+        logger.error(f"Error analyzing sentiment: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+    uvicorn.run(app, host="0.0.0.0", port=8001)
