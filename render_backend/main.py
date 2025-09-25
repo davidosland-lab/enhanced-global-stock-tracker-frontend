@@ -23,9 +23,17 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="Global Market Indices API",
-    description="Real-time market data API for indices tracking",
-    version="1.0.0"
+    description="Real-time market data API with integrated CBA analysis system",
+    version="2.0.0"
 )
+
+# Import integrated CBA system if available
+try:
+    from integrated_cba_system import router as cba_router
+    app.include_router(cba_router)
+    logger.info("✅ CBA Integrated System loaded successfully")
+except ImportError as e:
+    logger.warning(f"⚠️ CBA Integrated System not available: {e}")
 
 # Configure CORS - allow all origins for public API
 app.add_middleware(
