@@ -1,0 +1,1058 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Global Stock Market Tracker - Advanced Predictions</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.0/index.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 2.8em;
+            font-weight: 700;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .header .subtitle {
+            font-size: 1.2em;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .enhancement-badge {
+            display: inline-flex;
+            align-items: center;
+            background: linear-gradient(135deg, #00c851, #007e33);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+            box-shadow: 0 5px 15px rgba(0,200,81,0.3);
+        }
+        
+        .control-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .symbol-input-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .input-field {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px 18px;
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+        }
+        
+        .timeframe-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .timeframe-btn {
+            padding: 10px 20px;
+            border: 2px solid #e9ecef;
+            border-radius: 25px;
+            background: white;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        
+        .timeframe-btn:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+        
+        .timeframe-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-color: #667eea;
+            color: white;
+            box-shadow: 0 5px 15px rgba(102,126,234,0.3);
+        }
+        
+        .analyze-btn {
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(255,107,107,0.3);
+        }
+        
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255,107,107,0.4);
+        }
+        
+        .analyze-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .prediction-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .prediction-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .prediction-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        
+        .prediction-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f8f9fa;
+        }
+        
+        .timeframe-badge {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 6px 15px;
+            border-radius: 15px;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+        
+        .direction-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.4em;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+        
+        .direction-up {
+            color: #00c851;
+        }
+        
+        .direction-down {
+            color: #ff4444;
+        }
+        
+        .direction-sideways {
+            color: #ffbb33;
+        }
+        
+        .prediction-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .metric-item {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+        
+        .metric-value {
+            font-size: 1.5em;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .metric-label {
+            font-size: 0.9em;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .confidence-bar {
+            background: #e9ecef;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff4444, #ffbb33, #00c851);
+            border-radius: 4px;
+            transition: width 0.8s ease;
+        }
+        
+        .risk-indicator {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .risk-low {
+            background: rgba(0, 200, 81, 0.1);
+            color: #00c851;
+        }
+        
+        .risk-medium {
+            background: rgba(255, 187, 51, 0.1);
+            color: #ffbb33;
+        }
+        
+        .risk-high {
+            background: rgba(255, 68, 68, 0.1);
+            color: #ff4444;
+        }
+        
+        .factors-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .factors-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+        }
+        
+        .factor-category {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+        }
+        
+        .factor-title {
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .factor-list {
+            list-style: none;
+        }
+        
+        .factor-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .factor-item:last-child {
+            border-bottom: none;
+        }
+        
+        .factor-impact {
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 0.85em;
+        }
+        
+        .impact-positive {
+            background: rgba(0, 200, 81, 0.1);
+            color: #00c851;
+        }
+        
+        .impact-negative {
+            background: rgba(255, 68, 68, 0.1);
+            color: #ff4444;
+        }
+        
+        .impact-neutral {
+            background: rgba(108, 117, 125, 0.1);
+            color: #6c757d;
+        }
+        
+        .charts-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 20px;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .loading-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .loading-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .alert {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        
+        .alert-info {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            border: 1px solid rgba(102, 126, 234, 0.2);
+        }
+        
+        .alert-success {
+            background: rgba(0, 200, 81, 0.1);
+            color: #00c851;
+            border: 1px solid rgba(0, 200, 81, 0.2);
+        }
+        
+        .alert-warning {
+            background: rgba(255, 187, 51, 0.1);
+            color: #ffbb33;
+            border: 1px solid rgba(255, 187, 51, 0.2);
+        }
+        
+        .alert-error {
+            background: rgba(255, 68, 68, 0.1);
+            color: #ff4444;
+            border: 1px solid rgba(255, 68, 68, 0.2);
+        }
+        
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .comparison-table th,
+        .comparison-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .comparison-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .header h1 {
+                font-size: 2.2em;
+            }
+            
+            .prediction-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .symbol-input-group {
+                flex-direction: column;
+            }
+            
+            .timeframe-selector {
+                justify-content: center;
+            }
+            
+            .prediction-metrics {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🚀 Advanced Market Predictions</h1>
+            <p class="subtitle">Next-Generation Financial Forecasting with AI Ensemble Models</p>
+            
+            <!-- Phase 1 Status Banner -->
+            <div style="background: linear-gradient(135deg, #00b894, #00cec9); color: white; padding: 15px; border-radius: 10px; margin: 15px 0;">
+                <strong>🚨 Phase 1 Enhanced:</strong> LSTM Fixes ✅ | Performance Weighting ✅ | Confidence Calibration ✅
+            </div>
+            
+            <!-- Navigation -->
+            <div style="display: flex; justify-content: center; gap: 15px; margin: 20px 0; flex-wrap: wrap;">
+                <a href="/advanced_dashboard.html" style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                    🎯 Phase 1 Dashboard
+                </a>
+                <a href="/enhanced_predictions.html" style="background: linear-gradient(135deg, #00b894, #00cec9); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                    📊 Enhanced Interface (Current)
+                </a>
+                <a href="/prediction.html" style="background: linear-gradient(135deg, #74b9ff, #0984e3); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                    🤖 Basic Predictions
+                </a>
+                <a href="/index.html" style="background: linear-gradient(135deg, #fd79a8, #e84393); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                    🌍 Global Tracker
+                </a>
+                <a href="/docs" style="background: linear-gradient(135deg, #95a5a6, #7f8c8d); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                    📚 API Docs
+                </a>
+            </div>
+            
+            <div class="enhancement-badge">
+                ✨ Enhanced with LSTM Networks, Global Threat Monitoring & Live Social Data
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="control-panel">
+            <div class="symbol-input-group">
+                <input type="text" class="input-field" id="symbolInput" placeholder="Enter symbol (e.g., CBA.AX, BHP.AX, ^AORD)" value="CBA.AX">
+                <button class="analyze-btn" onclick="runAdvancedAnalysis()" id="analyzeBtn">
+                    🎯 Generate Advanced Predictions
+                </button>
+            </div>
+            
+            <div class="timeframe-selector">
+                <div class="timeframe-btn active" data-timeframe="1d" onclick="selectTimeframe('1d')">1 Day</div>
+                <div class="timeframe-btn" data-timeframe="5d" onclick="selectTimeframe('5d')">5 Days</div>
+                <div class="timeframe-btn" data-timeframe="30d" onclick="selectTimeframe('30d')">30 Days</div>
+                <div class="timeframe-btn" data-timeframe="90d" onclick="selectTimeframe('90d')">90 Days</div>
+                <div class="timeframe-btn" data-timeframe="all" onclick="selectTimeframe('all')">All Horizons</div>
+            </div>
+        </div>
+
+        <!-- Prediction Results -->
+        <div class="prediction-grid" id="predictionGrid"></div>
+
+        <!-- Market Factors Analysis -->
+        <div class="factors-section" id="factorsSection" style="display: none;">
+            <h2>🧠 AI Factor Analysis</h2>
+            <div class="factors-grid" id="factorsGrid"></div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="charts-section" id="chartsSection" style="display: none;">
+            <h2>📊 Prediction Analytics</h2>
+            <div class="chart-container">
+                <canvas id="predictionChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <canvas id="confidenceChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Comparison Table -->
+        <div class="factors-section" id="comparisonSection" style="display: none;">
+            <h2>📋 Timeframe Comparison</h2>
+            <table class="comparison-table" id="comparisonTable">
+                <thead>
+                    <tr>
+                        <th>Timeframe</th>
+                        <th>Direction</th>
+                        <th>Expected Return</th>
+                        <th>Confidence</th>
+                        <th>Risk Level</th>
+                        <th>Volatility</th>
+                    </tr>
+                </thead>
+                <tbody id="comparisonTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <h3>Generating Advanced Predictions</h3>
+            <p>Analyzing market data with AI ensemble models...</p>
+        </div>
+    </div>
+
+    <script>
+        let currentSymbol = 'CBA.AX';
+        let selectedTimeframes = ['1d'];
+        let predictionData = {};
+        let predictionChart = null;
+        let confidenceChart = null;
+
+        function selectTimeframe(timeframe) {
+            // Update UI
+            document.querySelectorAll('.timeframe-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            if (timeframe === 'all') {
+                selectedTimeframes = ['1d', '5d', '30d', '90d'];
+                document.querySelector('[data-timeframe="all"]').classList.add('active');
+            } else {
+                selectedTimeframes = [timeframe];
+                document.querySelector(`[data-timeframe="${timeframe}"]`).classList.add('active');
+            }
+        }
+
+        async function runAdvancedAnalysis() {
+            const symbol = document.getElementById('symbolInput').value.trim();
+            if (!symbol) {
+                showAlert('Please enter a symbol', 'warning');
+                return;
+            }
+
+            currentSymbol = symbol;
+            showLoadingOverlay(true);
+            
+            try {
+                predictionData = {};
+                
+                // Clear previous results
+                document.getElementById('predictionGrid').innerHTML = '';
+                document.getElementById('factorsSection').style.display = 'none';
+                document.getElementById('chartsSection').style.display = 'none';
+                document.getElementById('comparisonSection').style.display = 'none';
+
+                // Fetch predictions for each selected timeframe
+                for (const timeframe of selectedTimeframes) {
+                    const prediction = await fetchAdvancedPrediction(symbol, timeframe);
+                    predictionData[timeframe] = prediction;
+                }
+
+                // Display results
+                displayPredictionResults();
+                displayFactorAnalysis();
+                displayCharts();
+                
+                if (selectedTimeframes.length > 1) {
+                    displayComparison();
+                }
+
+                showAlert(`Advanced analysis complete for ${symbol}`, 'success');
+
+            } catch (error) {
+                console.error('Analysis failed:', error);
+                showAlert('Analysis failed. Please try again.', 'error');
+            } finally {
+                showLoadingOverlay(false);
+            }
+        }
+
+        async function fetchAdvancedPrediction(symbol, timeframe) {
+            // Use Phase 1 enhanced prediction endpoint
+            console.log(`🎯 Fetching Phase 1 enhanced prediction for ${symbol} (${timeframe})...`);
+            const response = await fetch(`/api/advanced-prediction/${symbol}?timeframe=${timeframe}&include_social=true&include_conflicts=true`);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            
+            if (!data.success) {
+                throw new Error('Prediction failed');
+            }
+
+            return data;
+        }
+
+        function displayPredictionResults() {
+            const grid = document.getElementById('predictionGrid');
+            
+            for (const [timeframe, data] of Object.entries(predictionData)) {
+                const prediction = data.prediction;
+                const card = createPredictionCard(timeframe, prediction, data);
+                grid.appendChild(card);
+            }
+        }
+
+        function createPredictionCard(timeframe, prediction, fullData) {
+            const card = document.createElement('div');
+            card.className = 'prediction-card';
+            
+            const direction = prediction.direction || 'sideways';
+            const directionClass = `direction-${direction}`;
+            const directionIcon = direction === 'up' ? '📈' : direction === 'down' ? '📉' : '➡️';
+            
+            const expectedReturn = prediction.expected_change_percent || 0;
+            const confidence = prediction.confidence_score || 0;
+            const riskLevel = prediction.risk_level || 'medium';
+            
+            // Get enhanced data if available
+            const marketFactors = prediction.market_factors || {};
+            const volatility = marketFactors.global_volatility || 20;
+            const geopoliticalImpact = marketFactors.geopolitical_impact || 0;
+            const processingTime = fullData.endpoint_processing_time || 'N/A';
+
+            card.innerHTML = `
+                <div class="prediction-header">
+                    <h3>${currentSymbol}</h3>
+                    <span class="timeframe-badge">${timeframe.toUpperCase()}</span>
+                </div>
+                
+                <div class="direction-indicator ${directionClass}">
+                    ${directionIcon} ${direction.toUpperCase()}
+                </div>
+                
+                <div class="prediction-metrics">
+                    <div class="metric-item">
+                        <div class="metric-value ${expectedReturn >= 0 ? 'direction-up' : 'direction-down'}">
+                            ${expectedReturn >= 0 ? '+' : ''}${expectedReturn.toFixed(3)}%
+                        </div>
+                        <div class="metric-label">Expected Return</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value">${(confidence * 100).toFixed(1)}%</div>
+                        <div class="metric-label">Confidence</div>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: ${confidence * 100}%"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                    <div class="metric-item">
+                        <div class="metric-value">${volatility.toFixed(1)}%</div>
+                        <div class="metric-label">Global Volatility</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value ${geopoliticalImpact >= 0 ? 'direction-up' : 'direction-down'}">
+                            ${geopoliticalImpact >= 0 ? '+' : ''}${geopoliticalImpact.toFixed(2)}
+                        </div>
+                        <div class="metric-label">Geopolitical Impact</div>
+                    </div>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span class="risk-indicator risk-${riskLevel}">
+                        ${riskLevel} Risk
+                    </span>
+                    <span style="font-size: 0.85em; color: #666;">
+                        ${typeof processingTime === 'number' ? processingTime.toFixed(2) + 's' : processingTime}
+                    </span>
+                </div>
+            `;
+            
+            return card;
+        }
+
+        function displayFactorAnalysis() {
+            const factorsSection = document.getElementById('factorsSection');
+            const factorsGrid = document.getElementById('factorsGrid');
+            
+            factorsGrid.innerHTML = '';
+            
+            // Aggregate factors from all predictions
+            const allFactors = {};
+            const socialData = {};
+            const geopoliticalData = {};
+            
+            for (const [timeframe, data] of Object.entries(predictionData)) {
+                const prediction = data.prediction;
+                const marketFactors = prediction.market_factors || {};
+                
+                // Collect market factors
+                Object.assign(allFactors, marketFactors);
+                
+                // Check for additional data
+                if (data.social_sentiment) {
+                    socialData[timeframe] = data.social_sentiment;
+                }
+                
+                if (prediction.geopolitical_assessment) {
+                    geopoliticalData[timeframe] = prediction.geopolitical_assessment;
+                }
+            }
+            
+            // Create factor categories
+            const categories = [
+                {
+                    title: '🎯 Market Factors',
+                    icon: '📊',
+                    factors: [
+                        { name: 'Tier 1 Signal', value: allFactors.tier1_signal || 0, format: 'decimal' },
+                        { name: 'Signal Strength', value: allFactors.signal_strength || 0, format: 'percent' },
+                        { name: 'Volatility Adjusted', value: allFactors.volatility_adjusted || 0, format: 'decimal' },
+                        { name: 'Timeframe Multiplier', value: allFactors.timeframe_multiplier || 0, format: 'decimal' }
+                    ]
+                },
+                {
+                    title: '🌍 Global Factors',
+                    icon: '🗺️',
+                    factors: [
+                        { name: 'Global Volatility', value: allFactors.global_volatility || 20, format: 'percent_raw' },
+                        { name: 'Geopolitical Impact', value: allFactors.geopolitical_impact || 0, format: 'decimal' },
+                        { name: 'News Impact', value: allFactors.news_impact || 0, format: 'decimal' }
+                    ]
+                }
+            ];
+            
+            categories.forEach(category => {
+                const categoryDiv = createFactorCategory(category);
+                factorsGrid.appendChild(categoryDiv);
+            });
+            
+            factorsSection.style.display = 'block';
+        }
+
+        function createFactorCategory(category) {
+            const div = document.createElement('div');
+            div.className = 'factor-category';
+            
+            let factorItems = '';
+            category.factors.forEach(factor => {
+                const impact = determineImpact(factor.value);
+                const formattedValue = formatFactorValue(factor.value, factor.format);
+                
+                factorItems += `
+                    <li class="factor-item">
+                        <span>${factor.name}</span>
+                        <span class="factor-impact impact-${impact.class}">${formattedValue}</span>
+                    </li>
+                `;
+            });
+            
+            div.innerHTML = `
+                <div class="factor-title">
+                    ${category.icon} ${category.title}
+                </div>
+                <ul class="factor-list">
+                    ${factorItems}
+                </ul>
+            `;
+            
+            return div;
+        }
+
+        function determineImpact(value) {
+            if (Math.abs(value) < 0.1) return { class: 'neutral', label: 'Neutral' };
+            return value > 0 ? { class: 'positive', label: 'Positive' } : { class: 'negative', label: 'Negative' };
+        }
+
+        function formatFactorValue(value, format) {
+            switch (format) {
+                case 'percent':
+                    return `${(value * 100).toFixed(1)}%`;
+                case 'percent_raw':
+                    return `${value.toFixed(1)}%`;
+                case 'decimal':
+                    return `${value >= 0 ? '+' : ''}${value.toFixed(3)}`;
+                default:
+                    return value.toFixed(2);
+            }
+        }
+
+        function displayCharts() {
+            const chartsSection = document.getElementById('chartsSection');
+            
+            // Prediction comparison chart
+            createPredictionChart();
+            
+            // Confidence analysis chart
+            createConfidenceChart();
+            
+            chartsSection.style.display = 'block';
+        }
+
+        function createPredictionChart() {
+            const ctx = document.getElementById('predictionChart').getContext('2d');
+            
+            if (predictionChart) {
+                predictionChart.destroy();
+            }
+            
+            const timeframes = Object.keys(predictionData);
+            const returns = timeframes.map(tf => predictionData[tf].prediction.expected_change_percent || 0);
+            const confidences = timeframes.map(tf => predictionData[tf].prediction.confidence_score * 100 || 0);
+            
+            predictionChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: timeframes.map(tf => tf.toUpperCase()),
+                    datasets: [{
+                        label: 'Expected Return (%)',
+                        data: returns,
+                        backgroundColor: returns.map(r => r >= 0 ? 'rgba(0, 200, 81, 0.7)' : 'rgba(255, 68, 68, 0.7)'),
+                        borderColor: returns.map(r => r >= 0 ? '#00c851' : '#ff4444'),
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Expected Returns by Timeframe'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Expected Return (%)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createConfidenceChart() {
+            const ctx = document.getElementById('confidenceChart').getContext('2d');
+            
+            if (confidenceChart) {
+                confidenceChart.destroy();
+            }
+            
+            const timeframes = Object.keys(predictionData);
+            const confidences = timeframes.map(tf => predictionData[tf].prediction.confidence_score * 100 || 0);
+            const volatilities = timeframes.map(tf => {
+                const factors = predictionData[tf].prediction.market_factors || {};
+                return factors.global_volatility || 20;
+            });
+            
+            confidenceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: timeframes.map(tf => tf.toUpperCase()),
+                    datasets: [{
+                        label: 'Confidence (%)',
+                        data: confidences,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4,
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Global Volatility (%)',
+                        data: volatilities,
+                        borderColor: '#ff6b6b',
+                        backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                        tension: 0.4,
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Confidence vs Volatility Analysis'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Confidence (%)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Volatility (%)'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        }
+                    }
+                }
+            });
+        }
+
+        function displayComparison() {
+            const comparisonSection = document.getElementById('comparisonSection');
+            const tableBody = document.getElementById('comparisonTableBody');
+            
+            tableBody.innerHTML = '';
+            
+            Object.entries(predictionData).forEach(([timeframe, data]) => {
+                const prediction = data.prediction;
+                const factors = prediction.market_factors || {};
+                
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td><strong>${timeframe.toUpperCase()}</strong></td>
+                    <td>
+                        <span class="direction-indicator ${prediction.direction ? 'direction-' + prediction.direction : 'direction-sideways'}">
+                            ${prediction.direction ? prediction.direction.toUpperCase() : 'SIDEWAYS'}
+                        </span>
+                    </td>
+                    <td>${prediction.expected_change_percent >= 0 ? '+' : ''}${(prediction.expected_change_percent || 0).toFixed(3)}%</td>
+                    <td>${((prediction.confidence_score || 0) * 100).toFixed(1)}%</td>
+                    <td><span class="risk-indicator risk-${prediction.risk_level || 'medium'}">${(prediction.risk_level || 'medium').toUpperCase()}</span></td>
+                    <td>${(factors.global_volatility || 20).toFixed(1)}%</td>
+                `;
+                tableBody.appendChild(row);
+            });
+            
+            comparisonSection.style.display = 'block';
+        }
+
+        function showLoadingOverlay(show) {
+            const overlay = document.getElementById('loadingOverlay');
+            if (show) {
+                overlay.classList.add('active');
+            } else {
+                overlay.classList.remove('active');
+            }
+        }
+
+        function showAlert(message, type) {
+            // Create alert element
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            
+            // Insert at top of container
+            const container = document.querySelector('.container');
+            container.insertBefore(alert, container.firstChild);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (alert.parentNode) {
+                    alert.parentNode.removeChild(alert);
+                }
+            }, 5000);
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Auto-run analysis for default symbol
+            setTimeout(() => {
+                runAdvancedAnalysis();
+            }, 1000);
+        });
+
+        // Handle Enter key in symbol input
+        document.getElementById('symbolInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                runAdvancedAnalysis();
+            }
+        });
+    </script>
+</body>
+</html>
