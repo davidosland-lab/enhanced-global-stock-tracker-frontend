@@ -383,7 +383,7 @@
                 // Update data status
                 updateDataStatus('loading');
                 
-                // Fetch from backend API - get 5 days to ensure we have previous close
+                // Fetch from backend API - get 5 days with 5-minute interval data points
                 const response = await fetch(`${BACKEND_URL}/api/stock/${symbol}?period=5d&interval=5m`);
                 
                 if (!response.ok) {
@@ -850,17 +850,26 @@
             const refreshIcon = document.getElementById('refresh-icon');
             refreshIcon.classList.add('fa-spin');
             
-            // Re-fetch data for all selected indices
-            for (const symbol of selectedIndices) {
-                await fetchIndexData(symbol);
-            }
+            console.log(`Refreshing data for ${selectedIndices.length} indices at`, new Date().toLocaleTimeString());
+            updateDataStatus('loading');
+            
+            // Re-fetch data for all selected indices with 5-minute intervals
+            const fetchPromises = selectedIndices.map(symbol => fetchIndexData(symbol));
+            await Promise.all(fetchPromises);
             
             updateChart();
             updateCurrentValues();
             
+            // Update last refresh time
+            const now = new Date();
+            console.log('Data refresh completed at', now.toLocaleTimeString());
+            
             setTimeout(() => {
                 refreshIcon.classList.remove('fa-spin');
                 isRefreshing = false;
+                if (selectedIndices.length > 0) {
+                    updateDataStatus('live');
+                }
             }, 1000);
         }
         
@@ -912,10 +921,33 @@
             document.getElementById('americas-panel').classList.toggle('market-zone-active', americasOpen);
         }
         
+        // Auto-refresh every 5 minutes with countdown
+        let nextRefreshTime = Date.now() + 300000;
+        
+        // Update countdown every second
+        setInterval(() => {
+            const now = Date.now();
+            const timeToRefresh = Math.max(0, nextRefreshTime - now);
+            const minutes = Math.floor(timeToRefresh / 60000);
+            const seconds = Math.floor((timeToRefresh % 60000) / 1000);
+            
+            // Update status if element exists
+            const statusEl = document.getElementById('data-status');
+            if (statusEl && statusEl.classList.contains('live')) {
+                const currentText = statusEl.querySelector('span:last-child').textContent;
+                if (currentText.includes('Live Data')) {
+                    statusEl.querySelector('span:last-child').textContent = 
+                        `Live Data (refresh in ${minutes}:${seconds.toString().padStart(2, '0')})`;
+                }
+            }
+        }, 1000);
+        
         // Auto-refresh every 5 minutes
         setInterval(() => {
             if (selectedIndices.length > 0) {
+                console.log('Auto-refreshing data at', new Date().toLocaleTimeString());
                 refreshData();
+                nextRefreshTime = Date.now() + 300000; // Reset countdown
             }
         }, 300000); // 5 minutes
     </script>
