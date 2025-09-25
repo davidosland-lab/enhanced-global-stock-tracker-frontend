@@ -613,11 +613,11 @@
         </div>
     </div>
 
+    <script src="/config.js?v=20250125-render"></script>
     <script>
-        // API Configuration
-        const API_BASE_URL = window.location.hostname === 'localhost' ? 
-            'http://localhost:8000' : 
-            'https://8000-ib2hlmks3ra0wwghsafox-6532622b.e2b.dev';
+        // API Configuration - Use backend URL from config or fallback
+        const API_BASE_URL = window.CONFIG?.BACKEND_URL || 'https://enhanced-global-stock-tracker-frontend.onrender.com';
+        console.log('Single Stock Tracker using backend:', API_BASE_URL);
         
         // Global variables
         let currentChart = null;
@@ -1018,6 +1018,10 @@
                 console.error('Error starting tracking:', error);
                 alert('Error starting tracking: ' + error.message);
                 
+                // Reset button state
+                trackBtn.innerHTML = '<i class="fas fa-play" style="margin-right: 8px;"></i>Start Tracking';
+                trackBtn.disabled = false;
+                
                 trackBtn.innerHTML = '<i class="fas fa-play" style="margin-right: 8px;"></i>Start Tracking';
                 trackBtn.onclick = startTracking;
                 trackBtn.disabled = false;
@@ -1053,7 +1057,7 @@
 
                 const data = await response.json();
                 
-                if (data.success && data.data && data.data.length > 0) {
+                if (data && data.data && data.data.length > 0) {
                     // Process the data
                     chartData = data.data.map(point => ({
                         timestamp: new Date(point.timestamp),
@@ -1195,6 +1199,10 @@
 
         // Generate prediction
         async function generatePrediction(timeframe) {
+            // Temporarily disable predictions as backend doesn't support them yet
+            alert('AI Predictions are temporarily unavailable. The backend service is being upgraded to support advanced prediction models. Basic tracking functionality is working.');
+            return;
+            
             if (!currentSymbol) {
                 alert('Please start tracking a symbol first');
                 return;
