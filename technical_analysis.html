@@ -223,6 +223,10 @@
             <div class="chart-container">
                 <canvas id="candlestickChart"></canvas>
             </div>
+            <!-- Volume Chart -->
+            <div class="mt-4" style="height: 100px;">
+                <canvas id="volumeChart"></canvas>
+            </div>
         </div>
 
         <!-- Technical Indicators Grid -->
@@ -341,6 +345,7 @@
 
         // Chart instances
         let candlestickChart = null;
+        let volumeChart = null;
         let rsiChart = null;
         let macdChart = null;
 
@@ -375,6 +380,10 @@
             if (candlestickChart) {
                 candlestickChart.destroy();
                 candlestickChart = null;
+            }
+            if (volumeChart) {
+                volumeChart.destroy();
+                volumeChart = null;
             }
             if (rsiChart) {
                 rsiChart.destroy();
@@ -424,14 +433,22 @@
                 const analysisData = await analysisResponse.json();
                 
                 // Update charts and displays
-                if (candleData.success || candleData.data) {
-                    console.log('Candlestick data received:', candleData);
-                    updateCandlestickChart(candleData.data || candleData);
+                let chartData = null;
+                let analysis = null;
+                
+                if (candleData.success && candleData.data) {
+                    chartData = candleData.data;
                 }
                 
-                if (analysisData.success) {
-                    updateIndicators(analysisData.data);
-                    updateSummary(analysisData.data);
+                if (analysisData.success && analysisData.data) {
+                    analysis = analysisData.data;
+                    updateIndicators(analysis);
+                    updateSummary(analysis);
+                }
+                
+                // Update candlestick chart with both datasets
+                if (chartData) {
+                    updateCandlestickChart(chartData, analysis);
                 }
                 
                 showStatus(`Analysis complete for ${symbol}`, 'success');
@@ -442,8 +459,10 @@
             }
         }
 
-        // Update candlestick chart
-        function updateCandlestickChart(data) {
+        // Update candlestick chart with enhanced data handling
+        function updateCandlestickChart(candleData, analysisData) {
+            console.log('Updating candlestick chart with data:', { candleData, analysisData });
+            
             // Get canvas and ensure it's clean
             const canvas = document.getElementById('candlestickChart');
             const ctx = canvas.getContext('2d');
@@ -451,151 +470,321 @@
             // Clear the canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
-            // Prepare data for candlestick chart
-            const ohlcData = [];
-            const volumeData = [];
-            const labels = [];
-            const bollingerUpper = [];
-            const bollingerLower = [];
-            const bollingerMiddle = [];
-            
-            // Handle both data structures: direct array or nested in ohlc property
-            const candleArray = Array.isArray(data) ? data : (data.ohlc || []);
-            
-            if (candleArray && candleArray.length > 0) {
-                candleArray.forEach((candle, index) => {
-                    // For candlestick data
-                    ohlcData.push({
-                        x: candle.date || candle.timestamp,
-                        o: candle.open,
-                        h: candle.high,
-                        l: candle.low,
-                        c: candle.close
-                    });
-                    
-                    // Format timestamp for labels
-                    const timestamp = candle.timestamp || candle.date;
-                    const dateStr = timestamp ? new Date(timestamp).toLocaleDateString() : `Day ${index + 1}`;
-                    labels.push(dateStr);
-                    
-                    if (candle.volume) {
-                        volumeData.push(candle.volume);
-                    }
-                });
-            }
-            
-            // Add Bollinger Bands if available
-            if (data.bollinger_bands) {
-                const bb = data.bollinger_bands;
-                if (bb.upper) bollingerUpper.push(...bb.upper);
-                if (bb.lower) bollingerLower.push(...bb.lower);
-                if (bb.middle) bollingerMiddle.push(...bb.middle);
-            }
-            
             // Destroy existing chart if it exists
             if (candlestickChart) {
                 candlestickChart.destroy();
                 candlestickChart = null;
             }
             
+            // Prepare data for candlestick chart
+            const ohlcData = [];
+            const volumeData = [];
+            const labels = [];
+            let bollingerUpper = [];
+            let bollingerLower = [];
+            let bollingerMiddle = [];
+            let sma20Data = [];
+            let sma50Data = [];
+            
+            // Handle both data structures: direct array or nested in ohlc property
+            const candleArray = Array.isArray(candleData) ? candleData : (candleData?.ohlc || []);
+            
+            if (!candleArray || candleArray.length === 0) {
+                console.error('No candlestick data available');
+                showStatus('No data available for this symbol', 'error');
+                return;
+            }
+            
+            // Process candlestick data
+            candleArray.forEach((candle, index) => {
+                // For candlestick data - using the exact format from our API
+                ohlcData.push({
+                    x: candle.timestamp || candle.date,
+                    o: candle.open,
+                    h: candle.high,
+                    l: candle.low,
+                    c: candle.close
+                });
+                
+                // Format timestamp for labels
+                const timestamp = candle.timestamp || candle.date;
+                const date = new Date(timestamp);
+                const dateStr = `${date.getMonth() + 1}/${date.getDate()}`;
+                labels.push(dateStr);
+                
+                if (candle.volume) {
+                    volumeData.push(candle.volume);
+                }
+            });
+            
+            // Extract Bollinger Bands from analysis data if available
+            if (analysisData?.indicators?.bollinger_bands) {
+                const bb = analysisData.indicators.bollinger_bands;
+                bollingerUpper = bb.upper_series || [];
+                bollingerLower = bb.lower_series || [];
+                bollingerMiddle = bb.middle_series || [];
+            }
+            
+            // Extract moving averages if available
+            if (analysisData?.indicators?.moving_averages) {
+                const ma = analysisData.indicators.moving_averages;
+                sma20Data = ma.sma_20_series || [];
+                sma50Data = ma.sma_50_series || [];
+            }
+            
+            // Build datasets array
+            const datasets = [
+                {
+                    label: 'Price',
+                    type: 'candlestick',
+                    data: ohlcData,
+                    borderColor: '#64748b',
+                    borderWidth: 1,
+                    color: {
+                        up: '#10b981',   // Green for bullish
+                        down: '#ef4444',  // Red for bearish
+                        unchanged: '#6b7280' // Gray for unchanged
+                    }
+                }
+            ];
+            
+            // Add Bollinger Bands if available
+            if (bollingerUpper.length > 0) {
+                // Create a translucent fill between upper and lower bands
+                datasets.push({
+                    label: 'Bollinger Upper',
+                    type: 'line',
+                    data: bollingerUpper.map((val, i) => labels[i] && val !== null ? val : null),
+                    borderColor: 'rgba(147, 51, 234, 0.4)',
+                    borderWidth: 1,
+                    borderDash: [5, 5],
+                    fill: '+1',  // Fill to next dataset (middle)
+                    backgroundColor: 'rgba(147, 51, 234, 0.05)',
+                    pointRadius: 0,
+                    tension: 0.1
+                });
+                
+                datasets.push({
+                    label: 'Bollinger Middle',
+                    type: 'line',
+                    data: bollingerMiddle.map((val, i) => labels[i] && val !== null ? val : null),
+                    borderColor: 'rgba(251, 191, 36, 0.6)',
+                    borderWidth: 1.5,
+                    fill: false,
+                    pointRadius: 0,
+                    tension: 0.1
+                });
+                
+                datasets.push({
+                    label: 'Bollinger Lower',
+                    type: 'line',
+                    data: bollingerLower.map((val, i) => labels[i] && val !== null ? val : null),
+                    borderColor: 'rgba(147, 51, 234, 0.4)',
+                    borderWidth: 1,
+                    borderDash: [5, 5],
+                    fill: '-1',  // Fill to previous dataset (middle)
+                    backgroundColor: 'rgba(147, 51, 234, 0.05)',
+                    pointRadius: 0,
+                    tension: 0.1
+                });
+            }
+            
+            // Add moving averages if available
+            if (sma20Data.length > 0) {
+                datasets.push({
+                    label: 'SMA 20',
+                    type: 'line',
+                    data: sma20Data.map((val, i) => labels[i] && val !== null ? val : null),
+                    borderColor: 'rgba(34, 197, 94, 0.7)',
+                    borderWidth: 1.5,
+                    fill: false,
+                    pointRadius: 0,
+                    tension: 0.1
+                });
+            }
+            
+            if (sma50Data.length > 0) {
+                datasets.push({
+                    label: 'SMA 50',
+                    type: 'line',
+                    data: sma50Data.map((val, i) => labels[i] && val !== null ? val : null),
+                    borderColor: 'rgba(239, 68, 68, 0.7)',
+                    borderWidth: 1.5,
+                    fill: false,
+                    pointRadius: 0,
+                    tension: 0.1
+                });
+            }
+            
             // Create new candlestick chart
-            candlestickChart = new Chart(ctx, {
-                type: 'candlestick',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'Price',
-                            data: ohlcData,
-                            borderColor: '#64748b',
-                            borderWidth: 1,
-                            color: {
-                                up: '#10b981',   // Green for bullish
-                                down: '#ef4444',  // Red for bearish
-                                unchanged: '#6b7280' // Gray for unchanged
+            try {
+                candlestickChart = new Chart(ctx, {
+                    type: 'candlestick',
+                    data: {
+                        labels: labels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            intersect: false,
+                            mode: 'index'
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top',
+                                labels: {
+                                    color: '#94a3b8',
+                                    usePointStyle: true,
+                                    filter: function(item) {
+                                        // Hide price label but show indicators
+                                        return item.text !== 'Price';
+                                    }
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                                titleColor: '#e2e8f0',
+                                bodyColor: '#94a3b8',
+                                borderColor: 'rgba(148, 163, 184, 0.2)',
+                                borderWidth: 1,
+                                displayColors: false,
+                                callbacks: {
+                                    label: function(context) {
+                                        if (context.dataset.type === 'candlestick') {
+                                            const point = context.raw;
+                                            if (point && typeof point === 'object' && 'o' in point) {
+                                                return [
+                                                    `Open: $${point.o?.toFixed(2) || 'N/A'}`,
+                                                    `High: $${point.h?.toFixed(2) || 'N/A'}`,
+                                                    `Low: $${point.l?.toFixed(2) || 'N/A'}`,
+                                                    `Close: $${point.c?.toFixed(2) || 'N/A'}`
+                                                ];
+                                            }
+                                        }
+                                        if (context.parsed.y !== null && !isNaN(context.parsed.y)) {
+                                            return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`;
+                                        }
+                                        return null;
+                                    },
+                                    afterLabel: function(context) {
+                                        if (context.dataIndex < volumeData.length && context.dataset.type === 'candlestick') {
+                                            const volume = volumeData[context.dataIndex];
+                                            if (volume) {
+                                                return `Volume: ${(volume / 1000000).toFixed(2)}M`;
+                                            }
+                                        }
+                                        return null;
+                                    }
+                                }
                             }
                         },
-                        // Add Bollinger Bands as overlay
-                        {
-                            label: 'Upper Band',
-                            type: 'line',
-                            data: bollingerUpper.map((val, i) => ({ x: labels[i], y: val })),
-                            borderColor: 'rgba(59, 130, 246, 0.5)',
-                            borderWidth: 1,
-                            fill: false,
-                            pointRadius: 0,
-                            tension: 0.1
-                        },
-                        {
-                            label: 'Lower Band',
-                            type: 'line',
-                            data: bollingerLower.map((val, i) => ({ x: labels[i], y: val })),
-                            borderColor: 'rgba(59, 130, 246, 0.5)',
-                            borderWidth: 1,
-                            fill: false,
-                            pointRadius: 0,
-                            tension: 0.1
-                        },
-                        {
-                            label: 'Middle (SMA)',
-                            type: 'line',
-                            data: bollingerMiddle.map((val, i) => ({ x: labels[i], y: val })),
-                            borderColor: 'rgba(251, 191, 36, 0.5)',
-                            borderWidth: 1,
-                            fill: false,
-                            pointRadius: 0,
-                            tension: 0.1
+                        scales: {
+                            x: {
+                                type: 'category',
+                                ticks: {
+                                    color: '#94a3b8',
+                                    maxRotation: 45,
+                                    minRotation: 0,
+                                    autoSkip: true,
+                                    maxTicksLimit: 15
+                                },
+                                grid: {
+                                    color: 'rgba(148, 163, 184, 0.1)',
+                                    drawOnChartArea: true
+                                }
+                            },
+                            y: {
+                                position: 'right',
+                                ticks: {
+                                    color: '#94a3b8',
+                                    callback: function(value) {
+                                        return '$' + value.toFixed(2);
+                                    }
+                                },
+                                grid: {
+                                    color: 'rgba(148, 163, 184, 0.1)',
+                                    drawOnChartArea: true
+                                }
+                            }
                         }
-                    ]
+                    }
+                });
+                
+                console.log('Candlestick chart created successfully');
+                
+                // Create volume chart if we have volume data
+                if (volumeData.length > 0) {
+                    createVolumeChart(labels, volumeData, ohlcData);
+                }
+                
+            } catch (error) {
+                console.error('Error creating candlestick chart:', error);
+                showStatus('Error creating chart: ' + error.message, 'error');
+            }
+        }
+        
+        // Create volume chart
+        function createVolumeChart(labels, volumes, ohlcData) {
+            if (volumeChart) {
+                volumeChart.destroy();
+                volumeChart = null;
+            }
+            
+            const canvas = document.getElementById('volumeChart');
+            if (!canvas) return;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Determine colors based on price movement
+            const colors = ohlcData.map(candle => 
+                candle.c >= candle.o ? 'rgba(16, 185, 129, 0.6)' : 'rgba(239, 68, 68, 0.6)'
+            );
+            
+            volumeChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Volume',
+                        data: volumes,
+                        backgroundColor: colors,
+                        borderWidth: 0
+                    }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: {
-                        intersect: false,
-                        mode: 'index'
-                    },
                     plugins: {
                         legend: {
                             display: false
                         },
                         tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.95)',
                             callbacks: {
                                 label: function(context) {
-                                    if (context.dataset.label === 'Price') {
-                                        const point = context.raw;
-                                        return [
-                                            `Open: $${point.o?.toFixed(2) || 'N/A'}`,
-                                            `High: $${point.h?.toFixed(2) || 'N/A'}`,
-                                            `Low: $${point.l?.toFixed(2) || 'N/A'}`,
-                                            `Close: $${point.c?.toFixed(2) || 'N/A'}`
-                                        ];
+                                    const volume = context.parsed.y;
+                                    if (volume >= 1000000) {
+                                        return `Volume: ${(volume / 1000000).toFixed(2)}M`;
                                     }
-                                    return `${context.dataset.label}: ${context.parsed.y?.toFixed(2) || 'N/A'}`;
+                                    return `Volume: ${volume.toLocaleString()}`;
                                 }
                             }
                         }
                     },
                     scales: {
                         x: {
-                            type: 'category',
-                            ticks: {
-                                color: '#94a3b8',
-                                maxRotation: 45,
-                                minRotation: 0,
-                                autoSkip: true,
-                                maxTicksLimit: 10
-                            },
-                            grid: {
-                                color: 'rgba(148, 163, 184, 0.1)'
-                            }
+                            display: false // Hide x-axis as it's shared with main chart
                         },
                         y: {
                             position: 'right',
                             ticks: {
                                 color: '#94a3b8',
                                 callback: function(value) {
-                                    return '$' + value.toFixed(2);
+                                    return (value / 1000000).toFixed(0) + 'M';
                                 }
                             },
                             grid: {
