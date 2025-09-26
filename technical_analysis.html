@@ -3,13 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📊 Technical Analysis - Candlestick Charts & Indicators</title>
+    <title>📊 Technical Analysis - Advanced Charts & Indicators</title>
     
-    <!-- External Libraries -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    
+    <!-- Chart.js v4 and Financial Plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.1/dist/chartjs-chart-financial.min.js"></script>
+    
+    <!-- Fonts and Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
     
@@ -29,27 +33,15 @@
         }
         
         .chart-container {
-            height: 500px;
             position: relative;
+            height: 500px;
             padding: 20px;
         }
         
         .indicator-container {
-            height: 200px;
             position: relative;
-            padding: 20px;
-        }
-        
-        .control-group {
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .control-group label {
-            font-size: 0.875rem;
-            color: #94a3b8;
-            margin-bottom: 6px;
-            font-weight: 600;
+            height: 200px;
+            padding: 10px;
         }
         
         input, select {
@@ -81,16 +73,27 @@
         .signal-sell { color: #ef4444; }
         .signal-hold { color: #f59e0b; }
         
-        .indicator-value {
-            font-size: 2rem;
-            font-weight: 700;
-            margin: 10px 0;
+        .loader {
+            border: 4px solid rgba(59, 130, 246, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid #3b82f6;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
         
         .status-message {
             padding: 15px;
             border-radius: 10px;
             margin: 15px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
         
         .status-success {
@@ -104,97 +107,118 @@
             border: 1px solid rgba(239, 68, 68, 0.3);
             color: #ef4444;
         }
+        
+        .indicator-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 10px 0;
+        }
     </style>
 </head>
 <body>
-    <div class="container mx-auto max-w-7xl px-4 py-6">
+    <div class="container mx-auto px-4 py-8">
         <!-- Header -->
-        <div class="glassmorphism p-8 mb-6 text-center">
-            <h1 class="text-4xl font-bold mb-4">
-                <i class="fas fa-chart-area mr-3 text-cyan-400"></i>
-                Technical Analysis
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                📊 Advanced Technical Analysis
             </h1>
-            <p class="text-gray-400">Advanced indicators and candlestick patterns</p>
+            <p class="text-gray-400">Real-time candlestick charts with technical indicators</p>
         </div>
 
         <!-- Controls -->
         <div class="glassmorphism p-6 mb-6">
-            <h2 class="text-xl font-bold mb-4">
-                <i class="fas fa-cogs mr-2"></i>Analysis Controls
-            </h2>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div class="control-group">
-                    <label>Symbol</label>
-                    <select id="symbolSelect">
-                        <option value="">Select Symbol...</option>
-                        <optgroup label="Popular US">
-                            <option value="AAPL">Apple (AAPL)</option>
-                            <option value="MSFT">Microsoft (MSFT)</option>
-                            <option value="GOOGL">Google (GOOGL)</option>
-                            <option value="TSLA">Tesla (TSLA)</option>
+                    <label class="block text-sm text-gray-400 mb-2">Select Stock</label>
+                    <select id="symbolSelect" class="w-full">
+                        <option value="">-- Select Symbol --</option>
+                        <optgroup label="Popular US Stocks">
+                            <option value="AAPL">AAPL - Apple Inc.</option>
+                            <option value="MSFT">MSFT - Microsoft</option>
+                            <option value="GOOGL">GOOGL - Google</option>
+                            <option value="AMZN">AMZN - Amazon</option>
+                            <option value="TSLA">TSLA - Tesla</option>
+                            <option value="META">META - Meta Platforms</option>
+                            <option value="NVDA">NVDA - NVIDIA</option>
                         </optgroup>
-                        <optgroup label="Australian">
-                            <option value="CBA.AX">CBA</option>
-                            <option value="BHP.AX">BHP</option>
-                            <option value="CSL.AX">CSL</option>
+                        <optgroup label="Australian Stocks">
+                            <option value="CBA.AX">CBA - Commonwealth Bank</option>
+                            <option value="BHP.AX">BHP - BHP Group</option>
+                            <option value="CSL.AX">CSL - CSL Limited</option>
+                            <option value="NAB.AX">NAB - National Australia Bank</option>
+                            <option value="WBC.AX">WBC - Westpac</option>
+                            <option value="ANZ.AX">ANZ - ANZ Bank</option>
+                            <option value="WES.AX">WES - Wesfarmers</option>
+                            <option value="MQG.AX">MQG - Macquarie Group</option>
+                            <option value="GMG.AX">GMG - Goodman Group</option>
+                            <option value="TLS.AX">TLS - Telstra</option>
+                            <option value="WOW.AX">WOW - Woolworths</option>
+                            <option value="TCL.AX">TCL - Transurban</option>
+                            <option value="RIO.AX">RIO - Rio Tinto</option>
+                            <option value="FMG.AX">FMG - Fortescue</option>
                         </optgroup>
-                        <optgroup label="UK">
-                            <option value="SHEL.L">Shell</option>
-                            <option value="HSBA.L">HSBC</option>
-                            <option value="AZN.L">AstraZeneca</option>
+                        <optgroup label="UK Stocks">
+                            <option value="HSBA.L">HSBA - HSBC Holdings</option>
+                            <option value="BP.L">BP - BP plc</option>
+                            <option value="SHEL.L">SHEL - Shell</option>
+                            <option value="AZN.L">AZN - AstraZeneca</option>
+                            <option value="GSK.L">GSK - GlaxoSmithKline</option>
+                            <option value="ULVR.L">ULVR - Unilever</option>
+                            <option value="DGE.L">DGE - Diageo</option>
+                            <option value="RIO.L">RIO - Rio Tinto</option>
+                            <option value="VOD.L">VOD - Vodafone</option>
+                            <option value="BARC.L">BARC - Barclays</option>
+                            <option value="LLOY.L">LLOY - Lloyds Banking</option>
+                            <option value="BA.L">BA - BAE Systems</option>
                         </optgroup>
                         <optgroup label="Indices">
                             <option value="^GSPC">S&P 500</option>
+                            <option value="^DJI">Dow Jones</option>
+                            <option value="^IXIC">NASDAQ</option>
+                            <option value="^AORD">All Ordinaries</option>
                             <option value="^FTSE">FTSE 100</option>
-                            <option value="^AXJO">ASX 200</option>
                         </optgroup>
                     </select>
                 </div>
-                
                 <div class="control-group">
-                    <label>Custom Symbol</label>
-                    <input type="text" id="customSymbol" placeholder="Enter symbol...">
-                </div>
-                
-                <div class="control-group">
-                    <label>Period</label>
-                    <select id="period">
+                    <label class="block text-sm text-gray-400 mb-2">Time Period</label>
+                    <select id="period" class="w-full">
                         <option value="1d">1 Day</option>
                         <option value="5d">5 Days</option>
                         <option value="1mo" selected>1 Month</option>
                         <option value="3mo">3 Months</option>
                         <option value="6mo">6 Months</option>
                         <option value="1y">1 Year</option>
+                        <option value="2y">2 Years</option>
                     </select>
                 </div>
-                
                 <div class="control-group">
-                    <label>Interval</label>
-                    <select id="interval">
+                    <label class="block text-sm text-gray-400 mb-2">Interval</label>
+                    <select id="interval" class="w-full">
                         <option value="5m">5 Minutes</option>
                         <option value="15m">15 Minutes</option>
+                        <option value="30m">30 Minutes</option>
                         <option value="1h">1 Hour</option>
                         <option value="1d" selected>1 Day</option>
                         <option value="1wk">1 Week</option>
                     </select>
                 </div>
-                
                 <div class="control-group">
-                    <label>&nbsp;</label>
-                    <button id="analyzeBtn" class="btn-primary">
-                        <i class="fas fa-search mr-2"></i>Analyze
+                    <label class="block text-sm text-gray-400 mb-2">&nbsp;</label>
+                    <button id="analyzeBtn" class="btn-primary w-full">
+                        <i class="fas fa-chart-line mr-2"></i>Analyze
                     </button>
                 </div>
             </div>
-            
-            <div id="statusMessage" style="display: none;"></div>
         </div>
 
-        <!-- Candlestick Chart -->
+        <!-- Status Message -->
+        <div id="statusContainer"></div>
+
+        <!-- Main Candlestick Chart -->
         <div class="glassmorphism p-6 mb-6">
             <h3 class="text-xl font-bold mb-4">
-                <i class="fas fa-chart-line mr-2"></i>Price Action
+                <i class="fas fa-chart-candlestick mr-2"></i>Price Action
             </h3>
             <div class="chart-container">
                 <canvas id="candlestickChart"></canvas>
@@ -212,8 +236,8 @@
                     <canvas id="rsiChart"></canvas>
                 </div>
                 <div class="text-center">
-                    <div class="indicator-value" id="rsiValue">-</div>
-                    <div id="rsiSignal" class="text-lg font-semibold">-</div>
+                    <div class="indicator-value" id="rsiValue">--</div>
+                    <div id="rsiSignal" class="text-lg font-semibold">--</div>
                 </div>
             </div>
 
@@ -226,8 +250,58 @@
                     <canvas id="macdChart"></canvas>
                 </div>
                 <div class="text-center">
-                    <div class="indicator-value" id="macdValue">-</div>
-                    <div id="macdSignal" class="text-lg font-semibold">-</div>
+                    <div class="indicator-value" id="macdValue">--</div>
+                    <div id="macdSignal" class="text-lg font-semibold">--</div>
+                </div>
+            </div>
+
+            <!-- Bollinger Bands Info -->
+            <div class="glassmorphism p-6">
+                <h3 class="text-xl font-bold mb-4">
+                    <i class="fas fa-chart-area mr-2"></i>Bollinger Bands
+                </h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <div class="text-sm text-gray-400">Upper Band</div>
+                        <div class="text-xl font-semibold" id="bbUpper">--</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-400">Lower Band</div>
+                        <div class="text-xl font-semibold" id="bbLower">--</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-400">Middle (SMA)</div>
+                        <div class="text-xl font-semibold" id="bbMiddle">--</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-400">Position</div>
+                        <div class="text-xl font-semibold" id="bbPosition">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Moving Averages -->
+            <div class="glassmorphism p-6">
+                <h3 class="text-xl font-bold mb-4">
+                    <i class="fas fa-chart-line mr-2"></i>Moving Averages
+                </h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <div class="text-sm text-gray-400">SMA 20</div>
+                        <div class="text-xl font-semibold" id="sma20">--</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-400">SMA 50</div>
+                        <div class="text-xl font-semibold" id="sma50">--</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-400">EMA 12</div>
+                        <div class="text-xl font-semibold" id="ema12">--</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-gray-400">EMA 26</div>
+                        <div class="text-xl font-semibold" id="ema26">--</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -237,18 +311,18 @@
             <h3 class="text-xl font-bold mb-4">
                 <i class="fas fa-brain mr-2"></i>Technical Analysis Summary
             </h3>
-            <div id="analysisSummary" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div class="text-center p-4 rounded-lg bg-gray-800/50">
                     <div class="text-sm text-gray-400 mb-2">Overall Signal</div>
-                    <div id="overallSignal" class="text-2xl font-bold">-</div>
+                    <div id="overallSignal" class="text-2xl font-bold">--</div>
                 </div>
                 <div class="text-center p-4 rounded-lg bg-gray-800/50">
                     <div class="text-sm text-gray-400 mb-2">Confidence</div>
-                    <div id="confidence" class="text-2xl font-bold">-</div>
+                    <div id="confidence" class="text-2xl font-bold">--</div>
                 </div>
                 <div class="text-center p-4 rounded-lg bg-gray-800/50">
                     <div class="text-sm text-gray-400 mb-2">Trend</div>
-                    <div id="trend" class="text-2xl font-bold">-</div>
+                    <div id="trend" class="text-2xl font-bold">--</div>
                 </div>
             </div>
         </div>
@@ -265,33 +339,190 @@
             API_BASE_URL = 'https://enhanced-global-stock-tracker-frontend.onrender.com';
         }
 
-        // State
+        // Chart instances
         let candlestickChart = null;
         let rsiChart = null;
         let macdChart = null;
-        let currentData = null;
 
-        // Initialize
+        // Initialize on DOM ready
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('analyzeBtn').addEventListener('click', performAnalysis);
-            initializeCharts();
             console.log('Technical Analysis loaded. API:', API_BASE_URL);
         });
 
-        function initializeCharts() {
-            // Candlestick Chart
-            const candleCtx = document.getElementById('candlestickChart').getContext('2d');
-            candlestickChart = new Chart(candleCtx, {
+        // Show status message
+        function showStatus(message, type = 'info') {
+            const container = document.getElementById('statusContainer');
+            const statusClass = type === 'error' ? 'status-error' : 'status-success';
+            const icon = type === 'error' ? 'fa-exclamation-circle' : 'fa-check-circle';
+            
+            container.innerHTML = `
+                <div class="status-message ${statusClass}">
+                    <i class="fas ${icon}"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+            
+            if (type !== 'error') {
+                setTimeout(() => {
+                    container.innerHTML = '';
+                }, 5000);
+            }
+        }
+
+        // Perform technical analysis
+        async function performAnalysis() {
+            const symbol = document.getElementById('symbolSelect').value;
+            if (!symbol) {
+                showStatus('Please select a symbol', 'error');
+                return;
+            }
+            
+            const period = document.getElementById('period').value;
+            const interval = document.getElementById('interval').value;
+            
+            showStatus('Fetching data and performing analysis...');
+            
+            try {
+                // Fetch candlestick data
+                const candleUrl = `${API_BASE_URL}/api/technical/candlestick-data/${symbol}?period=${period}&interval=${interval}`;
+                console.log('Fetching candlestick data from:', candleUrl);
+                
+                const candleResponse = await fetch(candleUrl);
+                if (!candleResponse.ok) {
+                    throw new Error(`Failed to fetch candlestick data: ${candleResponse.status}`);
+                }
+                const candleData = await candleResponse.json();
+                
+                // Fetch comprehensive analysis
+                const analysisUrl = `${API_BASE_URL}/api/technical/analysis/${symbol}?period=${period}&interval=${interval}`;
+                console.log('Fetching analysis from:', analysisUrl);
+                
+                const analysisResponse = await fetch(analysisUrl);
+                if (!analysisResponse.ok) {
+                    throw new Error(`Failed to fetch analysis: ${analysisResponse.status}`);
+                }
+                const analysisData = await analysisResponse.json();
+                
+                // Update charts and displays
+                if (candleData.success) {
+                    updateCandlestickChart(candleData.data);
+                }
+                
+                if (analysisData.success) {
+                    updateIndicators(analysisData.data);
+                    updateSummary(analysisData.data);
+                }
+                
+                showStatus(`Analysis complete for ${symbol}`, 'success');
+                
+            } catch (error) {
+                console.error('Analysis error:', error);
+                showStatus(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Update candlestick chart
+        function updateCandlestickChart(data) {
+            const ctx = document.getElementById('candlestickChart').getContext('2d');
+            
+            // Prepare data for candlestick chart
+            const ohlcData = [];
+            const volumeData = [];
+            const labels = [];
+            const bollingerUpper = [];
+            const bollingerLower = [];
+            const bollingerMiddle = [];
+            
+            if (data.ohlc && Array.isArray(data.ohlc)) {
+                data.ohlc.forEach((candle, index) => {
+                    // For candlestick data
+                    ohlcData.push({
+                        x: candle.date || new Date(candle.timestamp),
+                        o: candle.open,
+                        h: candle.high,
+                        l: candle.low,
+                        c: candle.close
+                    });
+                    
+                    labels.push(candle.date || candle.timestamp);
+                    
+                    if (candle.volume) {
+                        volumeData.push(candle.volume);
+                    }
+                });
+            }
+            
+            // Add Bollinger Bands if available
+            if (data.bollinger_bands) {
+                const bb = data.bollinger_bands;
+                if (bb.upper) bollingerUpper.push(...bb.upper);
+                if (bb.lower) bollingerLower.push(...bb.lower);
+                if (bb.middle) bollingerMiddle.push(...bb.middle);
+            }
+            
+            // Destroy existing chart if it exists
+            if (candlestickChart) {
+                candlestickChart.destroy();
+            }
+            
+            // Create new candlestick chart
+            candlestickChart = new Chart(ctx, {
                 type: 'candlestick',
                 data: {
-                    datasets: [{
-                        label: 'Price',
-                        data: []
-                    }]
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Price',
+                            data: ohlcData,
+                            borderColor: '#64748b',
+                            borderWidth: 1,
+                            color: {
+                                up: '#10b981',   // Green for bullish
+                                down: '#ef4444',  // Red for bearish
+                                unchanged: '#6b7280' // Gray for unchanged
+                            }
+                        },
+                        // Add Bollinger Bands as overlay
+                        {
+                            label: 'Upper Band',
+                            type: 'line',
+                            data: bollingerUpper.map((val, i) => ({ x: labels[i], y: val })),
+                            borderColor: 'rgba(59, 130, 246, 0.5)',
+                            borderWidth: 1,
+                            fill: false,
+                            pointRadius: 0,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Lower Band',
+                            type: 'line',
+                            data: bollingerLower.map((val, i) => ({ x: labels[i], y: val })),
+                            borderColor: 'rgba(59, 130, 246, 0.5)',
+                            borderWidth: 1,
+                            fill: false,
+                            pointRadius: 0,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Middle (SMA)',
+                            type: 'line',
+                            data: bollingerMiddle.map((val, i) => ({ x: labels[i], y: val })),
+                            borderColor: 'rgba(251, 191, 36, 0.5)',
+                            borderWidth: 1,
+                            fill: false,
+                            pointRadius: 0,
+                            tension: 0.1
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
                     plugins: {
                         legend: {
                             display: false
@@ -299,31 +530,36 @@
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    const point = context.raw;
-                                    return [
-                                        `Open: $${point.o.toFixed(2)}`,
-                                        `High: $${point.h.toFixed(2)}`,
-                                        `Low: $${point.l.toFixed(2)}`,
-                                        `Close: $${point.c.toFixed(2)}`
-                                    ];
+                                    if (context.dataset.label === 'Price') {
+                                        const point = context.raw;
+                                        return [
+                                            `Open: $${point.o?.toFixed(2) || 'N/A'}`,
+                                            `High: $${point.h?.toFixed(2) || 'N/A'}`,
+                                            `Low: $${point.l?.toFixed(2) || 'N/A'}`,
+                                            `Close: $${point.c?.toFixed(2) || 'N/A'}`
+                                        ];
+                                    }
+                                    return `${context.dataset.label}: ${context.parsed.y?.toFixed(2) || 'N/A'}`;
                                 }
                             }
                         }
                     },
                     scales: {
                         x: {
-                            type: 'time',
-                            time: {
-                                unit: 'day'
-                            },
+                            type: 'category',
                             ticks: {
-                                color: '#94a3b8'
+                                color: '#94a3b8',
+                                maxRotation: 45,
+                                minRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 10
                             },
                             grid: {
                                 color: 'rgba(148, 163, 184, 0.1)'
                             }
                         },
                         y: {
+                            position: 'right',
                             ticks: {
                                 color: '#94a3b8',
                                 callback: function(value) {
@@ -337,20 +573,68 @@
                     }
                 }
             });
+        }
 
-            // RSI Chart
-            const rsiCtx = document.getElementById('rsiChart').getContext('2d');
-            rsiChart = new Chart(rsiCtx, {
+        // Update indicators
+        function updateIndicators(data) {
+            // Update RSI
+            if (data.indicators?.rsi) {
+                updateRSIChart(data.indicators.rsi);
+                updateRSIDisplay(data.indicators.rsi);
+            }
+            
+            // Update MACD
+            if (data.indicators?.macd) {
+                updateMACDChart(data.indicators.macd);
+                updateMACDDisplay(data.indicators.macd);
+            }
+            
+            // Update Bollinger Bands info
+            if (data.indicators?.bollinger_bands) {
+                const bb = data.indicators.bollinger_bands;
+                document.getElementById('bbUpper').textContent = bb.upper ? `$${bb.upper.toFixed(2)}` : '--';
+                document.getElementById('bbLower').textContent = bb.lower ? `$${bb.lower.toFixed(2)}` : '--';
+                document.getElementById('bbMiddle').textContent = bb.middle ? `$${bb.middle.toFixed(2)}` : '--';
+                document.getElementById('bbPosition').textContent = bb.position ? (bb.position * 100).toFixed(1) + '%' : '--';
+            }
+            
+            // Update Moving Averages
+            if (data.indicators?.moving_averages) {
+                const ma = data.indicators.moving_averages;
+                document.getElementById('sma20').textContent = ma.sma_20 ? `$${ma.sma_20.toFixed(2)}` : '--';
+                document.getElementById('sma50').textContent = ma.sma_50 ? `$${ma.sma_50.toFixed(2)}` : '--';
+                document.getElementById('ema12').textContent = ma.ema_12 ? `$${ma.ema_12.toFixed(2)}` : '--';
+                document.getElementById('ema26').textContent = ma.ema_26 ? `$${ma.ema_26.toFixed(2)}` : '--';
+            }
+        }
+
+        // Update RSI Chart
+        function updateRSIChart(rsiData) {
+            const ctx = document.getElementById('rsiChart').getContext('2d');
+            
+            // Prepare RSI data
+            const rsiValues = rsiData.series || [];
+            const labels = rsiValues.map((_, i) => i);
+            
+            // Destroy existing chart if it exists
+            if (rsiChart) {
+                rsiChart.destroy();
+            }
+            
+            // Create new RSI chart
+            rsiChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: [],
+                    labels: labels,
                     datasets: [{
                         label: 'RSI',
-                        data: [],
-                        borderColor: '#8b5cf6',
+                        data: rsiValues,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
                         borderWidth: 2,
-                        fill: false,
-                        tension: 0.1
+                        fill: true,
+                        tension: 0.1,
+                        pointRadius: 0
                     }]
                 },
                 options: {
@@ -362,7 +646,7 @@
                         },
                         annotation: {
                             annotations: {
-                                line1: {
+                                overbought: {
                                     type: 'line',
                                     yMin: 70,
                                     yMax: 70,
@@ -370,7 +654,7 @@
                                     borderWidth: 1,
                                     borderDash: [5, 5]
                                 },
-                                line2: {
+                                oversold: {
                                     type: 'line',
                                     yMin: 30,
                                     yMax: 30,
@@ -386,7 +670,8 @@
                             min: 0,
                             max: 100,
                             ticks: {
-                                color: '#94a3b8'
+                                color: '#94a3b8',
+                                stepSize: 20
                             },
                             grid: {
                                 color: 'rgba(148, 163, 184, 0.1)'
@@ -398,39 +683,75 @@
                     }
                 }
             });
+        }
 
-            // MACD Chart
-            const macdCtx = document.getElementById('macdChart').getContext('2d');
-            macdChart = new Chart(macdCtx, {
+        // Update RSI Display
+        function updateRSIDisplay(rsiData) {
+            const value = rsiData.value || 50;
+            document.getElementById('rsiValue').textContent = value.toFixed(2);
+            
+            const rsiSignalEl = document.getElementById('rsiSignal');
+            if (value >= 70) {
+                rsiSignalEl.textContent = 'OVERBOUGHT';
+                rsiSignalEl.className = 'text-lg font-semibold signal-sell';
+            } else if (value <= 30) {
+                rsiSignalEl.textContent = 'OVERSOLD';
+                rsiSignalEl.className = 'text-lg font-semibold signal-buy';
+            } else {
+                rsiSignalEl.textContent = 'NEUTRAL';
+                rsiSignalEl.className = 'text-lg font-semibold signal-hold';
+            }
+        }
+
+        // Update MACD Chart
+        function updateMACDChart(macdData) {
+            const ctx = document.getElementById('macdChart').getContext('2d');
+            
+            // Prepare MACD data
+            const macdLine = macdData.macd_line || [];
+            const signalLine = macdData.signal_line || [];
+            const histogram = macdData.histogram || [];
+            const labels = macdLine.map((_, i) => i);
+            
+            // Destroy existing chart if it exists
+            if (macdChart) {
+                macdChart.destroy();
+            }
+            
+            // Create new MACD chart
+            macdChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: [],
+                    labels: labels,
                     datasets: [
                         {
-                            label: 'MACD',
-                            data: [],
-                            type: 'line',
-                            borderColor: '#3b82f6',
-                            borderWidth: 2,
-                            fill: false,
-                            yAxisID: 'y'
-                        },
-                        {
-                            label: 'Signal',
-                            data: [],
-                            type: 'line',
-                            borderColor: '#ef4444',
-                            borderWidth: 2,
-                            fill: false,
-                            yAxisID: 'y'
-                        },
-                        {
                             label: 'Histogram',
-                            data: [],
+                            data: histogram,
                             backgroundColor: function(context) {
                                 const value = context.parsed.y;
                                 return value >= 0 ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.5)';
                             },
+                            borderWidth: 0,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'MACD',
+                            data: macdLine,
+                            type: 'line',
+                            borderColor: '#3b82f6',
+                            borderWidth: 2,
+                            fill: false,
+                            pointRadius: 0,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Signal',
+                            data: signalLine,
+                            type: 'line',
+                            borderColor: '#ef4444',
+                            borderWidth: 2,
+                            fill: false,
+                            pointRadius: 0,
                             yAxisID: 'y'
                         }
                     ]
@@ -438,6 +759,10 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
                     plugins: {
                         legend: {
                             display: false
@@ -460,172 +785,58 @@
             });
         }
 
-        async function performAnalysis() {
-            const selectedSymbol = document.getElementById('symbolSelect').value;
-            const customSymbol = document.getElementById('customSymbol').value.trim().toUpperCase();
-            const symbol = selectedSymbol || customSymbol;
-            
-            if (!symbol) {
-                showStatus('Please select or enter a symbol', 'error');
-                return;
-            }
-            
-            const period = document.getElementById('period').value;
-            const interval = document.getElementById('interval').value;
-            
-            showStatus('Fetching data...', 'success');
-            
-            try {
-                // Fetch comprehensive analysis
-                const analysisUrl = `${API_BASE_URL}/api/technical/analysis/${symbol}?period=${period}&interval=${interval}`;
-                console.log('Fetching from:', analysisUrl);
-                
-                const response = await fetch(analysisUrl);
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`API Error: ${response.status} - ${errorText}`);
-                }
-                
-                const result = await response.json();
-                
-                if (result.success && result.data) {
-                    currentData = result.data;
-                    updateDisplay(result.data);
-                    showStatus(`Analysis complete for ${symbol}`, 'success');
-                } else {
-                    throw new Error('Invalid response format');
-                }
-                
-            } catch (error) {
-                console.error('Analysis error:', error);
-                showStatus(`Analysis failed: ${error.message}`, 'error');
-            }
-        }
-
-        function updateDisplay(analysis) {
-            // Update candlestick chart
-            if (analysis.price_data) {
-                updateCandlestickChart(analysis);
-            }
-            
-            // Update RSI
-            if (analysis.indicators?.rsi) {
-                updateRSI(analysis.indicators.rsi);
-            }
-            
-            // Update MACD
-            if (analysis.indicators?.macd) {
-                updateMACD(analysis.indicators.macd);
-            }
-            
-            // Update summary
-            updateSummary(analysis);
-        }
-
-        function updateCandlestickChart(analysis) {
-            // For now, use a simple line chart if candlestick data isn't available
-            const priceData = analysis.price_data;
-            if (priceData) {
-                candlestickChart.data.datasets[0].data = [{
-                    x: new Date().getTime(),
-                    o: priceData.open,
-                    h: priceData.high,
-                    l: priceData.low,
-                    c: priceData.close
-                }];
-                candlestickChart.update();
-            }
-        }
-
-        function updateRSI(rsiData) {
-            const value = rsiData.value || 50;
-            document.getElementById('rsiValue').textContent = value.toFixed(2);
-            
-            let signal = '';
-            let signalClass = '';
-            
-            if (value >= 70) {
-                signal = 'OVERBOUGHT';
-                signalClass = 'signal-sell';
-            } else if (value <= 30) {
-                signal = 'OVERSOLD';
-                signalClass = 'signal-buy';
-            } else {
-                signal = 'NEUTRAL';
-                signalClass = 'signal-hold';
-            }
-            
-            const signalElement = document.getElementById('rsiSignal');
-            signalElement.textContent = signal;
-            signalElement.className = `text-lg font-semibold ${signalClass}`;
-            
-            // Update RSI chart
-            if (rsiData.series && rsiData.series.length > 0) {
-                const labels = rsiData.series.map((_, i) => i);
-                rsiChart.data.labels = labels;
-                rsiChart.data.datasets[0].data = rsiData.series;
-                rsiChart.update();
-            }
-        }
-
-        function updateMACD(macdData) {
+        // Update MACD Display
+        function updateMACDDisplay(macdData) {
+            const macdValue = macdData.macd || 0;
+            const signalValue = macdData.signal || 0;
             const histogram = macdData.histogram || 0;
-            document.getElementById('macdValue').textContent = histogram.toFixed(4);
             
-            let signal = macdData.interpretation || 'hold';
-            let signalClass = signal.includes('buy') ? 'signal-buy' : 
-                            signal.includes('sell') ? 'signal-sell' : 'signal-hold';
+            document.getElementById('macdValue').textContent = macdValue.toFixed(4);
             
-            const signalElement = document.getElementById('macdSignal');
-            signalElement.textContent = macdData.description || signal.toUpperCase();
-            signalElement.className = `text-lg font-semibold ${signalClass}`;
-            
-            // Update MACD chart
-            if (macdData.macd_series && macdData.signal_series && macdData.histogram_series) {
-                const labels = macdData.macd_series.map((_, i) => i);
-                macdChart.data.labels = labels;
-                macdChart.data.datasets[0].data = macdData.macd_series;
-                macdChart.data.datasets[1].data = macdData.signal_series;
-                macdChart.data.datasets[2].data = macdData.histogram_series;
-                macdChart.update();
+            const macdSignalEl = document.getElementById('macdSignal');
+            if (histogram > 0) {
+                macdSignalEl.textContent = 'BULLISH';
+                macdSignalEl.className = 'text-lg font-semibold signal-buy';
+            } else if (histogram < 0) {
+                macdSignalEl.textContent = 'BEARISH';
+                macdSignalEl.className = 'text-lg font-semibold signal-sell';
+            } else {
+                macdSignalEl.textContent = 'NEUTRAL';
+                macdSignalEl.className = 'text-lg font-semibold signal-hold';
             }
         }
 
-        function updateSummary(analysis) {
-            // Overall Signal
-            const overallSignal = analysis.overall_signal || 'HOLD';
-            const signalElement = document.getElementById('overallSignal');
-            signalElement.textContent = overallSignal;
-            signalElement.className = `text-2xl font-bold ${
-                overallSignal === 'BUY' ? 'signal-buy' : 
-                overallSignal === 'SELL' ? 'signal-sell' : 'signal-hold'
-            }`;
+        // Update summary
+        function updateSummary(data) {
+            // Overall signal
+            const overallSignalEl = document.getElementById('overallSignal');
+            if (data.overall_signal) {
+                overallSignalEl.textContent = data.overall_signal.toUpperCase();
+                if (data.overall_signal === 'buy') {
+                    overallSignalEl.className = 'text-2xl font-bold signal-buy';
+                } else if (data.overall_signal === 'sell') {
+                    overallSignalEl.className = 'text-2xl font-bold signal-sell';
+                } else {
+                    overallSignalEl.className = 'text-2xl font-bold signal-hold';
+                }
+            }
             
             // Confidence
-            const confidence = (analysis.confidence * 100).toFixed(1) + '%';
-            document.getElementById('confidence').textContent = confidence;
+            if (data.confidence) {
+                document.getElementById('confidence').textContent = (data.confidence * 100).toFixed(0) + '%';
+            }
             
             // Trend
-            const trend = analysis.indicators?.moving_averages?.trend || 'neutral';
-            const trendElement = document.getElementById('trend');
-            trendElement.textContent = trend.toUpperCase();
-            trendElement.className = `text-2xl font-bold ${
-                trend.includes('bullish') ? 'signal-buy' : 
-                trend.includes('bearish') ? 'signal-sell' : 'signal-hold'
-            }`;
-        }
-
-        function showStatus(message, type) {
-            const statusDiv = document.getElementById('statusMessage');
-            statusDiv.textContent = message;
-            statusDiv.className = `status-message ${type === 'error' ? 'status-error' : 'status-success'}`;
-            statusDiv.style.display = 'block';
-            
-            if (type === 'success') {
-                setTimeout(() => {
-                    statusDiv.style.display = 'none';
-                }, 3000);
+            if (data.trend) {
+                const trendEl = document.getElementById('trend');
+                trendEl.textContent = data.trend.toUpperCase();
+                if (data.trend === 'bullish') {
+                    trendEl.className = 'text-2xl font-bold signal-buy';
+                } else if (data.trend === 'bearish') {
+                    trendEl.className = 'text-2xl font-bold signal-sell';
+                } else {
+                    trendEl.className = 'text-2xl font-bold signal-hold';
+                }
             }
         }
     </script>
