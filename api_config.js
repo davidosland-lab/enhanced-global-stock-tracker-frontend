@@ -11,11 +11,14 @@ function getAPIBaseURL() {
         // Local development
         return 'http://localhost:8000';
     } else if (hostname.includes('netlify') || hostname.includes('netlifyapp')) {
-        // Netlify deployment - backend on Render
-        return 'https://enhanced-global-stock-tracker-backend.onrender.com';
+        // Netlify deployment - Check if backend exists, otherwise use mock
+        // NOTE: Backend is NOT currently deployed!
+        // TODO: Deploy backend on Render.com and update this URL
+        console.warn('⚠️ Backend not deployed. Using frontend URL as fallback.');
+        return window.location.origin;  // This will use mock API if available
     } else if (hostname.includes('github.io')) {
         // GitHub Pages deployment
-        return 'https://enhanced-global-stock-tracker-backend.onrender.com';
+        return window.location.origin;  // Use mock API
     } else {
         // Default fallback to current origin
         return window.location.origin;
