@@ -51,6 +51,14 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Dashboard API not available: {e}")
 
+# Import technical analysis API
+try:
+    from technical_analysis_api import router as technical_router
+    app.include_router(technical_router)
+    logger.info("✅ Technical Analysis API loaded successfully")
+except ImportError as e:
+    logger.warning(f"⚠️ Technical Analysis API not available: {e}")
+
 # Configure CORS - allow all origins for public API
 app.add_middleware(
     CORSMiddleware,
