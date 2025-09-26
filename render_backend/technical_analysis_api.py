@@ -6,7 +6,7 @@ Provides REST API for technical indicators and analysis
 from fastapi import APIRouter, Query, HTTPException
 from typing import Optional, Dict, Any
 import logging
-from .technical_analysis_engine import technical_engine
+from technical_analysis_engine import technical_engine
 
 logger = logging.getLogger(__name__)
 

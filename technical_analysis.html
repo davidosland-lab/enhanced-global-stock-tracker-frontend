@@ -35,6 +35,7 @@
             color: white; 
         }
     </style>
+    <script src="api_config.js"></script>
 </head>
 <body class="font-inter bg-gray-50 min-h-screen">
     
@@ -350,10 +351,10 @@
                 this.showStatus(`Fetching data for ${symbol}...`);
                 
                 try {
-                    // Get the base URL dynamically for cross-origin compatibility
-                    const baseUrl = window.location.origin;
+                    // Use global API configuration
+                    const baseUrl = window.API_CONFIG ? window.API_CONFIG.BASE_URL : 'http://localhost:8000';
                     // Fetch candlestick data from our API with dynamic interval
-                    const response = await fetch(`${baseUrl}/api/candlestick-data/${symbol}?period=${period}&interval=${this.currentInterval}`);
+                    const response = await fetch(`${baseUrl}/api/technical/candlestick-data/${symbol}?period=${period}&interval=${this.currentInterval}`);
                     
                     if (!response.ok) {
                         throw new Error(`API Error: ${response.status} - ${await response.text()}`);

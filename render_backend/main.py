@@ -53,6 +53,9 @@ except ImportError as e:
 
 # Import technical analysis API
 try:
+    import sys
+    import os
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from technical_analysis_api import router as technical_router
     app.include_router(technical_router)
     logger.info("✅ Technical Analysis API loaded successfully")
