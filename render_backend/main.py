@@ -35,6 +35,14 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ CBA Integrated System not available: {e}")
 
+# Import unified prediction API with Phase 3 and Phase 4 models
+try:
+    from unified_prediction_api import router as unified_router
+    app.include_router(unified_router)
+    logger.info("✅ Unified Prediction API (Phase 3 & 4) loaded successfully")
+except ImportError as e:
+    logger.warning(f"⚠️ Unified Prediction API not available: {e}")
+
 # Configure CORS - allow all origins for public API
 app.add_middleware(
     CORSMiddleware,
