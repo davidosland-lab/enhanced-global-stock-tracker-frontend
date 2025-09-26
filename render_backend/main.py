@@ -43,6 +43,14 @@ try:
 except ImportError as e:
     logger.warning(f"⚠️ Unified Prediction API not available: {e}")
 
+# Import dashboard API
+try:
+    from dashboard_api import router as dashboard_router
+    app.include_router(dashboard_router)
+    logger.info("✅ Dashboard API loaded successfully")
+except ImportError as e:
+    logger.warning(f"⚠️ Dashboard API not available: {e}")
+
 # Configure CORS - allow all origins for public API
 app.add_middleware(
     CORSMiddleware,
