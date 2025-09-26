@@ -370,6 +370,22 @@
             }
         }
 
+        // Cleanup all charts
+        function cleanupCharts() {
+            if (candlestickChart) {
+                candlestickChart.destroy();
+                candlestickChart = null;
+            }
+            if (rsiChart) {
+                rsiChart.destroy();
+                rsiChart = null;
+            }
+            if (macdChart) {
+                macdChart.destroy();
+                macdChart = null;
+            }
+        }
+
         // Perform technical analysis
         async function performAnalysis() {
             const symbol = document.getElementById('symbolSelect').value;
@@ -380,6 +396,9 @@
             
             const period = document.getElementById('period').value;
             const interval = document.getElementById('interval').value;
+            
+            // Cleanup existing charts before starting new analysis
+            cleanupCharts();
             
             showStatus('Fetching data and performing analysis...');
             
@@ -425,7 +444,12 @@
 
         // Update candlestick chart
         function updateCandlestickChart(data) {
-            const ctx = document.getElementById('candlestickChart').getContext('2d');
+            // Get canvas and ensure it's clean
+            const canvas = document.getElementById('candlestickChart');
+            const ctx = canvas.getContext('2d');
+            
+            // Clear the canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             // Prepare data for candlestick chart
             const ohlcData = [];
@@ -471,6 +495,7 @@
             // Destroy existing chart if it exists
             if (candlestickChart) {
                 candlestickChart.destroy();
+                candlestickChart = null;
             }
             
             // Create new candlestick chart
@@ -584,16 +609,20 @@
 
         // Update indicators
         function updateIndicators(data) {
-            // Update RSI
-            if (data.indicators?.rsi) {
-                updateRSIChart(data.indicators.rsi);
-                updateRSIDisplay(data.indicators.rsi);
-            }
-            
-            // Update MACD
-            if (data.indicators?.macd) {
-                updateMACDChart(data.indicators.macd);
-                updateMACDDisplay(data.indicators.macd);
+            try {
+                // Update RSI
+                if (data.indicators?.rsi) {
+                    updateRSIChart(data.indicators.rsi);
+                    updateRSIDisplay(data.indicators.rsi);
+                }
+                
+                // Update MACD
+                if (data.indicators?.macd) {
+                    updateMACDChart(data.indicators.macd);
+                    updateMACDDisplay(data.indicators.macd);
+                }
+            } catch (error) {
+                console.error('Error updating indicators:', error);
             }
             
             // Update Bollinger Bands info
@@ -617,16 +646,20 @@
 
         // Update RSI Chart
         function updateRSIChart(rsiData) {
-            const ctx = document.getElementById('rsiChart').getContext('2d');
+            // Destroy existing chart if it exists
+            if (rsiChart) {
+                rsiChart.destroy();
+                rsiChart = null;
+            }
+            
+            // Get canvas and ensure it's clean
+            const canvas = document.getElementById('rsiChart');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             // Prepare RSI data
             const rsiValues = rsiData.series || [];
             const labels = rsiValues.map((_, i) => i);
-            
-            // Destroy existing chart if it exists
-            if (rsiChart) {
-                rsiChart.destroy();
-            }
             
             // Create new RSI chart
             rsiChart = new Chart(ctx, {
@@ -712,18 +745,22 @@
 
         // Update MACD Chart
         function updateMACDChart(macdData) {
-            const ctx = document.getElementById('macdChart').getContext('2d');
+            // Destroy existing chart if it exists
+            if (macdChart) {
+                macdChart.destroy();
+                macdChart = null;
+            }
+            
+            // Get canvas and ensure it's clean
+            const canvas = document.getElementById('macdChart');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             // Prepare MACD data
             const macdLine = macdData.macd_line || [];
             const signalLine = macdData.signal_line || [];
             const histogram = macdData.histogram || [];
             const labels = macdLine.map((_, i) => i);
-            
-            // Destroy existing chart if it exists
-            if (macdChart) {
-                macdChart.destroy();
-            }
             
             // Create new MACD chart
             macdChart = new Chart(ctx, {
