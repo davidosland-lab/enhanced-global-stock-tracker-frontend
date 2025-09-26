@@ -692,17 +692,27 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 Enhanced Market Tracker Loaded');
+            console.log('📊 Chart.js available:', typeof Chart !== 'undefined');
             loadMarketSymbols();
+            
+            // Make startTracking globally available
+            window.startTracking = startTracking;
+            window.stopTracking = stopTracking;
             
             // Wait for Chart.js to be fully loaded
             if (typeof Chart !== 'undefined') {
+                console.log('✅ Initializing chart immediately');
                 initializeChart();
             } else {
+                console.log('⏳ Waiting for Chart.js to load...');
                 setTimeout(() => {
                     if (typeof Chart !== 'undefined') {
+                        console.log('✅ Initializing chart after delay');
                         initializeChart();
                     } else {
-                        console.error('Chart.js failed to load');
+                        console.error('❌ Chart.js failed to load - using fallback');
+                        // Initialize without chart
+                        window.chartInitialized = false;
                     }
                 }, 1000);
             }
@@ -983,6 +993,7 @@
         // Start tracking a symbol
         async function startTracking() {
             console.log('🚀 startTracking function called');
+            console.log('📊 Chart initialized:', window.currentChart !== null);
             
             const symbolFromDropdown = document.getElementById('marketSelect').value;
             const symbolFromInput = document.getElementById('symbolInput').value.trim().toUpperCase();
@@ -993,6 +1004,12 @@
             if (!symbol) {
                 alert('Please select a market or enter a symbol');
                 return;
+            }
+            
+            // Initialize chart if not already done
+            if (!window.currentChart && typeof Chart !== 'undefined') {
+                console.log('⚠️ Chart not initialized, initializing now...');
+                initializeChart();
             }
 
             // Stop existing tracking
@@ -1734,6 +1751,17 @@
                 </div>
             `;
         }
+        
+        // Make functions globally available for onclick handlers
+        window.startTracking = startTracking;
+        window.stopTracking = stopTracking;
+        window.selectMarket = selectMarket;
+        window.toggleChartView = toggleChartView;
+        window.updateTimeInterval = updateTimeInterval;
+        window.generatePrediction = generatePrediction;
+        
+        console.log('✅ All functions registered globally');
+        console.log('📊 Start Tracking available:', typeof window.startTracking === 'function');
     </script>
 </body>
 </html>
