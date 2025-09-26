@@ -405,8 +405,9 @@
                 const analysisData = await analysisResponse.json();
                 
                 // Update charts and displays
-                if (candleData.success) {
-                    updateCandlestickChart(candleData.data);
+                if (candleData.success || candleData.data) {
+                    console.log('Candlestick data received:', candleData);
+                    updateCandlestickChart(candleData.data || candleData);
                 }
                 
                 if (analysisData.success) {
@@ -434,18 +435,24 @@
             const bollingerLower = [];
             const bollingerMiddle = [];
             
-            if (data.ohlc && Array.isArray(data.ohlc)) {
-                data.ohlc.forEach((candle, index) => {
+            // Handle both data structures: direct array or nested in ohlc property
+            const candleArray = Array.isArray(data) ? data : (data.ohlc || []);
+            
+            if (candleArray && candleArray.length > 0) {
+                candleArray.forEach((candle, index) => {
                     // For candlestick data
                     ohlcData.push({
-                        x: candle.date || new Date(candle.timestamp),
+                        x: candle.date || candle.timestamp,
                         o: candle.open,
                         h: candle.high,
                         l: candle.low,
                         c: candle.close
                     });
                     
-                    labels.push(candle.date || candle.timestamp);
+                    // Format timestamp for labels
+                    const timestamp = candle.timestamp || candle.date;
+                    const dateStr = timestamp ? new Date(timestamp).toLocaleDateString() : `Day ${index + 1}`;
+                    labels.push(dateStr);
                     
                     if (candle.volume) {
                         volumeData.push(candle.volume);
@@ -787,9 +794,9 @@
 
         // Update MACD Display
         function updateMACDDisplay(macdData) {
-            const macdValue = macdData.macd || 0;
+            const macdValue = macdData.macd || macdData.value || 0;
             const signalValue = macdData.signal || 0;
-            const histogram = macdData.histogram || 0;
+            const histogram = macdData.histogram || (macdValue - signalValue) || 0;
             
             document.getElementById('macdValue').textContent = macdValue.toFixed(4);
             
