@@ -619,9 +619,15 @@
         // API Configuration - Use backend URL from config or fallback
         // Use local backend for development, fallback to Render for production
         // Dynamically determine API URL based on current location
-        const API_BASE_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
-            ? 'http://localhost:8000'
-            : (window.CONFIG?.BACKEND_URL || 'https://enhanced-global-stock-tracker-frontend.onrender.com');
+        let API_BASE_URL;
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            API_BASE_URL = 'http://localhost:8000';
+        } else if (window.location.hostname.includes('e2b.dev')) {
+            // E2B sandbox environment - use the backend service URL
+            API_BASE_URL = 'https://8000-i2ch499gc6d7qpm0yvxy4-6532622b.e2b.dev';
+        } else {
+            API_BASE_URL = window.CONFIG?.BACKEND_URL || 'https://enhanced-global-stock-tracker-frontend.onrender.com';
+        }
         console.log('Single Stock Tracker using backend:', API_BASE_URL);
         
         // Global variables

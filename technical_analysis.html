@@ -352,7 +352,16 @@
                 
                 try {
                     // Use global API configuration
-                    const baseUrl = window.API_CONFIG ? window.API_CONFIG.BASE_URL : 'http://localhost:8000';
+                    // Determine API URL based on environment
+                    let baseUrl;
+                    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+                        baseUrl = 'http://localhost:8000';
+                    } else if (window.location.hostname.includes('e2b.dev')) {
+                        // E2B sandbox environment
+                        baseUrl = 'https://8000-i2ch499gc6d7qpm0yvxy4-6532622b.e2b.dev';
+                    } else {
+                        baseUrl = window.API_CONFIG?.BASE_URL || 'https://enhanced-global-stock-tracker-frontend.onrender.com';
+                    }
                     // Fetch candlestick data from our API with dynamic interval
                     const response = await fetch(`${baseUrl}/api/technical/candlestick-data/${symbol}?period=${period}&interval=${this.currentInterval}`);
                     
