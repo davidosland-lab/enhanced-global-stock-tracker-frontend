@@ -8,10 +8,9 @@
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Chart.js v4 and Financial Plugin -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+    <!-- Chart.js v4 only (we'll implement custom candlesticks) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.1/dist/chartjs-chart-financial.min.js"></script>
     
     <!-- Fonts and Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -459,7 +458,7 @@
             }
         }
 
-        // Update candlestick chart with enhanced data handling
+        // Update candlestick chart using custom implementation
         function updateCandlestickChart(candleData, analysisData) {
             console.log('Updating candlestick chart with data:', { candleData, analysisData });
             
@@ -476,16 +475,6 @@
                 candlestickChart = null;
             }
             
-            // Prepare data for candlestick chart
-            const ohlcData = [];
-            const volumeData = [];
-            const labels = [];
-            let bollingerUpper = [];
-            let bollingerLower = [];
-            let bollingerMiddle = [];
-            let sma20Data = [];
-            let sma50Data = [];
-            
             // Handle both data structures: direct array or nested in ohlc property
             const candleArray = Array.isArray(candleData) ? candleData : (candleData?.ohlc || []);
             
@@ -495,29 +484,52 @@
                 return;
             }
             
-            // Process candlestick data
+            // Prepare data for custom candlestick visualization
+            const labels = [];
+            const highLowBars = [];  // For wicks (high-low range)
+            const openCloseBars = []; // For bodies (open-close range)
+            const closeData = [];     // Close prices as line
+            const volumeData = [];
+            const bodyColors = [];
+            const wickColors = [];
+            
             candleArray.forEach((candle, index) => {
-                // For candlestick data - using the exact format from our API
-                ohlcData.push({
-                    x: candle.timestamp || candle.date,
-                    o: candle.open,
-                    h: candle.high,
-                    l: candle.low,
-                    c: candle.close
-                });
-                
-                // Format timestamp for labels
+                // Format date
                 const timestamp = candle.timestamp || candle.date;
                 const date = new Date(timestamp);
                 const dateStr = `${date.getMonth() + 1}/${date.getDate()}`;
                 labels.push(dateStr);
                 
+                // Wick data (high-low)
+                highLowBars.push([candle.low, candle.high]);
+                
+                // Body data (open-close)
+                openCloseBars.push([
+                    Math.min(candle.open, candle.close),
+                    Math.max(candle.open, candle.close)
+                ]);
+                
+                // Close price for line
+                closeData.push(candle.close);
+                
+                // Volume
                 if (candle.volume) {
                     volumeData.push(candle.volume);
                 }
+                
+                // Colors based on price movement
+                const isBullish = candle.close >= candle.open;
+                bodyColors.push(isBullish ? 'rgba(16, 185, 129, 0.8)' : 'rgba(239, 68, 68, 0.8)');
+                wickColors.push('rgba(148, 163, 184, 0.6)');
             });
             
-            // Extract Bollinger Bands from analysis data if available
+            // Extract technical indicators from analysis data
+            let bollingerUpper = [];
+            let bollingerLower = [];
+            let bollingerMiddle = [];
+            let sma20Data = [];
+            let sma50Data = [];
+            
             if (analysisData?.indicators?.bollinger_bands) {
                 const bb = analysisData.indicators.bollinger_bands;
                 bollingerUpper = bb.upper_series || [];
@@ -525,67 +537,93 @@
                 bollingerMiddle = bb.middle_series || [];
             }
             
-            // Extract moving averages if available
             if (analysisData?.indicators?.moving_averages) {
                 const ma = analysisData.indicators.moving_averages;
                 sma20Data = ma.sma_20_series || [];
                 sma50Data = ma.sma_50_series || [];
             }
             
-            // Build datasets array
+            // Build datasets array for custom candlestick chart
             const datasets = [
+                // Wicks (high-low bars)
                 {
-                    label: 'Price',
-                    type: 'candlestick',
-                    data: ohlcData,
-                    borderColor: '#64748b',
+                    label: 'Range',
+                    type: 'bar',
+                    data: highLowBars,
+                    backgroundColor: wickColors,
+                    borderColor: wickColors,
+                    borderWidth: 0,
+                    barThickness: 1,
+                    categoryPercentage: 0.8,
+                    barPercentage: 1,
+                    order: 3
+                },
+                // Bodies (open-close bars)
+                {
+                    label: 'OHLC',
+                    type: 'bar',
+                    data: openCloseBars,
+                    backgroundColor: bodyColors,
+                    borderColor: bodyColors.map(c => c.replace('0.8', '1')),
                     borderWidth: 1,
-                    color: {
-                        up: '#10b981',   // Green for bullish
-                        down: '#ef4444',  // Red for bearish
-                        unchanged: '#6b7280' // Gray for unchanged
-                    }
+                    barThickness: 12,
+                    categoryPercentage: 0.8,
+                    barPercentage: 0.9,
+                    order: 2
                 }
             ];
             
+            // Add close price line
+            datasets.push({
+                label: 'Close',
+                type: 'line',
+                data: closeData,
+                borderColor: 'rgba(59, 130, 246, 0.8)',
+                borderWidth: 1.5,
+                fill: false,
+                pointRadius: 0,
+                tension: 0.1,
+                order: 1
+            });
+            
             // Add Bollinger Bands if available
             if (bollingerUpper.length > 0) {
-                // Create a translucent fill between upper and lower bands
                 datasets.push({
-                    label: 'Bollinger Upper',
+                    label: 'BB Upper',
                     type: 'line',
-                    data: bollingerUpper.map((val, i) => labels[i] && val !== null ? val : null),
-                    borderColor: 'rgba(147, 51, 234, 0.4)',
+                    data: bollingerUpper,
+                    borderColor: 'rgba(147, 51, 234, 0.5)',
                     borderWidth: 1,
                     borderDash: [5, 5],
-                    fill: '+1',  // Fill to next dataset (middle)
-                    backgroundColor: 'rgba(147, 51, 234, 0.05)',
-                    pointRadius: 0,
-                    tension: 0.1
-                });
-                
-                datasets.push({
-                    label: 'Bollinger Middle',
-                    type: 'line',
-                    data: bollingerMiddle.map((val, i) => labels[i] && val !== null ? val : null),
-                    borderColor: 'rgba(251, 191, 36, 0.6)',
-                    borderWidth: 1.5,
                     fill: false,
                     pointRadius: 0,
-                    tension: 0.1
+                    tension: 0.1,
+                    order: 0
                 });
                 
                 datasets.push({
-                    label: 'Bollinger Lower',
+                    label: 'BB Middle',
                     type: 'line',
-                    data: bollingerLower.map((val, i) => labels[i] && val !== null ? val : null),
-                    borderColor: 'rgba(147, 51, 234, 0.4)',
+                    data: bollingerMiddle,
+                    borderColor: 'rgba(251, 191, 36, 0.6)',
+                    borderWidth: 1,
+                    fill: false,
+                    pointRadius: 0,
+                    tension: 0.1,
+                    order: 0
+                });
+                
+                datasets.push({
+                    label: 'BB Lower',
+                    type: 'line',
+                    data: bollingerLower,
+                    borderColor: 'rgba(147, 51, 234, 0.5)',
                     borderWidth: 1,
                     borderDash: [5, 5],
-                    fill: '-1',  // Fill to previous dataset (middle)
-                    backgroundColor: 'rgba(147, 51, 234, 0.05)',
+                    fill: false,
                     pointRadius: 0,
-                    tension: 0.1
+                    tension: 0.1,
+                    order: 0
                 });
             }
             
@@ -594,12 +632,13 @@
                 datasets.push({
                     label: 'SMA 20',
                     type: 'line',
-                    data: sma20Data.map((val, i) => labels[i] && val !== null ? val : null),
+                    data: sma20Data,
                     borderColor: 'rgba(34, 197, 94, 0.7)',
                     borderWidth: 1.5,
                     fill: false,
                     pointRadius: 0,
-                    tension: 0.1
+                    tension: 0.1,
+                    order: 0
                 });
             }
             
@@ -607,19 +646,20 @@
                 datasets.push({
                     label: 'SMA 50',
                     type: 'line',
-                    data: sma50Data.map((val, i) => labels[i] && val !== null ? val : null),
+                    data: sma50Data,
                     borderColor: 'rgba(239, 68, 68, 0.7)',
                     borderWidth: 1.5,
                     fill: false,
                     pointRadius: 0,
-                    tension: 0.1
+                    tension: 0.1,
+                    order: 0
                 });
             }
             
-            // Create new candlestick chart
+            // Create new chart with custom candlestick implementation
             try {
                 candlestickChart = new Chart(ctx, {
-                    type: 'candlestick',
+                    type: 'bar',
                     data: {
                         labels: labels,
                         datasets: datasets
@@ -639,8 +679,10 @@
                                     color: '#94a3b8',
                                     usePointStyle: true,
                                     filter: function(item) {
-                                        // Hide price label but show indicators
-                                        return item.text !== 'Price';
+                                        // Only show line datasets in legend
+                                        return item.text.includes('Close') || 
+                                               item.text.includes('SMA') || 
+                                               item.text.includes('BB');
                                     }
                                 }
                             },
@@ -652,29 +694,27 @@
                                 borderWidth: 1,
                                 displayColors: false,
                                 callbacks: {
-                                    label: function(context) {
-                                        if (context.dataset.type === 'candlestick') {
-                                            const point = context.raw;
-                                            if (point && typeof point === 'object' && 'o' in point) {
-                                                return [
-                                                    `Open: $${point.o?.toFixed(2) || 'N/A'}`,
-                                                    `High: $${point.h?.toFixed(2) || 'N/A'}`,
-                                                    `Low: $${point.l?.toFixed(2) || 'N/A'}`,
-                                                    `Close: $${point.c?.toFixed(2) || 'N/A'}`
-                                                ];
+                                    afterTitle: function(context) {
+                                        const index = context[0]?.dataIndex;
+                                        if (index !== undefined && index < candleArray.length) {
+                                            const candle = candleArray[index];
+                                            const values = [
+                                                `Open: $${candle.open.toFixed(2)}`,
+                                                `High: $${candle.high.toFixed(2)}`,
+                                                `Low: $${candle.low.toFixed(2)}`,
+                                                `Close: $${candle.close.toFixed(2)}`
+                                            ];
+                                            if (candle.volume) {
+                                                values.push(`Volume: ${(candle.volume/1000000).toFixed(2)}M`);
                                             }
+                                            return values;
                                         }
-                                        if (context.parsed.y !== null && !isNaN(context.parsed.y)) {
-                                            return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`;
-                                        }
-                                        return null;
+                                        return [];
                                     },
-                                    afterLabel: function(context) {
-                                        if (context.dataIndex < volumeData.length && context.dataset.type === 'candlestick') {
-                                            const volume = volumeData[context.dataIndex];
-                                            if (volume) {
-                                                return `Volume: ${(volume / 1000000).toFixed(2)}M`;
-                                            }
+                                    label: function(context) {
+                                        // Only show line dataset labels
+                                        if (context.dataset.type === 'line' && context.parsed.y !== null) {
+                                            return `${context.dataset.label}: $${context.parsed.y.toFixed(2)}`;
                                         }
                                         return null;
                                     }
