@@ -381,6 +381,18 @@ async def get_performance_metrics(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# Import training and backtesting modules
+try:
+    from model_training import model_training
+    from backtest_engine import backtest_engine
+    TRAINING_AVAILABLE = True
+    logger.info("✅ Model Training and Backtesting loaded")
+except ImportError as e:
+    logger.warning(f"⚠️ Training/Backtesting not available: {e}")
+    TRAINING_AVAILABLE = False
+    model_training = None
+    backtest_engine = None
+
 @router.post("/train-models")
 async def train_prediction_models(
     background_tasks: BackgroundTasks,
@@ -391,11 +403,11 @@ async def train_prediction_models(
     Trigger training of prediction models in the background
     """
     
-    if not ENHANCED_SYSTEM_AVAILABLE:
-        raise HTTPException(status_code=503, detail="Enhanced system not available")
+    if not TRAINING_AVAILABLE or not model_training:
+        raise HTTPException(status_code=503, detail="Training system not available")
     
-    # Add background task for training
-    background_tasks.add_task(_train_models_background, symbols, training_days)
+    # Start training in background
+    background_tasks.add_task(_train_models_with_orchestrator, symbols, training_days)
     
     return {
         "status": "training_started",
@@ -403,6 +415,150 @@ async def train_prediction_models(
         "training_days": training_days,
         "message": "Model training initiated in background"
     }
+
+
+async def _train_models_with_orchestrator(symbols: List[str], training_days: int):
+    """Use model training orchestrator for proper training"""
+    logger.info(f"🎯 Starting orchestrated training for {symbols}")
+    
+    results = []
+    for symbol in symbols:
+        try:
+            # Convert days to period string
+            if training_days <= 365:
+                period = "1y"
+            elif training_days <= 730:
+                period = "2y"
+            else:
+                period = "5y"
+            
+            # Train models
+            result = await model_training.train_all_models(
+                symbol=symbol,
+                training_period=period,
+                validation_split=0.2,
+                test_split=0.2
+            )
+            
+            results.append(result)
+            logger.info(f"✅ Training completed for {symbol}")
+            
+        except Exception as e:
+            logger.error(f"❌ Training failed for {symbol}: {e}")
+            results.append({"symbol": symbol, "error": str(e)})
+    
+    return results
+
+
+@router.post("/backtest")
+async def run_backtest(
+    symbol: str,
+    start_date: str,
+    end_date: str,
+    strategy_type: str = "long_only"
+) -> Dict[str, Any]:
+    """
+    Run backtest for a symbol with trained models
+    
+    Args:
+        symbol: Stock symbol to backtest
+        start_date: Start date (YYYY-MM-DD)
+        end_date: End date (YYYY-MM-DD)  
+        strategy_type: "long_only", "long_short", or "signals"
+    """
+    
+    if not TRAINING_AVAILABLE or not backtest_engine:
+        raise HTTPException(status_code=503, detail="Backtesting not available")
+    
+    try:
+        # Parse dates
+        start = datetime.strptime(start_date, "%Y-%m-%d")
+        end = datetime.strptime(end_date, "%Y-%m-%d")
+        
+        # Get predictor (use enhanced predictor)
+        if not ENHANCED_PREDICTOR_AVAILABLE or not enhanced_predictor:
+            raise HTTPException(status_code=503, detail="Predictor not available")
+        
+        # Run backtest
+        result = await backtest_engine.run_backtest(
+            predictor=enhanced_predictor,
+            symbol=symbol,
+            start_date=start,
+            end_date=end,
+            strategy_type=strategy_type
+        )
+        
+        # Generate report
+        report = backtest_engine.generate_report(result)
+        
+        return {
+            "symbol": symbol,
+            "start_date": start_date,
+            "end_date": end_date,
+            "strategy_type": strategy_type,
+            "report": report,
+            "status": "success"
+        }
+        
+    except Exception as e:
+        logger.error(f"Backtest failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/model-performance/{symbol}")
+async def get_model_performance(symbol: str) -> Dict[str, Any]:
+    """Get performance metrics for trained models"""
+    
+    if not TRAINING_AVAILABLE or not model_training:
+        raise HTTPException(status_code=503, detail="Training system not available")
+    
+    performance = model_training.get_model_performance(symbol)
+    
+    return {
+        "symbol": symbol,
+        "performance": performance,
+        "has_trained_models": symbol in model_training.trained_models,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+
+@router.post("/cross-validation")
+async def run_cross_validation(
+    symbol: str,
+    start_date: str,
+    end_date: str,
+    n_splits: int = 5
+) -> Dict[str, Any]:
+    """Run k-fold cross-validation"""
+    
+    if not TRAINING_AVAILABLE or not backtest_engine:
+        raise HTTPException(status_code=503, detail="Backtesting not available")
+    
+    try:
+        start = datetime.strptime(start_date, "%Y-%m-%d")
+        end = datetime.strptime(end_date, "%Y-%m-%d")
+        
+        if not ENHANCED_PREDICTOR_AVAILABLE or not enhanced_predictor:
+            raise HTTPException(status_code=503, detail="Predictor not available")
+        
+        # Run cross-validation
+        result = await backtest_engine.run_cross_validation(
+            predictor=enhanced_predictor,
+            symbol=symbol,
+            start_date=start,
+            end_date=end,
+            n_splits=n_splits
+        )
+        
+        return {
+            "symbol": symbol,
+            "cross_validation": result,
+            "status": "success"
+        }
+        
+    except Exception as e:
+        logger.error(f"Cross-validation failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 async def _train_models_background(symbols: List[str], training_days: int):
