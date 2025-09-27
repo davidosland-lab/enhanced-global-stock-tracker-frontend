@@ -6,9 +6,10 @@ window.APP_CONFIG = {
         const hostname = window.location.hostname;
         
         if (hostname.includes('e2b.dev')) {
-            // We're in sandbox - extract sandbox ID and construct backend URL
-            const sandboxId = hostname.split('-')[1] + '-' + hostname.split('-')[2];
-            return `https://8000-${sandboxId}.e2b.dev`;
+            // We're in sandbox - replace the port number in the hostname
+            // Format: 3000-sandboxid.e2b.dev -> 8000-sandboxid.e2b.dev
+            const backendHost = hostname.replace(/^3000-/, '8000-');
+            return `https://${backendHost}`;
         } else if (hostname === 'localhost' || hostname === '127.0.0.1') {
             // Local development
             return 'http://localhost:8000';
