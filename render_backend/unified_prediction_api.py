@@ -20,6 +20,16 @@ logger = logging.getLogger(__name__)
 # Create router
 router = APIRouter(prefix="/api", tags=["unified_prediction"])
 
+# Import the new prediction engine
+try:
+    from prediction_engine import prediction_engine, PredictionEngine
+    PREDICTION_ENGINE_AVAILABLE = True
+    logger.info("✅ New Prediction Engine loaded")
+except ImportError as e:
+    logger.warning(f"⚠️ New Prediction Engine not available: {e}")
+    PREDICTION_ENGINE_AVAILABLE = False
+    prediction_engine = None
+
 # Import the enhanced integrated system
 try:
     from integrated_cba_system_enhanced import enhanced_system, EnhancedIntegratedSystem
@@ -91,8 +101,42 @@ async def get_unified_prediction(
             "status": "success"
         }
         
+        # Use new prediction engine first
+        if PREDICTION_ENGINE_AVAILABLE and prediction_engine:
+            try:
+                engine_result = await prediction_engine.predict(
+                    symbol=symbol,
+                    timeframe=timeframe,
+                    include_ensemble=include_ensemble,
+                    include_lstm=True,
+                    include_gnn=include_gnn,
+                    include_rl=True
+                )
+                
+                result["predictions"]["prediction_engine"] = {
+                    "current_price": engine_result.get("current_price"),
+                    "final_prediction": engine_result.get("final_prediction"),
+                    "price_change_percent": engine_result.get("price_change_percent"),
+                    "trend": engine_result.get("trend"),
+                    "trend_strength": engine_result.get("trend_strength"),
+                    "models": engine_result.get("predictions", {}),
+                    "confidence_scores": engine_result.get("confidence_scores", {}),
+                    "technical_indicators": engine_result.get("technical_indicators", {}),
+                    "support_levels": engine_result.get("support_levels", []),
+                    "resistance_levels": engine_result.get("resistance_levels", [])
+                }
+                
+                # Add RL signal if available
+                if "rl_signal" in engine_result.get("predictions", {}):
+                    result["predictions"]["rl_trading_signal"] = engine_result["predictions"]["rl_signal"]
+                
+                logger.info("  ✅ New prediction engine complete")
+            except Exception as e:
+                logger.warning(f"  ⚠️ New prediction engine failed: {e}")
+                result["predictions"]["prediction_engine"] = {"error": str(e)}
+        
         # Use enhanced integrated system if available
-        if ENHANCED_SYSTEM_AVAILABLE and enhanced_system:
+        elif ENHANCED_SYSTEM_AVAILABLE and enhanced_system:
             try:
                 comprehensive_result = await enhanced_system.get_comprehensive_prediction(symbol, timeframe)
                 result["predictions"] = comprehensive_result.get("components", {})
