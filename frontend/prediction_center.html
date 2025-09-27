@@ -343,6 +343,8 @@
         async function generatePrediction() {
             const symbol = document.getElementById('symbolInput').value.trim().toUpperCase();
             const timeframe = document.getElementById('timeframeSelect').value;
+            
+            console.log('Starting prediction for:', { symbol, timeframe });
             const allDomains = document.getElementById('allDomains').checked;
             const socialSentiment = document.getElementById('socialSentiment').checked;
             const geopolitical = document.getElementById('geopolitical').checked;
@@ -374,8 +376,11 @@
                 
                 const apiTimeframe = timeframeMap[timeframe] || '5d';
                 
+                // Properly encode the symbol for URL (handles dots and special characters)
+                const encodedSymbol = encodeURIComponent(symbol);
+                
                 // Build API URL with correct endpoint
-                const url = `${API_BASE_URL}/api/unified-prediction/${symbol}?timeframe=${apiTimeframe}&include_gnn=true&include_ensemble=true&include_performance=true`;
+                const url = `${API_BASE_URL}/api/unified-prediction/${encodedSymbol}?timeframe=${apiTimeframe}&include_gnn=true&include_ensemble=true&include_performance=true`;
                 
                 console.log('Calling API:', url);
                 
@@ -383,12 +388,26 @@
                     method: 'GET',
                     headers: {
                         'Accept': 'application/json',
-                    }
+                        'Content-Type': 'application/json',
+                    },
+                    mode: 'cors',
+                    credentials: 'omit'
                 });
                 
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`API Error ${response.status}: ${errorText}`);
+                    let errorText = '';
+                    try {
+                        errorText = await response.text();
+                    } catch (e) {
+                        errorText = 'Could not read error response';
+                    }
+                    console.error(`API Error: Status ${response.status}, URL: ${url}, Response: ${errorText}`);
+                    
+                    if (response.status === 404) {
+                        throw new Error(`HTTP 404: The API endpoint was not found. Please ensure the backend is running and accessible.`);
+                    } else {
+                        throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
+                    }
                 }
                 
                 const data = await response.json();
