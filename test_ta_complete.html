@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete TA Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .chart-container {
+            height: 400px;
+            background: #2a2a2a;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        #status {
+            padding: 10px;
+            background: #333;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .success { color: #4CAF50; }
+        .error { color: #f44336; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Technical Analysis Complete Test</h1>
+        
+        <div>
+            <button onclick="testAPI()">1. Test API</button>
+            <button onclick="testLightweightCharts()">2. Test LightweightCharts</button>
+            <button onclick="testFullIntegration()">3. Test Full Integration</button>
+        </div>
+        
+        <div id="status">Ready for testing...</div>
+        
+        <div id="chartContainer" class="chart-container"></div>
+        
+        <div id="dataDisplay" style="margin-top: 20px; padding: 20px; background: #2a2a2a; border-radius: 10px;">
+            <h3>Data Display</h3>
+            <pre id="dataContent">No data yet...</pre>
+        </div>
+    </div>
+
+    <!-- LightweightCharts -->
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    
+    <script>
+        const API_BASE = 'https://8000-i2ch499gc6d7qpm0yvxy4-6532622b.e2b.dev';
+        let chart = null;
+        
+        function updateStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.className = type;
+            status.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            console.log(message);
+        }
+        
+        async function testAPI() {
+            updateStatus('Testing API endpoint...');
+            try {
+                const response = await fetch(`${API_BASE}/api/technical/candlestick-data/AAPL?period=1mo&interval=1d`);
+                const data = await response.json();
+                
+                updateStatus(`API Test Success! Received ${data.data?.length || 0} data points`, 'success');
+                
+                document.getElementById('dataContent').textContent = JSON.stringify(data, null, 2).substring(0, 1000);
+                
+                return data;
+            } catch (error) {
+                updateStatus(`API Test Failed: ${error.message}`, 'error');
+                return null;
+            }
+        }
+        
+        function testLightweightCharts() {
+            updateStatus('Testing LightweightCharts library...');
+            
+            try {
+                // Clear existing chart
+                const container = document.getElementById('chartContainer');
+                container.innerHTML = '';
+                
+                // Create chart
+                chart = LightweightCharts.createChart(container, {
+                    width: container.clientWidth,
+                    height: 400,
+                    layout: {
+                        background: { type: 'solid', color: '#2a2a2a' },
+                        textColor: '#d1d1d1',
+                    },
+                    grid: {
+                        vertLines: { color: '#444' },
+                        horzLines: { color: '#444' },
+                    },
+                });
+                
+                // Add candlestick series
+                const candleSeries = chart.addCandlestickSeries({
+                    upColor: '#26a69a',
+                    downColor: '#ef5350',
+                    borderVisible: false,
+                    wickUpColor: '#26a69a',
+                    wickDownColor: '#ef5350',
+                });
+                
+                // Test data
+                const testData = [
+                    { time: '2024-01-01', open: 100, high: 105, low: 98, close: 103 },
+                    { time: '2024-01-02', open: 103, high: 108, low: 102, close: 107 },
+                    { time: '2024-01-03', open: 107, high: 110, low: 105, close: 106 },
+                    { time: '2024-01-04', open: 106, high: 108, low: 104, close: 108 },
+                    { time: '2024-01-05', open: 108, high: 112, low: 107, close: 111 },
+                ];
+                
+                candleSeries.setData(testData);
+                chart.timeScale().fitContent();
+                
+                updateStatus('LightweightCharts test successful! Chart rendered.', 'success');
+                
+                // Add volume
+                const volumeSeries = chart.addHistogramSeries({
+                    color: '#26a69a',
+                    priceFormat: { type: 'volume' },
+                    priceScaleId: '',
+                    scaleMargins: { top: 0.8, bottom: 0 },
+                });
+                
+                const volumeData = [
+                    { time: '2024-01-01', value: 1000000, color: '#26a69a' },
+                    { time: '2024-01-02', value: 1200000, color: '#26a69a' },
+                    { time: '2024-01-03', value: 900000, color: '#ef5350' },
+                    { time: '2024-01-04', value: 1100000, color: '#26a69a' },
+                    { time: '2024-01-05', value: 1300000, color: '#26a69a' },
+                ];
+                
+                volumeSeries.setData(volumeData);
+                
+                return true;
+            } catch (error) {
+                updateStatus(`LightweightCharts test failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        async function testFullIntegration() {
+            updateStatus('Testing full integration with real data...');
+            
+            try {
+                // First get the data
+                const apiData = await testAPI();
+                if (!apiData || !apiData.data) {
+                    throw new Error('No data received from API');
+                }
+                
+                // Clear and create chart
+                const container = document.getElementById('chartContainer');
+                container.innerHTML = '';
+                
+                chart = LightweightCharts.createChart(container, {
+                    width: container.clientWidth,
+                    height: 400,
+                    layout: {
+                        background: { type: 'solid', color: '#1a1a1a' },
+                        textColor: '#d1d1d1',
+                    },
+                    grid: {
+                        vertLines: { color: '#333' },
+                        horzLines: { color: '#333' },
+                    },
+                    crosshair: {
+                        mode: LightweightCharts.CrosshairMode.Normal,
+                    },
+                    rightPriceScale: {
+                        borderColor: '#666',
+                    },
+                    timeScale: {
+                        borderColor: '#666',
+                        timeVisible: true,
+                    },
+                });
+                
+                // Add candlestick series
+                const candleSeries = chart.addCandlestickSeries({
+                    upColor: '#10b981',
+                    downColor: '#ef4444',
+                    borderUpColor: '#10b981',
+                    borderDownColor: '#ef4444',
+                    wickUpColor: '#10b981',
+                    wickDownColor: '#ef4444',
+                });
+                
+                // Transform API data to chart format
+                const candleData = apiData.data.map(item => {
+                    const date = new Date(item.timestamp);
+                    return {
+                        time: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`,
+                        open: item.open,
+                        high: item.high,
+                        low: item.low,
+                        close: item.close
+                    };
+                });
+                
+                candleSeries.setData(candleData);
+                
+                // Add volume series
+                const volumeSeries = chart.addHistogramSeries({
+                    color: '#26a69a',
+                    priceFormat: {
+                        type: 'volume',
+                    },
+                    priceScaleId: '',
+                    scaleMargins: {
+                        top: 0.8,
+                        bottom: 0,
+                    },
+                });
+                
+                const volumeData = apiData.data.map(item => {
+                    const date = new Date(item.timestamp);
+                    return {
+                        time: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`,
+                        value: item.volume,
+                        color: item.close >= item.open ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.5)'
+                    };
+                });
+                
+                volumeSeries.setData(volumeData);
+                
+                // Add SMA line
+                const sma20Series = chart.addLineSeries({
+                    color: 'rgba(251, 191, 36, 0.8)',
+                    lineWidth: 2,
+                    title: 'SMA 20',
+                });
+                
+                // Calculate simple SMA
+                const smaData = [];
+                for (let i = 19; i < candleData.length; i++) {
+                    let sum = 0;
+                    for (let j = i - 19; j <= i; j++) {
+                        sum += candleData[j].close;
+                    }
+                    smaData.push({
+                        time: candleData[i].time,
+                        value: sum / 20
+                    });
+                }
+                
+                sma20Series.setData(smaData);
+                
+                chart.timeScale().fitContent();
+                
+                updateStatus(`Full integration successful! Displayed ${candleData.length} candlesticks with volume and SMA.`, 'success');
+                
+                // Display statistics
+                const stats = {
+                    dataPoints: candleData.length,
+                    firstDate: candleData[0]?.time,
+                    lastDate: candleData[candleData.length - 1]?.time,
+                    highestPrice: Math.max(...apiData.data.map(d => d.high)),
+                    lowestPrice: Math.min(...apiData.data.map(d => d.low)),
+                    totalVolume: apiData.data.reduce((sum, d) => sum + d.volume, 0)
+                };
+                
+                document.getElementById('dataContent').textContent = JSON.stringify(stats, null, 2);
+                
+                return true;
+                
+            } catch (error) {
+                updateStatus(`Full integration test failed: ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        // Auto-resize chart
+        window.addEventListener('resize', () => {
+            if (chart) {
+                chart.applyOptions({ width: document.getElementById('chartContainer').clientWidth });
+            }
+        });
+        
+        // Run initial test on load
+        window.addEventListener('DOMContentLoaded', () => {
+            updateStatus('Page loaded. Click buttons to run tests.');
+        });
+    </script>
+</body>
+</html>
