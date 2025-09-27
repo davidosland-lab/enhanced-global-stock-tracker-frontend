@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local Stock Predictor</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 2em;
+        }
+        
+        .local-badge {
+            display: inline-block;
+            background: #10b981;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.7em;
+            margin-left: 10px;
+        }
+        
+        .api-status {
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+        
+        .api-status.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .api-status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .result-section {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            display: none;
+        }
+        
+        .result-section.show {
+            display: block;
+        }
+        
+        .price-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .price-card {
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .price-label {
+            color: #666;
+            font-size: 12px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        
+        .price-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .change-positive { color: #10b981; }
+        .change-negative { color: #ef4444; }
+        .change-neutral { color: #6b7280; }
+        
+        .error-message {
+            padding: 15px;
+            background: #fee;
+            color: #c00;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+            display: none;
+        }
+        
+        .loading.show {
+            display: block;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔮 Stock Predictor <span class="local-badge">LOCAL</span></h1>
+        
+        <div id="api-status" class="api-status">
+            Checking local API connection...
+        </div>
+        
+        <div class="form-group">
+            <label for="symbol">Stock Symbol</label>
+            <input type="text" id="symbol" placeholder="e.g., AAPL, MSFT, GOOGL" value="AAPL">
+        </div>
+        
+        <div class="form-group">
+            <label for="timeframe">Time Horizon</label>
+            <select id="timeframe">
+                <option value="1d">1 Day</option>
+                <option value="5d" selected>5 Days</option>
+                <option value="30d">30 Days</option>
+                <option value="90d">90 Days</option>
+            </select>
+        </div>
+        
+        <button id="predictBtn" onclick="predict()">Generate Prediction</button>
+        
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <div>Running local ML models...</div>
+        </div>
+        
+        <div id="error" class="error-message"></div>
+        
+        <div id="results" class="result-section">
+            <div class="price-info">
+                <div class="price-card">
+                    <div class="price-label">Current Price</div>
+                    <div class="price-value" id="currentPrice">-</div>
+                </div>
+                <div class="price-card">
+                    <div class="price-label">Predicted Price</div>
+                    <div class="price-value" id="predictedPrice">-</div>
+                </div>
+            </div>
+            
+            <div class="price-card">
+                <div class="price-label">Expected Change</div>
+                <div class="price-value" id="changePercent">-</div>
+            </div>
+            
+            <div class="price-card" style="margin-top: 15px;">
+                <div class="price-label">Recommendation</div>
+                <div class="price-value" id="recommendation">-</div>
+            </div>
+            
+            <div class="price-card" style="margin-top: 15px;">
+                <div class="price-label">Technical Indicators</div>
+                <div style="text-align: left; font-size: 14px; color: #666;">
+                    <div>RSI: <span id="rsi">-</span></div>
+                    <div>MACD: <span id="macd">-</span></div>
+                    <div>Volatility: <span id="volatility">-</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // LOCAL API URL - no internet needed!
+        const API_BASE = 'http://localhost:8000';
+        
+        // Check API status on load
+        async function checkAPI() {
+            const statusDiv = document.getElementById('api-status');
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                
+                if (data.status === 'healthy') {
+                    statusDiv.className = 'api-status connected';
+                    statusDiv.textContent = '✅ Local API Connected - Ready for predictions';
+                    return true;
+                }
+            } catch (error) {
+                console.error('API check failed:', error);
+            }
+            
+            statusDiv.className = 'api-status error';
+            statusDiv.textContent = '❌ Local API Not Running - Please run start_local_server.bat';
+            return false;
+        }
+        
+        async function predict() {
+            const symbol = document.getElementById('symbol').value.trim().toUpperCase();
+            const timeframe = document.getElementById('timeframe').value;
+            const btn = document.getElementById('predictBtn');
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const results = document.getElementById('results');
+            
+            if (!symbol) {
+                error.textContent = 'Please enter a stock symbol';
+                error.classList.add('show');
+                return;
+            }
+            
+            // Hide previous results/errors
+            error.classList.remove('show');
+            results.classList.remove('show');
+            
+            // Show loading
+            loading.classList.add('show');
+            btn.disabled = true;
+            
+            try {
+                // Call local API
+                const url = `${API_BASE}/api/unified-prediction/${symbol}?timeframe=${timeframe}`;
+                
+                console.log('Calling local API:', url);
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    let errorMsg = `HTTP ${response.status}`;
+                    try {
+                        const errorData = await response.text();
+                        errorMsg += `: ${errorData}`;
+                    } catch (e) {
+                        errorMsg += ': Unknown error';
+                    }
+                    throw new Error(errorMsg);
+                }
+                
+                const data = await response.json();
+                console.log('Local prediction received:', data);
+                
+                // Display results
+                displayResults(data);
+                
+            } catch (err) {
+                console.error('Prediction error:', err);
+                error.textContent = `Error: ${err.message}`;
+                error.classList.add('show');
+            } finally {
+                loading.classList.remove('show');
+                btn.disabled = false;
+            }
+        }
+        
+        function displayResults(data) {
+            const results = document.getElementById('results');
+            
+            if (!data.predictions || !data.predictions.prediction_engine) {
+                throw new Error('Invalid response format');
+            }
+            
+            const engine = data.predictions.prediction_engine;
+            const currentPrice = engine.current_price || 0;
+            const predictedPrice = engine.final_prediction || 0;
+            const changePercent = engine.price_change_percent || 0;
+            const trend = engine.trend || 'NEUTRAL';
+            const indicators = engine.technical_indicators || {};
+            
+            // Update price displays
+            document.getElementById('currentPrice').textContent = `$${currentPrice.toFixed(2)}`;
+            document.getElementById('predictedPrice').textContent = `$${predictedPrice.toFixed(2)}`;
+            
+            // Update change percentage
+            const changeElement = document.getElementById('changePercent');
+            changeElement.textContent = `${changePercent > 0 ? '+' : ''}${changePercent.toFixed(2)}%`;
+            changeElement.className = 'price-value ' + 
+                (changePercent > 0.5 ? 'change-positive' : 
+                 changePercent < -0.5 ? 'change-negative' : 'change-neutral');
+            
+            // Update recommendation
+            let recommendation = trend;
+            if (engine.models && engine.models.rl_signal) {
+                recommendation = engine.models.rl_signal;
+            }
+            
+            const recElement = document.getElementById('recommendation');
+            recElement.textContent = recommendation;
+            recElement.className = 'price-value ' + 
+                (recommendation === 'BUY' ? 'change-positive' : 
+                 recommendation === 'SELL' ? 'change-negative' : 'change-neutral');
+            
+            // Update technical indicators
+            document.getElementById('rsi').textContent = indicators.rsi ? indicators.rsi.toFixed(2) : 'N/A';
+            document.getElementById('macd').textContent = indicators.macd ? indicators.macd.toFixed(2) : 'N/A';
+            document.getElementById('volatility').textContent = indicators.volatility ? 
+                (indicators.volatility * 100).toFixed(2) + '%' : 'N/A';
+            
+            // Show results
+            results.classList.add('show');
+        }
+        
+        // Add Enter key support
+        document.getElementById('symbol').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                predict();
+            }
+        });
+        
+        // Check API on page load
+        window.onload = checkAPI;
+    </script>
+</body>
+</html>
