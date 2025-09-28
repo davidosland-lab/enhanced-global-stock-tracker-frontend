@@ -1,8 +1,22 @@
 # 🚀 Enhanced Global Stock Market Tracker - Frontend
 
-## Complete Enhanced Phase 4 Frontend Package for Netlify Deployment
+## Complete Enhanced Phase 4 Frontend Package with ML Models
 
-This repository contains the **complete Enhanced Phase 4 frontend** with all advanced features, optimized for Netlify static site deployment.
+This repository contains the **complete Enhanced Phase 4 frontend** with all advanced ML models, technical analysis, and a Windows installation package.
+
+## 💻 Windows Installation
+
+### Quick Start
+1. **[Download Windows Package](https://github.com/davidosland-lab/enhanced-global-stock-tracker-frontend/raw/main/GSMT_Stock_Tracker_Windows.zip)**
+2. Extract to `C:\GSMT`
+3. Run `INSTALL_ULTIMATE.bat`
+4. Use desktop shortcut to start
+
+For detailed instructions, see [WINDOWS_INSTALLATION.md](WINDOWS_INSTALLATION.md)
+
+## 🌐 Cloud Deployment
+
+This repository is also optimized for Netlify static site deployment.
 
 ### ✨ Enhanced Features
 
