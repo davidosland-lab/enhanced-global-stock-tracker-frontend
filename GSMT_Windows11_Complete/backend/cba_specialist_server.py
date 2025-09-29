@@ -1,26 +1,27 @@
 #!/usr/bin/env python3
 """
-CBA Specialist Server - Commonwealth Bank of Australia Analysis
-Provides stock tracking, document analysis, sentiment analysis, and ML predictions for CBA.AX
-Part of GSMT Ver 8.1.3
+Real CBA Specialist Server - Commonwealth Bank of Australia Analysis
+Uses actual market data from Yahoo Finance API
+GSMT Ver 8.1.3
 """
 
 from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from datetime import datetime, timedelta
-import random
-import math
+import yfinance as yf
 import json
 from typing import Dict, List, Any, Optional
 import asyncio
 import logging
+import pandas as pd
+import numpy as np
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="CBA Specialist Server", version="8.1.3")
+app = FastAPI(title="CBA Specialist Server - Real Data", version="8.1.3")
 
 # CORS configuration
 app.add_middleware(
@@ -31,566 +32,478 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# CBA specific data
-CBA_DATA = {
-    "symbol": "CBA.AX",
-    "name": "Commonwealth Bank of Australia",
-    "sector": "Banking",
-    "exchange": "ASX",
-    "base_price": 115.50,  # Current approximate price
-    "volatility": 0.015,
-    "market_cap": 193000000000,  # ~193B AUD
-    "pe_ratio": 18.5,
-    "dividend_yield": 3.8,
-    "beta": 1.12
-}
-
-# Australian banking sector peers
+# Australian banking sector peers - real symbols
 BANKING_PEERS = {
-    "WBC.AX": {"name": "Westpac", "base": 27.50, "market_cap": 87000000000},
-    "ANZ.AX": {"name": "ANZ Bank", "base": 29.80, "market_cap": 84000000000},
-    "NAB.AX": {"name": "National Australia Bank", "base": 36.20, "market_cap": 109000000000},
-    "MQG.AX": {"name": "Macquarie Group", "base": 215.00, "market_cap": 85000000000},
-    "BEN.AX": {"name": "Bendigo Bank", "base": 10.50, "market_cap": 6000000000}
+    "CBA.AX": "Commonwealth Bank of Australia",
+    "WBC.AX": "Westpac Banking Corporation", 
+    "ANZ.AX": "ANZ Group Holdings",
+    "NAB.AX": "National Australia Bank",
+    "MQG.AX": "Macquarie Group",
+    "BEN.AX": "Bendigo and Adelaide Bank"
 }
 
-# Mock CBA publications database
-CBA_PUBLICATIONS = [
-    {
-        "id": 1,
-        "title": "Commonwealth Bank Full Year Results 2024",
-        "date": "2024-08-14",
-        "type": "Annual Report",
-        "summary": "Record profit of $10.2 billion, ROE 13.3%, CET1 ratio 12.2%",
-        "sentiment": "positive",
-        "impact": "high"
-    },
-    {
-        "id": 2,
-        "title": "CBA Economic Insights: Australian Housing Market",
-        "date": "2024-09-15",
-        "type": "Research Report",
-        "summary": "Housing market showing resilience, mortgage stress declining",
-        "sentiment": "neutral",
-        "impact": "medium"
-    },
-    {
-        "id": 3,
-        "title": "Digital Banking Innovation Update",
-        "date": "2024-09-20",
-        "type": "Innovation Report",
-        "summary": "AI-powered features driving customer engagement up 25%",
-        "sentiment": "positive",
-        "impact": "medium"
-    },
-    {
-        "id": 4,
-        "title": "Regulatory Capital Requirements Update",
-        "date": "2024-09-25",
-        "type": "Regulatory Filing",
-        "summary": "APRA confirms CBA meets all enhanced capital requirements",
-        "sentiment": "positive",
-        "impact": "high"
-    },
-    {
-        "id": 5,
-        "title": "Climate Risk Assessment Report",
-        "date": "2024-09-28",
-        "type": "ESG Report",
-        "summary": "Net zero commitments on track, sustainable lending up 40%",
-        "sentiment": "positive",
-        "impact": "medium"
-    }
-]
+# Data cache with 5-minute expiry
+data_cache = {}
+CACHE_DURATION = 300  # 5 minutes
 
-# Mock news sentiment data
-NEWS_SENTIMENT = [
-    {
-        "source": "Australian Financial Review",
-        "headline": "CBA leads big four banks in digital transformation",
-        "date": datetime.now() - timedelta(hours=2),
-        "sentiment": "positive",
-        "score": 0.85
-    },
-    {
-        "source": "The Australian",
-        "headline": "Commonwealth Bank profit beats analyst expectations",
-        "date": datetime.now() - timedelta(hours=5),
-        "sentiment": "positive",
-        "score": 0.92
-    },
-    {
-        "source": "Reuters",
-        "headline": "Australian banks face regulatory scrutiny on lending standards",
-        "date": datetime.now() - timedelta(hours=12),
-        "sentiment": "negative",
-        "score": -0.45
-    },
-    {
-        "source": "Bloomberg",
-        "headline": "CBA expands AI capabilities with new tech partnerships",
-        "date": datetime.now() - timedelta(days=1),
-        "sentiment": "positive",
-        "score": 0.78
-    },
-    {
-        "source": "Sydney Morning Herald",
-        "headline": "Housing market recovery boosts bank outlook",
-        "date": datetime.now() - timedelta(days=2),
-        "sentiment": "positive",
-        "score": 0.65
-    }
-]
+def get_cached_data(key: str) -> Optional[Any]:
+    """Get data from cache if still valid"""
+    if key in data_cache:
+        cached = data_cache[key]
+        if datetime.now() - cached['timestamp'] < timedelta(seconds=CACHE_DURATION):
+            return cached['data']
+    return None
 
-def generate_cba_price_data(periods: int = 288) -> List[float]:
-    """Generate realistic CBA stock price data"""
-    prices = []
-    current_price = CBA_DATA["base_price"]
-    
-    for i in range(periods):
-        # Banking sector tends to be less volatile
-        # Add market hours influence (ASX: 10am-4pm AEST)
-        hour = (i * 5 // 60) % 24  # 5-minute intervals
-        
-        if 10 <= hour <= 16:  # Market hours
-            volatility = CBA_DATA["volatility"]
-        else:  # After hours
-            volatility = CBA_DATA["volatility"] * 0.3
-        
-        # Trend component
-        trend = math.sin(i / 100) * volatility * current_price * 0.3
-        
-        # Random walk
-        change = random.gauss(0, volatility * current_price * 0.1)
-        
-        # Interest rate sensitivity (banks are rate-sensitive)
-        rate_impact = random.gauss(0, 0.001) * current_price
-        
-        # Update price
-        current_price = max(
-            CBA_DATA["base_price"] * 0.95,
-            min(CBA_DATA["base_price"] * 1.05, current_price + trend + change + rate_impact)
-        )
-        prices.append(round(current_price, 2))
-    
-    return prices
-
-def calculate_sentiment_score(news_items: List[Dict]) -> Dict[str, Any]:
-    """Calculate aggregate sentiment from news"""
-    if not news_items:
-        return {"overall": 0, "trend": "neutral", "confidence": 0}
-    
-    scores = [item["score"] for item in news_items]
-    weights = [1.0 / (1 + i * 0.1) for i in range(len(scores))]  # Recent news weighted higher
-    
-    weighted_score = sum(s * w for s, w in zip(scores, weights)) / sum(weights)
-    
-    # Determine trend
-    if weighted_score > 0.5:
-        trend = "bullish"
-    elif weighted_score < -0.5:
-        trend = "bearish"
-    else:
-        trend = "neutral"
-    
-    return {
-        "overall": round(weighted_score, 2),
-        "trend": trend,
-        "confidence": round(abs(weighted_score), 2),
-        "positive_count": sum(1 for s in scores if s > 0),
-        "negative_count": sum(1 for s in scores if s < 0),
-        "neutral_count": sum(1 for s in scores if -0.2 <= s <= 0.2)
+def set_cached_data(key: str, data: Any):
+    """Store data in cache with timestamp"""
+    data_cache[key] = {
+        'data': data,
+        'timestamp': datetime.now()
     }
 
 @app.get("/")
 async def root():
     """Root endpoint"""
     return {
-        "service": "CBA Specialist Server",
+        "service": "CBA Specialist Server - Real Data",
         "bank": "Commonwealth Bank of Australia",
         "symbol": "CBA.AX",
         "version": "8.1.3",
+        "data_source": "Yahoo Finance (Real Market Data)",
         "endpoints": {
-            "/api/cba/price": "Current CBA stock price and metrics",
+            "/api/cba/price": "Real-time CBA stock price",
             "/api/cba/history": "Historical price data",
-            "/api/cba/prediction": "ML price predictions",
-            "/api/cba/publications": "CBA publications and reports",
-            "/api/cba/sentiment": "Market sentiment analysis",
-            "/api/cba/banking-sector": "Banking sector comparison",
-            "/api/cba/document-analysis": "Document upload and analysis"
+            "/api/cba/prediction": "Data-driven predictions",
+            "/api/cba/sentiment": "Market sentiment (if available)",
+            "/api/cba/banking-sector": "Real banking sector comparison",
+            "/api/cba/technical": "Technical analysis"
         }
     }
 
 @app.get("/api/cba/price")
 async def get_cba_price():
-    """Get current CBA stock price and key metrics"""
-    prices = generate_cba_price_data(288)  # 24 hours of 5-min data
-    current_price = prices[-1]
-    prev_close = CBA_DATA["base_price"]
-    change = current_price - prev_close
-    change_percent = (change / prev_close) * 100
-    
-    return {
-        "symbol": "CBA.AX",
-        "name": CBA_DATA["name"],
-        "price": current_price,
-        "previousClose": prev_close,
-        "change": round(change, 2),
-        "changePercent": round(change_percent, 2),
-        "dayHigh": max(prices[-78:]),  # Last 6.5 hours (trading day)
-        "dayLow": min(prices[-78:]),
-        "volume": random.randint(2000000, 5000000),
-        "marketCap": CBA_DATA["market_cap"],
-        "marketCapFormatted": f"${CBA_DATA['market_cap'] / 1e9:.1f}B",
-        "peRatio": CBA_DATA["pe_ratio"],
-        "dividendYield": CBA_DATA["dividend_yield"],
-        "beta": CBA_DATA["beta"],
-        "52WeekHigh": round(CBA_DATA["base_price"] * 1.15, 2),
-        "52WeekLow": round(CBA_DATA["base_price"] * 0.85, 2),
-        "timestamp": datetime.now().isoformat()
-    }
+    """Get real CBA stock price and metrics"""
+    try:
+        # Check cache
+        cached = get_cached_data("cba_price")
+        if cached:
+            return cached
+        
+        # Fetch real data from Yahoo Finance
+        cba = yf.Ticker("CBA.AX")
+        info = cba.info
+        
+        # Get latest price data
+        hist = cba.history(period="1d", interval="5m")
+        if hist.empty:
+            hist = cba.history(period="5d")  # Fallback to daily data
+        
+        current_price = float(hist['Close'].iloc[-1]) if not hist.empty else info.get('currentPrice', 0)
+        prev_close = info.get('previousClose', info.get('regularMarketPreviousClose', 0))
+        
+        result = {
+            "symbol": "CBA.AX",
+            "name": info.get('longName', 'Commonwealth Bank of Australia'),
+            "price": current_price,
+            "previousClose": prev_close,
+            "change": current_price - prev_close if prev_close else 0,
+            "changePercent": ((current_price - prev_close) / prev_close * 100) if prev_close else 0,
+            "dayHigh": info.get('dayHigh', float(hist['High'].max()) if not hist.empty else 0),
+            "dayLow": info.get('dayLow', float(hist['Low'].min()) if not hist.empty else 0),
+            "volume": info.get('volume', int(hist['Volume'].sum()) if not hist.empty else 0),
+            "marketCap": info.get('marketCap', 0),
+            "marketCapFormatted": f"${info.get('marketCap', 0) / 1e9:.1f}B" if info.get('marketCap') else "N/A",
+            "peRatio": info.get('trailingPE', info.get('forwardPE', 0)),
+            "dividendYield": info.get('dividendYield', 0) * 100 if info.get('dividendYield') else 0,
+            "beta": info.get('beta', 0),
+            "52WeekHigh": info.get('fiftyTwoWeekHigh', 0),
+            "52WeekLow": info.get('fiftyTwoWeekLow', 0),
+            "sector": info.get('sector', 'Financial Services'),
+            "industry": info.get('industry', 'Banks'),
+            "exchange": "ASX",
+            "currency": info.get('currency', 'AUD'),
+            "lastUpdate": datetime.now().isoformat()
+        }
+        
+        # Cache and return
+        set_cached_data("cba_price", result)
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error fetching CBA price: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/cba/history")
 async def get_cba_history(period: str = "1mo", interval: str = "1d"):
-    """Get historical CBA price data"""
-    # Determine number of data points
-    if period == "1d":
-        points = 78  # 5-min intervals for 1 day
-    elif period == "5d":
-        points = 390  # 5-min intervals for 5 days
-    elif period == "1mo":
-        points = 30  # Daily for 1 month
-    elif period == "3mo":
-        points = 90  # Daily for 3 months
-    elif period == "1y":
-        points = 252  # Daily for 1 year
-    else:
-        points = 30
-    
-    # Generate historical prices
-    prices = generate_cba_price_data(points)
-    
-    # Create timestamps
-    current_time = datetime.now()
-    if interval == "5m":
-        timestamps = [current_time - timedelta(minutes=5 * (points - i - 1)) for i in range(points)]
-    else:  # Daily
-        timestamps = [current_time - timedelta(days=points - i - 1) for i in range(points)]
-    
-    return {
-        "symbol": "CBA.AX",
-        "period": period,
-        "interval": interval,
-        "timestamps": [t.isoformat() for t in timestamps],
-        "prices": prices,
-        "volumes": [random.randint(1000000, 5000000) for _ in prices],
-        "metadata": {
-            "currency": "AUD",
-            "exchange": "ASX",
-            "timezone": "Australia/Sydney"
+    """Get real historical CBA data"""
+    try:
+        # Check cache
+        cache_key = f"cba_history_{period}_{interval}"
+        cached = get_cached_data(cache_key)
+        if cached:
+            return cached
+        
+        # Fetch real historical data
+        cba = yf.Ticker("CBA.AX")
+        hist = cba.history(period=period, interval=interval)
+        
+        if hist.empty:
+            raise HTTPException(status_code=404, detail="No historical data available")
+        
+        # Format data
+        prices = []
+        volumes = []
+        timestamps = []
+        
+        for index, row in hist.iterrows():
+            timestamps.append(index.isoformat())
+            prices.append(float(row['Close']))
+            volumes.append(int(row['Volume']))
+        
+        result = {
+            "symbol": "CBA.AX",
+            "period": period,
+            "interval": interval,
+            "prices": prices,
+            "volumes": volumes,
+            "timestamps": timestamps,
+            "high": float(hist['High'].max()),
+            "low": float(hist['Low'].min()),
+            "average": float(hist['Close'].mean()),
+            "volatility": float(hist['Close'].std()),
+            "totalVolume": int(hist['Volume'].sum()),
+            "dataPoints": len(prices)
         }
-    }
-
-@app.get("/api/cba/prediction")
-async def get_cba_prediction(horizon: str = "5d"):
-    """Generate ML predictions for CBA stock"""
-    
-    # Get current price
-    current_price = CBA_DATA["base_price"] * (1 + random.uniform(-0.01, 0.01))
-    
-    # Calculate prediction based on horizon
-    horizons = {
-        "1d": {"days": 1, "volatility": 0.01},
-        "5d": {"days": 5, "volatility": 0.02},
-        "15d": {"days": 15, "volatility": 0.03},
-        "30d": {"days": 30, "volatility": 0.04}
-    }
-    
-    h = horizons.get(horizon, horizons["5d"])
-    
-    # Generate predictions from multiple models
-    models = {
-        "lstm": {
-            "name": "LSTM Neural Network",
-            "prediction": current_price * (1 + random.uniform(-h["volatility"], h["volatility"] * 1.2)),
-            "confidence": random.uniform(0.78, 0.88),
-            "features": ["price_history", "volume", "technical_indicators"]
-        },
-        "gru": {
-            "name": "GRU Model",
-            "prediction": current_price * (1 + random.uniform(-h["volatility"], h["volatility"] * 1.1)),
-            "confidence": random.uniform(0.76, 0.86),
-            "features": ["price_patterns", "market_sentiment", "sector_trends"]
-        },
-        "transformer": {
-            "name": "Transformer",
-            "prediction": current_price * (1 + random.uniform(-h["volatility"] * 0.8, h["volatility"] * 1.3)),
-            "confidence": random.uniform(0.80, 0.90),
-            "features": ["attention_patterns", "news_sentiment", "global_markets"]
-        },
-        "gnn": {
-            "name": "Graph Neural Network",
-            "prediction": current_price * (1 + random.uniform(-h["volatility"] * 0.9, h["volatility"] * 1.15)),
-            "confidence": random.uniform(0.82, 0.92),
-            "features": ["sector_relationships", "peer_correlation", "market_network"]
-        },
-        "ensemble": {
-            "name": "Ensemble Model",
-            "prediction": current_price * (1 + random.uniform(-h["volatility"] * 0.7, h["volatility"] * 1.25)),
-            "confidence": random.uniform(0.85, 0.94),
-            "features": ["combined_signals", "weighted_consensus", "risk_adjustment"]
-        }
-    }
-    
-    # Calculate unified prediction
-    predictions = [m["prediction"] for m in models.values()]
-    confidences = [m["confidence"] for m in models.values()]
-    
-    unified_prediction = sum(p * c for p, c in zip(predictions, confidences)) / sum(confidences)
-    unified_confidence = sum(confidences) / len(confidences)
-    
-    # Sentiment influence
-    sentiment = calculate_sentiment_score(NEWS_SENTIMENT)
-    sentiment_adjustment = sentiment["overall"] * 0.01 * current_price
-    unified_prediction += sentiment_adjustment
-    
-    # Generate recommendation
-    change_percent = (unified_prediction - current_price) / current_price * 100
-    if change_percent > 2:
-        recommendation = "STRONG BUY"
-    elif change_percent > 0.5:
-        recommendation = "BUY"
-    elif change_percent < -2:
-        recommendation = "STRONG SELL"
-    elif change_percent < -0.5:
-        recommendation = "SELL"
-    else:
-        recommendation = "HOLD"
-    
-    return {
-        "symbol": "CBA.AX",
-        "current_price": round(current_price, 2),
-        "horizon": horizon,
-        "models": models,
-        "unified_prediction": {
-            "price": round(unified_prediction, 2),
-            "confidence": round(unified_confidence, 3),
-            "change": round(unified_prediction - current_price, 2),
-            "change_percent": round(change_percent, 2),
-            "recommendation": recommendation
-        },
-        "factors": {
-            "sentiment_score": sentiment["overall"],
-            "sentiment_trend": sentiment["trend"],
-            "publications_impact": "positive",
-            "sector_outlook": "stable",
-            "interest_rate_impact": "neutral"
-        },
-        "analysis_summary": f"Based on analysis of recent CBA publications, market sentiment ({sentiment['trend']}), "
-                          f"and banking sector trends, the {horizon} outlook suggests a {recommendation} rating "
-                          f"with {round(unified_confidence * 100)}% confidence.",
-        "timestamp": datetime.now().isoformat()
-    }
-
-@app.get("/api/cba/publications")
-async def get_cba_publications(limit: int = 5):
-    """Get recent CBA publications and reports"""
-    return {
-        "publications": CBA_PUBLICATIONS[:limit],
-        "total": len(CBA_PUBLICATIONS),
-        "categories": {
-            "annual_reports": 1,
-            "research_reports": 1,
-            "innovation_reports": 1,
-            "regulatory_filings": 1,
-            "esg_reports": 1
-        },
-        "sentiment_summary": {
-            "positive": 4,
-            "neutral": 1,
-            "negative": 0
-        }
-    }
-
-@app.get("/api/cba/sentiment")
-async def get_market_sentiment():
-    """Get market sentiment analysis for CBA"""
-    sentiment_score = calculate_sentiment_score(NEWS_SENTIMENT)
-    
-    return {
-        "symbol": "CBA.AX",
-        "sentiment": sentiment_score,
-        "news": NEWS_SENTIMENT,
-        "social_media": {
-            "twitter_mentions": random.randint(100, 500),
-            "sentiment_score": round(random.uniform(0.5, 0.8), 2),
-            "trending": random.choice([True, False])
-        },
-        "analyst_ratings": {
-            "strong_buy": 5,
-            "buy": 8,
-            "hold": 4,
-            "sell": 1,
-            "strong_sell": 0,
-            "consensus": "Buy",
-            "average_target": round(CBA_DATA["base_price"] * 1.08, 2)
-        },
-        "timestamp": datetime.now().isoformat()
-    }
+        
+        # Cache and return
+        set_cached_data(cache_key, result)
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error fetching CBA history: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/cba/banking-sector")
-async def get_banking_sector_comparison():
-    """Get banking sector comparison data"""
-    sector_data = []
-    
-    # Add CBA
-    cba_price = CBA_DATA["base_price"] * (1 + random.uniform(-0.01, 0.01))
-    sector_data.append({
-        "symbol": "CBA.AX",
-        "name": CBA_DATA["name"],
-        "price": round(cba_price, 2),
-        "marketCap": CBA_DATA["market_cap"],
-        "marketCapFormatted": f"${CBA_DATA['market_cap'] / 1e9:.1f}B",
-        "change": round(random.uniform(-2, 2), 2),
-        "peRatio": CBA_DATA["pe_ratio"],
-        "rank": 1
-    })
-    
-    # Add peers
-    rank = 2
-    for symbol, data in BANKING_PEERS.items():
-        price = data["base"] * (1 + random.uniform(-0.015, 0.015))
-        sector_data.append({
-            "symbol": symbol,
-            "name": data["name"],
-            "price": round(price, 2),
-            "marketCap": data["market_cap"],
-            "marketCapFormatted": f"${data['market_cap'] / 1e9:.1f}B",
-            "change": round(random.uniform(-2, 2), 2),
-            "peRatio": round(random.uniform(15, 22), 1),
-            "rank": rank
-        })
-        rank += 1
-    
-    # Sort by market cap
-    sector_data.sort(key=lambda x: x["marketCap"], reverse=True)
-    
-    return {
-        "sector": "Banking",
-        "companies": sector_data,
-        "sector_performance": {
-            "average_change": round(sum(c["change"] for c in sector_data) / len(sector_data), 2),
-            "best_performer": max(sector_data, key=lambda x: x["change"])["symbol"],
-            "worst_performer": min(sector_data, key=lambda x: x["change"])["symbol"]
-        },
-        "cba_ranking": 1,
-        "sector_outlook": "stable",
-        "key_factors": [
-            "Interest rate environment",
-            "Housing market conditions",
-            "Regulatory changes",
-            "Digital transformation",
-            "Credit quality"
-        ]
-    }
-
-@app.post("/api/cba/document-analysis")
-async def analyze_document(file: UploadFile = File(...)):
-    """Analyze uploaded documents for CBA insights"""
-    # Mock document analysis
-    content = await file.read()
-    
-    # Simulate processing
-    await asyncio.sleep(1)
-    
-    return {
-        "filename": file.filename,
-        "size": len(content),
-        "type": file.content_type,
-        "analysis": {
-            "sentiment": random.choice(["positive", "neutral", "negative"]),
-            "confidence": round(random.uniform(0.7, 0.95), 2),
-            "key_topics": [
-                "financial performance",
-                "digital strategy",
-                "risk management",
-                "customer growth"
-            ],
-            "entities_found": [
-                "Commonwealth Bank",
-                "Matt Comyn (CEO)",
-                "APRA",
-                "Reserve Bank of Australia"
-            ],
-            "financial_metrics": {
-                "revenue_mentioned": random.choice([True, False]),
-                "profit_mentioned": random.choice([True, False]),
-                "ratios_found": ["ROE", "CET1", "NIM"]
+async def get_banking_sector():
+    """Get real banking sector comparison"""
+    try:
+        # Check cache
+        cached = get_cached_data("banking_sector")
+        if cached:
+            return cached
+        
+        peers = []
+        
+        for symbol, name in BANKING_PEERS.items():
+            try:
+                ticker = yf.Ticker(symbol)
+                info = ticker.info
+                hist = ticker.history(period="1d")
+                
+                if not hist.empty:
+                    current_price = float(hist['Close'].iloc[-1])
+                    prev_close = info.get('previousClose', float(hist['Open'].iloc[0]))
+                    
+                    peers.append({
+                        "symbol": symbol,
+                        "name": name,
+                        "price": current_price,
+                        "change": current_price - prev_close,
+                        "changePercent": ((current_price - prev_close) / prev_close * 100) if prev_close else 0,
+                        "marketCap": info.get('marketCap', 0),
+                        "peRatio": info.get('trailingPE', 0),
+                        "dividendYield": info.get('dividendYield', 0) * 100 if info.get('dividendYield') else 0,
+                        "volume": info.get('volume', 0)
+                    })
+            except Exception as e:
+                logger.warning(f"Failed to fetch {symbol}: {str(e)}")
+        
+        # Sort by market cap
+        peers.sort(key=lambda x: x['marketCap'], reverse=True)
+        
+        result = {
+            "peers": peers,
+            "sectorAverage": {
+                "peRatio": np.mean([p['peRatio'] for p in peers if p['peRatio'] > 0]),
+                "dividendYield": np.mean([p['dividendYield'] for p in peers if p['dividendYield'] > 0]),
+                "changePercent": np.mean([p['changePercent'] for p in peers])
             },
-            "impact_assessment": random.choice(["high", "medium", "low"]),
-            "summary": f"Document analyzed successfully. Content appears to be {random.choice(['bullish', 'neutral', 'bearish'])} "
-                      f"regarding CBA outlook with focus on {random.choice(['growth', 'stability', 'transformation'])}."
-        },
-        "timestamp": datetime.now().isoformat()
-    }
-
-@app.get("/api/prediction/cba/enhanced")
-async def get_enhanced_cba_prediction(
-    horizon: str = "5d",
-    include_publications: bool = True,
-    include_news: bool = True
-):
-    """Enhanced CBA prediction with all factors"""
-    # Redirect to main prediction endpoint with enhanced features
-    prediction = await get_cba_prediction(horizon)
-    
-    if include_publications:
-        prediction["publications_analysis"] = {
-            "recent_count": len(CBA_PUBLICATIONS),
-            "positive_ratio": 0.8,
-            "impact": "positive"
+            "timestamp": datetime.now().isoformat()
         }
-    
-    if include_news:
-        sentiment = calculate_sentiment_score(NEWS_SENTIMENT)
-        prediction["news_analysis"] = sentiment
-    
-    return prediction
+        
+        # Cache and return
+        set_cached_data("banking_sector", result)
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error fetching banking sector data: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/prediction/cba/publications")
-async def get_cba_publications_api(limit: int = 5):
-    """API endpoint for CBA publications (compatibility)"""
-    return await get_cba_publications(limit)
+@app.get("/api/cba/technical")
+async def get_cba_technical(period: str = "3mo"):
+    """Get real technical analysis for CBA"""
+    try:
+        # Check cache
+        cache_key = f"cba_technical_{period}"
+        cached = get_cached_data(cache_key)
+        if cached:
+            return cached
+        
+        # Fetch data
+        cba = yf.Ticker("CBA.AX")
+        hist = cba.history(period=period)
+        
+        if hist.empty:
+            raise HTTPException(status_code=404, detail="No data available for technical analysis")
+        
+        # Calculate technical indicators
+        close_prices = hist['Close'].values
+        high_prices = hist['High'].values
+        low_prices = hist['Low'].values
+        volumes = hist['Volume'].values
+        
+        # RSI
+        def calculate_rsi(prices, period=14):
+            deltas = pd.Series(prices).diff()
+            gain = (deltas.where(deltas > 0, 0)).rolling(window=period).mean()
+            loss = (-deltas.where(deltas < 0, 0)).rolling(window=period).mean()
+            rs = gain / loss
+            rsi = 100 - (100 / (1 + rs))
+            return float(rsi.iloc[-1]) if not rsi.empty else 50
+        
+        # Moving averages
+        sma_20 = pd.Series(close_prices).rolling(window=20).mean()
+        sma_50 = pd.Series(close_prices).rolling(window=50).mean()
+        ema_12 = pd.Series(close_prices).ewm(span=12).mean()
+        ema_26 = pd.Series(close_prices).ewm(span=26).mean()
+        
+        # MACD
+        macd_line = ema_12 - ema_26
+        signal_line = macd_line.ewm(span=9).mean()
+        macd_histogram = macd_line - signal_line
+        
+        # Bollinger Bands
+        bb_period = 20
+        bb_std = 2
+        sma_bb = pd.Series(close_prices).rolling(window=bb_period).mean()
+        std_bb = pd.Series(close_prices).rolling(window=bb_period).std()
+        upper_band = sma_bb + (std_bb * bb_std)
+        lower_band = sma_bb - (std_bb * bb_std)
+        
+        # Support and Resistance
+        support = float(low_prices.min())
+        resistance = float(high_prices.max())
+        pivot = (float(hist['High'].iloc[-1]) + float(hist['Low'].iloc[-1]) + float(hist['Close'].iloc[-1])) / 3
+        
+        result = {
+            "symbol": "CBA.AX",
+            "indicators": {
+                "rsi": {
+                    "value": calculate_rsi(close_prices),
+                    "signal": "overbought" if calculate_rsi(close_prices) > 70 else "oversold" if calculate_rsi(close_prices) < 30 else "neutral"
+                },
+                "macd": {
+                    "macd": float(macd_line.iloc[-1]) if not macd_line.empty else 0,
+                    "signal": float(signal_line.iloc[-1]) if not signal_line.empty else 0,
+                    "histogram": float(macd_histogram.iloc[-1]) if not macd_histogram.empty else 0,
+                    "crossover": "bullish" if float(macd_histogram.iloc[-1]) > 0 else "bearish"
+                },
+                "moving_averages": {
+                    "sma_20": float(sma_20.iloc[-1]) if not pd.isna(sma_20.iloc[-1]) else None,
+                    "sma_50": float(sma_50.iloc[-1]) if not pd.isna(sma_50.iloc[-1]) else None,
+                    "ema_12": float(ema_12.iloc[-1]) if not pd.isna(ema_12.iloc[-1]) else None,
+                    "ema_26": float(ema_26.iloc[-1]) if not pd.isna(ema_26.iloc[-1]) else None,
+                    "signal": "bullish" if not pd.isna(sma_20.iloc[-1]) and close_prices[-1] > sma_20.iloc[-1] else "bearish"
+                },
+                "bollinger_bands": {
+                    "upper": float(upper_band.iloc[-1]) if not pd.isna(upper_band.iloc[-1]) else None,
+                    "middle": float(sma_bb.iloc[-1]) if not pd.isna(sma_bb.iloc[-1]) else None,
+                    "lower": float(lower_band.iloc[-1]) if not pd.isna(lower_band.iloc[-1]) else None,
+                    "position": "upper" if close_prices[-1] > upper_band.iloc[-1] else "lower" if close_prices[-1] < lower_band.iloc[-1] else "middle"
+                },
+                "support_resistance": {
+                    "support": support,
+                    "resistance": resistance,
+                    "pivot": pivot,
+                    "r1": (2 * pivot) - float(hist['Low'].iloc[-1]),
+                    "s1": (2 * pivot) - float(hist['High'].iloc[-1])
+                },
+                "volume": {
+                    "current": int(volumes[-1]),
+                    "average": int(volumes.mean()),
+                    "trend": "increasing" if volumes[-1] > volumes.mean() else "decreasing"
+                }
+            },
+            "summary": {
+                "trend": "bullish" if close_prices[-1] > sma_20.iloc[-1] and macd_histogram.iloc[-1] > 0 else "bearish",
+                "strength": "strong" if abs(macd_histogram.iloc[-1]) > std_bb.iloc[-1] else "weak",
+                "recommendation": "buy" if calculate_rsi(close_prices) < 40 and macd_histogram.iloc[-1] > 0 else "sell" if calculate_rsi(close_prices) > 60 and macd_histogram.iloc[-1] < 0 else "hold"
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        # Cache and return
+        set_cached_data(cache_key, result)
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error in CBA technical analysis: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/prediction/cba/news")
-async def get_cba_news(limit: int = 5):
-    """Get CBA news sentiment"""
-    return {
-        "news": NEWS_SENTIMENT[:limit],
-        "sentiment": calculate_sentiment_score(NEWS_SENTIMENT[:limit])
-    }
+@app.get("/api/cba/prediction")
+async def get_cba_prediction():
+    """Get CBA predictions based on real technical analysis"""
+    try:
+        # Get real technical analysis
+        technical = await get_cba_technical()
+        price_data = await get_cba_price()
+        
+        current_price = price_data["price"]
+        rsi = technical["indicators"]["rsi"]["value"]
+        macd_signal = technical["indicators"]["macd"]["crossover"]
+        trend = technical["summary"]["trend"]
+        
+        # Calculate prediction bias based on real indicators
+        # This is a simplified model - in production use proper ML
+        bias = 0
+        confidence_modifier = 0.7  # Lower confidence for simple model
+        
+        # RSI-based bias
+        if rsi < 30:
+            bias += 0.015  # Oversold
+        elif rsi > 70:
+            bias -= 0.015  # Overbought
+        else:
+            bias += (50 - rsi) * 0.0002  # Neutral zone
+        
+        # MACD-based bias
+        if macd_signal == "bullish":
+            bias += 0.01
+        else:
+            bias -= 0.01
+        
+        # Trend-based bias
+        if trend == "bullish":
+            bias += 0.005
+        else:
+            bias -= 0.005
+        
+        # Create predictions
+        predictions = {
+            "1_day": {
+                "predicted": current_price * (1 + bias),
+                "confidence": 0.65 * confidence_modifier,
+                "range": {
+                    "low": current_price * (1 + bias - 0.01),
+                    "high": current_price * (1 + bias + 0.01)
+                }
+            },
+            "7_day": {
+                "predicted": current_price * (1 + bias * 3.5),
+                "confidence": 0.55 * confidence_modifier,
+                "range": {
+                    "low": current_price * (1 + bias * 3.5 - 0.03),
+                    "high": current_price * (1 + bias * 3.5 + 0.03)
+                }
+            },
+            "30_day": {
+                "predicted": current_price * (1 + bias * 8),
+                "confidence": 0.45 * confidence_modifier,
+                "range": {
+                    "low": current_price * (1 + bias * 8 - 0.05),
+                    "high": current_price * (1 + bias * 8 + 0.05)
+                }
+            }
+        }
+        
+        return {
+            "symbol": "CBA.AX",
+            "current_price": current_price,
+            "predictions": predictions,
+            "models": {
+                "primary": "Technical Analysis Based",
+                "confidence": "Real Data",
+                "last_updated": datetime.now().isoformat()
+            },
+            "factors": {
+                "rsi": rsi,
+                "macd_signal": macd_signal,
+                "trend": trend,
+                "bias": bias
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in CBA prediction: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/prediction/cba/banking-sector")
-async def get_banking_sector_api():
-    """Banking sector endpoint (compatibility)"""
-    return await get_banking_sector_comparison()
+@app.get("/api/cba/sentiment")
+async def get_cba_sentiment():
+    """Get market sentiment for CBA"""
+    try:
+        # In a real implementation, this would fetch from news APIs
+        # For now, we'll derive sentiment from technical indicators
+        technical = await get_cba_technical()
+        
+        # Derive sentiment from technical indicators
+        rsi = technical["indicators"]["rsi"]["value"]
+        macd_crossover = technical["indicators"]["macd"]["crossover"]
+        trend = technical["summary"]["trend"]
+        volume_trend = technical["indicators"]["volume"]["trend"]
+        
+        # Calculate sentiment score
+        sentiment_score = 0
+        
+        if rsi < 30:
+            sentiment_score += 0.3  # Oversold = potential bullish
+        elif rsi > 70:
+            sentiment_score -= 0.3  # Overbought = potential bearish
+        
+        if macd_crossover == "bullish":
+            sentiment_score += 0.2
+        else:
+            sentiment_score -= 0.2
+        
+        if trend == "bullish":
+            sentiment_score += 0.2
+        else:
+            sentiment_score -= 0.2
+        
+        if volume_trend == "increasing":
+            sentiment_score += 0.1
+        
+        # Determine overall sentiment
+        if sentiment_score > 0.3:
+            overall_sentiment = "bullish"
+        elif sentiment_score < -0.3:
+            overall_sentiment = "bearish"
+        else:
+            overall_sentiment = "neutral"
+        
+        return {
+            "sentiment": {
+                "overall": sentiment_score,
+                "trend": overall_sentiment,
+                "confidence": abs(sentiment_score),
+                "sources": "Technical indicators analysis"
+            },
+            "technical_signals": {
+                "rsi_signal": technical["indicators"]["rsi"]["signal"],
+                "macd_signal": macd_crossover,
+                "trend": trend,
+                "volume": volume_trend
+            },
+            "news": {
+                "note": "Real-time news sentiment requires news API integration",
+                "available": False
+            },
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        logger.error(f"Error in CBA sentiment: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
-    
-    print("\n" + "="*60)
-    print("CBA SPECIALIST SERVER v8.1.3")
-    print("Commonwealth Bank of Australia Analysis System")
-    print("="*60)
-    print("\nStarting CBA specialist server...")
-    print("\nEndpoints available at http://localhost:8001")
-    print("\nKey endpoints:")
-    print("  /api/cba/price - Current CBA stock price")
-    print("  /api/cba/prediction - ML predictions")
-    print("  /api/cba/publications - CBA reports & publications")
-    print("  /api/cba/sentiment - Market sentiment")
-    print("  /api/cba/banking-sector - Sector comparison")
-    print("\nPress Ctrl+C to stop")
-    print("="*60 + "\n")
-    
     uvicorn.run(app, host="0.0.0.0", port=8001)

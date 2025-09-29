@@ -60,14 +60,14 @@ for /f "tokens=5" %%a in ('netstat -aon ^| find ":8001" ^| find "LISTENING"') do
     taskkill /F /PID %%a >nul 2>&1
 )
 
-:: Start the market data server
+:: Start the market data server (Real Yahoo Finance data)
 echo [2] Starting Market Data Server (Port 8000)...
 start "GSMT Market Server" /min cmd /c "python backend\market_data_server.py"
 
 :: Wait for first server
 timeout /t 3 /nobreak >nul
 
-:: Start the CBA specialist server
+:: Start the CBA specialist server (Real CBA.AX data)
 echo [3] Starting CBA Specialist Server (Port 8001)...
 start "CBA Specialist Server" /min cmd /c "python backend\cba_specialist_server.py"
 
