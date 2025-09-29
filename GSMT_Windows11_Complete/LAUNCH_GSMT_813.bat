@@ -100,7 +100,7 @@ start "" "frontend\comprehensive_dashboard.html"
 timeout /t 1 /nobreak >nul
 start "" "frontend\cba_market_tracker.html"
 timeout /t 1 /nobreak >nul
-start "" "frontend\indices_tracker.html"
+start "" "frontend\indices_tracker_enhanced.html"
 
 echo.
 echo ================================================================

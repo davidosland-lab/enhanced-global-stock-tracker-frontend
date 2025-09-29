@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌍 Indices Ver-107 Enhanced - Global Market Tracker with Historical Calendar</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="config.js"></script>
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .market-card {
+            background: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .positive { color: #10b981; }
+        .negative { color: #ef4444; }
+        .loading-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+        .index-checkbox {
+            accent-color: #3b82f6;
+        }
+        .market-zone-active {
+            background: rgba(59, 130, 246, 0.1);
+            border: 2px solid rgba(59, 130, 246, 0.5);
+        }
+        .market-zone-inactive {
+            opacity: 0.5;
+        }
+        .timeline-day-separator {
+            stroke: #666;
+            stroke-width: 2;
+            stroke-dasharray: 5, 5;
+            opacity: 0.5;
+        }
+        .select-all-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .select-all-btn:hover {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        }
+        .data-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+        .data-status.live {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.5);
+        }
+        .data-status.historical {
+            background: rgba(251, 191, 36, 0.2);
+            color: #fbbf24;
+            border: 1px solid rgba(251, 191, 36, 0.5);
+        }
+        .data-status.error {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.5);
+        }
+        /* Calendar styles */
+        .flatpickr-calendar {
+            background: rgba(30, 30, 50, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        .flatpickr-calendar .flatpickr-day {
+            color: white;
+        }
+        .flatpickr-calendar .flatpickr-day.selected {
+            background: #3b82f6;
+            border-color: #3b82f6;
+        }
+        .flatpickr-calendar .flatpickr-day:hover {
+            background: rgba(59, 130, 246, 0.3);
+        }
+        .flatpickr-calendar .flatpickr-monthDropdown-months,
+        .flatpickr-calendar .flatpickr-current-month {
+            background: transparent;
+            color: white;
+        }
+        .flatpickr-calendar .flatpickr-current-month input {
+            color: white;
+        }
+        .flatpickr-calendar .flatpickr-weekday {
+            color: #9ca3af;
+        }
+        /* Market hours overlay */
+        .market-hours-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 1;
+        }
+        .market-hours-band {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            opacity: 0.1;
+        }
+        .asia-hours { background: #3b82f6; }
+        .europe-hours { background: #10b981; }
+        .americas-hours { background: #ef4444; }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 min-h-screen">
+    
+    <!-- Header -->
+    <header class="bg-black/30 backdrop-blur-lg border-b border-white/10">
+        <div class="max-w-7xl mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h1 class="text-2xl font-bold text-white">🌍 Indices Ver-107 Enhanced</h1>
+                    <p class="text-gray-300 text-sm mt-1">Real-Time & Historical Data · 5-Minute Updates · Market-Specific Hours</p>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span id="data-status" class="data-status live">
+                        <i class="fas fa-circle"></i>
+                        <span>Live Data</span>
+                    </span>
+                    <span id="current-time" class="text-white/80 text-sm"></span>
+                    <span id="aest-time" class="text-yellow-400 text-sm font-semibold"></span>
+                    <button onclick="refreshData()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition flex items-center gap-2">
+                        <i class="fas fa-sync-alt" id="refresh-icon"></i> 
+                        <span>Refresh</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 py-6">
+        
+        <!-- Historical Data Calendar Section -->
+        <div class="market-card rounded-xl p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-white">📅 Historical Performance Review</h2>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2">
+                        <label class="text-white/80 text-sm">Select Date:</label>
+                        <input type="text" id="datepicker" class="bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-600" placeholder="Choose date">
+                    </div>
+                    <button onclick="loadHistoricalData()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg transition flex items-center gap-2">
+                        <i class="fas fa-history"></i> 
+                        <span>Load Historical</span>
+                    </button>
+                    <button onclick="loadLiveData()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition flex items-center gap-2">
+                        <i class="fas fa-broadcast-tower"></i> 
+                        <span>Live Mode</span>
+                    </button>
+                </div>
+            </div>
+            <div class="text-sm text-gray-400">
+                <i class="fas fa-info-circle"></i> Select any date to review historical market performance. Markets are displayed according to their actual trading hours.
+            </div>
+        </div>
+        
+        <!-- Market Status Indicators -->
+        <div class="grid grid-cols-3 gap-4 mb-6">
+            <div id="asia-status" class="market-card rounded-xl p-4 text-center">
+                <h3 class="text-lg font-semibold text-blue-400 mb-2">🌏 Asia Pacific</h3>
+                <div class="text-white text-sm">
+                    <span id="asia-time-range">09:00 - 17:00 AEST</span>
+                </div>
+                <div id="asia-status-indicator" class="mt-2 text-sm font-medium">
+                    <span class="text-gray-400">Checking...</span>
+                </div>
+            </div>
+            
+            <div id="europe-status" class="market-card rounded-xl p-4 text-center">
+                <h3 class="text-lg font-semibold text-green-400 mb-2">🌍 Europe</h3>
+                <div class="text-white text-sm">
+                    <span id="europe-time-range">18:00 - 02:30 AEST</span>
+                </div>
+                <div id="europe-status-indicator" class="mt-2 text-sm font-medium">
+                    <span class="text-gray-400">Checking...</span>
+                </div>
+            </div>
+            
+            <div id="americas-status" class="market-card rounded-xl p-4 text-center">
+                <h3 class="text-lg font-semibold text-red-400 mb-2">🌎 Americas</h3>
+                <div class="text-white text-sm">
+                    <span id="americas-time-range">00:30 - 07:00 AEST</span>
+                </div>
+                <div id="americas-status-indicator" class="mt-2 text-sm font-medium">
+                    <span class="text-gray-400">Checking...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Enhanced Timeline Chart with Market Hours Overlay -->
+        <div class="market-card rounded-xl p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-white">24-Hour Market Timeline (AEST)</h2>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xs text-white/60">View Mode:</span>
+                        <button onclick="toggleView('24h')" id="view-24h" class="px-3 py-1 bg-blue-600 text-white rounded transition hover:bg-blue-700">24 Hour</button>
+                        <button onclick="toggleView('48h')" id="view-48h" class="px-3 py-1 bg-gray-700 text-white rounded transition hover:bg-gray-600">48 Hour</button>
+                        <button onclick="toggleView('week')" id="view-week" class="px-3 py-1 bg-gray-700 text-white rounded transition hover:bg-gray-600">Week</button>
+                    </div>
+                </div>
+            </div>
+            <div class="text-sm text-gray-400 mb-2 flex items-center justify-between">
+                <span>Shows % change from previous close • Updates every 5 minutes • Markets displayed in their actual trading hours</span>
+                <div class="flex items-center space-x-4">
+                    <span class="flex items-center"><span class="w-3 h-3 bg-blue-500 mr-1"></span>Asia</span>
+                    <span class="flex items-center"><span class="w-3 h-3 bg-green-500 mr-1"></span>Europe</span>
+                    <span class="flex items-center"><span class="w-3 h-3 bg-red-500 mr-1"></span>Americas</span>
+                </div>
+            </div>
+            <div id="timeline-chart" style="height: 500px; position: relative;"></div>
+        </div>
+
+        <!-- Index Selection Panel with Region Filters -->
+        <div class="market-card rounded-xl p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-white">Select Markets to Track</h2>
+                <div class="flex gap-2">
+                    <button onclick="selectRegion('asia')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition">
+                        <i class="fas fa-globe-asia"></i> Asia Only
+                    </button>
+                    <button onclick="selectRegion('europe')" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition">
+                        <i class="fas fa-globe-europe"></i> Europe Only
+                    </button>
+                    <button onclick="selectRegion('americas')" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition">
+                        <i class="fas fa-globe-americas"></i> Americas Only
+                    </button>
+                    <button onclick="selectAll()" class="select-all-btn text-white px-4 py-2 rounded-lg transition">
+                        <i class="fas fa-check-square"></i> All Markets
+                    </button>
+                    <button onclick="deselectAll()" class="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition">
+                        <i class="fas fa-square"></i> Clear
+                    </button>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Asia Pacific -->
+                <div id="asia-panel" class="p-4 rounded-lg transition-all">
+                    <h3 class="text-lg font-medium text-blue-400 mb-3">🌏 Asia Pacific</h3>
+                    <div class="space-y-2">
+                        <label class="flex items-center text-white/90 hover:text-white cursor-pointer">
+                            <input type="checkbox" class="index-checkbox" value="^AXJO" data-name="ASX 200" data-region="asia">
+                            <span class="ml-2">ASX 200 (Sydney)</span>
+                        </label>
+                        <label class="flex items-center text-white/90 hover:text-white cursor-pointer">
+                            <input type="checkbox" class="index-checkbox" value="^N225" data-name="Nikkei 225" data-region="asia">
+                            <span class="ml-2">Nikkei 225 (Tokyo)</span>
+                        </label>
+                        <label class="flex items-center text-white/90 hover:text-white cursor-pointer">
+                            <input type="checkbox" class="index-checkbox" value="^HSI" data-name="Hang Seng" data-region="asia">
+                            <span class="ml-2">Hang Seng (Hong Kong)</span>
+                        </label>
+                        <label class="flex items-center text-white/90 hover:text-white cursor-pointer">
+                            <input type="checkbox" class="index-checkbox" value="000001.SS" data-name="Shanghai" data-region="asia">
+                            <span class="ml-2">Shanghai Composite</span>
+                        </label>
+                        <label class="flex items-center text-white/90 hover:text-white cursor-pointer">
+                            <input type="checkbox" class="index-checkbox" value="^KS11" data-name="KOSPI" data-region="asia">
+                            <span class="ml-2">KOSPI (Seoul)</span>
+                        </label>
+                        <label class="flex items-center text-white/90 hover:text-white cursor-pointer">
+                            <input type="checkbox" class="index-checkbox" value="^STI" data-name="STI" data-region="asia">
+                            <span class="ml-2">STI (Singapore)</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Europe -->
+                <div id="europe-panel" class="p-4 rounded-lg transition-all">
+                    <h3 class="text-lg font-medium text-green-400 mb-3">🌍 Europe</h3>
+                    <div class="space-y-2">
+                        <label class="flex items-center text-white/90 hover:text-white cursor-pointer">
+                            <input type="checkbox" class="index-checkbox" value="^FTSE" data-name="FTSE 100" data-region="europe">
+                            <span class="ml-2">FTSE 100 (London)</span>
+                        </label>
+                        <label class="flex items-center text-white/90 hover:text-white cursor-pointer">
+                            <input type="checkbox" class="index-checkbox" value="^GDAXI" data-name="DAX" data-region="europe">
+                            <span class="ml-2">DAX (Frankfurt)</span>
+                        </label>
+                        <label class="flex items-center text-white/90 hover:text-white cursor-pointer">
+                            <input type="checkbox" class="index-checkbox" value="^FCHI" data-name="CAC 40" data-region="europe">
+                            <span class="ml-2">CAC 40 (Paris)</span>
+                        </label>
+                        <label class="flex items-center text-white/90 hover:text-white cursor-pointer">
+                            <input type="checkbox" class="index-checkbox" value="^STOXX50E" data-name="Euro Stoxx 50" data-region="europe">
+                            <span class="ml-2">Euro Stoxx 50</span>
+                        </label>
+                        <label class="flex items-center text-white/90 hover:text-white cursor-pointer">
+                            <input type="checkbox" class="index-checkbox" value="^IBEX" data-name="IBEX 35" data-region="europe">
+                            <span class="ml-2">IBEX 35 (Madrid)</span>
+                        </label>
+                        <label class="flex items-center text-white/90 hover:text-white cursor-pointer">
+                            <input type="checkbox" class="index-checkbox" value="^AEX" data-name="AEX" data-region="europe">
+                            <span class="ml-2">AEX (Amsterdam)</span>
+                        </label>
+                    </div>
+                </div>
+                
+                <!-- Americas -->
+                <div id="americas-panel" class="p-4 rounded-lg transition-all">
+                    <h3 class="text-lg font-medium text-red-400 mb-3">🌎 Americas</h3>
+                    <div class="space-y-2">
+                        <label class="flex items-center text-white/90 hover:text-white cursor-pointer">
+                            <input type="checkbox" class="index-checkbox" value="^DJI" data-name="Dow Jones" data-region="americas">
+                            <span class="ml-2">Dow Jones (New York)</span>
+                        </label>
+                        <label class="flex items-center text-white/90 hover:text-white cursor-pointer">
+                            <input type="checkbox" class="index-checkbox" value="^GSPC" data-name="S&P 500" data-region="americas">
+                            <span class="ml-2">S&P 500 (New York)</span>
+                        </label>
+                        <label class="flex items-center text-white/90 hover:text-white cursor-pointer">
+                            <input type="checkbox" class="index-checkbox" value="^IXIC" data-name="NASDAQ" data-region="americas">
+                            <span class="ml-2">NASDAQ (New York)</span>
+                        </label>
+                        <label class="flex items-center text-white/90 hover:text-white cursor-pointer">
+                            <input type="checkbox" class="index-checkbox" value="^RUT" data-name="Russell 2000" data-region="americas">
+                            <span class="ml-2">Russell 2000</span>
+                        </label>
+                        <label class="flex items-center text-white/90 hover:text-white cursor-pointer">
+                            <input type="checkbox" class="index-checkbox" value="^GSPTSE" data-name="TSX" data-region="americas">
+                            <span class="ml-2">TSX (Toronto)</span>
+                        </label>
+                        <label class="flex items-center text-white/90 hover:text-white cursor-pointer">
+                            <input type="checkbox" class="index-checkbox" value="^BVSP" data-name="Bovespa" data-region="americas">
+                            <span class="ml-2">Bovespa (São Paulo)</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Current Values Display -->
+        <div class="market-card rounded-xl p-6">
+            <h2 class="text-xl font-semibold text-white mb-4">Current Market Values</h2>
+            <div id="current-values" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="text-center text-gray-400 col-span-full py-8">
+                    <i class="fas fa-info-circle text-4xl mb-2"></i>
+                    <p>Select indices to view real-time market data</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Historical Data Summary (shown when viewing past dates) -->
+        <div id="historical-summary" class="market-card rounded-xl p-6 mt-6 hidden">
+            <h2 class="text-xl font-semibold text-white mb-4">Historical Performance Summary</h2>
+            <div id="historical-stats" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Stats will be populated here -->
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Configuration and State
+        let marketData = {};
+        let selectedIndices = [];
+        let currentView = '24h';
+        let chartInstance = null;
+        let updateInterval = null;
+        let isHistoricalMode = false;
+        let selectedDate = null;
+        let datepickerInstance = null;
+        
+        // Get backend URL from config or use default
+        const BACKEND_URL = window.CONFIG?.BACKEND_URL || 'http://localhost:8000';
+        
+        // Market Hours in AEST (UTC+10) - More detailed
+        const marketHours = {
+            asia: {
+                '^AXJO': { open: 10.0, close: 16.0, name: 'Sydney', timezone: 'AEST' },
+                '^N225': { open: 10.0, close: 15.5, name: 'Tokyo', timezone: 'JST' },
+                '^HSI': { open: 11.5, close: 17.0, name: 'Hong Kong', timezone: 'HKT' },
+                '000001.SS': { open: 11.5, close: 16.0, name: 'Shanghai', timezone: 'CST' },
+                '^KS11': { open: 10.0, close: 15.5, name: 'Seoul', timezone: 'KST' },
+                '^STI': { open: 11.0, close: 18.0, name: 'Singapore', timezone: 'SGT' }
+            },
+            europe: {
+                '^FTSE': { open: 18.0, close: 2.5, name: 'London', timezone: 'BST' },
+                '^GDAXI': { open: 18.0, close: 2.5, name: 'Frankfurt', timezone: 'CET' },
+                '^FCHI': { open: 18.0, close: 2.5, name: 'Paris', timezone: 'CET' },
+                '^STOXX50E': { open: 18.0, close: 2.5, name: 'Europe', timezone: 'CET' },
+                '^IBEX': { open: 18.0, close: 2.5, name: 'Madrid', timezone: 'CET' },
+                '^AEX': { open: 18.0, close: 2.5, name: 'Amsterdam', timezone: 'CET' }
+            },
+            americas: {
+                '^DJI': { open: 0.5, close: 7.0, name: 'New York', timezone: 'EST' },
+                '^GSPC': { open: 0.5, close: 7.0, name: 'New York', timezone: 'EST' },
+                '^IXIC': { open: 0.5, close: 7.0, name: 'New York', timezone: 'EST' },
+                '^RUT': { open: 0.5, close: 7.0, name: 'New York', timezone: 'EST' },
+                '^GSPTSE': { open: 0.5, close: 7.0, name: 'Toronto', timezone: 'EST' },
+                '^BVSP': { open: 0.0, close: 8.0, name: 'São Paulo', timezone: 'BRT' }
+            }
+        };
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeDatePicker();
+            initializeCheckboxListeners();
+            updateTimeDisplays();
+            setInterval(updateTimeDisplays, 1000);
+            updateMarketStatuses();
+            setInterval(updateMarketStatuses, 60000);
+            initializeChart();
+            
+            // Auto-select some default markets
+            selectDefaultMarkets();
+        });
+        
+        // Initialize date picker with calendar
+        function initializeDatePicker() {
+            datepickerInstance = flatpickr("#datepicker", {
+                enableTime: false,
+                dateFormat: "Y-m-d",
+                maxDate: "today",
+                minDate: new Date().fp_incr(-365), // Past year only
+                defaultDate: new Date(),
+                onChange: function(selectedDates, dateStr, instance) {
+                    selectedDate = selectedDates[0];
+                }
+            });
+        }
+        
+        // Load historical data for selected date
+        function loadHistoricalData() {
+            if (!selectedDate) {
+                alert("Please select a date first");
+                return;
+            }
+            
+            isHistoricalMode = true;
+            updateDataStatus('historical');
+            
+            // Show historical summary
+            document.getElementById('historical-summary').classList.remove('hidden');
+            
+            // Generate historical data for the selected date
+            generateHistoricalData(selectedDate);
+            
+            // Update chart
+            updateChart();
+            
+            // Update status text
+            const dateStr = selectedDate.toLocaleDateString('en-AU', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+            
+            document.getElementById('data-status').innerHTML = 
+                `<i class="fas fa-calendar-alt"></i><span>Historical: ${dateStr}</span>`;
+        }
+        
+        // Switch back to live mode
+        function loadLiveData() {
+            isHistoricalMode = false;
+            updateDataStatus('live');
+            
+            // Hide historical summary
+            document.getElementById('historical-summary').classList.add('hidden');
+            
+            // Clear historical data
+            selectedDate = null;
+            datepickerInstance.clear();
+            
+            // Reload live data
+            fetchMarketData();
+            
+            // Restart auto-refresh
+            if (!updateInterval) {
+                updateInterval = setInterval(fetchMarketData, 300000);
+            }
+        }
+        
+        // Generate historical data for a specific date
+        function generateHistoricalData(date) {
+            const dayOfWeek = date.getDay();
+            
+            // Skip weekends
+            if (dayOfWeek === 0 || dayOfWeek === 6) {
+                alert("Markets are closed on weekends. Please select a weekday.");
+                return;
+            }
+            
+            // Generate data for each selected index
+            selectedIndices.forEach(symbol => {
+                const marketInfo = getMarketInfo(symbol);
+                if (!marketInfo) return;
+                
+                const basePrice = getBasePrice(symbol);
+                const volatility = 0.02;
+                const trend = Math.random() * 0.02 - 0.01; // Random trend
+                
+                // Generate full day of 5-minute data
+                const prices = [];
+                let currentPrice = basePrice;
+                
+                for (let i = 0; i < 288; i++) { // 288 5-minute periods in 24 hours
+                    const hour = Math.floor(i * 5 / 60);
+                    const minute = (i * 5) % 60;
+                    
+                    // Check if market is open
+                    const isMarketOpen = isWithinMarketHours(symbol, hour + minute / 60);
+                    
+                    if (isMarketOpen) {
+                        // Active trading
+                        const change = (Math.random() - 0.5) * volatility * basePrice;
+                        currentPrice += change + trend * basePrice;
+                    } else {
+                        // After hours - minimal movement
+                        const change = (Math.random() - 0.5) * volatility * basePrice * 0.1;
+                        currentPrice += change;
+                    }
+                    
+                    prices.push({
+                        time: `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`,
+                        price: currentPrice,
+                        volume: isMarketOpen ? Math.floor(Math.random() * 1000000) : Math.floor(Math.random() * 10000)
+                    });
+                }
+                
+                marketData[symbol] = {
+                    name: marketInfo.name,
+                    region: marketInfo.region,
+                    prices: prices,
+                    percentageData: calculatePercentageChanges(prices, basePrice),
+                    dayStats: calculateDayStats(prices, basePrice)
+                };
+            });
+            
+            // Update historical summary
+            updateHistoricalSummary();
+        }
+        
+        // Calculate percentage changes from base price
+        function calculatePercentageChanges(prices, basePrice) {
+            return prices.map(p => ((p.price - basePrice) / basePrice * 100));
+        }
+        
+        // Calculate daily statistics
+        function calculateDayStats(prices, basePrice) {
+            const tradingPrices = prices.filter((p, i) => {
+                const hour = Math.floor(i * 5 / 60);
+                return hour >= 9 && hour < 17; // Approximate trading hours
+            });
+            
+            const allPrices = prices.map(p => p.price);
+            const high = Math.max(...allPrices);
+            const low = Math.min(...allPrices);
+            const close = allPrices[allPrices.length - 1];
+            const change = close - basePrice;
+            const changePercent = (change / basePrice) * 100;
+            const totalVolume = prices.reduce((sum, p) => sum + p.volume, 0);
+            
+            return {
+                open: basePrice,
+                high: high,
+                low: low,
+                close: close,
+                change: change,
+                changePercent: changePercent,
+                volume: totalVolume
+            };
+        }
+        
+        // Update historical summary display
+        function updateHistoricalSummary() {
+            const summaryHtml = Object.keys(marketData).map(symbol => {
+                const data = marketData[symbol];
+                const stats = data.dayStats;
+                const changeClass = stats.change >= 0 ? 'positive' : 'negative';
+                
+                return `
+                    <div class="bg-gray-800/50 p-4 rounded-lg">
+                        <h3 class="text-white font-semibold mb-2">${data.name}</h3>
+                        <div class="grid grid-cols-2 gap-2 text-sm">
+                            <div class="text-gray-400">Open:</div>
+                            <div class="text-white">$${stats.open.toFixed(2)}</div>
+                            <div class="text-gray-400">Close:</div>
+                            <div class="text-white">$${stats.close.toFixed(2)}</div>
+                            <div class="text-gray-400">High:</div>
+                            <div class="text-white">$${stats.high.toFixed(2)}</div>
+                            <div class="text-gray-400">Low:</div>
+                            <div class="text-white">$${stats.low.toFixed(2)}</div>
+                            <div class="text-gray-400">Change:</div>
+                            <div class="${changeClass}">${stats.change >= 0 ? '+' : ''}${stats.changePercent.toFixed(2)}%</div>
+                            <div class="text-gray-400">Volume:</div>
+                            <div class="text-white">${(stats.volume / 1000000).toFixed(1)}M</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            document.getElementById('historical-stats').innerHTML = summaryHtml;
+        }
+        
+        // Get market info for a symbol
+        function getMarketInfo(symbol) {
+            for (const region in marketHours) {
+                if (marketHours[region][symbol]) {
+                    return {
+                        ...marketHours[region][symbol],
+                        region: region
+                    };
+                }
+            }
+            return null;
+        }
+        
+        // Check if time is within market hours
+        function isWithinMarketHours(symbol, decimalHour) {
+            const marketInfo = getMarketInfo(symbol);
+            if (!marketInfo) return false;
+            
+            if (marketInfo.close > marketInfo.open) {
+                // Normal hours (e.g., Asia)
+                return decimalHour >= marketInfo.open && decimalHour < marketInfo.close;
+            } else {
+                // Overnight hours (e.g., Americas)
+                return decimalHour >= marketInfo.open || decimalHour < marketInfo.close;
+            }
+        }
+        
+        // Get base price for a symbol
+        function getBasePrice(symbol) {
+            const basePrices = {
+                '^AXJO': 7500,
+                '^N225': 38000,
+                '^HSI': 18500,
+                '000001.SS': 3200,
+                '^KS11': 2600,
+                '^STI': 3200,
+                '^FTSE': 7700,
+                '^GDAXI': 18000,
+                '^FCHI': 7600,
+                '^STOXX50E': 4900,
+                '^IBEX': 11200,
+                '^AEX': 900,
+                '^DJI': 38500,
+                '^GSPC': 5000,
+                '^IXIC': 17500,
+                '^RUT': 2050,
+                '^GSPTSE': 21500,
+                '^BVSP': 130000
+            };
+            return basePrices[symbol] || 1000;
+        }
+        
+        // Select region-specific markets
+        function selectRegion(region) {
+            deselectAll();
+            const checkboxes = document.querySelectorAll(`.index-checkbox[data-region="${region}"]`);
+            checkboxes.forEach(cb => {
+                cb.checked = true;
+                cb.dispatchEvent(new Event('change'));
+            });
+        }
+        
+        // Select default markets on load
+        function selectDefaultMarkets() {
+            const defaults = ['^AXJO', '^DJI', '^FTSE'];
+            defaults.forEach(symbol => {
+                const checkbox = document.querySelector(`.index-checkbox[value="${symbol}"]`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                    checkbox.dispatchEvent(new Event('change'));
+                }
+            });
+        }
+        
+        // Select All / Deselect All functionality
+        function selectAll() {
+            const checkboxes = document.querySelectorAll('.index-checkbox');
+            checkboxes.forEach(cb => {
+                if (!cb.checked) {
+                    cb.checked = true;
+                    cb.dispatchEvent(new Event('change'));
+                }
+            });
+        }
+        
+        function deselectAll() {
+            const checkboxes = document.querySelectorAll('.index-checkbox');
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    cb.checked = false;
+                    cb.dispatchEvent(new Event('change'));
+                }
+            });
+        }
+        
+        // Initialize checkbox listeners
+        function initializeCheckboxListeners() {
+            const checkboxes = document.querySelectorAll('.index-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    const symbol = e.target.value;
+                    if (e.target.checked) {
+                        if (!selectedIndices.includes(symbol)) {
+                            selectedIndices.push(symbol);
+                        }
+                    } else {
+                        selectedIndices = selectedIndices.filter(s => s !== symbol);
+                    }
+                    
+                    if (!isHistoricalMode) {
+                        fetchMarketData();
+                    } else if (selectedDate) {
+                        generateHistoricalData(selectedDate);
+                    }
+                    updateChart();
+                });
+            });
+        }
+        
+        // Update time displays
+        function updateTimeDisplays() {
+            const now = new Date();
+            
+            // Current time
+            document.getElementById('current-time').textContent = 
+                now.toLocaleTimeString('en-US', { timeZone: 'UTC' }) + ' UTC';
+            
+            // AEST time
+            document.getElementById('aest-time').textContent = 
+                now.toLocaleTimeString('en-AU', { timeZone: 'Australia/Sydney' }) + ' AEST';
+        }
+        
+        // Update market statuses
+        function updateMarketStatuses() {
+            const now = new Date();
+            const aestHour = parseInt(now.toLocaleTimeString('en-AU', { 
+                timeZone: 'Australia/Sydney', 
+                hour: '2-digit', 
+                hour12: false 
+            }));
+            
+            // Asia status
+            const asiaOpen = aestHour >= 9 && aestHour < 17;
+            document.getElementById('asia-status-indicator').innerHTML = asiaOpen ?
+                '<span class="text-green-400"><i class="fas fa-circle"></i> OPEN</span>' :
+                '<span class="text-red-400"><i class="fas fa-moon"></i> CLOSED</span>';
+            
+            // Europe status
+            const europeOpen = aestHour >= 18 || aestHour < 3;
+            document.getElementById('europe-status-indicator').innerHTML = europeOpen ?
+                '<span class="text-green-400"><i class="fas fa-circle"></i> OPEN</span>' :
+                '<span class="text-red-400"><i class="fas fa-moon"></i> CLOSED</span>';
+            
+            // Americas status
+            const americasOpen = aestHour < 7;
+            document.getElementById('americas-status-indicator').innerHTML = americasOpen ?
+                '<span class="text-green-400"><i class="fas fa-circle"></i> OPEN</span>' :
+                '<span class="text-red-400"><i class="fas fa-moon"></i> CLOSED</span>';
+        }
+        
+        // Toggle view mode
+        function toggleView(view) {
+            currentView = view;
+            
+            // Update button styles
+            ['24h', '48h', 'week'].forEach(v => {
+                const btn = document.getElementById(`view-${v}`);
+                if (v === view) {
+                    btn.className = 'px-3 py-1 bg-blue-600 text-white rounded transition hover:bg-blue-700';
+                } else {
+                    btn.className = 'px-3 py-1 bg-gray-700 text-white rounded transition hover:bg-gray-600';
+                }
+            });
+            
+            updateChart();
+        }
+        
+        // Fetch market data
+        async function fetchMarketData() {
+            if (selectedIndices.length === 0) return;
+            
+            updateDataStatus('loading');
+            
+            try {
+                // Fetch data for each selected index
+                const promises = selectedIndices.map(async symbol => {
+                    const response = await fetch(`${BACKEND_URL}/api/stock/${symbol}`);
+                    if (!response.ok) throw new Error(`Failed to fetch ${symbol}`);
+                    const data = await response.json();
+                    
+                    marketData[symbol] = {
+                        ...data,
+                        percentageData: processMarketData(data.history || [])
+                    };
+                });
+                
+                await Promise.all(promises);
+                updateDataStatus('live');
+                updateCurrentValues();
+                updateChart();
+            } catch (error) {
+                console.error('Error fetching market data:', error);
+                updateDataStatus('error');
+                
+                // Use simulated data as fallback
+                generateSimulatedData();
+            }
+        }
+        
+        // Generate simulated data for demonstration
+        function generateSimulatedData() {
+            selectedIndices.forEach(symbol => {
+                const basePrice = getBasePrice(symbol);
+                const prices = [];
+                let currentPrice = basePrice;
+                
+                for (let i = 0; i < 288; i++) {
+                    const change = (Math.random() - 0.5) * 0.02 * basePrice;
+                    currentPrice += change;
+                    prices.push(currentPrice);
+                }
+                
+                marketData[symbol] = {
+                    name: document.querySelector(`input[value="${symbol}"]`).getAttribute('data-name'),
+                    region: document.querySelector(`input[value="${symbol}"]`).getAttribute('data-region'),
+                    price: currentPrice,
+                    previousClose: basePrice,
+                    change: currentPrice - basePrice,
+                    changePercent: ((currentPrice - basePrice) / basePrice) * 100,
+                    percentageData: prices.map(p => ((p - basePrice) / basePrice) * 100)
+                };
+            });
+            
+            updateDataStatus('live');
+            updateCurrentValues();
+            updateChart();
+        }
+        
+        // Process market data to percentage changes
+        function processMarketData(history) {
+            if (!history || history.length === 0) return [];
+            
+            const basePrice = history[0];
+            return history.map(price => ((price - basePrice) / basePrice) * 100);
+        }
+        
+        // Update current values display
+        function updateCurrentValues() {
+            if (Object.keys(marketData).length === 0) {
+                document.getElementById('current-values').innerHTML = `
+                    <div class="text-center text-gray-400 col-span-full py-8">
+                        <i class="fas fa-info-circle text-4xl mb-2"></i>
+                        <p>Select indices to view market data</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const valuesHtml = Object.keys(marketData).map(symbol => {
+                const data = marketData[symbol];
+                const changeClass = data.changePercent >= 0 ? 'positive' : 'negative';
+                const changeIcon = data.changePercent >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+                
+                return `
+                    <div class="bg-gray-800/50 p-4 rounded-lg">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="text-white font-semibold">${data.name}</h3>
+                            <span class="text-xs text-gray-400">${symbol}</span>
+                        </div>
+                        <div class="text-2xl text-white font-bold mb-2">
+                            $${(data.price || 0).toFixed(2)}
+                        </div>
+                        <div class="flex items-center ${changeClass}">
+                            <i class="fas ${changeIcon} mr-2"></i>
+                            <span class="font-medium">
+                                ${data.changePercent >= 0 ? '+' : ''}${(data.changePercent || 0).toFixed(2)}%
+                            </span>
+                            <span class="ml-2 text-sm">
+                                (${data.change >= 0 ? '+' : ''}${(data.change || 0).toFixed(2)})
+                            </span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            document.getElementById('current-values').innerHTML = valuesHtml;
+        }
+        
+        // Update data status
+        function updateDataStatus(status) {
+            const statusEl = document.getElementById('data-status');
+            if (status === 'loading') {
+                statusEl.className = 'data-status';
+                statusEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>Loading...</span>';
+            } else if (status === 'live') {
+                statusEl.className = 'data-status live';
+                statusEl.innerHTML = '<i class="fas fa-circle"></i><span>Live Data</span>';
+            } else if (status === 'historical') {
+                statusEl.className = 'data-status historical';
+                statusEl.innerHTML = '<i class="fas fa-calendar-alt"></i><span>Historical</span>';
+            } else if (status === 'error') {
+                statusEl.className = 'data-status error';
+                statusEl.innerHTML = '<i class="fas fa-exclamation-circle"></i><span>Data Error</span>';
+            }
+        }
+        
+        // Get color for region
+        function getColorForRegion(region) {
+            const colors = {
+                'asia': '#3b82f6',
+                'europe': '#10b981',
+                'americas': '#ef4444'
+            };
+            return colors[region] || '#8b5cf6';
+        }
+        
+        // Initialize Chart
+        function initializeChart() {
+            const chartDom = document.getElementById('timeline-chart');
+            chartInstance = echarts.init(chartDom, 'dark');
+            updateChart();
+        }
+        
+        // Update Chart
+        function updateChart() {
+            if (!chartInstance) return;
+            
+            const hours = currentView === 'week' ? 168 : (currentView === '48h' ? 48 : 24);
+            const pointsPerHour = 12; // 5-minute intervals
+            const totalPoints = hours * pointsPerHour;
+            const xAxisData = [];
+            
+            // Generate x-axis labels
+            for (let i = 0; i < totalPoints; i++) {
+                const totalMinutes = i * 5;
+                const hourOffset = Math.floor(totalMinutes / 60);
+                const minute = totalMinutes % 60;
+                const hour = (9 + hourOffset) % 24;
+                const day = Math.floor((9 + hourOffset) / 24);
+                
+                let dayLabel;
+                if (currentView === '24h') {
+                    dayLabel = '';
+                } else if (currentView === '48h') {
+                    dayLabel = day === 0 ? 'Yesterday ' : 'Today ';
+                } else {
+                    const daysAgo = Math.floor(day);
+                    dayLabel = daysAgo === 0 ? 'Today ' : `${daysAgo}d ago `;
+                }
+                
+                // Show label every hour
+                if (minute === 0) {
+                    xAxisData.push(`${dayLabel}${hour}:00`);
+                } else {
+                    xAxisData.push('');
+                }
+            }
+            
+            // Prepare series data
+            const series = selectedIndices.map(symbol => {
+                const data = marketData[symbol];
+                if (!data) return null;
+                
+                const color = getColorForRegion(data.region);
+                
+                return {
+                    name: data.name,
+                    type: 'line',
+                    smooth: true,
+                    symbol: 'none',
+                    lineStyle: {
+                        width: 2,
+                        color: color
+                    },
+                    areaStyle: {
+                        color: {
+                            type: 'linear',
+                            x: 0, y: 0, x2: 0, y2: 1,
+                            colorStops: [
+                                { offset: 0, color: color + '40' },
+                                { offset: 1, color: color + '10' }
+                            ]
+                        }
+                    },
+                    data: data.percentageData || []
+                };
+            }).filter(s => s !== null);
+            
+            // Market zone backgrounds
+            const markAreas = [];
+            if (currentView === '24h') {
+                markAreas.push(
+                    {
+                        itemStyle: { color: 'rgba(59, 130, 246, 0.05)' },
+                        data: [[{ xAxis: 0 }, { xAxis: 96 }]]  // Asia
+                    },
+                    {
+                        itemStyle: { color: 'rgba(16, 185, 129, 0.05)' },
+                        data: [[{ xAxis: 108 }, { xAxis: 204 }]]  // Europe
+                    },
+                    {
+                        itemStyle: { color: 'rgba(239, 68, 68, 0.05)' },
+                        data: [[{ xAxis: 180 }, { xAxis: 288 }]]  // Americas
+                    }
+                );
+            }
+            
+            const option = {
+                backgroundColor: 'transparent',
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    formatter: function(params) {
+                        let result = `<div style="font-weight: bold;">${params[0].axisValue}</div>`;
+                        params.forEach(p => {
+                            const value = p.value !== undefined ? p.value.toFixed(2) : 'N/A';
+                            result += `<div>${p.marker} ${p.seriesName}: ${value}%</div>`;
+                        });
+                        return result;
+                    }
+                },
+                grid: {
+                    left: '3%',
+                    right: '3%',
+                    bottom: '10%',
+                    top: '5%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: xAxisData,
+                    axisLabel: {
+                        interval: 'auto',
+                        rotate: 45,
+                        color: '#9ca3af'
+                    },
+                    axisLine: { lineStyle: { color: '#4b5563' } },
+                    splitLine: { show: false }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: {
+                        formatter: '{value}%',
+                        color: '#9ca3af'
+                    },
+                    axisLine: { lineStyle: { color: '#4b5563' } },
+                    splitLine: {
+                        lineStyle: { color: '#374151', type: 'dashed' }
+                    },
+                    axisPointer: {
+                        label: { formatter: '{value}%' }
+                    }
+                },
+                series: series,
+                markArea: {
+                    data: markAreas
+                },
+                dataZoom: currentView === 'week' ? [
+                    {
+                        type: 'inside',
+                        start: 70,
+                        end: 100
+                    },
+                    {
+                        type: 'slider',
+                        start: 70,
+                        end: 100,
+                        backgroundColor: 'rgba(0,0,0,0.3)',
+                        borderColor: '#4b5563',
+                        handleStyle: { color: '#3b82f6' }
+                    }
+                ] : []
+            };
+            
+            chartInstance.setOption(option);
+        }
+        
+        // Refresh data
+        function refreshData() {
+            const icon = document.getElementById('refresh-icon');
+            icon.classList.add('fa-spin');
+            
+            if (isHistoricalMode && selectedDate) {
+                generateHistoricalData(selectedDate);
+            } else {
+                fetchMarketData();
+            }
+            
+            setTimeout(() => {
+                icon.classList.remove('fa-spin');
+            }, 1000);
+        }
+        
+        // Window resize handler
+        window.addEventListener('resize', () => {
+            if (chartInstance) {
+                chartInstance.resize();
+            }
+        });
+    </script>
+</body>
+</html>
