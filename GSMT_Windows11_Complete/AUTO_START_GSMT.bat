@@ -1,4 +1,5 @@
 @echo off
+REM Ensure this file runs as batch, not opened in notepad
 title GSMT Ver 8.1.3 - Auto Start with Landing Dashboard
 color 0A
 cls
@@ -135,9 +136,15 @@ timeout /t 3 /nobreak >nul
 echo [OK] Servers ready
 echo.
 
-:: Open the landing dashboard
-echo [STEP 8] Opening GSMT Landing Dashboard...
-start "" "%~dp0frontend\landing_dashboard.html"
+:: Copy fixed config to all frontend files
+echo [STEP 8] Applying configuration fixes...
+copy /Y "%~dp0frontend\config_fixed.js" "%~dp0frontend\config.js" >nul 2>&1
+echo [OK] Configuration updated
+echo.
+
+:: Open the fixed landing dashboard
+echo [STEP 9] Opening GSMT Landing Dashboard...
+start "" "%~dp0frontend\landing_dashboard_fixed.html"
 echo [OK] Dashboard opened in browser
 echo.
 
