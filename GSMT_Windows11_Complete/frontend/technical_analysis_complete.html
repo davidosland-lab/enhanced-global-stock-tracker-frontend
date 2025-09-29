@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Technical Analysis - Candlestick Charts & Indicators</title>
+    <meta name="description" content="Professional stock technical analysis with candlestick charts, RSI, MACD, Bollinger Bands">
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/klinecharts/dist/klinecharts.min.js"></script>
+    <script src="config.js"></script>
+    
+    <style>
+        .chart-container {
+            height: 400px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: white;
+        }
+        .indicator-container {
+            height: 200px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: white;
+        }
+        .market-open { 
+            background: linear-gradient(90deg, #10b981, #34d399); 
+            color: white; 
+        }
+        .market-closed { 
+            background: linear-gradient(90deg, #6b7280, #9ca3af); 
+            color: white; 
+        }
+    </style>
+</head>
+<body class="font-inter bg-gray-50 min-h-screen">
+    
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center">
+                    <h1 class="text-2xl font-bold text-gray-900">
+                        <i class="fas fa-chart-line mr-2 text-blue-600"></i>
+                        Technical Analysis
+                    </h1>
+                    <div class="hidden md:block ml-6">
+                        <span class="text-sm text-gray-600">Candlestick Charts • Technical Indicators</span>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <a href="/" class="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
+                        <i class="fas fa-home mr-1"></i>Home
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        
+        <!-- Controls Section -->
+        <div class="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">
+                <i class="fas fa-cogs mr-2"></i>Analysis Controls
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Symbol Selection -->
+                <div>
+                    <label for="symbol-select" class="block text-sm font-medium text-gray-700 mb-2">Symbol</label>
+                    <div class="flex space-x-2">
+                        <select id="symbol-select" class="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                            <option value="">Select from list...</option>
+                            <option value="^AORD">All Ordinaries (^AORD)</option>
+                            <option value="^AXJO">ASX 200 (^AXJO)</option>
+                            <option value="CBA.AX">Commonwealth Bank (CBA.AX)</option>
+                            <option value="WOW.AX">Woolworths (WOW.AX)</option>
+                            <option value="WBC.AX">Westpac (WBC.AX)</option>
+                            <option value="BHP.AX">BHP Group (BHP.AX)</option>
+                            <option value="RIO.AX">Rio Tinto (RIO.AX)</option>
+                            <option value="CSL.AX">CSL Limited (CSL.AX)</option>
+                            <option value="WES.AX">Wesfarmers (WES.AX)</option>
+                            <option value="TLS.AX">Telstra (TLS.AX)</option>
+                            <option value="^GSPC">S&P 500 (^GSPC)</option>
+                            <option value="^IXIC">NASDAQ (^IXIC)</option>
+                            <option value="^DJI">Dow Jones (^DJI)</option>
+                            <option value="AAPL">Apple (AAPL)</option>
+                            <option value="MSFT">Microsoft (MSFT)</option>
+                            <option value="GOOGL">Google (GOOGL)</option>
+                            <option value="TSLA">Tesla (TSLA)</option>
+                        </select>
+                    </div>
+                    <input 
+                        type="text" 
+                        id="custom-symbol" 
+                        placeholder="Or enter custom symbol (e.g., QAN.AX, META, NVDA)" 
+                        class="w-full mt-2 border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                    >
+                    <p class="text-xs text-gray-500 mt-1">Use dropdown or enter any valid Yahoo Finance symbol</p>
+                </div>
+                
+                <!-- Time Period -->
+                <div>
+                    <label for="time-period" class="block text-sm font-medium text-gray-700 mb-2">Period</label>
+                    <select id="time-period" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                        <option value="1d">1 Day</option>
+                        <option value="5d" selected>5 Days</option>
+                        <option value="1mo">1 Month</option>
+                        <option value="3mo">3 Months</option>
+                        <option value="6mo">6 Months</option>
+                        <option value="1y">1 Year</option>
+                    </select>
+                </div>
+                
+                <!-- Chart Library -->
+                <div>
+                    <label for="chart-library" class="block text-sm font-medium text-gray-700 mb-2">Chart Library</label>
+                    <select id="chart-library" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                        <option value="echarts" selected>ECharts (Recommended)</option>
+                        <option value="klinecharts">KLineCharts</option>
+                    </select>
+                </div>
+                
+                <!-- Analyze Button -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">&nbsp;</label>
+                    <button id="analyze-btn" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                        <i class="fas fa-chart-line mr-2"></i>Analyze
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Section -->
+        <div id="status-section" class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 hidden">
+            <div class="flex items-center">
+                <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                <span id="status-text" class="text-blue-700">Loading analysis...</span>
+            </div>
+        </div>
+
+        <!-- Error Section -->
+        <div id="error-section" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 hidden">
+            <div class="flex items-center">
+                <i class="fas fa-exclamation-triangle text-red-600 mr-2"></i>
+                <span id="error-text" class="text-red-700"></span>
+            </div>
+        </div>
+
+        <!-- Stock Info Section -->
+        <div id="stock-info" class="bg-white rounded-lg shadow-sm p-6 mb-6 hidden">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">
+                <i class="fas fa-info-circle mr-2"></i><span id="stock-name">Stock Information</span>
+            </h2>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-gray-900" id="current-price">-</div>
+                    <div class="text-sm text-gray-600">Current Price</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-lg font-semibold" id="daily-change">-</div>
+                    <div class="text-sm text-gray-600">Daily Change</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-lg font-semibold text-gray-900" id="volume">-</div>
+                    <div class="text-sm text-gray-600">Volume</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-lg font-semibold text-gray-900" id="market-cap">-</div>
+                    <div class="text-sm text-gray-600">Market Cap</div>
+                </div>
+            </div>
+        </div>
+
+
+
+        <!-- Charts Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- Main Candlestick Chart -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                    <i class="fas fa-chart-bar mr-2"></i>Candlestick Chart
+                </h3>
+                <div id="main-chart" class="chart-container"></div>
+            </div>
+
+            <!-- Volume Chart -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                    <i class="fas fa-chart-area mr-2"></i>Volume
+                </h3>
+                <div id="volume-chart" class="chart-container"></div>
+            </div>
+
+            <!-- RSI Indicator -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                    <i class="fas fa-tachometer-alt mr-2"></i>RSI (14-period)
+                </h3>
+                <div id="rsi-chart" class="indicator-container"></div>
+            </div>
+
+            <!-- MACD Indicator -->
+            <div class="bg-white rounded-lg shadow-sm p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                    <i class="fas fa-wave-square mr-2"></i>MACD
+                </h3>
+                <div id="macd-chart" class="indicator-container"></div>
+            </div>
+
+        </div>
+
+        <!-- Technical Analysis Summary -->
+        <div id="technical-summary" class="bg-white rounded-lg shadow-sm p-6 mt-6 hidden">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">
+                <i class="fas fa-brain mr-2"></i>Technical Analysis Summary
+            </h2>
+            <div id="analysis-content" class="space-y-2">
+                <!-- Dynamic content will be inserted here -->
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        class TechnicalAnalysis {
+            constructor() {
+                this.mainChart = null;
+                this.volumeChart = null;
+                this.rsiChart = null;
+                this.macdChart = null;
+                this.currentData = null;
+                this.currentInterval = '1d'; // Default interval
+                
+                this.initializeCharts();
+                this.bindEvents();
+                
+                console.log('🔧 Technical Analysis module initialized');
+            }
+
+            initializeCharts() {
+                // Initialize ECharts instances
+                this.mainChart = echarts.init(document.getElementById('main-chart'));
+                this.volumeChart = echarts.init(document.getElementById('volume-chart'));
+                this.rsiChart = echarts.init(document.getElementById('rsi-chart'));
+                this.macdChart = echarts.init(document.getElementById('macd-chart'));
+                
+                // Set initial empty state
+                this.showEmptyState();
+            }
+
+            bindEvents() {
+                document.getElementById('analyze-btn').addEventListener('click', () => {
+                    this.performAnalysis();
+                });
+                
+                // Auto-analyze on symbol change
+                document.getElementById('symbol-select').addEventListener('change', () => {
+                    this.performAnalysis();
+                });
+                
+                // Auto-adjust interval when period changes
+                document.getElementById('time-period').addEventListener('change', (e) => {
+                    this.adjustIntervalForPeriod(e.target.value);
+                    this.performAnalysis();
+                });
+                
+
+                
+
+                
+                // Auto-analyze default symbol on page load
+                setTimeout(() => {
+                    console.log('🚀 Auto-analyzing default symbol...');
+                    this.performAnalysis();
+                }, 1000);
+            }
+
+            showStatus(message) {
+                document.getElementById('status-text').textContent = message;
+                document.getElementById('status-section').classList.remove('hidden');
+                document.getElementById('error-section').classList.add('hidden');
+            }
+
+            showError(message) {
+                document.getElementById('error-text').textContent = message;
+                document.getElementById('error-section').classList.remove('hidden');
+                document.getElementById('status-section').classList.add('hidden');
+            }
+
+            hideStatus() {
+                document.getElementById('status-section').classList.add('hidden');
+                document.getElementById('error-section').classList.add('hidden');
+            }
+
+            showEmptyState() {
+                const emptyOption = {
+                    title: {
+                        text: 'Select a symbol to start analysis',
+                        left: 'center',
+                        top: 'middle',
+                        textStyle: { color: '#9CA3AF', fontSize: 14 }
+                    }
+                };
+                
+                this.mainChart.setOption(emptyOption);
+                this.volumeChart.setOption(emptyOption);
+                this.rsiChart.setOption(emptyOption);
+                this.macdChart.setOption(emptyOption);
+            }
+
+            adjustIntervalForPeriod(period) {
+                // Automatically set interval to 5 minutes when 1 day is selected
+                if (period === '1d') {
+                    console.log('📅 1 day selected - setting interval to 5 minutes');
+                    // For 1 day period, use 5-minute intervals for more granular data
+                    this.currentInterval = '5m';
+                } else {
+                    // For longer periods, use daily intervals
+                    this.currentInterval = '1d';
+                }
+                
+                console.log(`⏱️ Interval adjusted to: ${this.currentInterval} for period: ${period}`);
+            }
+
+            async performAnalysis() {
+                // Get symbol from dropdown or custom input
+                const dropdownSymbol = document.getElementById('symbol-select').value;
+                const customSymbol = document.getElementById('custom-symbol').value.trim().toUpperCase();
+                const symbol = customSymbol || dropdownSymbol;
+                const period = document.getElementById('time-period').value;
+                
+                if (!symbol) {
+                    this.showError('Please select a symbol from the dropdown or enter a custom symbol');
+                    return;
+                }
+                
+                // Adjust interval based on period
+                this.adjustIntervalForPeriod(period);
+                
+                console.log(`🔍 Starting technical analysis for ${symbol} (${period}, ${this.currentInterval})`);
+                
+                this.showStatus(`Fetching data for ${symbol}...`);
+                
+                try {
+                    // Get the base URL dynamically for cross-origin compatibility
+                    // Use local backend server
+                    const baseUrl = window.CONFIG?.BACKEND_URL || 'http://localhost:8000';
+                    // Fetch candlestick data from our API with dynamic interval
+                    const response = await fetch(`${baseUrl}/api/technical/candlestick-data/${symbol}?period=${period}&interval=${this.currentInterval}`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`API Error: ${response.status} - ${await response.text()}`);
+                    }
+                    
+                    const data = await response.json();
+                    console.log(`✅ Received data for ${symbol}:`, data);
+                    
+                    this.currentData = data;
+                    
+                    this.updateStockInfo(data);
+                    this.renderCandlestickChart(data);
+                    this.renderVolumeChart(data);
+                    this.renderTechnicalIndicators(data);
+                    this.generateTechnicalSummary(data);
+                    
+                    this.hideStatus();
+                    
+                } catch (error) {
+                    console.error(`❌ Analysis failed for ${symbol}:`, error);
+                    this.showError(`Analysis failed: ${error.message}`);
+                }
+            }
+
+            updateStockInfo(data) {
+                const stockInfo = document.getElementById('stock-info');
+                const stockName = document.getElementById('stock-name');
+                const currentPrice = document.getElementById('current-price');
+                const dailyChange = document.getElementById('daily-change');
+                const volume = document.getElementById('volume');
+                const marketCap = document.getElementById('market-cap');
+
+                stockName.textContent = `${data.metadata.name} (${data.symbol})`;
+                
+                if (data.data && data.data.length > 0) {
+                    const latestPoint = data.data[data.data.length - 1];
+                    currentPrice.textContent = `$${latestPoint.close.toFixed(2)}`;
+                    
+                    const change = latestPoint.close - latestPoint.open;
+                    const changePercent = (change / latestPoint.open * 100);
+                    const changeColor = change >= 0 ? 'text-green-600' : 'text-red-600';
+                    const changeSign = change >= 0 ? '+' : '';
+                    
+                    dailyChange.textContent = `${changeSign}${change.toFixed(2)} (${changeSign}${changePercent.toFixed(2)}%)`;
+                    dailyChange.className = `text-lg font-semibold ${changeColor}`;
+                    
+                    volume.textContent = latestPoint.volume ? latestPoint.volume.toLocaleString() : 'N/A';
+                    marketCap.textContent = data.metadata.currency || 'N/A';
+                }
+                
+                stockInfo.classList.remove('hidden');
+            }
+
+            renderCandlestickChart(data) {
+                if (!data.data || data.data.length === 0) {
+                    this.showError('No data available for candlestick chart');
+                    return;
+                }
+
+                // Prepare candlestick data - ECharts format: [open, close, low, high]
+                const candlestickData = [];
+                const xAxisData = [];
+                
+                data.data.forEach(point => {
+                    if (point.open !== null && point.high !== null && 
+                        point.low !== null && point.close !== null) {
+                        
+                        candlestickData.push([
+                            Number(point.open),
+                            Number(point.close), 
+                            Number(point.low),
+                            Number(point.high)
+                        ]);
+                        
+                        // Format date for x-axis
+                        const date = new Date(point.timestamp);
+                        xAxisData.push(date.toLocaleDateString());
+                    }
+                });
+
+                console.log(`📊 Rendering ${candlestickData.length} candlestick points`);
+
+                const option = {
+                    title: {
+                        text: `${data.metadata.name} - Candlestick Chart`,
+                        left: 'center'
+                    },
+                    tooltip: {
+                        trigger: 'axis',
+                        axisPointer: { type: 'cross' },
+                        formatter: function(params) {
+                            const param = params[0];
+                            if (!param || !param.value) return '';
+                            
+                            const [open, close, low, high] = param.value;
+                            return `
+                                <strong>${param.name}</strong><br/>
+                                Open: ${open.toFixed(2)}<br/>
+                                High: ${high.toFixed(2)}<br/>
+                                Low: ${low.toFixed(2)}<br/>
+                                Close: ${close.toFixed(2)}<br/>
+                                Change: ${(close - open).toFixed(2)}
+                            `;
+                        }
+                    },
+                    grid: { left: '10%', right: '10%', bottom: '15%' },
+                    xAxis: {
+                        type: 'category',
+                        data: xAxisData,
+                        scale: true
+                    },
+                    yAxis: {
+                        scale: true
+                    },
+                    series: [{
+                        name: 'Candlestick',
+                        type: 'candlestick',
+                        data: candlestickData,
+                        itemStyle: {
+                            color: '#00DA3C',    // Bull (up) color
+                            color0: '#EC0000',   // Bear (down) color
+                            borderColor: '#00DA3C',
+                            borderColor0: '#EC0000'
+                        }
+                    }]
+                };
+
+                this.mainChart.setOption(option, true);
+            }
+
+            renderVolumeChart(data) {
+                if (!data.data || data.data.length === 0) return;
+
+                const volumeData = [];
+                const xAxisData = [];
+                
+                data.data.forEach(point => {
+                    if (point.volume !== null) {
+                        volumeData.push(Number(point.volume) || 0);
+                        const date = new Date(point.timestamp);
+                        xAxisData.push(date.toLocaleDateString());
+                    }
+                });
+
+                const option = {
+                    title: {
+                        text: 'Volume',
+                        left: 'center'
+                    },
+                    tooltip: {
+                        trigger: 'axis'
+                    },
+                    grid: { left: '10%', right: '10%', bottom: '15%' },
+                    xAxis: {
+                        type: 'category',
+                        data: xAxisData
+                    },
+                    yAxis: {
+                        type: 'value'
+                    },
+                    series: [{
+                        name: 'Volume',
+                        type: 'bar',
+                        data: volumeData,
+                        itemStyle: {
+                            color: '#3B82F6'
+                        }
+                    }]
+                };
+
+                this.volumeChart.setOption(option, true);
+            }
+
+            renderTechnicalIndicators(data) {
+                this.renderRSI(data);
+                this.renderMACD(data);
+            }
+
+            renderRSI(data) {
+                if (!data.data || data.data.length < 14) {
+                    const option = {
+                        title: { text: 'RSI - Insufficient Data', left: 'center', top: 'middle' }
+                    };
+                    this.rsiChart.setOption(option);
+                    return;
+                }
+
+                // Calculate RSI (simplified version)
+                const closes = data.data.map(d => d.close).filter(c => c !== null);
+                const rsiData = this.calculateRSI(closes, 14);
+                const xAxisData = data.data.slice(-rsiData.length).map(d => {
+                    const date = new Date(d.timestamp);
+                    return date.toLocaleDateString();
+                });
+
+                const option = {
+                    title: {
+                        text: 'RSI (14)',
+                        left: 'center'
+                    },
+                    tooltip: {
+                        trigger: 'axis'
+                    },
+                    grid: { left: '10%', right: '10%', bottom: '15%' },
+                    xAxis: {
+                        type: 'category',
+                        data: xAxisData
+                    },
+                    yAxis: {
+                        type: 'value',
+                        min: 0,
+                        max: 100
+                    },
+                    series: [{
+                        name: 'RSI',
+                        type: 'line',
+                        data: rsiData,
+                        itemStyle: { color: '#8B5CF6' },
+                        markLine: {
+                            data: [
+                                { yAxis: 70, lineStyle: { color: '#EF4444' } },
+                                { yAxis: 30, lineStyle: { color: '#10B981' } }
+                            ]
+                        }
+                    }]
+                };
+
+                this.rsiChart.setOption(option, true);
+            }
+
+            renderMACD(data) {
+                if (!data.data || data.data.length < 26) {
+                    const option = {
+                        title: { text: 'MACD - Insufficient Data', left: 'center', top: 'middle' }
+                    };
+                    this.macdChart.setOption(option);
+                    return;
+                }
+
+                // Calculate MACD (simplified version)
+                const closes = data.data.map(d => d.close).filter(c => c !== null);
+                const macdData = this.calculateMACD(closes);
+                const xAxisData = data.data.slice(-macdData.macd.length).map(d => {
+                    const date = new Date(d.timestamp);
+                    return date.toLocaleDateString();
+                });
+
+                const option = {
+                    title: {
+                        text: 'MACD',
+                        left: 'center'
+                    },
+                    tooltip: {
+                        trigger: 'axis'
+                    },
+                    legend: {
+                        data: ['MACD', 'Signal', 'Histogram'],
+                        top: 'bottom'
+                    },
+                    grid: { left: '10%', right: '10%', bottom: '25%' },
+                    xAxis: {
+                        type: 'category',
+                        data: xAxisData
+                    },
+                    yAxis: {
+                        type: 'value'
+                    },
+                    series: [
+                        {
+                            name: 'MACD',
+                            type: 'line',
+                            data: macdData.macd,
+                            itemStyle: { color: '#3B82F6' }
+                        },
+                        {
+                            name: 'Signal',
+                            type: 'line', 
+                            data: macdData.signal,
+                            itemStyle: { color: '#EF4444' }
+                        },
+                        {
+                            name: 'Histogram',
+                            type: 'bar',
+                            data: macdData.histogram,
+                            itemStyle: { color: '#10B981' }
+                        }
+                    ]
+                };
+
+                this.macdChart.setOption(option, true);
+            }
+
+            calculateRSI(closes, period = 14) {
+                const rsi = [];
+                
+                for (let i = period; i < closes.length; i++) {
+                    let gains = 0;
+                    let losses = 0;
+                    
+                    for (let j = i - period + 1; j <= i; j++) {
+                        const change = closes[j] - closes[j - 1];
+                        if (change > 0) gains += change;
+                        else losses += Math.abs(change);
+                    }
+                    
+                    const avgGain = gains / period;
+                    const avgLoss = losses / period;
+                    const rs = avgGain / (avgLoss || 1);
+                    const rsiValue = 100 - (100 / (1 + rs));
+                    
+                    rsi.push(rsiValue);
+                }
+                
+                return rsi;
+            }
+
+            calculateMACD(closes, fast = 12, slow = 26, signal = 9) {
+                const ema12 = this.calculateEMA(closes, fast);
+                const ema26 = this.calculateEMA(closes, slow);
+                
+                const macd = [];
+                for (let i = 0; i < Math.min(ema12.length, ema26.length); i++) {
+                    macd.push(ema12[i] - ema26[i]);
+                }
+                
+                const signalLine = this.calculateEMA(macd, signal);
+                const histogram = [];
+                for (let i = 0; i < Math.min(macd.length, signalLine.length); i++) {
+                    histogram.push(macd[i] - signalLine[i]);
+                }
+                
+                return {
+                    macd: macd.slice(-histogram.length),
+                    signal: signalLine,
+                    histogram: histogram
+                };
+            }
+
+            calculateEMA(data, period) {
+                const ema = [];
+                const multiplier = 2 / (period + 1);
+                
+                // Start with SMA
+                let sum = 0;
+                for (let i = 0; i < period && i < data.length; i++) {
+                    sum += data[i];
+                }
+                ema.push(sum / period);
+                
+                // Calculate EMA
+                for (let i = period; i < data.length; i++) {
+                    const emaValue = (data[i] * multiplier) + (ema[ema.length - 1] * (1 - multiplier));
+                    ema.push(emaValue);
+                }
+                
+                return ema;
+            }
+
+            generateTechnicalSummary(data) {
+                const summarySection = document.getElementById('technical-summary');
+                const analysisContent = document.getElementById('analysis-content');
+                
+                if (!data.data || data.data.length === 0) {
+                    summarySection.classList.add('hidden');
+                    return;
+                }
+
+                // Simple technical analysis
+                const latest = data.data[data.data.length - 1];
+                const prev = data.data[data.data.length - 2] || latest;
+                
+                const priceChange = latest.close - prev.close;
+                const priceDirection = priceChange >= 0 ? 'bullish' : 'bearish';
+                const priceColor = priceChange >= 0 ? 'text-green-600' : 'text-red-600';
+                
+                const intervalText = this.currentInterval === '5m' ? '(5-minute intervals)' : '(daily intervals)';
+                
+                const summaryHtml = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="p-4 bg-gray-50 rounded-lg">
+                            <h4 class="font-semibold text-gray-900 mb-2">Price Action ${intervalText}</h4>
+                            <p class="text-sm">
+                                Latest close: <span class="font-semibold">$${latest.close.toFixed(2)}</span><br/>
+                                Direction: <span class="font-semibold ${priceColor}">${priceDirection.toUpperCase()}</span><br/>
+                                Change: <span class="${priceColor}">${priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)}</span>
+                            </p>
+                        </div>
+                        <div class="p-4 bg-gray-50 rounded-lg">
+                            <h4 class="font-semibold text-gray-900 mb-2">Volume Analysis</h4>
+                            <p class="text-sm">
+                                Latest volume: <span class="font-semibold">${(latest.volume || 0).toLocaleString()}</span><br/>
+                                Data points: <span class="font-semibold text-blue-600">${data.data.length}</span><br/>
+                                Status: <span class="font-semibold text-blue-600">NORMAL</span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="mt-4 p-4 bg-blue-50 rounded-lg">
+                        <h4 class="font-semibold text-gray-900 mb-2">
+                            <i class="fas fa-lightbulb mr-2 text-blue-600"></i>Technical Outlook
+                        </h4>
+                        <p class="text-sm text-gray-700">
+                            Based on the candlestick patterns and recent price action, the stock shows ${priceDirection} momentum. 
+                            ${this.currentInterval === '5m' ? 'Using 5-minute intervals for detailed intraday analysis.' : 'Using daily intervals for broader trend analysis.'}
+                            Monitor key support and resistance levels for potential breakouts or reversals.
+                        </p>
+                    </div>
+                `;
+                
+                analysisContent.innerHTML = summaryHtml;
+                summarySection.classList.remove('hidden');
+            }
+
+
+
+
+
+
+        }
+
+        // Initialize the application when DOM is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            window.technicalAnalysis = new TechnicalAnalysis();
+            
+            // Sync dropdown and custom input
+            const symbolSelect = document.getElementById('symbol-select');
+            const customSymbol = document.getElementById('custom-symbol');
+            
+            // When dropdown changes, clear custom input
+            symbolSelect.addEventListener('change', function() {
+                if (this.value) {
+                    customSymbol.value = '';
+                    customSymbol.placeholder = 'Or enter custom symbol (e.g., QAN.AX, META, NVDA)';
+                }
+            });
+            
+            // When custom input changes, clear dropdown selection
+            customSymbol.addEventListener('input', function() {
+                if (this.value.trim()) {
+                    symbolSelect.value = '';
+                    this.placeholder = 'Custom symbol entered';
+                } else {
+                    this.placeholder = 'Or enter custom symbol (e.g., QAN.AX, META, NVDA)';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
