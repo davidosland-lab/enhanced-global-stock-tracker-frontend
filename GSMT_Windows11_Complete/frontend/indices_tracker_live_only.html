@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Market Indices - LIVE DATA ONLY</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #1f2937;
+            margin-bottom: 10px;
+            font-size: 2rem;
+        }
+
+        .subtitle {
+            color: #6b7280;
+            font-size: 1rem;
+        }
+
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: #10b981;
+            color: white;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-left: 15px;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: white;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .controls-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f9fafb;
+            border-radius: 12px;
+        }
+
+        .data-source-info {
+            background: #dbeafe;
+            border: 1px solid #3b82f6;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+            color: #1e40af;
+            text-align: center;
+        }
+
+        .error-banner {
+            background: #fee2e2;
+            border: 1px solid #ef4444;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            color: #991b1b;
+            display: none;
+        }
+
+        .timezone-control {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.9rem;
+        }
+
+        .switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #cbd5e0;
+            transition: 0.4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #667eea;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(24px);
+        }
+
+        .time-display {
+            font-weight: 600;
+            color: #1f2937;
+            font-size: 1rem;
+            padding: 8px 15px;
+            background: white;
+            border-radius: 8px;
+            border: 2px solid #e5e7eb;
+        }
+
+        .region-sections {
+            margin-bottom: 20px;
+        }
+
+        .region-section {
+            margin-bottom: 15px;
+        }
+
+        .region-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 15px;
+            background: #f3f4f6;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .region-title {
+            font-weight: 600;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .region-indicator {
+            width: 4px;
+            height: 20px;
+            border-radius: 2px;
+        }
+
+        .region-indicator.asia { background: #FF9800; }
+        .region-indicator.europe { background: #3F51B5; }
+        .region-indicator.americas { background: #4CAF50; }
+
+        .markets-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            padding: 0 15px;
+        }
+
+        .market-card {
+            padding: 10px;
+            border: 2px solid #e5e7eb;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .market-card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .market-card.active {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea10, #764ba210);
+        }
+
+        .market-card.active::before {
+            content: '✓';
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #667eea;
+            color: white;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+        }
+
+        .market-name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        .market-info {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.75rem;
+            color: #6b7280;
+        }
+
+        .market-status {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+        }
+
+        .market-status.open { background: #10b981; }
+        .market-status.closed { background: #ef4444; }
+
+        .chart-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 20px;
+            height: 450px;
+            position: relative;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .chart-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 0.85rem;
+            max-height: 60px;
+            overflow-y: auto;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 8px;
+            background: #f9fafb;
+            border-radius: 5px;
+        }
+
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 30px;
+            color: #9ca3af;
+        }
+
+        .loading-spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .refresh-btn {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
+        }
+
+        #mainChart {
+            width: 100%;
+            height: 370px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+
+        .stat-card {
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 12px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .stat-value.positive { color: #10b981; }
+        .stat-value.negative { color: #ef4444; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                Global Market Indices Tracker
+                <span class="live-indicator">
+                    <span class="live-dot"></span>
+                    LIVE DATA
+                </span>
+            </h1>
+            <p class="subtitle">Real-time market data from Yahoo Finance - No synthetic data</p>
+        </div>
+
+        <div class="data-source-info">
+            📊 <strong>Data Source:</strong> Yahoo Finance API | 
+            <strong>Update Frequency:</strong> Every 60 seconds | 
+            <strong>Resolution:</strong> 5-minute intervals
+        </div>
+
+        <div class="error-banner" id="errorBanner">
+            ⚠️ <strong>Connection Error:</strong> Unable to fetch live market data. Please check your internet connection and ensure the backend server is running.
+        </div>
+
+        <div class="controls-section">
+            <div class="timezone-control">
+                <span>AEST</span>
+                <label class="switch">
+                    <input type="checkbox" id="timezoneToggle">
+                    <span class="slider"></span>
+                </label>
+                <span>AEDT</span>
+            </div>
+
+            <button class="refresh-btn" onclick="refreshData()">↻ Refresh Live Data</button>
+
+            <div class="time-display" id="currentTime">--:--:-- AEST</div>
+        </div>
+
+        <div class="region-sections">
+            <!-- Asia Pacific Section -->
+            <div class="region-section">
+                <div class="region-header">
+                    <div class="region-title">
+                        <div class="region-indicator asia"></div>
+                        Asia Pacific Markets
+                    </div>
+                </div>
+                <div class="markets-grid" id="asiaMarkets"></div>
+            </div>
+
+            <!-- Europe Section -->
+            <div class="region-section">
+                <div class="region-header">
+                    <div class="region-title">
+                        <div class="region-indicator europe"></div>
+                        European Markets
+                    </div>
+                </div>
+                <div class="markets-grid" id="europeMarkets"></div>
+            </div>
+
+            <!-- Americas Section -->
+            <div class="region-section">
+                <div class="region-header">
+                    <div class="region-title">
+                        <div class="region-indicator americas"></div>
+                        Americas Markets
+                    </div>
+                </div>
+                <div class="markets-grid" id="americasMarkets"></div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3 class="chart-title">Live Market Performance - % Change</h3>
+                <div class="legend" id="chartLegend"></div>
+            </div>
+            <div id="loadingIndicator" class="loading" style="display: none;">
+                <div class="loading-spinner"></div>
+                Loading live market data...
+            </div>
+            <canvas id="mainChart"></canvas>
+        </div>
+
+        <div class="stats-grid" id="statsGrid"></div>
+    </div>
+
+    <script>
+        // NO DEMO DATA - LIVE DATA ONLY
+        const API_BASE = 'http://localhost:8000';
+        
+        // Market configurations
+        const MARKET_CONFIG = {
+            "^AXJO": { name: "ASX 200", region: "Asia", color: "#FF9800" },
+            "^N225": { name: "Nikkei 225", region: "Asia", color: "#F44336" },
+            "^HSI": { name: "Hang Seng", region: "Asia", color: "#E91E63" },
+            "000001.SS": { name: "Shanghai", region: "Asia", color: "#FF5722" },
+            "^KS11": { name: "KOSPI", region: "Asia", color: "#FF6F00" },
+            "^STI": { name: "STI", region: "Asia", color: "#FF8F00" },
+            "^FTSE": { name: "FTSE 100", region: "Europe", color: "#3F51B5" },
+            "^GDAXI": { name: "DAX", region: "Europe", color: "#2196F3" },
+            "^FCHI": { name: "CAC 40", region: "Europe", color: "#03A9F4" },
+            "^STOXX50E": { name: "Euro Stoxx 50", region: "Europe", color: "#00BCD4" },
+            "^IBEX": { name: "IBEX 35", region: "Europe", color: "#009688" },
+            "^AEX": { name: "AEX", region: "Europe", color: "#1976D2" },
+            "^DJI": { name: "Dow Jones", region: "Americas", color: "#4CAF50" },
+            "^GSPC": { name: "S&P 500", region: "Americas", color: "#8BC34A" },
+            "^IXIC": { name: "NASDAQ", region: "Americas", color: "#CDDC39" },
+            "^RUT": { name: "Russell 2000", region: "Americas", color: "#689F38" },
+            "^GSPTSE": { name: "TSX", region: "Americas", color: "#AFB42B" },
+            "^BVSP": { name: "Bovespa", region: "Americas", color: "#FDD835" }
+        };
+
+        // State
+        let selectedMarkets = new Set(['^AXJO', '^FTSE', '^GSPC']);
+        let isAEDT = false;
+        let mainChart = null;
+        let liveMarketData = {};
+        let intradayData = {};
+        let refreshInterval = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeMarketCards();
+            initializeChart();
+            updateTime();
+            setInterval(updateTime, 1000);
+            loadLiveData();
+            
+            // Auto-refresh every 60 seconds
+            refreshInterval = setInterval(loadLiveData, 60000);
+        });
+
+        // Initialize market cards
+        function initializeMarketCards() {
+            const asiaContainer = document.getElementById('asiaMarkets');
+            const europeContainer = document.getElementById('europeMarkets');
+            const americasContainer = document.getElementById('americasMarkets');
+            
+            Object.entries(MARKET_CONFIG).forEach(([symbol, info]) => {
+                const card = createMarketCard(symbol, info);
+                
+                if (info.region === 'Asia') {
+                    asiaContainer.appendChild(card);
+                } else if (info.region === 'Europe') {
+                    europeContainer.appendChild(card);
+                } else if (info.region === 'Americas') {
+                    americasContainer.appendChild(card);
+                }
+            });
+        }
+
+        // Create market card
+        function createMarketCard(symbol, info) {
+            const card = document.createElement('div');
+            card.className = 'market-card';
+            card.dataset.symbol = symbol;
+            
+            if (selectedMarkets.has(symbol)) {
+                card.classList.add('active');
+            }
+            
+            card.innerHTML = `
+                <div class="market-name">${info.name}</div>
+                <div class="market-info">
+                    <span class="market-status closed"></span>
+                    <span class="status-text">Loading...</span>
+                </div>
+            `;
+            
+            card.addEventListener('click', () => toggleMarket(symbol, card));
+            return card;
+        }
+
+        // Toggle market selection
+        function toggleMarket(symbol, card) {
+            if (selectedMarkets.has(symbol)) {
+                selectedMarkets.delete(symbol);
+                card.classList.remove('active');
+            } else {
+                selectedMarkets.add(symbol);
+                card.classList.add('active');
+                // Load intraday data for newly selected market
+                loadIntradayData(symbol);
+            }
+            updateChart();
+        }
+
+        // Initialize Chart.js
+        function initializeChart() {
+            const ctx = document.getElementById('mainChart').getContext('2d');
+            
+            mainChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: []
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: (context) => {
+                                    return `${context[0].label} ${isAEDT ? 'AEDT' : 'AEST'}`;
+                                },
+                                label: (context) => {
+                                    const value = context.parsed.y;
+                                    if (value === null) return '';
+                                    return `${context.dataset.label}: ${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'category',
+                            title: {
+                                display: true,
+                                text: 'Time (5-min intervals)',
+                                font: { size: 11 }
+                            },
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45,
+                                autoSkip: true,
+                                maxTicksLimit: 24,
+                                font: { size: 9 }
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: '% Change from Previous Close',
+                                font: { size: 11 }
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return (value >= 0 ? '+' : '') + value.toFixed(1) + '%';
+                                },
+                                font: { size: 10 }
+                            },
+                            grid: {
+                                color: function(context) {
+                                    if (context.tick.value === 0) {
+                                        return '#666';
+                                    }
+                                    return '#e5e7eb';
+                                },
+                                lineWidth: function(context) {
+                                    if (context.tick.value === 0) {
+                                        return 2;
+                                    }
+                                    return 1;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Update time display
+        function updateTime() {
+            const now = new Date();
+            const options = {
+                timeZone: 'Australia/Sydney',
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            };
+            const timeStr = now.toLocaleString('en-AU', options);
+            document.getElementById('currentTime').textContent = `${timeStr} ${isAEDT ? 'AEDT' : 'AEST'}`;
+        }
+
+        // Load live data from backend
+        async function loadLiveData() {
+            const loading = document.getElementById('loadingIndicator');
+            const errorBanner = document.getElementById('errorBanner');
+            
+            loading.style.display = 'block';
+            errorBanner.style.display = 'none';
+            
+            try {
+                // Fetch live market data
+                const response = await fetch(`${API_BASE}/api/indices`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Store live data
+                liveMarketData = data.indices || {};
+                
+                // Update market status cards
+                updateMarketStatuses();
+                
+                // Load intraday data for selected markets
+                for (const symbol of selectedMarkets) {
+                    await loadIntradayData(symbol);
+                }
+                
+                // Update chart with real data
+                updateChart();
+                
+                // Update statistics
+                updateStats();
+                
+                console.log('Live data loaded:', Object.keys(liveMarketData).length, 'markets');
+                
+            } catch (error) {
+                console.error('Error loading live data:', error);
+                errorBanner.style.display = 'block';
+                errorBanner.innerHTML = `
+                    ⚠️ <strong>Connection Error:</strong> ${error.message}<br>
+                    Please ensure the backend server is running on port 8000.
+                `;
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+
+        // Load intraday data for a specific market
+        async function loadIntradayData(symbol) {
+            try {
+                const response = await fetch(`${API_BASE}/api/indices/${symbol}/intraday`);
+                
+                if (!response.ok) {
+                    console.warn(`No intraday data available for ${symbol}`);
+                    return;
+                }
+                
+                const data = await response.json();
+                intradayData[symbol] = data;
+                
+            } catch (error) {
+                console.error(`Error loading intraday data for ${symbol}:`, error);
+            }
+        }
+
+        // Update market status indicators
+        function updateMarketStatuses() {
+            Object.entries(liveMarketData).forEach(([symbol, data]) => {
+                const card = document.querySelector(`.market-card[data-symbol="${symbol}"]`);
+                if (card) {
+                    const statusElement = card.querySelector('.market-status');
+                    const textElement = card.querySelector('.status-text');
+                    
+                    statusElement.className = 'market-status';
+                    
+                    if (data.isOpen) {
+                        statusElement.classList.add('open');
+                        textElement.textContent = 'Trading';
+                    } else {
+                        statusElement.classList.add('closed');
+                        textElement.textContent = 'Closed';
+                    }
+                    
+                    // Add change percentage to card
+                    if (data.changePercent !== undefined) {
+                        const change = data.changePercent.toFixed(2);
+                        const color = data.changePercent >= 0 ? '#10b981' : '#ef4444';
+                        textElement.innerHTML = `
+                            <span>${data.isOpen ? 'Trading' : 'Closed'}</span>
+                            <span style="color: ${color}; font-weight: 600;">
+                                ${change >= 0 ? '+' : ''}${change}%
+                            </span>
+                        `;
+                    }
+                }
+            });
+        }
+
+        // Update chart with live data
+        function updateChart() {
+            if (!mainChart) return;
+            
+            const datasets = [];
+            const legendContainer = document.getElementById('chartLegend');
+            legendContainer.innerHTML = '';
+            
+            // Process each selected market
+            selectedMarkets.forEach(symbol => {
+                const marketInfo = MARKET_CONFIG[symbol];
+                const marketData = liveMarketData[symbol];
+                const intraday = intradayData[symbol];
+                
+                if (marketData && intraday && intraday.dataPoints) {
+                    // Extract times and percentage changes
+                    const labels = intraday.dataPoints.map(p => p.time);
+                    const data = intraday.dataPoints.map(p => p.changePercent);
+                    
+                    // Only update labels if this is the first dataset
+                    if (datasets.length === 0) {
+                        mainChart.data.labels = labels;
+                    }
+                    
+                    // Add dataset
+                    datasets.push({
+                        label: marketInfo.name,
+                        data: data,
+                        borderColor: marketInfo.color,
+                        backgroundColor: marketInfo.color + '20',
+                        borderWidth: 2,
+                        tension: 0.2,
+                        pointRadius: 0,
+                        pointHoverRadius: 4,
+                        spanGaps: true
+                    });
+                    
+                    // Add to legend
+                    const legendItem = document.createElement('div');
+                    legendItem.className = 'legend-item';
+                    const change = marketData.changePercent || 0;
+                    
+                    legendItem.innerHTML = `
+                        <div class="legend-color" style="background: ${marketInfo.color}"></div>
+                        <span>${marketInfo.name}</span>
+                        <span style="color: ${change >= 0 ? '#10b981' : '#ef4444'}; font-weight: 600;">
+                            ${change >= 0 ? '+' : ''}${change.toFixed(2)}%
+                        </span>
+                    `;
+                    legendContainer.appendChild(legendItem);
+                }
+            });
+            
+            // Update chart
+            mainChart.data.datasets = datasets;
+            mainChart.update();
+        }
+
+        // Update statistics
+        function updateStats() {
+            const container = document.getElementById('statsGrid');
+            container.innerHTML = '';
+            
+            const stats = {
+                totalMarkets: Object.keys(liveMarketData).length,
+                openMarkets: 0,
+                avgChange: 0,
+                topGainer: null,
+                topLoser: null
+            };
+            
+            // Calculate statistics
+            let totalChange = 0;
+            let count = 0;
+            
+            Object.entries(liveMarketData).forEach(([symbol, data]) => {
+                if (data.isOpen) stats.openMarkets++;
+                
+                if (data.changePercent !== undefined) {
+                    totalChange += data.changePercent;
+                    count++;
+                    
+                    if (!stats.topGainer || data.changePercent > stats.topGainer.change) {
+                        stats.topGainer = { symbol, name: data.name, change: data.changePercent };
+                    }
+                    
+                    if (!stats.topLoser || data.changePercent < stats.topLoser.change) {
+                        stats.topLoser = { symbol, name: data.name, change: data.changePercent };
+                    }
+                }
+            });
+            
+            if (count > 0) {
+                stats.avgChange = totalChange / count;
+            }
+            
+            // Create stat cards
+            const statCards = [
+                {
+                    label: 'Markets Trading',
+                    value: `${stats.openMarkets} / ${stats.totalMarkets}`,
+                    class: ''
+                },
+                {
+                    label: 'Average Change',
+                    value: stats.avgChange.toFixed(2) + '%',
+                    class: stats.avgChange >= 0 ? 'positive' : 'negative'
+                },
+                {
+                    label: 'Top Gainer',
+                    value: stats.topGainer ? 
+                        `${stats.topGainer.name} +${stats.topGainer.change.toFixed(2)}%` : 
+                        'N/A',
+                    class: 'positive'
+                },
+                {
+                    label: 'Top Loser',
+                    value: stats.topLoser ? 
+                        `${stats.topLoser.name} ${stats.topLoser.change.toFixed(2)}%` : 
+                        'N/A',
+                    class: 'negative'
+                }
+            ];
+            
+            statCards.forEach(stat => {
+                const card = document.createElement('div');
+                card.className = 'stat-card';
+                card.innerHTML = `
+                    <div class="stat-label">${stat.label}</div>
+                    <div class="stat-value ${stat.class}">${stat.value}</div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // Refresh data
+        function refreshData() {
+            loadLiveData();
+        }
+
+        // Timezone toggle
+        document.getElementById('timezoneToggle').addEventListener('change', (e) => {
+            isAEDT = e.target.checked;
+            updateTime();
+        });
+
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        });
+
+        // NO DEMO DATA FUNCTIONS - ONLY REAL DATA FROM API
+    </script>
+</body>
+</html>

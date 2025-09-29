@@ -1,0 +1,63 @@
+====================================================================
+Y-AXIS SCALING FIX - COMPLETED
+====================================================================
+
+PROBLEM FIXED:
+- Y-axis was showing extreme scaling making the chart unviewable
+- Chart required scrolling due to excessive height
+- Percentage values were not properly constrained
+
+SOLUTIONS IMPLEMENTED:
+1. Added suggestedMin: -5 and suggestedMax: 5 to Y-axis configuration
+2. Fixed chart container height to 400px (canvas: 320px)
+3. Added dynamic scaling with reasonable limits (-10% to +10% max)
+4. Reduced data points from 96 to 24 (hourly instead of 15-min)
+5. Added stepSize: 1 for cleaner Y-axis tick marks
+6. Constrained random variations to ±0.3% for realistic intraday changes
+
+KEY CHANGES IN CODE:
+--------------------
+Y-Axis Configuration:
+  suggestedMin: -5,
+  suggestedMax: 5,
+  ticks: {
+      stepSize: 1,
+      font: { size: 10 }
+  }
+
+Dynamic Range Calculation:
+  mainChart.options.scales.y.min = Math.max(-10, Math.floor(minValue - padding));
+  mainChart.options.scales.y.max = Math.min(10, Math.ceil(maxValue + padding));
+
+Container Styling:
+  .chart-container { height: 400px; }
+  #mainChart { height: 320px; }
+
+Data Generation:
+  const variation = (Math.random() - 0.5) * 0.3;  // Smaller variations
+  const dataPoint = Math.max(-10, Math.min(10, baseChange + variation));  // Capped
+
+VISUAL IMPROVEMENTS:
+- Chart now fits perfectly without scrolling
+- Y-axis shows reasonable percentage range
+- Zero line clearly visible as reference
+- Smooth curves with realistic market movements
+- Cleaner layout with optimized spacing
+
+FILE UPDATES:
+- indices_tracker_percentage.html - Main tracker (fixed)
+- indices_tracker_fixed_scaling.html - Backup of fixed version
+- GSMT_IndicesTracker_Update_v2.1_FIXED.zip - Updated package (25KB)
+
+TO USE:
+1. Extract GSMT_IndicesTracker_Update_v2.1_FIXED.zip
+2. Run UPDATE_INDICES_ENHANCED.cmd
+3. Launch with LAUNCH_INDICES_TRACKER.cmd
+
+The chart will now display properly with:
+- No scrolling required
+- Clear percentage scale from -5% to +5% (auto-adjusts if needed)
+- All data visible in fixed 400px height
+- Professional appearance with realistic market movements
+
+====================================================================
