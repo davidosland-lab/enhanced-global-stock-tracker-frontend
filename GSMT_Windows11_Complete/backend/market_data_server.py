@@ -66,7 +66,10 @@ STOCKS = {
     "TSLA": {"name": "Tesla Inc.", "base": 250, "volatility": 0.035},
     "META": {"name": "Meta Platforms", "base": 500, "volatility": 0.028},
     "NVDA": {"name": "NVIDIA Corp.", "base": 880, "volatility": 0.032},
-    "CBA.AX": {"name": "Commonwealth Bank", "base": 115, "volatility": 0.015}
+    "CBA.AX": {"name": "Commonwealth Bank of Australia", "base": 115.50, "volatility": 0.015},
+    "WBC.AX": {"name": "Westpac Banking Corp", "base": 27.50, "volatility": 0.016},
+    "ANZ.AX": {"name": "ANZ Banking Group", "base": 29.80, "volatility": 0.016},
+    "NAB.AX": {"name": "National Australia Bank", "base": 36.20, "volatility": 0.015}
 }
 
 def get_market_hours(region: str, current_time: datetime) -> Dict[str, Any]:
