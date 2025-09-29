@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Market Indices - AEST/AEDT</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            color: #1f2937;
+            margin-bottom: 10px;
+        }
+
+        .timezone-control {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .switch {
+            position: relative;
+            width: 60px;
+            height: 30px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #667eea;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(30px);
+        }
+
+        .current-time {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #4b5563;
+        }
+
+        .market-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .market-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+
+        .market-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .market-card.selected {
+            border-color: #667eea;
+            background: linear-gradient(to bottom, rgba(102,126,234,0.05), white);
+        }
+
+        .market-name {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 5px;
+        }
+
+        .market-info {
+            font-size: 0.9rem;
+            color: #6b7280;
+        }
+
+        .market-status {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-left: 10px;
+        }
+
+        .market-status.open {
+            background: #10b981;
+            animation: pulse 2s infinite;
+        }
+
+        .market-status.closed {
+            background: #ef4444;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .chart-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .price-display {
+            text-align: right;
+        }
+
+        .price-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #1f2937;
+        }
+
+        .price-change {
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        .positive { color: #10b981; }
+        .negative { color: #ef4444; }
+
+        .chart-canvas {
+            width: 100%;
+            height: 400px;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #9ca3af;
+        }
+
+        .trading-hours-info {
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: #6b7280;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #9ca3af;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Global Market Indices Tracker</h1>
+            <p style="color: #6b7280; margin-top: 5px;">Real-time market data with proper trading hours display</p>
+            
+            <div class="timezone-control">
+                <span>AEST</span>
+                <label class="switch">
+                    <input type="checkbox" id="timezoneToggle">
+                    <span class="slider"></span>
+                </label>
+                <span>AEDT</span>
+                <span class="current-time" id="currentTime"></span>
+            </div>
+        </div>
+
+        <div class="market-grid" id="marketGrid">
+            <!-- Markets will be populated here -->
+        </div>
+
+        <div class="trading-hours-info">
+            <strong>Market Trading Hours (AEST):</strong><br>
+            • ASX (^AORD): 10:00 - 16:00<br>
+            • Nikkei: 10:00 - 16:00<br>
+            • Hong Kong: 11:30 - 18:00<br>
+            • London FTSE: 17:00 - 01:30 (next day)<br>
+            • Frankfurt DAX: 17:00 - 01:30 (next day)<br>
+            • NYSE/S&P 500: 23:30 - 06:00 (next day)
+        </div>
+
+        <div id="chartsContainer">
+            <!-- Charts will be added here -->
+        </div>
+    </div>
+
+    <script>
+        // Market definitions with AEST hours
+        const MARKETS = {
+            '^AORD': {
+                name: 'ASX All Ordinaries',
+                region: 'Australia',
+                openHour: 10,
+                closeHour: 16,
+                color: '#FF9800'
+            },
+            '^N225': {
+                name: 'Nikkei 225',
+                region: 'Japan',
+                openHour: 10,
+                closeHour: 16,
+                color: '#F44336'
+            },
+            '^HSI': {
+                name: 'Hang Seng',
+                region: 'Hong Kong',
+                openHour: 11.5,
+                closeHour: 18,
+                color: '#E91E63'
+            },
+            '^FTSE': {
+                name: 'FTSE 100',
+                region: 'UK',
+                openHour: 17,
+                closeHour: 25.5, // 1:30 next day
+                color: '#3F51B5'
+            },
+            '^GDAXI': {
+                name: 'DAX',
+                region: 'Germany',
+                openHour: 17,
+                closeHour: 25.5,
+                color: '#2196F3'
+            },
+            '^GSPC': {
+                name: 'S&P 500',
+                region: 'USA',
+                openHour: 23.5,
+                closeHour: 30, // 6:00 next day
+                color: '#4CAF50'
+            }
+        };
+
+        let selectedMarkets = new Set(['^AORD', '^FTSE', '^GSPC']);
+        let isAEDT = false;
+        let charts = {};
+        let marketData = {};
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeMarkets();
+            initializeTimezone();
+            updateTime();
+            setInterval(updateTime, 1000);
+            loadData();
+            setInterval(loadData, 60000);
+        });
+
+        function initializeMarkets() {
+            const grid = document.getElementById('marketGrid');
+            
+            Object.entries(MARKETS).forEach(([symbol, info]) => {
+                const card = document.createElement('div');
+                card.className = 'market-card';
+                if (selectedMarkets.has(symbol)) {
+                    card.classList.add('selected');
+                }
+                
+                const isOpen = isMarketOpen(info);
+                
+                card.innerHTML = `
+                    <div class="market-name">
+                        ${info.name}
+                        <span class="market-status ${isOpen ? 'open' : 'closed'}"></span>
+                    </div>
+                    <div class="market-info">
+                        ${info.region} • ${formatMarketHours(info)}
+                    </div>
+                `;
+                
+                card.onclick = () => toggleMarket(symbol);
+                grid.appendChild(card);
+            });
+        }
+
+        function formatMarketHours(market) {
+            const openTime = formatHour(market.openHour);
+            const closeTime = formatHour(market.closeHour > 24 ? market.closeHour - 24 : market.closeHour);
+            return `${openTime} - ${closeTime}`;
+        }
+
+        function formatHour(hour) {
+            const h = Math.floor(hour);
+            const m = Math.round((hour - h) * 60);
+            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+        }
+
+        function initializeTimezone() {
+            document.getElementById('timezoneToggle').addEventListener('change', (e) => {
+                isAEDT = e.target.checked;
+                updateCharts();
+            });
+        }
+
+        function updateTime() {
+            const now = new Date();
+            const options = {
+                timeZone: 'Australia/Sydney',
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            };
+            const timeStr = now.toLocaleString('en-AU', options);
+            document.getElementById('currentTime').textContent = 
+                `${timeStr} ${isAEDT ? 'AEDT' : 'AEST'}`;
+        }
+
+        function isMarketOpen(market) {
+            const now = new Date();
+            const sydneyTime = new Date(now.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
+            const currentHour = sydneyTime.getHours() + sydneyTime.getMinutes() / 60;
+            
+            if (market.closeHour > 24) {
+                // Overnight market
+                return currentHour >= market.openHour || currentHour <= (market.closeHour - 24);
+            }
+            return currentHour >= market.openHour && currentHour <= market.closeHour;
+        }
+
+        function toggleMarket(symbol) {
+            const card = event.currentTarget;
+            
+            if (selectedMarkets.has(symbol)) {
+                selectedMarkets.delete(symbol);
+                card.classList.remove('selected');
+            } else {
+                selectedMarkets.add(symbol);
+                card.classList.add('selected');
+            }
+            
+            updateCharts();
+        }
+
+        async function loadData() {
+            try {
+                const response = await fetch('http://localhost:8000/api/indices');
+                if (response.ok) {
+                    const data = await response.json();
+                    marketData = data.indices || {};
+                } else {
+                    // Use mock data for testing
+                    generateMockData();
+                }
+            } catch (error) {
+                console.error('Error loading data:', error);
+                generateMockData();
+            }
+            
+            updateCharts();
+        }
+
+        function generateMockData() {
+            selectedMarkets.forEach(symbol => {
+                const market = MARKETS[symbol];
+                const basePrice = 5000 + Math.random() * 3000;
+                marketData[symbol] = {
+                    name: market.name,
+                    price: basePrice,
+                    change_percent: (Math.random() - 0.5) * 5,
+                    history: generateMarketHistory(market, basePrice)
+                };
+            });
+        }
+
+        function generateMarketHistory(market, basePrice) {
+            const points = [];
+            
+            // Generate 24 hours of data starting from 9:00 AEST
+            for (let hour = 9; hour < 33; hour++) { // 33 = 9:00 next day
+                const actualHour = hour >= 24 ? hour - 24 : hour;
+                const hourFloat = actualHour + (hour >= 24 ? 24 : 0);
+                
+                // Only add data points during market hours
+                if (market.closeHour > 24) {
+                    // Overnight market
+                    if (hourFloat >= market.openHour || hourFloat <= market.closeHour) {
+                        for (let min = 0; min < 60; min += 15) {
+                            points.push({
+                                time: `${actualHour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`,
+                                hour: hourFloat,
+                                price: basePrice + (Math.random() - 0.5) * 100
+                            });
+                        }
+                    }
+                } else {
+                    // Regular market
+                    if (hourFloat >= market.openHour && hourFloat <= market.closeHour) {
+                        for (let min = 0; min < 60; min += 15) {
+                            points.push({
+                                time: `${actualHour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`,
+                                hour: hourFloat,
+                                price: basePrice + (Math.random() - 0.5) * 100
+                            });
+                        }
+                    }
+                }
+            }
+            
+            return points;
+        }
+
+        function updateCharts() {
+            const container = document.getElementById('chartsContainer');
+            container.innerHTML = '';
+            
+            // Destroy existing charts
+            Object.values(charts).forEach(chart => {
+                if (chart) chart.destroy();
+            });
+            charts = {};
+            
+            // Sort markets by opening time (Australia -> Europe -> US)
+            const sortedMarkets = Array.from(selectedMarkets).sort((a, b) => {
+                return MARKETS[a].openHour - MARKETS[b].openHour;
+            });
+            
+            sortedMarkets.forEach(symbol => {
+                createChart(symbol);
+            });
+        }
+
+        function createChart(symbol) {
+            const market = MARKETS[symbol];
+            const data = marketData[symbol] || {};
+            
+            const chartDiv = document.createElement('div');
+            chartDiv.className = 'chart-container';
+            
+            const price = data.price || 0;
+            const change = data.change_percent || 0;
+            
+            chartDiv.innerHTML = `
+                <div class="chart-header">
+                    <div class="chart-title">${market.name}</div>
+                    <div class="price-display">
+                        <div class="price-value">$${price.toFixed(2)}</div>
+                        <div class="price-change ${change >= 0 ? 'positive' : 'negative'}">
+                            ${change >= 0 ? '▲' : '▼'} ${Math.abs(change).toFixed(2)}%
+                        </div>
+                    </div>
+                </div>
+                <canvas id="chart-${symbol}" class="chart-canvas"></canvas>
+            `;
+            
+            document.getElementById('chartsContainer').appendChild(chartDiv);
+            
+            const ctx = document.getElementById(`chart-${symbol}`).getContext('2d');
+            
+            // Create x-axis labels for 24 hours starting from 9:00 AEST
+            const labels = [];
+            const chartData = [];
+            
+            for (let hour = 9; hour < 33; hour++) {
+                const displayHour = hour >= 24 ? hour - 24 : hour;
+                labels.push(`${displayHour.toString().padStart(2, '0')}:00`);
+                
+                // Only show data during market hours
+                const hourFloat = hour >= 24 ? hour : hour;
+                let showData = false;
+                
+                if (market.closeHour > 24) {
+                    showData = hourFloat >= market.openHour || hourFloat <= market.closeHour;
+                } else {
+                    showData = hourFloat >= market.openHour && hourFloat <= market.closeHour;
+                }
+                
+                if (showData && data.history) {
+                    const point = data.history.find(p => Math.floor(p.hour) === hourFloat);
+                    chartData.push(point ? point.price : null);
+                } else {
+                    chartData.push(null);
+                }
+            }
+            
+            charts[symbol] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: market.name,
+                        data: chartData,
+                        borderColor: market.color,
+                        backgroundColor: market.color + '20',
+                        borderWidth: 2,
+                        tension: 0.1,
+                        spanGaps: false,
+                        pointRadius: 0,
+                        pointHoverRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                title: (context) => {
+                                    return `${context[0].label} ${isAEDT ? 'AEDT' : 'AEST'}`;
+                                },
+                                label: (context) => {
+                                    if (context.parsed.y !== null) {
+                                        return `Price: $${context.parsed.y.toFixed(2)}`;
+                                    }
+                                    return 'Market Closed';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: `Time (${isAEDT ? 'AEDT' : 'AEST'})`
+                            },
+                            ticks: {
+                                maxRotation: 45,
+                                minRotation: 45,
+                                autoSkip: true,
+                                maxTicksLimit: 12
+                            }
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Price ($)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
