@@ -67,26 +67,37 @@ echo ================================================================
 echo.
 echo Select an option:
 echo.
-echo   1. Start Main Server (Recommended)
-echo   2. Start Test Server (For Testing)
-echo   3. Start Simple Backend (Lightweight)
-echo   4. Check Server Status
-echo   5. Open Frontend in Browser
-echo   6. Run Diagnostics
-echo   7. Exit
+echo   1. Launch Complete System (All Modules) - RECOMMENDED
+echo   2. Start Main Server Only
+echo   3. Start Test Server (For Testing)
+echo   4. Start Simple Backend (Lightweight)
+echo   5. Check Server Status
+echo   6. Open Frontend in Browser
+echo   7. Run Diagnostics
+echo   8. Exit
 echo.
-set /p choice="Enter your choice (1-7): "
+set /p choice="Enter your choice (1-8): "
 
-if "%choice%"=="1" goto START_MAIN
-if "%choice%"=="2" goto START_TEST
-if "%choice%"=="3" goto START_SIMPLE
-if "%choice%"=="4" goto CHECK_STATUS
-if "%choice%"=="5" goto OPEN_FRONTEND
-if "%choice%"=="6" goto DIAGNOSTICS
-if "%choice%"=="7" goto EXIT
+if "%choice%"=="1" goto LAUNCH_COMPLETE
+if "%choice%"=="2" goto START_MAIN
+if "%choice%"=="3" goto START_TEST
+if "%choice%"=="4" goto START_SIMPLE
+if "%choice%"=="5" goto CHECK_STATUS
+if "%choice%"=="6" goto OPEN_FRONTEND
+if "%choice%"=="7" goto DIAGNOSTICS
+if "%choice%"=="8" goto EXIT
 
 echo Invalid choice. Please try again.
 pause
+goto MENU
+
+:LAUNCH_COMPLETE
+cls
+echo ================================================================
+echo Launching Complete GSMT System with All Modules...
+echo ================================================================
+echo.
+call LAUNCH_COMPLETE.bat
 goto MENU
 
 :START_MAIN
