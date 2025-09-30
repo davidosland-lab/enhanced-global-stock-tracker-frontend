@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Indices Tracker - Real-Time Market Data</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.30.0/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+        }
+        .market-card {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        .status-dot.open { background: #10b981; }
+        .status-dot.closed { background: #ef4444; }
+        .status-dot.pre-market { background: #f59e0b; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body class="text-gray-100">
+    <nav class="bg-slate-900 border-b border-slate-700 px-6 py-4">
+        <div class="max-w-7xl mx-auto flex items-center justify-between">
+            <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
+                Global Indices Tracker
+            </h1>
+            <div class="flex items-center gap-4">
+                <span id="last-update" class="text-sm text-gray-400"></span>
+                <span id="current-time" class="text-sm text-gray-400"></span>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto p-6 space-y-6">
+        <!-- Controls -->
+        <div class="market-card rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <select id="region-select" class="bg-slate-700 text-white px-4 py-2 rounded-lg border border-slate-600 focus:border-blue-500 focus:outline-none">
+                    <option value="all">All Regions</option>
+                    <option value="asia">Asia-Pacific</option>
+                    <option value="europe">Europe</option>
+                    <option value="americas">Americas</option>
+                </select>
+                
+                <div class="flex gap-2">
+                    <button class="timeframe-btn px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors" data-timeframe="1d">1 Day</button>
+                    <button class="timeframe-btn px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors" data-timeframe="5d">5 Days</button>
+                    <button class="timeframe-btn px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 transition-colors" data-timeframe="1mo">1 Month</button>
+                </div>
+            </div>
+            
+            <button id="refresh-btn" class="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg transition-colors flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Refresh
+            </button>
+        </div>
+
+        <!-- Chart -->
+        <div class="market-card rounded-xl p-6">
+            <h2 class="text-xl font-semibold mb-4">Market Performance (AEST)</h2>
+            <div style="height: 400px;">
+                <canvas id="indicesChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Market Status Grid -->
+        <div class="market-card rounded-xl p-6">
+            <h2 class="text-xl font-semibold mb-4">Current Market Status</h2>
+            <div id="market-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Market cards will be inserted here -->
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Configuration
+        const BACKEND_URL = 'http://localhost:8000';
+        let chartInstance = null;
+        let marketData = {};
+        let currentTimeframe = '1mo';
+        let currentRegion = 'all';
+        
+        // Market configurations with AEST hours
+        const MARKET_CONFIG = {
+            // Americas - Trade overnight in AEST
+            "^GSPC": {
+                name: "S&P 500",
+                region: "americas",
+                marketOpen: 0.5,   // 00:30 AEST
+                marketClose: 7,    // 07:00 AEST
+                color: 'rgb(239, 68, 68)'
+            },
+            "^DJI": {
+                name: "Dow Jones",
+                region: "americas",
+                marketOpen: 0.5,
+                marketClose: 7,
+                color: 'rgb(248, 113, 113)'
+            },
+            "^IXIC": {
+                name: "NASDAQ",
+                region: "americas",
+                marketOpen: 0.5,
+                marketClose: 7,
+                color: 'rgb(252, 165, 165)'
+            },
+            
+            // Asia-Pacific - Trade during AEST day
+            "^AXJO": {
+                name: "ASX 200",
+                region: "asia",
+                marketOpen: 10,    // 10:00 AEST
+                marketClose: 16,   // 16:00 AEST
+                color: 'rgb(59, 130, 246)'
+            },
+            "^AORD": {
+                name: "All Ordinaries",
+                region: "asia",
+                marketOpen: 10,
+                marketClose: 16,
+                color: 'rgb(96, 165, 250)'
+            },
+            "^N225": {
+                name: "Nikkei 225",
+                region: "asia",
+                marketOpen: 10,
+                marketClose: 15,
+                color: 'rgb(147, 197, 253)'
+            },
+            "^HSI": {
+                name: "Hang Seng",
+                region: "asia",
+                marketOpen: 11.5,
+                marketClose: 17,
+                color: 'rgb(191, 219, 254)'
+            },
+            
+            // Europe - Trade in AEST evening
+            "^FTSE": {
+                name: "FTSE 100",
+                region: "europe",
+                marketOpen: 18,    // 18:00 AEST
+                marketClose: 2.5,  // 02:30 AEST next day
+                color: 'rgb(16, 185, 129)'
+            },
+            "^GDAXI": {
+                name: "DAX",
+                region: "europe",
+                marketOpen: 18,
+                marketClose: 2.5,
+                color: 'rgb(52, 211, 153)'
+            },
+            "^FCHI": {
+                name: "CAC 40",
+                region: "europe",
+                marketOpen: 18,
+                marketClose: 2.5,
+                color: 'rgb(110, 231, 183)'
+            }
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeChart();
+            loadMarketData();
+            setupEventListeners();
+            updateTime();
+            setInterval(updateTime, 1000);
+            setInterval(loadMarketData, 30000); // Update every 30 seconds
+        });
+
+        function setupEventListeners() {
+            document.getElementById('refresh-btn').addEventListener('click', loadMarketData);
+            document.getElementById('region-select').addEventListener('change', (e) => {
+                currentRegion = e.target.value;
+                updateChart();
+            });
+            
+            document.querySelectorAll('.timeframe-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    currentTimeframe = e.target.dataset.timeframe;
+                    document.querySelectorAll('.timeframe-btn').forEach(b => {
+                        b.classList.remove('bg-blue-600');
+                        b.classList.add('bg-slate-700');
+                    });
+                    e.target.classList.remove('bg-slate-700');
+                    e.target.classList.add('bg-blue-600');
+                    loadMarketData();
+                });
+            });
+        }
+
+        function initializeChart() {
+            const ctx = document.getElementById('indicesChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: []
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: { color: '#fff' }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed.y;
+                                    const symbol = value >= 0 ? '+' : '';
+                                    return `${context.dataset.label}: ${symbol}${value.toFixed(2)}%`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'hour',
+                                displayFormats: {
+                                    hour: 'HH:mm'
+                                },
+                                tooltipFormat: 'dd/MM HH:mm'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time (AEST)',
+                                color: '#999'
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#999' }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Change (%)',
+                                color: '#999'
+                            },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { 
+                                color: '#999',
+                                callback: function(value) {
+                                    return value.toFixed(1) + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        async function loadMarketData() {
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/indices`);
+                const data = await response.json();
+                
+                marketData = data.indices || {};
+                updateMarketGrid();
+                
+                // Load historical data for chart
+                await loadHistoricalData();
+                
+                document.getElementById('last-update').textContent = 
+                    `Last update: ${new Date().toLocaleTimeString('en-AU', {timeZone: 'Australia/Sydney'})}`;
+            } catch (error) {
+                console.error('Error loading market data:', error);
+            }
+        }
+
+        async function loadHistoricalData() {
+            const symbols = Object.keys(MARKET_CONFIG).filter(symbol => {
+                if (currentRegion === 'all') return true;
+                return MARKET_CONFIG[symbol].region === currentRegion;
+            });
+
+            const datasets = [];
+            
+            for (const symbol of symbols) {
+                try {
+                    const response = await fetch(`${BACKEND_URL}/api/indices/${symbol}/history?period=${currentTimeframe}`);
+                    const data = await response.json();
+                    
+                    if (data.history && data.history.length > 0) {
+                        const config = MARKET_CONFIG[symbol];
+                        
+                        // Process data points with proper AEST timestamps
+                        const processedData = data.history.map(point => {
+                            // Convert timestamp to AEST
+                            const aestTime = new Date(point.timestamp);
+                            
+                            // Calculate percentage change
+                            const change = ((point.close - point.open) / point.open) * 100;
+                            
+                            return {
+                                x: aestTime,
+                                y: change
+                            };
+                        });
+
+                        datasets.push({
+                            label: config.name,
+                            data: processedData,
+                            borderColor: config.color,
+                            backgroundColor: config.color + '20',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: false,
+                            pointRadius: 0,
+                            pointHoverRadius: 5
+                        });
+                    }
+                } catch (error) {
+                    console.error(`Error loading history for ${symbol}:`, error);
+                }
+            }
+
+            // Update chart
+            chartInstance.data.datasets = datasets;
+            chartInstance.update();
+        }
+
+        function updateChart() {
+            loadHistoricalData();
+        }
+
+        function updateMarketGrid() {
+            const grid = document.getElementById('market-grid');
+            grid.innerHTML = '';
+            
+            Object.entries(marketData).forEach(([symbol, data]) => {
+                if (!MARKET_CONFIG[symbol]) return;
+                const config = MARKET_CONFIG[symbol];
+                
+                if (currentRegion !== 'all' && config.region !== currentRegion) return;
+                
+                const isOpen = data.isOpen;
+                const changeClass = data.changePercent >= 0 ? 'text-green-400' : 'text-red-400';
+                const arrow = data.changePercent >= 0 ? '↑' : '↓';
+                
+                const card = document.createElement('div');
+                card.className = 'bg-slate-800 rounded-lg p-4 border border-slate-700';
+                card.innerHTML = `
+                    <div class="flex items-center justify-between mb-2">
+                        <h3 class="font-semibold">${config.name}</h3>
+                        <span class="status-dot ${isOpen ? 'open' : 'closed'}"></span>
+                    </div>
+                    <div class="text-2xl font-bold mb-1">
+                        ${data.price ? data.price.toFixed(2) : '-'}
+                    </div>
+                    <div class="flex items-center gap-2 ${changeClass}">
+                        <span>${arrow} ${Math.abs(data.changePercent || 0).toFixed(2)}%</span>
+                        <span class="text-sm text-gray-400">
+                            (${data.change >= 0 ? '+' : ''}${(data.change || 0).toFixed(2)})
+                        </span>
+                    </div>
+                    <div class="text-xs text-gray-500 mt-2">
+                        ${config.marketOpen}:00 - ${config.marketClose}:00 AEST
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function updateTime() {
+            const now = new Date();
+            const aestTime = now.toLocaleString('en-AU', {
+                timeZone: 'Australia/Sydney',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            document.getElementById('current-time').textContent = `AEST: ${aestTime}`;
+        }
+    </script>
+</body>
+</html>
