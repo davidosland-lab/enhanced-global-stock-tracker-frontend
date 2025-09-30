@@ -1,0 +1,124 @@
+# Cursor IDE Rules - Prevent Regression and Protect Working Code
+
+## CRITICAL - DO NOT MODIFY THESE FILES
+- protected_working_code/* (All files in this directory are READ-ONLY)
+- PROTECTED_* (Any file starting with PROTECTED_)
+- backend_fixed.py (Without running verify_integrity.py first)
+- simple_working_dashboard.html (Without testing on different port)
+
+## MANDATORY RULES - ALWAYS FOLLOW
+
+### 1. NO SYNTHETIC DATA
+- NEVER use Math.random() or any random data generation
+- NEVER create mock/test data in production code
+- ALWAYS use real Yahoo Finance API (yfinance)
+- DELETE any code that generates synthetic data
+
+### 2. DATA ACCURACY REQUIREMENTS
+- All Ordinaries MUST show approximately -0.14% change
+- Previous close MUST come from hist['Close'].iloc[-2]
+- Current price MUST come from hist['Close'].iloc[-1]
+- NEVER use regularMarketPreviousClose for calculations
+
+### 3. DEVELOPMENT WORKFLOW
+- CREATE new versions for testing (e.g., backend_v2.py)
+- TEST on different ports (8003, 8004, etc.)
+- VERIFY using verify_integrity.py before replacing
+- ROLLBACK if verification fails
+
+### 4. BACKEND REQUIREMENTS
+```python
+# CORRECT way to get previous close:
+hist = ticker.history(period="2d")
+if len(hist) > 1:
+    previous_close = float(hist['Close'].iloc[-2])
+    current_price = float(hist['Close'].iloc[-1])
+```
+
+### 5. FRONTEND REQUIREMENTS
+- Fetch data from backend API only
+- No client-side calculations
+- Display data source clearly
+- Update every 30 seconds maximum
+
+## VERIFICATION CHECKLIST
+
+Before ANY commit:
+1. [ ] Run: python verify_integrity.py
+2. [ ] Check: All Ordinaries shows -0.14%
+3. [ ] Verify: No Math.random in codebase
+4. [ ] Confirm: Using history data for calculations
+5. [ ] Test: Backend responds on port 8002
+
+## RECOVERY PROCEDURE
+
+If regression occurs:
+```bash
+# 1. Stop broken service
+pkill -f "python.*backend"
+
+# 2. Restore working version
+cp protected_working_code/PROTECTED_backend_fixed_v1.py backend_fixed.py
+
+# 3. Restart service
+python backend_fixed.py &
+
+# 4. Verify recovery
+python verify_integrity.py
+```
+
+## TIMEZONE REQUIREMENTS
+- All times in AEST (Australia/Sydney)
+- Market hours:
+  - ASX: 10:00-16:00 AEST
+  - Europe: 18:00-02:30 AEST
+  - Americas: 00:30-07:00 AEST
+
+## MONOREPO STRUCTURE
+```
+/home/user/webapp/
+├── protected_working_code/     # DO NOT MODIFY
+│   ├── PROTECTED_*.py          # Protected versions
+│   └── checksums.md5           # Integrity hashes
+├── backend_fixed.py            # Working backend (port 8002)
+├── simple_working_dashboard.html # Working frontend
+├── verify_integrity.py         # Verification script
+└── modules/                    # Individual module files
+    ├── portfolio.html
+    ├── analytics.html
+    ├── predictions.html
+    └── settings.html
+```
+
+## AI ASSISTANT PROMPTS
+
+When asking AI to modify code:
+1. "First run verify_integrity.py to check current state"
+2. "Create a new version for testing, don't modify backend_fixed.py"
+3. "Test on port 8003 before replacing the working version"
+4. "Ensure All Ordinaries shows -0.14% change"
+5. "Use real Yahoo Finance data only, no synthetic data"
+
+## COMMIT MESSAGE FORMAT
+```
+[PROTECTED] Initial working version with correct calculations
+[FIX] Corrected percentage calculation using history data
+[FEATURE] Added new module (tested, no regression)
+[ROLLBACK] Restored working version after regression
+```
+
+## DANGER ZONES - NEVER DO THIS
+❌ Modify files in protected_working_code/
+❌ Use Math.random() or generateMockData()
+❌ Calculate percentages without history data
+❌ Change backend_fixed.py without backup
+❌ Deploy without running verification
+❌ Trust regularMarketPreviousClose value
+❌ Generate data client-side
+
+## SUCCESS METRICS
+✅ All Ordinaries: ~9,135 points, -0.14% change
+✅ Data source: "Yahoo Finance (History-based)"
+✅ No synthetic data in codebase
+✅ All integrity checks pass
+✅ Protected files unchanged
