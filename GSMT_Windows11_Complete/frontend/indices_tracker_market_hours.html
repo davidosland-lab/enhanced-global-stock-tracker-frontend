@@ -722,8 +722,8 @@
                                     return value.toFixed(1) + '%';
                                 }
                             },
-                            suggestedMin: -5,
-                            suggestedMax: 5
+                            // Dynamic scaling based on data
+                            beginAtZero: false
                         }
                     }
                 }
@@ -776,15 +776,28 @@
             }
         }
 
-        // Update chart with market hours restriction
+        // Update chart with market hours restriction and 5-minute intervals
         function updateChart() {
             if (!mainChart) return;
             
-            // Generate 24-hour timeline starting from 9:00 AEST
+            // Generate labels based on selected interval
+            const interval = document.getElementById('intervalSelect')?.value || '5m';
             const labels = [];
-            for (let hour = 9; hour < 33; hour++) {
-                const displayHour = hour >= 24 ? hour - 24 : hour;
-                labels.push(`${displayHour.toString().padStart(2, '0')}:00`);
+            
+            if (interval === '5m') {
+                // Generate 5-minute labels for 24 hours
+                for (let hour = 9; hour < 33; hour++) {
+                    for (let min = 0; min < 60; min += 5) {
+                        const displayHour = hour >= 24 ? hour - 24 : hour;
+                        labels.push(`${displayHour.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`);
+                    }
+                }
+            } else {
+                // Original hourly labels
+                for (let hour = 9; hour < 33; hour++) {
+                    const displayHour = hour >= 24 ? hour - 24 : hour;
+                    labels.push(`${displayHour.toString().padStart(2, '0')}:00`);
+                }
             }
             
             const datasets = [];
