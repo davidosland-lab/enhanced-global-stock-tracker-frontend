@@ -163,6 +163,68 @@ async def get_all_indices():
     cache[cache_key] = result
     return result
 
+@app.get("/api/stock/{symbol}")
+async def get_stock_data(symbol: str):
+    """Get individual stock data"""
+    try:
+        # Clean the symbol
+        symbol = symbol.upper().strip()
+        
+        # Check cache first
+        cache_key = f"stock_{symbol}"
+        if cache_key in cache:
+            return cache[cache_key]
+        
+        # Fetch stock data
+        ticker = yf.Ticker(symbol)
+        info = ticker.info
+        
+        # Get history for more accurate data
+        hist = ticker.history(period="5d")
+        
+        if not hist.empty:
+            current_price = float(hist['Close'].iloc[-1])
+            if len(hist) > 1:
+                previous_close = float(hist['Close'].iloc[-2])
+            else:
+                previous_close = info.get('regularMarketPreviousClose', current_price)
+        else:
+            current_price = info.get('regularMarketPrice', 0)
+            previous_close = info.get('regularMarketPreviousClose', current_price)
+        
+        # Prepare response
+        stock_data = {
+            "symbol": symbol,
+            "longName": info.get('longName'),
+            "shortName": info.get('shortName'),
+            "regularMarketPrice": current_price,
+            "previousClose": previous_close,
+            "regularMarketPreviousClose": info.get('regularMarketPreviousClose'),
+            "regularMarketOpen": info.get('regularMarketOpen'),
+            "dayHigh": info.get('dayHigh'),
+            "dayLow": info.get('dayLow'),
+            "regularMarketVolume": info.get('regularMarketVolume'),
+            "averageVolume": info.get('averageVolume'),
+            "marketCap": info.get('marketCap'),
+            "fiftyTwoWeekLow": info.get('fiftyTwoWeekLow'),
+            "fiftyTwoWeekHigh": info.get('fiftyTwoWeekHigh'),
+            "trailingPE": info.get('trailingPE'),
+            "dividendYield": info.get('dividendYield'),
+            "beta": info.get('beta'),
+            "exchange": info.get('exchange'),
+            "currency": info.get('currency'),
+            "dataSource": "Yahoo Finance (Real-time)",
+            "lastUpdate": datetime.now().isoformat()
+        }
+        
+        # Cache for 2 minutes
+        cache[cache_key] = stock_data
+        return stock_data
+        
+    except Exception as e:
+        logger.error(f"Error fetching {symbol}: {str(e)}")
+        raise HTTPException(status_code=404, detail=f"Stock {symbol} not found or error occurred: {str(e)}")
+
 if __name__ == "__main__":
     print("Starting FIXED Backend with correct percentage calculations...")
     print("This version uses history data for accurate previous close values")
