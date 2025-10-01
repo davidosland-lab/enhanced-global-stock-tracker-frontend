@@ -1,0 +1,46 @@
+# WINDOWS FIX - Copy this to fix the connection issue
+
+## Quick Fix Instructions:
+
+1. Open Notepad as Administrator
+2. Open the file: C:\GSMT\simple_working_dashboard.html
+3. Press Ctrl+H (Find and Replace)
+4. Find: window.location.protocol + '//' + window.location.hostname.replace('8080', '8002')
+5. Replace with: 'http://localhost:8002'
+6. Click "Replace All"
+7. Save the file (Ctrl+S)
+8. Refresh your browser
+
+## Manual Edit (if Find/Replace doesn't work):
+
+Around line 169, change this line:
+FROM:
+const API_URL = window.location.protocol + '//' + window.location.hostname.replace('8080', '8002');
+
+TO:
+const API_URL = 'http://localhost:8002';
+
+## For the Module Files:
+
+Do the same for each file in C:\GSMT\modules\:
+- global_indices_tracker.html
+- single_stock_tracker.html
+- cba_analysis.html
+- technical_analysis.html
+- ml_predictions.html
+- document_center.html
+
+Find the same pattern and replace with 'http://localhost:8002'
+
+## After applying the fix:
+1. Save all files
+2. Refresh your browser
+3. Data should load immediately
+
+## Alternative - Use PowerShell:
+
+Run this in PowerShell as Administrator in C:\GSMT directory:
+
+(Get-Content simple_working_dashboard.html) -replace "window.location.protocol \+ '//' \+ window.location.hostname.replace\('8080', '8002'\)", "'http://localhost:8002'" | Set-Content simple_working_dashboard.html
+
+Get-ChildItem modules\*.html | ForEach-Object { (Get-Content $_) -replace "window.location.protocol \+ '//' \+ window.location.hostname.replace\('8080', '8002'\)", "'http://localhost:8002'" | Set-Content $_ }
