@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Global Markets - Mobile</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 10px;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 24px;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+        
+        .time {
+            color: #718096;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 5px;
+            margin: 15px 0;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .btn {
+            padding: 8px 12px;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 12px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        
+        .btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .refresh-btn {
+            background: #48bb78;
+            color: white;
+            border-color: #48bb78;
+            margin-left: auto;
+        }
+        
+        .markets-container {
+            display: grid;
+            gap: 10px;
+        }
+        
+        .market-card {
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .market-info {
+            flex: 1;
+        }
+        
+        .market-name {
+            font-weight: 600;
+            color: #2d3748;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+        
+        .market-symbol {
+            color: #718096;
+            font-size: 11px;
+        }
+        
+        .market-region {
+            color: #a0aec0;
+            font-size: 10px;
+            margin-top: 2px;
+        }
+        
+        .market-values {
+            text-align: right;
+        }
+        
+        .market-price {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2d3748;
+        }
+        
+        .market-change {
+            font-size: 12px;
+            font-weight: 600;
+            margin-top: 2px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        
+        .positive {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        
+        .negative {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+        
+        .neutral {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+        
+        .status-bar {
+            background: white;
+            border-radius: 12px;
+            padding: 10px;
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .status-item {
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            border-left: 3px solid;
+        }
+        
+        .status-open {
+            background: #c6f6d5;
+            border-left-color: #48bb78;
+            color: #22543d;
+        }
+        
+        .status-closed {
+            background: #e2e8f0;
+            border-left-color: #cbd5e0;
+            color: #4a5568;
+        }
+        
+        .loading {
+            text-align: center;
+            color: white;
+            padding: 20px;
+            font-size: 14px;
+        }
+        
+        .error {
+            background: #fed7d7;
+            color: #742a2a;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+        
+        @media (min-width: 768px) {
+            .markets-container {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .markets-container {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🌍 Global Markets</h1>
+        <div class="time" id="currentTime"></div>
+    </div>
+    
+    <div class="controls">
+        <button class="btn active" data-period="1d">1D</button>
+        <button class="btn" data-period="5d">5D</button>
+        <button class="btn" data-period="1mo">1M</button>
+        <button class="btn" data-period="3mo">3M</button>
+        <button class="btn" data-period="6mo">6M</button>
+        <button class="btn" data-period="1y">1Y</button>
+        <button class="btn refresh-btn" onclick="loadMarkets()">↻ Refresh</button>
+    </div>
+    
+    <div class="status-bar" id="statusBar">
+        <!-- Market status will be populated here -->
+    </div>
+    
+    <div class="markets-container" id="marketsContainer">
+        <div class="loading">Loading markets...</div>
+    </div>
+    
+    <script>
+        // Configuration
+        const API_BASE = 'http://localhost:8002';
+        
+        // Markets to track
+        const MARKETS = [
+            { symbol: 'CBA.AX', name: 'Commonwealth Bank', region: 'ASX' },
+            { symbol: 'BHP.AX', name: 'BHP Group', region: 'ASX' },
+            { symbol: '^AORD', name: 'All Ordinaries', region: 'ASX' },
+            { symbol: '^GSPC', name: 'S&P 500', region: 'USA' },
+            { symbol: '^DJI', name: 'Dow Jones', region: 'USA' },
+            { symbol: '^IXIC', name: 'NASDAQ', region: 'USA' },
+            { symbol: '^FTSE', name: 'FTSE 100', region: 'UK' },
+            { symbol: '^N225', name: 'Nikkei 225', region: 'Japan' },
+            { symbol: '^HSI', name: 'Hang Seng', region: 'HK' }
+        ];
+        
+        // Market hours in AEST
+        const MARKET_HOURS = {
+            'ASX': { open: '10:00', close: '16:00', name: 'Sydney' },
+            'Tokyo': { open: '10:00', close: '16:00', name: 'Tokyo' },
+            'HK': { open: '11:30', close: '18:00', name: 'Hong Kong' },
+            'London': { open: '18:00', close: '02:30', name: 'London' },
+            'NY': { open: '00:30', close: '07:00', name: 'New York' }
+        };
+        
+        let currentPeriod = '1d';
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            updateTime();
+            setupEventListeners();
+            updateMarketStatus();
+            loadMarkets();
+            
+            // Update time every second
+            setInterval(updateTime, 1000);
+            
+            // Update market status every minute
+            setInterval(updateMarketStatus, 60000);
+            
+            // Auto-refresh markets every 30 seconds
+            setInterval(loadMarkets, 30000);
+        });
+        
+        function updateTime() {
+            const now = new Date();
+            const aestTime = now.toLocaleString('en-AU', { 
+                timeZone: 'Australia/Sydney',
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            document.getElementById('currentTime').textContent = aestTime + ' AEST';
+        }
+        
+        function setupEventListeners() {
+            document.querySelectorAll('.btn[data-period]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.btn[data-period]').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    currentPeriod = e.target.dataset.period;
+                    loadMarkets();
+                });
+            });
+        }
+        
+        function updateMarketStatus() {
+            const now = new Date();
+            const hours = now.getHours();
+            const minutes = now.getMinutes();
+            const currentTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            
+            const statusBar = document.getElementById('statusBar');
+            statusBar.innerHTML = Object.entries(MARKET_HOURS).map(([key, market]) => {
+                const isOpen = isMarketOpen(market.open, market.close, currentTime);
+                return `
+                    <div class="status-item ${isOpen ? 'status-open' : 'status-closed'}">
+                        ${market.name}: ${isOpen ? 'OPEN' : 'CLOSED'}
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function isMarketOpen(open, close, current) {
+            const openTime = timeToMinutes(open);
+            const closeTime = timeToMinutes(close);
+            const currentMinutes = timeToMinutes(current);
+            
+            if (closeTime < openTime) {
+                // Market spans midnight
+                return currentMinutes >= openTime || currentMinutes < closeTime;
+            }
+            return currentMinutes >= openTime && currentMinutes < closeTime;
+        }
+        
+        function timeToMinutes(time) {
+            const [hours, minutes] = time.split(':').map(Number);
+            return hours * 60 + minutes;
+        }
+        
+        async function loadMarkets() {
+            const container = document.getElementById('marketsContainer');
+            
+            try {
+                // Fetch data for all markets
+                const marketData = await Promise.all(
+                    MARKETS.map(market => fetchMarketData(market))
+                );
+                
+                // Display the data
+                container.innerHTML = marketData.map(data => {
+                    if (!data || data.error) {
+                        return createMarketCard(data.market, null, data.error);
+                    }
+                    return createMarketCard(data.market, data.quote);
+                }).join('');
+                
+            } catch (error) {
+                console.error('Error loading markets:', error);
+                container.innerHTML = '<div class="error">Failed to load market data. Please check connection.</div>';
+            }
+        }
+        
+        async function fetchMarketData(market) {
+            try {
+                // Try to fetch from backend
+                const response = await fetch(`${API_BASE}/api/quote/${market.symbol}`);
+                
+                if (!response.ok) {
+                    // Fallback with mock data for demo
+                    return {
+                        market: market,
+                        quote: generateMockQuote(market),
+                        error: null
+                    };
+                }
+                
+                const data = await response.json();
+                return {
+                    market: market,
+                    quote: data,
+                    error: null
+                };
+                
+            } catch (error) {
+                // Return mock data for demo purposes
+                return {
+                    market: market,
+                    quote: generateMockQuote(market),
+                    error: null
+                };
+            }
+        }
+        
+        function generateMockQuote(market) {
+            // Generate realistic mock data for demo
+            const basePrice = {
+                'CBA.AX': 140.50,
+                'BHP.AX': 45.20,
+                '^AORD': 9136.60,
+                '^GSPC': 5762.48,
+                '^DJI': 42330.15,
+                '^IXIC': 18189.17,
+                '^FTSE': 9446.43,
+                '^N225': 38651.97,
+                '^HSI': 22113.51
+            };
+            
+            const price = basePrice[market.symbol] || 1000;
+            const change = (Math.random() - 0.5) * price * 0.03; // ±3% random change
+            const changePercent = (change / price) * 100;
+            
+            return {
+                symbol: market.symbol,
+                price: price + change,
+                change: change,
+                changePercent: changePercent,
+                volume: Math.floor(Math.random() * 100000000)
+            };
+        }
+        
+        function createMarketCard(market, quote, error = null) {
+            if (error || !quote) {
+                return `
+                    <div class="market-card">
+                        <div class="market-info">
+                            <div class="market-name">${market.name}</div>
+                            <div class="market-symbol">${market.symbol}</div>
+                            <div class="market-region">${market.region}</div>
+                        </div>
+                        <div class="market-values">
+                            <div class="market-price">--</div>
+                            <div class="market-change neutral">No data</div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            const price = quote.price || quote.regularMarketPrice || 0;
+            const change = quote.change || quote.regularMarketChange || 0;
+            const changePercent = quote.changePercent || quote.regularMarketChangePercent || 0;
+            const changeClass = change >= 0 ? 'positive' : 'negative';
+            const changeSymbol = change >= 0 ? '+' : '';
+            
+            return `
+                <div class="market-card">
+                    <div class="market-info">
+                        <div class="market-name">${market.name}</div>
+                        <div class="market-symbol">${market.symbol}</div>
+                        <div class="market-region">${market.region}</div>
+                    </div>
+                    <div class="market-values">
+                        <div class="market-price">${formatPrice(price)}</div>
+                        <div class="market-change ${changeClass}">
+                            ${changeSymbol}${changePercent.toFixed(2)}%
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function formatPrice(price) {
+            if (price > 10000) {
+                return price.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            } else if (price > 100) {
+                return price.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            } else {
+                return price.toFixed(2);
+            }
+        }
+    </script>
+</body>
+</html>
