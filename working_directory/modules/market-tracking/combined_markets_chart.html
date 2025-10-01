@@ -417,8 +417,9 @@
         
         async function fetchMarketData(market, period) {
             try {
-                // Fetch historical data
-                const histResponse = await fetch(`${API_BASE}/api/historical/${market.symbol}?period=${period}`);
+                // Fetch historical data with appropriate interval
+                const interval = period === '1d' ? '15m' : '30m';  // 15min for today, 30min for 2 days
+                const histResponse = await fetch(`${API_BASE}/api/historical/${market.symbol}?period=${period}&interval=${interval}`);
                 if (!histResponse.ok) {
                     throw new Error(`Failed to fetch ${market.name} historical data`);
                 }
@@ -426,8 +427,8 @@
                 const histResult = await histResponse.json();
                 const histData = histResult.data || histResult;
                 
-                // Fetch current quote
-                const quoteResponse = await fetch(`${API_BASE}/api/quote/${market.symbol}`);
+                // Fetch current quote - using correct endpoint /api/stock/
+                const quoteResponse = await fetch(`${API_BASE}/api/stock/${market.symbol}`);
                 const quoteData = quoteResponse.ok ? await quoteResponse.json() : null;
                 
                 // Get previous day's close from historical data
@@ -468,8 +469,9 @@
         function updateCurrentValues(asxData, ftseData, sp500Data) {
             // Update ASX values
             if (asxData.quote) {
-                const price = asxData.quote.price || asxData.quote.regularMarketPrice || 0;
-                const changePercent = asxData.quote.changePercent || asxData.quote.regularMarketChangePercent || 0;
+                const price = asxData.quote.regularMarketPrice || asxData.quote.price || 0;
+                const previousClose = asxData.quote.previousClose || asxData.quote.regularMarketPreviousClose || price;
+                const changePercent = ((price - previousClose) / previousClose) * 100;
                 
                 document.getElementById('asxPrice').textContent = formatPrice(price);
                 const asxChangeEl = document.getElementById('asxChange');
@@ -479,8 +481,9 @@
             
             // Update FTSE values
             if (ftseData.quote) {
-                const price = ftseData.quote.price || ftseData.quote.regularMarketPrice || 0;
-                const changePercent = ftseData.quote.changePercent || ftseData.quote.regularMarketChangePercent || 0;
+                const price = ftseData.quote.regularMarketPrice || ftseData.quote.price || 0;
+                const previousClose = ftseData.quote.previousClose || ftseData.quote.regularMarketPreviousClose || price;
+                const changePercent = ((price - previousClose) / previousClose) * 100;
                 
                 document.getElementById('ftsePrice').textContent = formatPrice(price);
                 const ftseChangeEl = document.getElementById('ftseChange');
@@ -490,8 +493,9 @@
             
             // Update S&P 500 values
             if (sp500Data.quote) {
-                const price = sp500Data.quote.price || sp500Data.quote.regularMarketPrice || 0;
-                const changePercent = sp500Data.quote.changePercent || sp500Data.quote.regularMarketChangePercent || 0;
+                const price = sp500Data.quote.regularMarketPrice || sp500Data.quote.price || 0;
+                const previousClose = sp500Data.quote.previousClose || sp500Data.quote.regularMarketPreviousClose || price;
+                const changePercent = ((price - previousClose) / previousClose) * 100;
                 
                 document.getElementById('sp500Price').textContent = formatPrice(price);
                 const sp500ChangeEl = document.getElementById('sp500Change');
