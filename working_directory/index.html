@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASX Market Dashboard - Home</title>
+    <title>Market Tracking Dashboard</title>
     <style>
         * {
             margin: 0;
@@ -12,247 +12,335 @@
         }
         
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
             padding: 20px;
         }
         
         .container {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            padding: 40px;
-            max-width: 800px;
-            width: 100%;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
         
         h1 {
             color: #2d3748;
-            font-size: 2.5em;
             margin-bottom: 10px;
-            text-align: center;
+            font-size: 32px;
         }
         
         .subtitle {
             color: #718096;
-            font-size: 1.2em;
-            text-align: center;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        
+        .critical-notice {
+            background: #fed7e7;
+            border-left: 4px solid #c53030;
+            padding: 15px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+        }
+        
+        .critical-notice h3 {
+            color: #c53030;
+            margin-bottom: 10px;
+        }
+        
+        .critical-notice ul {
+            margin-left: 20px;
+            color: #742a2a;
+        }
+        
+        .section {
             margin-bottom: 40px;
         }
         
-        .status {
-            background: #f0fdf4;
-            border-left: 4px solid #22c55e;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 30px;
+        .section h2 {
+            color: #4a5568;
+            margin-bottom: 20px;
+            font-size: 24px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
         }
         
-        .status-title {
-            color: #166534;
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-        
-        .status-text {
-            color: #15803d;
-        }
-        
-        .quick-start {
-            background: #fef3c7;
-            border-left: 4px solid #f59e0b;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 30px;
-        }
-        
-        .quick-start-title {
-            color: #92400e;
-            font-weight: 600;
-            margin-bottom: 10px;
-        }
-        
-        .quick-start ol {
-            color: #78350f;
-            margin-left: 20px;
-        }
-        
-        .quick-start li {
-            margin-bottom: 5px;
-        }
-        
-        .modules {
+        .cards {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 20px;
-            margin-top: 30px;
         }
         
-        .module-card {
-            background: white;
-            border: 2px solid #e5e7eb;
-            border-radius: 12px;
+        .card {
+            background: #f7fafc;
+            border-radius: 8px;
             padding: 20px;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            color: inherit;
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 2px solid transparent;
         }
         
-        .module-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-            border-color: #667eea;
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
         }
         
-        .module-icon {
-            font-size: 2em;
-            margin-bottom: 10px;
-        }
-        
-        .module-title {
-            color: #2d3748;
-            font-size: 1.2em;
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-        
-        .module-desc {
-            color: #718096;
-            font-size: 0.9em;
-        }
-        
-        .primary {
+        .card.primary {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            border: none;
         }
         
-        .primary .module-title,
-        .primary .module-desc {
+        .card.primary h3 {
             color: white;
         }
         
-        .documentation {
-            margin-top: 40px;
-            padding-top: 30px;
-            border-top: 2px solid #e5e7eb;
+        .card.primary .description {
+            color: rgba(255,255,255,0.9);
         }
         
-        .doc-links {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 15px;
+        .card.primary .btn {
+            background: white;
+            color: #667eea;
         }
         
-        .doc-link {
-            padding: 8px 16px;
-            background: #f3f4f6;
-            color: #4b5563;
-            text-decoration: none;
+        .card h3 {
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-size: 20px;
+        }
+        
+        .card .description {
+            color: #718096;
+            margin-bottom: 15px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
             border-radius: 6px;
-            font-size: 0.9em;
-            transition: background 0.3s ease;
+            text-decoration: none;
+            font-weight: 500;
+            transition: background 0.2s;
         }
         
-        .doc-link:hover {
-            background: #e5e7eb;
+        .btn:hover {
+            background: #5a67d8;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .status.new {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        
+        .status.working {
+            background: #bee3f8;
+            color: #2c5282;
         }
         
         .backend-status {
-            margin-top: 30px;
-            text-align: center;
-            padding: 20px;
-            background: #f9fafb;
-            border-radius: 10px;
+            background: #f7fafc;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
         
-        code {
-            background: #1f2937;
-            color: #10b981;
-            padding: 2px 6px;
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-light {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-light.online {
+            background: #48bb78;
+        }
+        
+        .status-light.offline {
+            background: #f56565;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .tech-stack {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        
+        .tech-badge {
+            background: #edf2f7;
+            color: #4a5568;
+            padding: 4px 10px;
             border-radius: 4px;
-            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📈 ASX Market Dashboard</h1>
-        <p class="subtitle">Real-time market tracking with Yahoo Finance data</p>
+        <h1>📈 Market Tracking Dashboard</h1>
+        <p class="subtitle">Real-time market data visualization - NO synthetic data</p>
         
-        <div class="status">
-            <div class="status-title">✅ System Status</div>
-            <div class="status-text">Project reorganized with comprehensive documentation</div>
-        </div>
-        
-        <div class="quick-start">
-            <div class="quick-start-title">🚀 Quick Start</div>
-            <ol>
-                <li>Start backend: <code>python backend_fixed.py</code></li>
-                <li>Wait for "Uvicorn running on http://0.0.0.0:8002"</li>
-                <li>Click on any module below to start</li>
-            </ol>
-        </div>
-        
-        <div class="modules">
-            <a href="modules/market-tracking/market_periods_working_chart.html" class="module-card primary">
-                <div class="module-icon">📊</div>
-                <div class="module-title">Market Periods Chart</div>
-                <div class="module-desc">Primary production module with ASX/FTSE/S&P zones</div>
-            </a>
-            
-            <a href="modules/documents/document_center.html" class="module-card">
-                <div class="module-icon">📚</div>
-                <div class="module-title">Document Center</div>
-                <div class="module-desc">Central navigation hub</div>
-            </a>
-            
-            <a href="modules/market-tracking/market_periods_custom_periods.html" class="module-card">
-                <div class="module-icon">📅</div>
-                <div class="module-title">Custom Periods</div>
-                <div class="module-desc">Today/Yesterday/7 Days selector</div>
-            </a>
-            
-            <a href="modules/market-tracking/global_indices_tracker_sandbox_fixed.html" class="module-card">
-                <div class="module-icon">🌍</div>
-                <div class="module-title">Global Indices</div>
-                <div class="module-desc">Multi-market tracker</div>
-            </a>
-            
-            <a href="modules/analysis/cba_analysis.html" class="module-card">
-                <div class="module-icon">📈</div>
-                <div class="module-title">CBA Analysis</div>
-                <div class="module-desc">Commonwealth Bank analysis</div>
-            </a>
-            
-            <a href="modules/predictions/ml_predictions.html" class="module-card">
-                <div class="module-icon">🔮</div>
-                <div class="module-title">ML Predictions</div>
-                <div class="module-desc">Market predictions</div>
-            </a>
-        </div>
-        
-        <div class="documentation">
-            <h2 style="color: #2d3748; margin-bottom: 10px;">📖 Documentation</h2>
-            <div class="doc-links">
-                <a href="docs/PROJECT_OVERVIEW.md" class="doc-link" target="_blank">Project Overview</a>
-                <a href="docs/architecture/SYSTEM_ARCHITECTURE.md" class="doc-link" target="_blank">Architecture</a>
-                <a href="docs/architecture/COMPONENT_RELATIONSHIPS.md" class="doc-link" target="_blank">Components</a>
-                <a href="docs/processes/DEVELOPMENT_PROCESSES.md" class="doc-link" target="_blank">Processes</a>
-                <a href="docs/LINK_MAPPING.md" class="doc-link" target="_blank">Link Mapping</a>
-                <a href="GIT_PROTECTION_STATUS.md" class="doc-link" target="_blank">Git Status</a>
-            </div>
+        <div class="critical-notice">
+            <h3>⚠️ CRITICAL PROJECT REQUIREMENTS</h3>
+            <ul>
+                <li>✅ REAL Yahoo Finance data ONLY - NO synthetic/mock/demo data</li>
+                <li>✅ Windows localhost hardcoded as http://localhost:8002</li>
+                <li>✅ Three markets overlapping on ONE chart (ASX red, FTSE blue, S&P purple)</li>
+                <li>✅ AEST timezone for all displays (09:00-16:00)</li>
+            </ul>
         </div>
         
         <div class="backend-status">
-            <strong>Backend API:</strong> <code>http://localhost:8002</code><br>
-            <small style="color: #6b7280;">Ensure backend_fixed.py is running before using modules</small>
+            <div class="status-indicator">
+                <span class="status-light" id="backendStatus"></span>
+                <span>Backend Status: <strong id="backendText">Checking...</strong></span>
+            </div>
+            <div>
+                <span>Port: 8002</span>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Primary Charts</h2>
+            <div class="cards">
+                <div class="card primary">
+                    <h3>Three Markets Chart <span class="status new">NEW</span></h3>
+                    <p class="description">
+                        Matches your hand-drawn design exactly. Shows ASX (red), FTSE (blue), and S&P 500 (purple) 
+                        performance lines overlapping on a single chart. AEST timezone, real Yahoo Finance data only.
+                    </p>
+                    <div class="tech-stack">
+                        <span class="tech-badge">Chart.js</span>
+                        <span class="tech-badge">Real Data</span>
+                        <span class="tech-badge">AEST</span>
+                    </div>
+                    <br><br>
+                    <a href="modules/market-tracking/three_markets_chart.html" class="btn">Open Chart →</a>
+                </div>
+                
+                <div class="card">
+                    <h3>Mobile Global Tracker <span class="status working">FIXED</span></h3>
+                    <p class="description">
+                        Mobile-optimized view of multiple markets. Now uses ONLY real data - all synthetic data 
+                        generation has been removed. Shows error messages when backend is unavailable.
+                    </p>
+                    <div class="tech-stack">
+                        <span class="tech-badge">Mobile</span>
+                        <span class="tech-badge">9 Markets</span>
+                        <span class="tech-badge">Real Data</span>
+                    </div>
+                    <br><br>
+                    <a href="modules/market-tracking/mobile_global_tracker.html" class="btn">Open Mobile View →</a>
+                </div>
+                
+                <div class="card">
+                    <h3>Market Periods Chart</h3>
+                    <p class="description">
+                        Working version with market period zones. Shows all three markets with proper data handling 
+                        for the backend's nested response format.
+                    </p>
+                    <div class="tech-stack">
+                        <span class="tech-badge">Chart.js</span>
+                        <span class="tech-badge">Zones</span>
+                        <span class="tech-badge">Historical</span>
+                    </div>
+                    <br><br>
+                    <a href="modules/market-tracking/market_periods_working_chart.html" class="btn">Open Chart →</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Backend Information</h2>
+            <div class="cards">
+                <div class="card">
+                    <h3>API Endpoints</h3>
+                    <p class="description">
+                        FastAPI backend running on port 8002:
+                    </p>
+                    <ul style="margin: 15px 0; color: #4a5568; font-size: 14px;">
+                        <li><code>/api/quote/{symbol}</code> - Current quote</li>
+                        <li><code>/api/historical/{symbol}</code> - Historical data</li>
+                        <li><code>/api/markets</code> - Multiple markets</li>
+                        <li><code>/api/search</code> - Symbol search</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h3>Response Format</h3>
+                    <p class="description">
+                        Historical endpoint returns nested format:
+                    </p>
+                    <pre style="background: #2d3748; color: #fff; padding: 10px; border-radius: 4px; margin-top: 10px; font-size: 12px; overflow-x: auto;">
+{
+  "symbol": "^AORD",
+  "period": "5d",
+  "data": [...],  // Array is nested
+  "dataPoints": 100
+}</pre>
+                </div>
+            </div>
         </div>
     </div>
+    
+    <script>
+        // Check backend status
+        async function checkBackend() {
+            const statusLight = document.getElementById('backendStatus');
+            const statusText = document.getElementById('backendText');
+            
+            try {
+                const response = await fetch('http://localhost:8002/api/quote/^AORD');
+                if (response.ok) {
+                    statusLight.className = 'status-light online';
+                    statusText.textContent = 'Online';
+                    statusText.style.color = '#22543d';
+                } else {
+                    statusLight.className = 'status-light offline';
+                    statusText.textContent = 'Offline';
+                    statusText.style.color = '#c53030';
+                }
+            } catch (error) {
+                statusLight.className = 'status-light offline';
+                statusText.textContent = 'Offline - Start backend_fixed.py';
+                statusText.style.color = '#c53030';
+            }
+        }
+        
+        // Check on load and every 5 seconds
+        checkBackend();
+        setInterval(checkBackend, 5000);
+    </script>
 </body>
 </html>
