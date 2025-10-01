@@ -1,0 +1,69 @@
+# Aider Configuration - Prevent Regression
+# This file configures Aider to protect working code
+
+# Files that should NEVER be modified
+read-only-files:
+  - protected_working_code/*
+  - PROTECTED_*
+  - FILE_PROTECTION_STRATEGY.md
+  - .aider.conf.yml
+
+# Require confirmation before editing critical files
+confirm-files:
+  - backend_fixed.py
+  - simple_working_dashboard.html
+  - "*.md"
+
+# Auto-commit settings
+auto-commits: true
+commit-prefix: "[AIDER]"
+
+# Git settings
+git: true
+pretty: true
+show-diffs: true
+
+# Testing requirements
+test-cmd: "python verify_integrity.py"
+
+# Voice settings
+voice-language: en
+
+# Map settings
+map-tokens: 1024
+
+# Model preferences
+model: claude-3-opus-20240229
+weak-model: claude-3-haiku-20240307
+
+# Rules for code generation
+code-rules: |
+  CRITICAL RULES - NEVER VIOLATE:
+  1. NO SYNTHETIC DATA - Never use Math.random() or mock data
+  2. REAL DATA ONLY - Always use Yahoo Finance API (yfinance)
+  3. CORRECT CALCULATIONS - Previous close from hist['Close'].iloc[-2]
+  4. PRESERVE WORKING CODE - Never break backend_fixed.py
+  5. TEST FIRST - Create new versions and test before replacing
+  6. VERIFY DATA - All Ordinaries must show -0.14% change
+  
+  PYTHON BACKEND RULES:
+  - Use yfinance for all market data
+  - Get 2-day history for previous close
+  - Cache responses for 2 minutes maximum
+  - Include AEST timezone for all timestamps
+  
+  FRONTEND RULES:
+  - No client-side data generation
+  - Fetch from backend API only
+  - Display real-time updates
+  - Show data source clearly
+  
+  TESTING REQUIREMENTS:
+  - Run verify_integrity.py before commits
+  - Check All Ordinaries shows -0.14%
+  - Ensure no Math.random in code
+  - Verify using history data
+
+# Repository map settings
+repo-map: true
+map-refresh: auto

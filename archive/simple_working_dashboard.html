@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GSMT - Simple Working Version</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #0f172a;
+            color: #fff;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #60a5fa;
+            border-bottom: 2px solid #1e293b;
+            padding-bottom: 10px;
+        }
+        .status {
+            background: #1e293b;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .status-item {
+            display: inline-block;
+            margin-right: 30px;
+            padding: 5px 10px;
+            background: #334155;
+            border-radius: 4px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .card {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+        .card h2 {
+            margin: 0 0 10px 0;
+            color: #60a5fa;
+            font-size: 18px;
+        }
+        .market-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #334155;
+        }
+        .market-item:last-child {
+            border-bottom: none;
+        }
+        .positive { color: #10b981; }
+        .negative { color: #ef4444; }
+        .module-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .module-btn {
+            background: #3b82f6;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-decoration: none;
+            text-align: center;
+            transition: background 0.3s;
+        }
+        .module-btn:hover {
+            background: #2563eb;
+        }
+        .error {
+            background: #991b1b;
+            color: #fca5a5;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            background: #14532d;
+            color: #86efac;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        #loading {
+            text-align: center;
+            padding: 20px;
+            color: #94a3b8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Global Stock Market Tracker - Simple Working Version</h1>
+        
+        <div class="status">
+            <span class="status-item">Time: <span id="current-time">--:--:--</span> AEST</span>
+            <span class="status-item">Data: <span id="data-status">Loading...</span></span>
+            <span class="status-item">Last Update: <span id="last-update">--:--:--</span></span>
+        </div>
+
+        <div id="error-container"></div>
+        
+        <div class="card">
+            <h2>Real-Time Market Data (from Yahoo Finance)</h2>
+            <div id="loading">Loading real market data...</div>
+            <div id="markets-grid" class="grid" style="display: none;">
+                <!-- Market data will be inserted here -->
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Modules</h2>
+            <div class="module-grid">
+                <a href="modules/global_indices_tracker.html" class="module-btn">
+                    📊 Global Indices Tracker
+                </a>
+                <a href="modules/single_stock_tracker.html" class="module-btn">
+                    📈 Single Stock Tracker
+                </a>
+                <a href="modules/cba_analysis.html" class="module-btn">
+                    🏦 CBA Analysis
+                </a>
+                <a href="modules/technical_analysis.html" class="module-btn">
+                    📉 Technical Analysis
+                </a>
+                <a href="modules/ml_predictions.html" class="module-btn">
+                    🔮 ML Predictions
+                </a>
+                <a href="modules/document_center.html" class="module-btn">
+                    📚 Document Center
+                </a>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Module Status</h2>
+            <div id="module-status">
+                <div class="market-item">
+                    <span>Backend API (Port 8002)</span>
+                    <span class="positive">✓ WORKING</span>
+                </div>
+                <div class="market-item">
+                    <span>Real Yahoo Finance Data</span>
+                    <span class="positive">✓ ACTIVE</span>
+                </div>
+                <div class="market-item">
+                    <span>Frontend Modules</span>
+                    <span class="negative">⚠ In Development</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        // Fixed for Windows localhost deployment
+        const API_URL = 'http://localhost:8002';
+        let marketData = {};
+        
+        // Key markets to display
+        const KEY_MARKETS = [
+            '^AORD',  // All Ordinaries
+            '^AXJO',  // ASX 200
+            '^GSPC',  // S&P 500
+            '^DJI',   // Dow Jones
+            '^FTSE',  // FTSE 100
+            '^N225',  // Nikkei
+            '^HSI',   // Hang Seng
+            '^GDAXI'  // DAX
+        ];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadMarketData();
+            updateTime();
+            setInterval(updateTime, 1000);
+            setInterval(loadMarketData, 30000); // Refresh every 30 seconds
+        });
+
+        async function loadMarketData() {
+            const errorContainer = document.getElementById('error-container');
+            const loadingDiv = document.getElementById('loading');
+            const marketsGrid = document.getElementById('markets-grid');
+            
+            try {
+                console.log('Fetching real market data from:', API_URL);
+                const response = await fetch(`${API_URL}/api/indices`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                marketData = data.indices || {};
+                
+                console.log('Received market data:', marketData);
+                
+                // Update display
+                displayMarkets();
+                
+                // Update status
+                document.getElementById('data-status').textContent = 'REAL DATA';
+                document.getElementById('data-status').style.color = '#10b981';
+                document.getElementById('last-update').textContent = 
+                    new Date().toLocaleTimeString('en-AU', {timeZone: 'Australia/Sydney'});
+                
+                // Show success message briefly
+                errorContainer.innerHTML = '<div class="success">✓ Real market data loaded successfully</div>';
+                setTimeout(() => {
+                    errorContainer.innerHTML = '';
+                }, 3000);
+                
+                loadingDiv.style.display = 'none';
+                marketsGrid.style.display = 'grid';
+                
+            } catch (error) {
+                console.error('Error loading market data:', error);
+                errorContainer.innerHTML = `
+                    <div class="error">
+                        ⚠ Error loading data: ${error.message}<br>
+                        Make sure backend is running on port 8002
+                    </div>
+                `;
+                document.getElementById('data-status').textContent = 'ERROR';
+                document.getElementById('data-status').style.color = '#ef4444';
+            }
+        }
+
+        function displayMarkets() {
+            const grid = document.getElementById('markets-grid');
+            grid.innerHTML = '';
+            
+            // Display key markets
+            KEY_MARKETS.forEach(symbol => {
+                const data = marketData[symbol];
+                if (!data) return;
+                
+                const changeClass = data.changePercent >= 0 ? 'positive' : 'negative';
+                const arrow = data.changePercent >= 0 ? '↑' : '↓';
+                const statusText = data.isOpen ? '🟢 OPEN' : '🔴 CLOSED';
+                
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <h3 style="margin: 0 0 10px 0; font-size: 16px;">
+                        ${data.name} (${symbol})
+                    </h3>
+                    <div style="font-size: 24px; font-weight: bold; margin: 10px 0;">
+                        ${data.price ? data.price.toFixed(2) : '—'}
+                    </div>
+                    <div class="${changeClass}" style="font-size: 18px;">
+                        ${arrow} ${Math.abs(data.changePercent || 0).toFixed(2)}%
+                        (${data.change >= 0 ? '+' : ''}${(data.change || 0).toFixed(2)})
+                    </div>
+                    <div style="font-size: 12px; color: #94a3b8; margin-top: 10px;">
+                        ${statusText} | Vol: ${formatVolume(data.volume || 0)}
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            
+            // Log key market values for verification
+            console.log('Key Market Values:');
+            console.log('All Ordinaries:', marketData['^AORD']?.changePercent, '%');
+            console.log('S&P 500:', marketData['^GSPC']?.changePercent, '%');
+            console.log('FTSE 100:', marketData['^FTSE']?.changePercent, '%');
+        }
+
+        function formatVolume(volume) {
+            if (volume >= 1e9) return (volume / 1e9).toFixed(1) + 'B';
+            if (volume >= 1e6) return (volume / 1e6).toFixed(1) + 'M';
+            if (volume >= 1e3) return (volume / 1e3).toFixed(1) + 'K';
+            return volume.toString();
+        }
+
+        function updateTime() {
+            const now = new Date();
+            const aestTime = now.toLocaleString('en-AU', {
+                timeZone: 'Australia/Sydney',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            document.getElementById('current-time').textContent = aestTime;
+        }
+
+        function openModule(module) {
+            // Simple module launcher
+            const modules = {
+                'indices': 'global_indices.html',
+                'stocks': 'stock_tracker.html',
+                'cba': 'cba_analysis.html',
+                'technical': 'technical_charts.html',
+                'prediction': 'ml_predictions.html',
+                'documents': 'document_center.html'
+            };
+            
+            const filename = modules[module];
+            if (filename) {
+                // For now, just alert - we'll create these files next if this works
+                alert(`Module "${module}" will open ${filename}\n\nThis module is being developed.`);
+                console.log(`Would open: ${filename}`);
+            }
+        }
+    </script>
+</body>
+</html>

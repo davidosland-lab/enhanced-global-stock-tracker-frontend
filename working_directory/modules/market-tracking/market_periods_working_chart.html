@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Performance Chart - Working Version</title>
+    
+    <!-- Chart.js with plugins -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2d3748;
+            margin-bottom: 20px;
+            font-size: 28px;
+        }
+        
+        .market-indicators {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .market-card {
+            padding: 20px;
+            border-radius: 8px;
+            position: relative;
+            color: white;
+        }
+        
+        .market-card.asx {
+            background: linear-gradient(135deg, #ff6b6b, #ff4444);
+        }
+        
+        .market-card.europe {
+            background: linear-gradient(135deg, #4dabf7, #1971c2);
+        }
+        
+        .market-card.us {
+            background: linear-gradient(135deg, #9775fa, #7950f2);
+        }
+        
+        .market-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .market-time {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 12px;
+        }
+        
+        .market-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        
+        .market-change {
+            font-size: 16px;
+        }
+        
+        .chart-wrapper {
+            background: white;
+            border: 2px solid #e1e4e8;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 600px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background: #5a67d8;
+            transform: translateY(-1px);
+        }
+        
+        .btn.active {
+            background: #48bb78;
+        }
+        
+        .period-buttons {
+            display: flex;
+            gap: 10px;
+            background: #f0f0f0;
+            padding: 4px;
+            border-radius: 8px;
+        }
+        
+        .period-btn {
+            padding: 8px 16px;
+            background: transparent;
+            color: #4a5568;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .period-btn:hover {
+            background: #e2e8f0;
+        }
+        
+        .period-btn.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .status-badge {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .status-badge.open {
+            background: rgba(81, 207, 102, 0.3);
+        }
+        
+        .status-badge.closed {
+            background: rgba(255, 107, 107, 0.3);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+        
+        .error {
+            background: #fee;
+            color: #c53030;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .period-info {
+            color: #718096;
+            font-size: 13px;
+            margin-left: 10px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Market Performance Tracker - AEST</h1>
+        
+        <div class="controls">
+            <div class="period-buttons">
+                <button class="period-btn active" data-period="today" onclick="selectPeriod('today')">Today</button>
+                <button class="period-btn" data-period="yesterday" onclick="selectPeriod('yesterday')">Yesterday</button>
+                <button class="period-btn" data-period="7days" onclick="selectPeriod('7days')">Past 7 Days</button>
+            </div>
+            <button class="btn" onclick="refreshData()">🔄 Refresh</button>
+            <button class="btn" id="autoRefreshBtn" onclick="toggleAutoRefresh()">Auto-Refresh: OFF</button>
+            <span class="period-info" id="periodInfo"></span>
+            <span style="margin-left: auto; color: #718096; font-size: 14px;" id="currentTime"></span>
+        </div>
+        
+        <div class="market-indicators">
+            <div class="market-card asx">
+                <span class="status-badge" id="asxStatus">CHECKING</span>
+                <div class="market-title">🇦🇺 ASX / All Ordinaries</div>
+                <div class="market-time">10:00 - 16:00 AEST</div>
+                <div class="market-value" id="asxValue">Loading...</div>
+                <div class="market-change" id="asxChange">--</div>
+            </div>
+            
+            <div class="market-card europe">
+                <span class="status-badge" id="europeStatus">CHECKING</span>
+                <div class="market-title">🇬🇧 FTSE 100</div>
+                <div class="market-time">18:00 - 02:30 AEST</div>
+                <div class="market-value" id="ftseValue">Loading...</div>
+                <div class="market-change" id="ftseChange">--</div>
+            </div>
+            
+            <div class="market-card us">
+                <span class="status-badge" id="usStatus">CHECKING</span>
+                <div class="market-title">🇺🇸 S&P 500</div>
+                <div class="market-time">00:30 - 07:00 AEST</div>
+                <div class="market-value" id="spValue">Loading...</div>
+                <div class="market-change" id="spChange">--</div>
+            </div>
+        </div>
+        
+        <div class="chart-wrapper">
+            <div id="loadingMessage" class="loading">Loading market data...</div>
+            <div class="chart-container" id="chartContainer" style="display: none;">
+                <canvas id="marketChart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // API Configuration
+        const API_URL = 'https://8002-i2ch499gc6d7qpm0yvxy4-6532622b.e2b.dev';
+        
+        // Market configurations - matching your drawing exactly
+        const MARKETS = {
+            ASX: {
+                symbol: '^AORD',
+                name: 'All Ordinaries',
+                color: '#ff4444',  // Red as in your drawing
+                backgroundColor: 'rgba(255, 68, 68, 0.15)',
+                borderWidth: 3,
+                startHour: 10,
+                endHour: 16,
+                elementIds: {
+                    value: 'asxValue',
+                    change: 'asxChange',
+                    status: 'asxStatus'
+                }
+            },
+            EUROPE: {
+                symbol: '^FTSE',
+                name: 'FTSE 100',
+                color: '#1971c2',  // Blue as in your drawing
+                backgroundColor: 'rgba(25, 113, 194, 0.15)',
+                borderWidth: 3,
+                startHour: 18,
+                endHour: 2.5,
+                elementIds: {
+                    value: 'ftseValue',
+                    change: 'ftseChange',
+                    status: 'europeStatus'
+                }
+            },
+            US: {
+                symbol: '^GSPC',
+                name: 'S&P 500',
+                color: '#7950f2',  // Purple as in your drawing
+                backgroundColor: 'rgba(121, 80, 242, 0.15)',
+                borderWidth: 3,
+                startHour: 0.5,
+                endHour: 7,
+                elementIds: {
+                    value: 'spValue',
+                    change: 'spChange',
+                    status: 'usStatus'
+                }
+            }
+        };
+        
+        let currentChart = null;
+        let autoRefreshInterval = null;
+        let marketData = {};
+        let historicalData = {};
+        let currentPeriod = '7days'; // Start with 7 days to ensure we have data
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Initializing Market Performance Tracker');
+            
+            // Start with 7 days selected
+            selectPeriod('7days');
+            
+            updateClock();
+            setInterval(updateClock, 1000);
+            updateMarketStatus();
+            setInterval(updateMarketStatus, 60000);
+            fetchAllData();
+        });
+        
+        function selectPeriod(period) {
+            currentPeriod = period;
+            
+            // Update button states
+            document.querySelectorAll('.period-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.period === period) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            updatePeriodInfo();
+            fetchAllData();
+        }
+        
+        function updatePeriodInfo() {
+            const infoEl = document.getElementById('periodInfo');
+            const now = new Date();
+            const aestOffset = 10;
+            const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+            const aestTime = new Date(utcTime + (3600000 * aestOffset));
+            
+            let infoText = '';
+            
+            switch(currentPeriod) {
+                case 'today':
+                    infoText = `Showing: ${aestTime.toLocaleDateString('en-AU', { 
+                        day: 'numeric', 
+                        month: 'short' 
+                    })}`;
+                    break;
+                case 'yesterday':
+                    const yesterday = new Date(aestTime);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    infoText = `Showing: ${yesterday.toLocaleDateString('en-AU', { 
+                        day: 'numeric', 
+                        month: 'short' 
+                    })}`;
+                    break;
+                case '7days':
+                    const weekAgo = new Date(aestTime);
+                    weekAgo.setDate(weekAgo.getDate() - 7);
+                    infoText = `Showing: ${weekAgo.toLocaleDateString('en-AU', { 
+                        day: 'numeric', 
+                        month: 'short' 
+                    })} - ${aestTime.toLocaleDateString('en-AU', { 
+                        day: 'numeric', 
+                        month: 'short' 
+                    })}`;
+                    break;
+            }
+            
+            infoEl.textContent = infoText;
+        }
+        
+        function updateClock() {
+            const now = new Date();
+            const aestOffset = 10;
+            const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+            const aestTime = new Date(utcTime + (3600000 * aestOffset));
+            
+            const timeString = aestTime.toLocaleTimeString('en-AU', { 
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            
+            const dateString = aestTime.toLocaleDateString('en-AU', {
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short'
+            });
+            
+            document.getElementById('currentTime').textContent = `${dateString} ${timeString} AEST`;
+        }
+        
+        function updateMarketStatus() {
+            const now = new Date();
+            const aestOffset = 10;
+            const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+            const aestTime = new Date(utcTime + (3600000 * aestOffset));
+            const currentHour = aestTime.getHours() + (aestTime.getMinutes() / 60);
+            const dayOfWeek = aestTime.getDay();
+            
+            Object.entries(MARKETS).forEach(([key, market]) => {
+                const statusEl = document.getElementById(market.elementIds.status);
+                let isOpen = false;
+                
+                if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+                    if (market.endHour < market.startHour) {
+                        isOpen = currentHour >= market.startHour || currentHour < market.endHour;
+                    } else {
+                        isOpen = currentHour >= market.startHour && currentHour < market.endHour;
+                    }
+                }
+                
+                if (statusEl) {
+                    statusEl.textContent = isOpen ? 'OPEN' : 'CLOSED';
+                    statusEl.className = `status-badge ${isOpen ? 'open' : 'closed'}`;
+                }
+            });
+        }
+        
+        async function fetchAllData() {
+            document.getElementById('loadingMessage').style.display = 'block';
+            document.getElementById('chartContainer').style.display = 'none';
+            document.getElementById('loadingMessage').textContent = 'Fetching market data...';
+            
+            try {
+                // Fetch current indices data
+                const response = await fetch(`${API_URL}/api/indices`);
+                if (!response.ok) throw new Error('Failed to fetch indices');
+                
+                const data = await response.json();
+                console.log('Indices data received:', data);
+                
+                // Handle nested format
+                let indices = [];
+                if (data.indices && typeof data.indices === 'object') {
+                    indices = Object.entries(data.indices).map(([symbol, info]) => ({
+                        symbol,
+                        ...info
+                    }));
+                } else if (Array.isArray(data)) {
+                    indices = data;
+                }
+                
+                // Update market cards and fetch historical data
+                const historicalPromises = [];
+                
+                for (const [key, market] of Object.entries(MARKETS)) {
+                    const indexData = indices.find(idx => idx.symbol === market.symbol);
+                    
+                    if (indexData) {
+                        marketData[key] = {
+                            value: indexData.price || indexData.value || 0,
+                            change: indexData.change || 0,
+                            changePercent: indexData.changePercent || indexData.change_percent || 0
+                        };
+                        
+                        updateMarketCard(market, marketData[key]);
+                        
+                        // Fetch historical data
+                        historicalPromises.push(
+                            fetchHistoricalData(market.symbol, key)
+                        );
+                    }
+                }
+                
+                // Wait for all historical data
+                await Promise.all(historicalPromises);
+                
+                // Draw the chart
+                drawCombinedChart();
+                
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                document.getElementById('loadingMessage').innerHTML = 
+                    '<div class="error">Failed to load market data. Please try refreshing.</div>';
+            }
+        }
+        
+        async function fetchHistoricalData(symbol, marketKey) {
+            try {
+                // Map period to API format
+                let apiPeriod = '5d';
+                if (currentPeriod === 'today') apiPeriod = '1d';
+                else if (currentPeriod === 'yesterday') apiPeriod = '5d';
+                else if (currentPeriod === '7days') apiPeriod = '1mo';
+                
+                console.log(`Fetching ${symbol} with period ${apiPeriod}`);
+                const response = await fetch(`${API_URL}/api/historical/${symbol}?period=${apiPeriod}`);
+                
+                if (!response.ok) {
+                    console.error(`Failed to fetch historical data for ${symbol}`);
+                    return;
+                }
+                
+                const result = await response.json();
+                console.log(`Historical response for ${symbol}:`, result);
+                
+                // Extract the data array from the response
+                let data = result.data || result;
+                if (!Array.isArray(data)) {
+                    console.error(`Unexpected data format for ${symbol}`);
+                    return;
+                }
+                
+                // Filter based on selected period
+                const now = new Date();
+                const today = new Date(now);
+                today.setHours(0, 0, 0, 0);
+                
+                if (currentPeriod === 'today') {
+                    data = data.filter(point => new Date(point.date) >= today);
+                } else if (currentPeriod === 'yesterday') {
+                    const yesterday = new Date(today);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    const yesterdayEnd = new Date(yesterday);
+                    yesterdayEnd.setHours(23, 59, 59);
+                    
+                    data = data.filter(point => {
+                        const pointDate = new Date(point.date);
+                        return pointDate >= yesterday && pointDate <= yesterdayEnd;
+                    });
+                } else if (currentPeriod === '7days') {
+                    const weekAgo = new Date(today);
+                    weekAgo.setDate(weekAgo.getDate() - 7);
+                    data = data.filter(point => new Date(point.date) >= weekAgo);
+                }
+                
+                historicalData[marketKey] = data;
+                console.log(`Processed data for ${marketKey}:`, data.length, 'points');
+                
+            } catch (error) {
+                console.error(`Error fetching historical data for ${symbol}:`, error);
+                historicalData[marketKey] = [];
+            }
+        }
+        
+        function updateMarketCard(market, data) {
+            const valueEl = document.getElementById(market.elementIds.value);
+            const changeEl = document.getElementById(market.elementIds.change);
+            
+            if (valueEl) {
+                valueEl.textContent = data.value.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            }
+            
+            if (changeEl) {
+                const sign = data.changePercent >= 0 ? '+' : '';
+                changeEl.textContent = `${sign}${data.changePercent.toFixed(2)}%`;
+                changeEl.style.color = data.changePercent >= 0 ? '#51cf66' : 'white';
+            }
+        }
+        
+        function drawCombinedChart() {
+            const ctx = document.getElementById('marketChart').getContext('2d');
+            
+            if (currentChart) {
+                currentChart.destroy();
+            }
+            
+            // Collect all unique timestamps
+            const allDates = new Set();
+            Object.values(historicalData).forEach(data => {
+                if (Array.isArray(data)) {
+                    data.forEach(point => allDates.add(point.date));
+                }
+            });
+            
+            const sortedDates = Array.from(allDates).sort();
+            
+            if (sortedDates.length === 0) {
+                document.getElementById('loadingMessage').innerHTML = 
+                    '<div class="error">No data available. Try selecting "Past 7 Days" for more data.</div>';
+                return;
+            }
+            
+            // Hide loading, show chart
+            document.getElementById('loadingMessage').style.display = 'none';
+            document.getElementById('chartContainer').style.display = 'block';
+            
+            // Create datasets
+            const datasets = [];
+            
+            Object.entries(MARKETS).forEach(([key, market]) => {
+                const data = historicalData[key];
+                if (!data || data.length === 0) return;
+                
+                // Calculate percentage changes from first value
+                const firstClose = data[0].close;
+                const lineData = sortedDates.map(date => {
+                    const point = data.find(p => p.date === date);
+                    if (point) {
+                        return ((point.close - firstClose) / firstClose) * 100;
+                    }
+                    return null;
+                });
+                
+                datasets.push({
+                    label: market.name,
+                    data: lineData,
+                    borderColor: market.color,
+                    backgroundColor: market.color + '20',
+                    borderWidth: 3,
+                    pointRadius: 2,
+                    pointHoverRadius: 5,
+                    tension: 0.1,
+                    fill: false
+                });
+            });
+            
+            // Create chart
+            currentChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: sortedDates.map(d => new Date(d)),
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true,
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed.y;
+                                    if (value !== null) {
+                                        return `${context.dataset.label}: ${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+                                    }
+                                    return null;
+                                }
+                            }
+                        },
+                        annotation: {
+                            annotations: createMarketZones(sortedDates)
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                displayFormats: {
+                                    hour: 'HH:mm',
+                                    day: 'dd MMM'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time (AEST)',
+                                font: { size: 14, weight: 'bold' }
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Change (%)',
+                                font: { size: 14, weight: 'bold' }
+                            },
+                            ticks: {
+                                callback: value => value.toFixed(1) + '%'
+                            },
+                            grid: {
+                                color: 'rgba(0,0,0,0.05)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createMarketZones(dates) {
+            if (!dates || dates.length === 0) return {};
+            
+            const annotations = {};
+            const sortedDates = dates.map(d => new Date(d)).sort((a, b) => a - b);
+            const minDate = sortedDates[0];
+            const maxDate = sortedDates[sortedDates.length - 1];
+            
+            let index = 0;
+            const current = new Date(minDate);
+            
+            while (current <= maxDate) {
+                // ASX zone (10:00-16:00)
+                const asxStart = new Date(current);
+                asxStart.setHours(10, 0, 0, 0);
+                const asxEnd = new Date(current);
+                asxEnd.setHours(16, 0, 0, 0);
+                
+                if (asxEnd >= minDate && asxStart <= maxDate) {
+                    annotations[`asx_${index++}`] = {
+                        type: 'box',
+                        xMin: asxStart,
+                        xMax: asxEnd,
+                        backgroundColor: 'rgba(255, 68, 68, 0.1)',
+                        borderWidth: 0
+                    };
+                }
+                
+                // Europe zone (18:00-02:30)
+                const europeStart = new Date(current);
+                europeStart.setHours(18, 0, 0, 0);
+                const europeEnd = new Date(current);
+                europeEnd.setDate(europeEnd.getDate() + 1);
+                europeEnd.setHours(2, 30, 0, 0);
+                
+                if (europeEnd >= minDate && europeStart <= maxDate) {
+                    annotations[`europe_${index++}`] = {
+                        type: 'box',
+                        xMin: europeStart,
+                        xMax: europeEnd,
+                        backgroundColor: 'rgba(25, 113, 194, 0.1)',
+                        borderWidth: 0
+                    };
+                }
+                
+                // US zone (00:30-07:00)
+                const usStart = new Date(current);
+                usStart.setHours(0, 30, 0, 0);
+                const usEnd = new Date(current);
+                usEnd.setHours(7, 0, 0, 0);
+                
+                if (usEnd >= minDate && usStart <= maxDate) {
+                    annotations[`us_${index++}`] = {
+                        type: 'box',
+                        xMin: usStart,
+                        xMax: usEnd,
+                        backgroundColor: 'rgba(121, 80, 242, 0.1)',
+                        borderWidth: 0
+                    };
+                }
+                
+                current.setDate(current.getDate() + 1);
+            }
+            
+            // Add zero line
+            annotations.zeroLine = {
+                type: 'line',
+                yMin: 0,
+                yMax: 0,
+                borderColor: 'rgba(0, 0, 0, 0.3)',
+                borderWidth: 2,
+                borderDash: [5, 5]
+            };
+            
+            return annotations;
+        }
+        
+        function refreshData() {
+            fetchAllData();
+        }
+        
+        function toggleAutoRefresh() {
+            const btn = document.getElementById('autoRefreshBtn');
+            
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+                btn.textContent = 'Auto-Refresh: OFF';
+                btn.classList.remove('active');
+            } else {
+                autoRefreshInterval = setInterval(refreshData, 30000);
+                btn.textContent = 'Auto-Refresh: ON';
+                btn.classList.add('active');
+            }
+        }
+    </script>
+</body>
+</html>
