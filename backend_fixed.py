@@ -225,6 +225,54 @@ async def get_stock_data(symbol: str):
         logger.error(f"Error fetching {symbol}: {str(e)}")
         raise HTTPException(status_code=404, detail=f"Stock {symbol} not found or error occurred: {str(e)}")
 
+@app.get("/api/historical/{symbol}")
+async def get_historical_data(symbol: str, period: str = "5d"):
+    """Get historical data for charting"""
+    cache_key = f"hist_{symbol}_{period}"
+    if cache_key in cache:
+        return cache[cache_key]
+    
+    try:
+        ticker = yf.Ticker(symbol)
+        
+        # Validate period
+        valid_periods = ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y"]
+        if period not in valid_periods:
+            period = "5d"
+        
+        # Get historical data
+        hist = ticker.history(period=period)
+        
+        if hist.empty:
+            raise HTTPException(status_code=404, detail=f"No historical data for {symbol}")
+        
+        # Format data for charting
+        data = []
+        for date, row in hist.iterrows():
+            data.append({
+                "date": date.isoformat(),
+                "open": float(row['Open']),
+                "high": float(row['High']),
+                "low": float(row['Low']),
+                "close": float(row['Close']),
+                "volume": int(row['Volume'])
+            })
+        
+        result = {
+            "symbol": symbol,
+            "period": period,
+            "data": data,
+            "dataPoints": len(data)
+        }
+        
+        # Cache for 5 minutes
+        cache[cache_key] = result
+        return result
+        
+    except Exception as e:
+        logger.error(f"Error fetching historical data for {symbol}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 if __name__ == "__main__":
     print("Starting FIXED Backend with correct percentage calculations...")
     print("This version uses history data for accurate previous close values")

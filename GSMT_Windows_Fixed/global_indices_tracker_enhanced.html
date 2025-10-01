@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Global Indices Tracker with Charts - GSMT</title>
+    
+    <!-- Chart.js for plotting -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Chart.js date adapter -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #2d3748;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+        
+        .btn.active {
+            background: #48bb78;
+        }
+        
+        select {
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid #cbd5e0;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        
+        .status-bar {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            padding: 15px 0;
+            border-top: 1px solid #e2e8f0;
+            margin-top: 15px;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 12px;
+            background: #f7fafc;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        @media (max-width: 1200px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .indices-list {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 15px;
+            padding: 20px;
+            max-height: 800px;
+            overflow-y: auto;
+        }
+        
+        .chart-container {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 15px;
+            padding: 20px;
+            position: relative;
+            height: 800px;
+        }
+        
+        .region-section {
+            margin-bottom: 25px;
+        }
+        
+        .region-header {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .index-card {
+            background: #f7fafc;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+        
+        .index-card:hover {
+            background: #edf2f7;
+            transform: translateX(5px);
+        }
+        
+        .index-card.selected {
+            border-color: #667eea;
+            background: #e9f5ff;
+        }
+        
+        .index-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .index-name {
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        .index-symbol {
+            font-size: 0.85em;
+            color: #718096;
+            background: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+        
+        .index-price {
+            font-size: 1.3em;
+            font-weight: 700;
+            color: #1a202c;
+            margin: 5px 0;
+        }
+        
+        .index-change {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.95em;
+        }
+        
+        .change-amount {
+            font-weight: 600;
+        }
+        
+        .change-percent {
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-weight: 600;
+        }
+        
+        .positive {
+            color: #48bb78;
+        }
+        
+        .positive .change-percent {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        
+        .negative {
+            color: #f56565;
+        }
+        
+        .negative .change-percent {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+        
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .chart-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        .chart-info {
+            display: flex;
+            gap: 20px;
+            font-size: 0.9em;
+            color: #718096;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+        
+        .error-message {
+            background: #fed7d7;
+            color: #742a2a;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #a0aec0;
+        }
+        
+        .legend-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            margin-right: 15px;
+        }
+        
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+        }
+        
+        /* Tabs for chart types */
+        .chart-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            color: #718096;
+            cursor: pointer;
+            font-weight: 500;
+            position: relative;
+            transition: color 0.3s;
+        }
+        
+        .tab:hover {
+            color: #4a5568;
+        }
+        
+        .tab.active {
+            color: #667eea;
+        }
+        
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: #667eea;
+        }
+        
+        /* Comparison mode */
+        .comparison-mode {
+            background: #f0fff4;
+            border: 1px solid #9ae6b4;
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .comparison-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .comparison-tag {
+            background: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            border: 1px solid #cbd5e0;
+        }
+        
+        .remove-btn {
+            cursor: pointer;
+            color: #e53e3e;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📊 Global Indices Tracker with Charts</h1>
+            <p style="color: #718096; margin-top: 5px;">Real-time market movements and historical trends</p>
+            
+            <div class="controls">
+                <button class="btn" onclick="toggleAutoRefresh()" id="autoRefreshBtn">
+                    🔄 Auto Refresh: OFF
+                </button>
+                <button class="btn" onclick="refreshData()">
+                    🔄 Refresh Now
+                </button>
+                <select id="timeframeSelect" onchange="changeTimeframe()">
+                    <option value="1d">1 Day</option>
+                    <option value="5d" selected>5 Days</option>
+                    <option value="1mo">1 Month</option>
+                    <option value="3mo">3 Months</option>
+                    <option value="1y">1 Year</option>
+                </select>
+                <button class="btn" onclick="toggleComparisonMode()" id="compareBtn">
+                    📈 Compare Indices
+                </button>
+            </div>
+            
+            <div class="status-bar">
+                <div class="status-item">
+                    <span class="status-indicator connected"></span>
+                    <span id="connection-status">Connected</span>
+                </div>
+                <div class="status-item">
+                    <span>Last Update:</span>
+                    <span id="last-update">--:--:--</span>
+                </div>
+                <div class="status-item">
+                    <span>Data Points:</span>
+                    <span id="data-points">0</span>
+                </div>
+            </div>
+            
+            <div id="comparisonMode" class="comparison-mode" style="display: none;">
+                <strong>Comparison Mode Active</strong> - Click indices to add/remove
+                <div class="comparison-list" id="comparisonList"></div>
+            </div>
+        </header>
+        
+        <div class="main-content">
+            <div class="indices-list">
+                <div class="loading" id="indicesLoading">Loading indices...</div>
+                <div id="indicesContent"></div>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-header">
+                    <div class="chart-title" id="chartTitle">Select an index to view chart</div>
+                    <div class="chart-info" id="chartInfo"></div>
+                </div>
+                
+                <div class="chart-tabs">
+                    <button class="tab active" onclick="switchChartType('line')">Line Chart</button>
+                    <button class="tab" onclick="switchChartType('candlestick')">Candlestick</button>
+                    <button class="tab" onclick="switchChartType('volume')">Volume</button>
+                    <button class="tab" onclick="switchChartType('performance')">% Performance</button>
+                </div>
+                
+                <canvas id="marketChart" width="400" height="300"></canvas>
+                <div class="no-data" id="noChartData" style="display: none;">
+                    Select an index to view its chart
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_URL = 'http://localhost:8002';
+        
+        // Global variables
+        let marketData = {};
+        let selectedIndices = [];
+        let currentChart = null;
+        let autoRefreshInterval = null;
+        let comparisonMode = false;
+        let currentChartType = 'line';
+        let currentTimeframe = '5d';
+        let historicalData = {};
+        
+        // Market indices grouped by region
+        const REGIONS = {
+            'Asia-Pacific': ['^AORD', '^AXJO', '^N225', '^HSI', '^KS11', '^NSEI'],
+            'Europe': ['^FTSE', '^GDAXI', '^FCHI', '^STOXX50E', '^IBEX'],
+            'Americas': ['^GSPC', '^DJI', '^IXIC', '^RUT', '^GSPTSE', '^BVSP']
+        };
+        
+        // Index details
+        const INDEX_DETAILS = {
+            '^AORD': { name: 'All Ordinaries', country: 'Australia' },
+            '^AXJO': { name: 'ASX 200', country: 'Australia' },
+            '^N225': { name: 'Nikkei 225', country: 'Japan' },
+            '^HSI': { name: 'Hang Seng', country: 'Hong Kong' },
+            '^KS11': { name: 'KOSPI', country: 'South Korea' },
+            '^NSEI': { name: 'NIFTY 50', country: 'India' },
+            '^FTSE': { name: 'FTSE 100', country: 'UK' },
+            '^GDAXI': { name: 'DAX', country: 'Germany' },
+            '^FCHI': { name: 'CAC 40', country: 'France' },
+            '^STOXX50E': { name: 'Euro Stoxx 50', country: 'Europe' },
+            '^IBEX': { name: 'IBEX 35', country: 'Spain' },
+            '^GSPC': { name: 'S&P 500', country: 'USA' },
+            '^DJI': { name: 'Dow Jones', country: 'USA' },
+            '^IXIC': { name: 'NASDAQ', country: 'USA' },
+            '^RUT': { name: 'Russell 2000', country: 'USA' },
+            '^GSPTSE': { name: 'S&P/TSX', country: 'Canada' },
+            '^BVSP': { name: 'Bovespa', country: 'Brazil' }
+        };
+        
+        // Chart colors
+        const CHART_COLORS = [
+            '#667eea', '#48bb78', '#ed8936', '#e53e3e', '#38b2ac',
+            '#d69e2e', '#805ad5', '#dd6b20', '#2d3748', '#319795'
+        ];
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadMarketData();
+            setInterval(() => {
+                if (document.getElementById('autoRefreshBtn').classList.contains('active')) {
+                    loadMarketData();
+                }
+            }, 30000); // Auto-refresh every 30 seconds if enabled
+        });
+        
+        async function loadMarketData() {
+            const loadingDiv = document.getElementById('indicesLoading');
+            const contentDiv = document.getElementById('indicesContent');
+            
+            try {
+                loadingDiv.style.display = 'block';
+                contentDiv.innerHTML = '';
+                
+                const response = await fetch(`${API_URL}/api/indices`);
+                if (!response.ok) throw new Error('Failed to fetch market data');
+                
+                const data = await response.json();
+                marketData = data.indices || {};
+                
+                displayIndices();
+                updateStatus();
+                
+                // Update selected chart if any
+                if (selectedIndices.length > 0) {
+                    if (comparisonMode) {
+                        plotComparisonChart();
+                    } else {
+                        plotChart(selectedIndices[0]);
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Error loading market data:', error);
+                contentDiv.innerHTML = `<div class="error-message">Failed to load market data: ${error.message}</div>`;
+            } finally {
+                loadingDiv.style.display = 'none';
+            }
+        }
+        
+        function displayIndices() {
+            const contentDiv = document.getElementById('indicesContent');
+            contentDiv.innerHTML = '';
+            
+            Object.entries(REGIONS).forEach(([region, symbols]) => {
+                const regionSection = document.createElement('div');
+                regionSection.className = 'region-section';
+                
+                const regionHeader = document.createElement('div');
+                regionHeader.className = 'region-header';
+                regionHeader.textContent = region;
+                regionSection.appendChild(regionHeader);
+                
+                symbols.forEach(symbol => {
+                    const data = marketData[symbol];
+                    if (!data) return;
+                    
+                    const details = INDEX_DETAILS[symbol];
+                    const indexCard = createIndexCard(symbol, data, details);
+                    regionSection.appendChild(indexCard);
+                });
+                
+                if (regionSection.children.length > 1) {
+                    contentDiv.appendChild(regionSection);
+                }
+            });
+        }
+        
+        function createIndexCard(symbol, data, details) {
+            const card = document.createElement('div');
+            card.className = 'index-card';
+            if (selectedIndices.includes(symbol)) {
+                card.classList.add('selected');
+            }
+            
+            const changeClass = data.changePercent >= 0 ? 'positive' : 'negative';
+            const changeSymbol = data.changePercent >= 0 ? '▲' : '▼';
+            
+            card.innerHTML = `
+                <div class="index-header">
+                    <span class="index-name">${details.name}</span>
+                    <span class="index-symbol">${symbol}</span>
+                </div>
+                <div class="index-price">
+                    ${data.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+                <div class="index-change ${changeClass}">
+                    <span class="change-amount">
+                        ${changeSymbol} ${Math.abs(data.change).toFixed(2)}
+                    </span>
+                    <span class="change-percent">
+                        ${data.changePercent >= 0 ? '+' : ''}${data.changePercent.toFixed(2)}%
+                    </span>
+                </div>
+            `;
+            
+            card.onclick = () => handleIndexClick(symbol);
+            return card;
+        }
+        
+        function handleIndexClick(symbol) {
+            if (comparisonMode) {
+                // Toggle selection in comparison mode
+                const index = selectedIndices.indexOf(symbol);
+                if (index > -1) {
+                    selectedIndices.splice(index, 1);
+                } else if (selectedIndices.length < 5) {
+                    selectedIndices.push(symbol);
+                }
+                updateComparisonList();
+                displayIndices();
+                if (selectedIndices.length > 0) {
+                    plotComparisonChart();
+                }
+            } else {
+                // Single selection mode
+                selectedIndices = [symbol];
+                displayIndices();
+                loadHistoricalData(symbol);
+            }
+        }
+        
+        async function loadHistoricalData(symbol) {
+            try {
+                // Fetch real historical data from backend
+                const response = await fetch(`${API_URL}/api/historical/${symbol}?period=${currentTimeframe}`);
+                if (!response.ok) {
+                    // Fallback to sample data if backend doesn't have historical endpoint
+                    const days = currentTimeframe === '1d' ? 1 : 
+                               currentTimeframe === '5d' ? 5 :
+                               currentTimeframe === '1mo' ? 30 :
+                               currentTimeframe === '3mo' ? 90 : 365;
+                    
+                    const data = generateSampleHistoricalData(symbol, days);
+                    historicalData[symbol] = data;
+                } else {
+                    const result = await response.json();
+                    // Convert date strings to Date objects
+                    const data = result.data.map(d => ({
+                        ...d,
+                        date: new Date(d.date)
+                    }));
+                    historicalData[symbol] = data;
+                }
+                
+                plotChart(symbol);
+                
+            } catch (error) {
+                console.error('Error loading historical data:', error);
+                // Fallback to sample data
+                const days = currentTimeframe === '1d' ? 1 : 
+                           currentTimeframe === '5d' ? 5 :
+                           currentTimeframe === '1mo' ? 30 :
+                           currentTimeframe === '3mo' ? 90 : 365;
+                
+                const data = generateSampleHistoricalData(symbol, days);
+                historicalData[symbol] = data;
+                plotChart(symbol);
+            }
+        }
+        
+        function generateSampleHistoricalData(symbol, days) {
+            // Generate sample data based on current price
+            const currentData = marketData[symbol];
+            if (!currentData) return [];
+            
+            const data = [];
+            const currentPrice = currentData.price;
+            const volatility = 0.02; // 2% daily volatility
+            
+            for (let i = days; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                
+                // Generate random walk
+                const randomChange = (Math.random() - 0.5) * volatility;
+                const price = currentPrice * (1 + randomChange * (i / days));
+                const volume = Math.floor(Math.random() * 1000000000) + 500000000;
+                
+                data.push({
+                    date: date,
+                    open: price * (1 + (Math.random() - 0.5) * 0.01),
+                    high: price * (1 + Math.random() * 0.02),
+                    low: price * (1 - Math.random() * 0.02),
+                    close: price,
+                    volume: volume
+                });
+            }
+            
+            // Ensure last point matches current data
+            if (data.length > 0) {
+                data[data.length - 1].close = currentPrice;
+            }
+            
+            return data;
+        }
+        
+        function plotChart(symbol) {
+            const canvas = document.getElementById('marketChart');
+            const ctx = canvas.getContext('2d');
+            const details = INDEX_DETAILS[symbol];
+            const data = historicalData[symbol] || [];
+            
+            // Update chart title
+            document.getElementById('chartTitle').textContent = `${details.name} (${symbol})`;
+            
+            // Destroy existing chart
+            if (currentChart) {
+                currentChart.destroy();
+            }
+            
+            if (data.length === 0) {
+                document.getElementById('noChartData').style.display = 'block';
+                return;
+            }
+            
+            document.getElementById('noChartData').style.display = 'none';
+            
+            // Create chart based on type
+            switch (currentChartType) {
+                case 'line':
+                    plotLineChart(ctx, data, details.name);
+                    break;
+                case 'candlestick':
+                    plotCandlestickChart(ctx, data, details.name);
+                    break;
+                case 'volume':
+                    plotVolumeChart(ctx, data, details.name);
+                    break;
+                case 'performance':
+                    plotPerformanceChart(ctx, data, details.name);
+                    break;
+            }
+        }
+        
+        function plotLineChart(ctx, data, name) {
+            currentChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(d => d.date),
+                    datasets: [{
+                        label: name,
+                        data: data.map(d => d.close),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.1,
+                        pointRadius: 0,
+                        pointHoverRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: currentTimeframe === '1d' ? 'hour' : 'day'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            position: 'right',
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function plotCandlestickChart(ctx, data, name) {
+            // For candlestick, we'll use a custom implementation
+            // In production, you might want to use a library like lightweight-charts
+            const candlestickData = data.map(d => ({
+                x: d.date,
+                o: d.open,
+                h: d.high,
+                l: d.low,
+                c: d.close
+            }));
+            
+            currentChart = new Chart(ctx, {
+                type: 'candlestick',
+                data: {
+                    datasets: [{
+                        label: name,
+                        data: candlestickData
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    }
+                }
+            });
+        }
+        
+        function plotVolumeChart(ctx, data, name) {
+            currentChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: data.map(d => d.date),
+                    datasets: [{
+                        label: 'Volume',
+                        data: data.map(d => d.volume),
+                        backgroundColor: data.map(d => d.close > d.open ? 'rgba(72, 187, 120, 0.5)' : 'rgba(245, 101, 101, 0.5)'),
+                        borderColor: data.map(d => d.close > d.open ? '#48bb78' : '#f56565'),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Volume: ${(context.parsed.y / 1000000000).toFixed(2)}B`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: currentTimeframe === '1d' ? 'hour' : 'day'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            position: 'right',
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return (value / 1000000000).toFixed(1) + 'B';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function plotPerformanceChart(ctx, data, name) {
+            // Calculate percentage change from first point
+            const firstPrice = data[0].close;
+            const performanceData = data.map(d => ({
+                x: d.date,
+                y: ((d.close - firstPrice) / firstPrice) * 100
+            }));
+            
+            currentChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: '% Change',
+                        data: performanceData,
+                        borderColor: performanceData[performanceData.length - 1].y >= 0 ? '#48bb78' : '#f56565',
+                        backgroundColor: performanceData[performanceData.length - 1].y >= 0 ? 'rgba(72, 187, 120, 0.1)' : 'rgba(245, 101, 101, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.1,
+                        pointRadius: 0,
+                        pointHoverRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Performance: ${context.parsed.y.toFixed(2)}%`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: currentTimeframe === '1d' ? 'hour' : 'day'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            position: 'right',
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)',
+                                drawBorder: false,
+                                drawTicks: false
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toFixed(1) + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function plotComparisonChart() {
+            const canvas = document.getElementById('marketChart');
+            const ctx = canvas.getContext('2d');
+            
+            // Update chart title
+            document.getElementById('chartTitle').textContent = 'Index Comparison';
+            
+            // Destroy existing chart
+            if (currentChart) {
+                currentChart.destroy();
+            }
+            
+            // Prepare datasets for comparison
+            const datasets = selectedIndices.map((symbol, index) => {
+                const data = historicalData[symbol] || generateSampleHistoricalData(symbol, 30);
+                const firstPrice = data[0].close;
+                
+                return {
+                    label: INDEX_DETAILS[symbol].name,
+                    data: data.map(d => ({
+                        x: d.date,
+                        y: ((d.close - firstPrice) / firstPrice) * 100
+                    })),
+                    borderColor: CHART_COLORS[index],
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    tension: 0.1,
+                    pointRadius: 0,
+                    pointHoverRadius: 5
+                };
+            });
+            
+            currentChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'bottom'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y.toFixed(2)}%`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day'
+                            },
+                            grid: {
+                                display: false
+                            }
+                        },
+                        y: {
+                            position: 'right',
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toFixed(1) + '%';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function toggleAutoRefresh() {
+            const btn = document.getElementById('autoRefreshBtn');
+            btn.classList.toggle('active');
+            
+            if (btn.classList.contains('active')) {
+                btn.textContent = '🔄 Auto Refresh: ON';
+                autoRefreshInterval = setInterval(loadMarketData, 30000);
+            } else {
+                btn.textContent = '🔄 Auto Refresh: OFF';
+                clearInterval(autoRefreshInterval);
+            }
+        }
+        
+        function refreshData() {
+            loadMarketData();
+        }
+        
+        function changeTimeframe() {
+            currentTimeframe = document.getElementById('timeframeSelect').value;
+            
+            // Reload data for selected indices
+            selectedIndices.forEach(symbol => {
+                loadHistoricalData(symbol);
+            });
+        }
+        
+        function switchChartType(type) {
+            currentChartType = type;
+            
+            // Update tab styling
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Replot chart
+            if (selectedIndices.length > 0) {
+                if (comparisonMode) {
+                    plotComparisonChart();
+                } else {
+                    plotChart(selectedIndices[0]);
+                }
+            }
+        }
+        
+        function toggleComparisonMode() {
+            comparisonMode = !comparisonMode;
+            const btn = document.getElementById('compareBtn');
+            const modeDiv = document.getElementById('comparisonMode');
+            
+            if (comparisonMode) {
+                btn.classList.add('active');
+                btn.textContent = '📊 Exit Comparison';
+                modeDiv.style.display = 'block';
+                selectedIndices = [];
+            } else {
+                btn.classList.remove('active');
+                btn.textContent = '📈 Compare Indices';
+                modeDiv.style.display = 'none';
+                selectedIndices = [];
+                if (currentChart) {
+                    currentChart.destroy();
+                }
+                document.getElementById('chartTitle').textContent = 'Select an index to view chart';
+            }
+            
+            displayIndices();
+        }
+        
+        function updateComparisonList() {
+            const listDiv = document.getElementById('comparisonList');
+            listDiv.innerHTML = '';
+            
+            selectedIndices.forEach((symbol, index) => {
+                const tag = document.createElement('div');
+                tag.className = 'comparison-tag';
+                tag.style.borderColor = CHART_COLORS[index];
+                tag.innerHTML = `
+                    <span>${INDEX_DETAILS[symbol].name}</span>
+                    <span class="remove-btn" onclick="removeFromComparison('${symbol}')">×</span>
+                `;
+                listDiv.appendChild(tag);
+            });
+        }
+        
+        function removeFromComparison(symbol) {
+            const index = selectedIndices.indexOf(symbol);
+            if (index > -1) {
+                selectedIndices.splice(index, 1);
+                updateComparisonList();
+                displayIndices();
+                if (selectedIndices.length > 0) {
+                    plotComparisonChart();
+                } else if (currentChart) {
+                    currentChart.destroy();
+                    document.getElementById('chartTitle').textContent = 'Select indices to compare';
+                }
+            }
+        }
+        
+        function updateStatus() {
+            const now = new Date();
+            document.getElementById('last-update').textContent = now.toLocaleTimeString();
+            document.getElementById('data-points').textContent = Object.keys(marketData).length;
+        }
+    </script>
+</body>
+</html>
