@@ -294,7 +294,27 @@
     
     <script>
         // Configuration - REAL DATA ONLY
-        const API_BASE = 'http://localhost:8002';
+        // Try multiple connection methods for Windows compatibility
+        let API_BASE = 'http://localhost:8002';
+        
+        // Test which connection works
+        async function findWorkingBackend() {
+            const urls = ['http://localhost:8002', 'http://127.0.0.1:8002'];
+            for (const url of urls) {
+                try {
+                    const response = await fetch(`${url}/`, { method: 'GET', mode: 'cors' });
+                    if (response.ok) {
+                        API_BASE = url;
+                        console.log('Backend found at:', url);
+                        return url;
+                    }
+                } catch (e) {
+                    continue;
+                }
+            }
+            console.error('No working backend found');
+            return null;
+        }
         
         const MARKETS = {
             asx: { 
@@ -325,10 +345,20 @@
         let previousCloses = {};
         
         // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             updateTime();
             updateMarketStatus();
             setupEventListeners();
+            
+            // Find working backend first
+            const backend = await findWorkingBackend();
+            if (!backend) {
+                document.getElementById('errorMessage').innerHTML = 
+                    '<div class="error">Cannot connect to backend. Please ensure backend_fixed.py is running on port 8002.<br>' +
+                    'Try: <code>python backend_fixed.py</code></div>';
+                return;
+            }
+            
             loadMarkets();
             
             // Update time and status every second
