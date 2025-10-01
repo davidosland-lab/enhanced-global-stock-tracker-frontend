@@ -356,15 +356,15 @@
         
         async function fetchMarketData(market) {
             try {
-                // Try to fetch from backend
+                // REAL DATA ONLY - NO SYNTHETIC/MOCK DATA
                 const response = await fetch(`${API_BASE}/api/quote/${market.symbol}`);
                 
                 if (!response.ok) {
-                    // Fallback with mock data for demo
+                    // Return error if backend is not available
                     return {
                         market: market,
-                        quote: generateMockQuote(market),
-                        error: null
+                        quote: null,
+                        error: 'Backend not available'
                     };
                 }
                 
@@ -376,40 +376,14 @@
                 };
                 
             } catch (error) {
-                // Return mock data for demo purposes
+                // NO MOCK DATA - Return error instead
+                console.error(`Failed to fetch ${market.symbol}:`, error);
                 return {
                     market: market,
-                    quote: generateMockQuote(market),
-                    error: null
+                    quote: null,
+                    error: 'Failed to fetch real data'
                 };
             }
-        }
-        
-        function generateMockQuote(market) {
-            // Generate realistic mock data for demo
-            const basePrice = {
-                'CBA.AX': 140.50,
-                'BHP.AX': 45.20,
-                '^AORD': 9136.60,
-                '^GSPC': 5762.48,
-                '^DJI': 42330.15,
-                '^IXIC': 18189.17,
-                '^FTSE': 9446.43,
-                '^N225': 38651.97,
-                '^HSI': 22113.51
-            };
-            
-            const price = basePrice[market.symbol] || 1000;
-            const change = (Math.random() - 0.5) * price * 0.03; // ±3% random change
-            const changePercent = (change / price) * 100;
-            
-            return {
-                symbol: market.symbol,
-                price: price + change,
-                change: change,
-                changePercent: changePercent,
-                volume: Math.floor(Math.random() * 100000000)
-            };
         }
         
         function createMarketCard(market, quote, error = null) {
