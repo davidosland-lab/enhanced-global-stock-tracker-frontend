@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt Capture Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #718096;
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        .capture-section, .stats-section {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            color: #4a5568;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        textarea, input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        textarea:focus, input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        textarea {
+            min-height: 150px;
+            resize: vertical;
+        }
+        
+        .tags-input {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 8px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            min-height: 45px;
+        }
+        
+        .tag {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .tag-remove {
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+            margin-left: 10px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            color: #718096;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        
+        .recent-prompts {
+            margin-top: 30px;
+        }
+        
+        .prompt-item {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .prompt-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .prompt-id {
+            font-family: monospace;
+            color: #667eea;
+            font-size: 12px;
+        }
+        
+        .prompt-topic {
+            background: #edf2f7;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #4a5568;
+        }
+        
+        .success-message, .error-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .success-message {
+            background: #c6f6d5;
+            color: #22543d;
+            border: 1px solid #9ae6b4;
+        }
+        
+        .error-message {
+            background: #fed7d7;
+            color: #742a2a;
+            border: 1px solid #fc8181;
+        }
+        
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📝 Prompt Capture System</h1>
+            <p class="subtitle">Automatically capture and archive user prompts to GitHub</p>
+        </div>
+        
+        <div class="main-grid">
+            <div class="capture-section">
+                <h2 style="margin-bottom: 20px;">Capture New Prompt</h2>
+                
+                <form id="captureForm">
+                    <div class="form-group">
+                        <label for="prompt">Prompt Text *</label>
+                        <textarea id="prompt" name="prompt" required placeholder="Enter the prompt text here..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="user">User (optional)</label>
+                        <input type="text" id="user" name="user" placeholder="Username or identifier">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="tags">Tags (press Enter to add)</label>
+                        <input type="text" id="tagInput" placeholder="Add tags...">
+                        <div id="tagsContainer" class="tags-input"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="autoCommit" checked>
+                            Auto-commit to Git
+                        </label>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Capture Prompt</button>
+                    <button type="button" class="btn btn-secondary" onclick="clearForm()">Clear</button>
+                </form>
+                
+                <div id="successMessage" class="success-message"></div>
+                <div id="errorMessage" class="error-message"></div>
+            </div>
+            
+            <div class="stats-section">
+                <h2 style="margin-bottom: 20px;">Statistics</h2>
+                
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalPrompts">0</div>
+                        <div class="stat-label">Total Prompts</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="todayPrompts">0</div>
+                        <div class="stat-label">Today's Prompts</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="avgWords">0</div>
+                        <div class="stat-label">Avg Words</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="topicCount">0</div>
+                        <div class="stat-label">Topics</div>
+                    </div>
+                </div>
+                
+                <div class="recent-prompts">
+                    <h3 style="margin-bottom: 15px;">Recent Prompts</h3>
+                    <div id="recentPromptsList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:8003';
+        let tags = [];
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStatistics();
+            loadRecentPrompts();
+            setInterval(loadStatistics, 30000); // Refresh every 30 seconds
+        });
+        
+        // Tag management
+        document.getElementById('tagInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addTag();
+            }
+        });
+        
+        function addTag() {
+            const input = document.getElementById('tagInput');
+            const tag = input.value.trim();
+            
+            if (tag && !tags.includes(tag)) {
+                tags.push(tag);
+                renderTags();
+                input.value = '';
+            }
+        }
+        
+        function removeTag(tag) {
+            tags = tags.filter(t => t !== tag);
+            renderTags();
+        }
+        
+        function renderTags() {
+            const container = document.getElementById('tagsContainer');
+            container.innerHTML = tags.map(tag => `
+                <span class="tag">
+                    ${tag}
+                    <span class="tag-remove" onclick="removeTag('${tag}')">&times;</span>
+                </span>
+            `).join('');
+        }
+        
+        // Form submission
+        document.getElementById('captureForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                prompt: document.getElementById('prompt').value,
+                user: document.getElementById('user').value || null,
+                tags: tags,
+                auto_commit: document.getElementById('autoCommit').checked,
+                context: {
+                    source: 'web_interface',
+                    timestamp: new Date().toISOString()
+                }
+            };
+            
+            try {
+                const response = await fetch(`${API_BASE}/capture`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showSuccess(`Prompt captured successfully! ID: ${result.prompt_id}`);
+                    clearForm();
+                    loadStatistics();
+                    loadRecentPrompts();
+                } else {
+                    showError('Failed to capture prompt');
+                }
+            } catch (error) {
+                showError(`Error: ${error.message}`);
+            }
+        });
+        
+        async function loadStatistics() {
+            try {
+                const response = await fetch(`${API_BASE}/stats`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const stats = data.statistics;
+                    document.getElementById('totalPrompts').textContent = stats.total_prompts;
+                    document.getElementById('avgWords').textContent = stats.average_words;
+                    document.getElementById('topicCount').textContent = Object.keys(stats.topics).length;
+                    
+                    // Calculate today's prompts
+                    const today = new Date().toISOString().split('T')[0];
+                    document.getElementById('todayPrompts').textContent = stats.daily_counts[today] || 0;
+                }
+            } catch (error) {
+                console.error('Failed to load statistics:', error);
+            }
+        }
+        
+        async function loadRecentPrompts() {
+            try {
+                const response = await fetch(`${API_BASE}/prompts?limit=5`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const container = document.getElementById('recentPromptsList');
+                    container.innerHTML = data.prompts.map(prompt => `
+                        <div class="prompt-item">
+                            <div class="prompt-header">
+                                <span class="prompt-id">${prompt.id}</span>
+                                <span class="prompt-topic">${prompt.topic}</span>
+                            </div>
+                            <div style="color: #718096; font-size: 12px;">
+                                ${new Date(prompt.timestamp).toLocaleString()} • ${prompt.word_count} words
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Failed to load recent prompts:', error);
+            }
+        }
+        
+        function clearForm() {
+            document.getElementById('captureForm').reset();
+            tags = [];
+            renderTags();
+        }
+        
+        function showSuccess(message) {
+            const elem = document.getElementById('successMessage');
+            elem.textContent = message;
+            elem.style.display = 'block';
+            setTimeout(() => elem.style.display = 'none', 5000);
+        }
+        
+        function showError(message) {
+            const elem = document.getElementById('errorMessage');
+            elem.textContent = message;
+            elem.style.display = 'block';
+            setTimeout(() => elem.style.display = 'none', 5000);
+        }
+    </script>
+</body>
+</html>
