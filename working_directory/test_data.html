@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #1a1a1a;
+            color: #0f0;
+            padding: 20px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 10px;
+            border: 1px solid #0f0;
+        }
+        .error { color: #f00; }
+        .success { color: #0f0; }
+        pre { 
+            white-space: pre-wrap; 
+            word-wrap: break-word;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Backend Data Test</h1>
+    
+    <div class="section">
+        <h2>API Base URL</h2>
+        <div id="apiBase"></div>
+    </div>
+    
+    <div class="section">
+        <h2>Quote Data Test</h2>
+        <div id="quoteTest"></div>
+    </div>
+    
+    <div class="section">
+        <h2>Historical Data Test</h2>
+        <div id="histTest"></div>
+    </div>
+    
+    <div class="section">
+        <h2>Raw Response</h2>
+        <pre id="rawData"></pre>
+    </div>
+
+    <script>
+        const API_BASE = window.location.hostname === 'localhost' 
+            ? 'http://localhost:8002'
+            : 'https://8002-' + window.location.hostname.split('-')[1] + '.e2b.dev';
+        
+        document.getElementById('apiBase').textContent = API_BASE;
+        
+        async function testBackend() {
+            // Test quote endpoint
+            const quoteDiv = document.getElementById('quoteTest');
+            const histDiv = document.getElementById('histTest');
+            const rawDiv = document.getElementById('rawData');
+            
+            try {
+                // Test FTSE quote
+                quoteDiv.innerHTML = '<div>Testing ^FTSE quote...</div>';
+                const quoteResponse = await fetch(`${API_BASE}/api/stock/^FTSE`);
+                const quoteData = await quoteResponse.json();
+                
+                if (quoteResponse.ok) {
+                    quoteDiv.innerHTML = `
+                        <div class="success">✓ Quote endpoint working</div>
+                        <div>Symbol: ${quoteData.symbol}</div>
+                        <div>Price: ${quoteData.regularMarketPrice}</div>
+                        <div>Previous Close: ${quoteData.previousClose || quoteData.regularMarketPreviousClose}</div>
+                    `;
+                } else {
+                    quoteDiv.innerHTML = `<div class="error">✗ Quote failed: ${JSON.stringify(quoteData)}</div>`;
+                }
+                
+                // Test historical data with interval
+                histDiv.innerHTML = '<div>Testing ^FTSE historical with 5m interval...</div>';
+                const histResponse = await fetch(`${API_BASE}/api/historical/^FTSE?period=1d&interval=5m`);
+                const histData = await histResponse.json();
+                
+                if (histResponse.ok) {
+                    histDiv.innerHTML = `
+                        <div class="success">✓ Historical endpoint working</div>
+                        <div>Symbol: ${histData.symbol}</div>
+                        <div>Period: ${histData.period}</div>
+                        <div>Interval: ${histData.interval}</div>
+                        <div>Data Points: ${histData.dataPoints}</div>
+                        <div>First: ${histData.data && histData.data[0] ? histData.data[0].date : 'none'}</div>
+                        <div>Last: ${histData.data && histData.data.length > 0 ? histData.data[histData.data.length-1].date : 'none'}</div>
+                    `;
+                    
+                    // Show raw data
+                    rawDiv.textContent = JSON.stringify(histData, null, 2);
+                } else {
+                    histDiv.innerHTML = `<div class="error">✗ Historical failed: ${JSON.stringify(histData)}</div>`;
+                }
+                
+            } catch (error) {
+                quoteDiv.innerHTML = `<div class="error">✗ Error: ${error.message}</div>`;
+            }
+        }
+        
+        // Run test on load
+        testBackend();
+        
+        // Refresh every 10 seconds
+        setInterval(testBackend, 10000);
+    </script>
+</body>
+</html>

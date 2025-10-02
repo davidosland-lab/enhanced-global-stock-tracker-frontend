@@ -4,7 +4,7 @@ Fixed Backend - Uses correct previous close from history data
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, Any
 import yfinance as yf
 from fastapi import FastAPI, HTTPException
@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import pytz
 from cachetools import TTLCache
+import pandas as pd
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -226,9 +227,9 @@ async def get_stock_data(symbol: str):
         raise HTTPException(status_code=404, detail=f"Stock {symbol} not found or error occurred: {str(e)}")
 
 @app.get("/api/historical/{symbol}")
-async def get_historical_data(symbol: str, period: str = "5d"):
+async def get_historical_data(symbol: str, period: str = "5d", interval: str = None):
     """Get historical data for charting"""
-    cache_key = f"hist_{symbol}_{period}"
+    cache_key = f"hist_{symbol}_{period}_{interval}"
     if cache_key in cache:
         return cache[cache_key]
     
@@ -236,14 +237,36 @@ async def get_historical_data(symbol: str, period: str = "5d"):
         ticker = yf.Ticker(symbol)
         
         # Validate period
-        valid_periods = ["1d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y"]
+        valid_periods = ["1d", "2d", "5d", "1mo", "3mo", "6mo", "1y", "2y", "5y"]
         if period not in valid_periods:
             period = "5d"
         
-        # Get historical data
-        hist = ticker.history(period=period)
+        # Validate interval
+        valid_intervals = ["1m", "2m", "5m", "15m", "30m", "60m", "90m", "1h", "1d", "5d", "1wk", "1mo", "3mo"]
+        if interval and interval not in valid_intervals:
+            interval = None
         
-        if hist.empty:
+        # Get historical data with interval if specified
+        if interval:
+            # For intraday data, use download method which supports intervals
+            end_date = datetime.now()
+            if period == "1d":
+                start_date = end_date - timedelta(days=1)
+            elif period == "2d":
+                start_date = end_date - timedelta(days=2)
+            elif period == "5d":
+                start_date = end_date - timedelta(days=5)
+            elif period == "1mo":
+                start_date = end_date - timedelta(days=30)
+            else:
+                start_date = end_date - timedelta(days=5)
+            
+            hist = yf.download(symbol, start=start_date, end=end_date, interval=interval, progress=False)
+        else:
+            # Default behavior without interval
+            hist = ticker.history(period=period)
+        
+        if hist is None or (hasattr(hist, 'empty') and hist.empty) or len(hist) == 0:
             raise HTTPException(status_code=404, detail=f"No historical data for {symbol}")
         
         # Format data for charting
@@ -251,16 +274,17 @@ async def get_historical_data(symbol: str, period: str = "5d"):
         for date, row in hist.iterrows():
             data.append({
                 "date": date.isoformat(),
-                "open": float(row['Open']),
-                "high": float(row['High']),
-                "low": float(row['Low']),
-                "close": float(row['Close']),
-                "volume": int(row['Volume'])
+                "open": float(row['Open']) if 'Open' in row else float(row.get('open', 0)),
+                "high": float(row['High']) if 'High' in row else float(row.get('high', 0)),
+                "low": float(row['Low']) if 'Low' in row else float(row.get('low', 0)),
+                "close": float(row['Close']) if 'Close' in row else float(row.get('close', 0)),
+                "volume": int(row['Volume']) if 'Volume' in row and not pd.isna(row['Volume']) else 0
             })
         
         result = {
             "symbol": symbol,
             "period": period,
+            "interval": interval,
             "data": data,
             "dataPoints": len(data)
         }
