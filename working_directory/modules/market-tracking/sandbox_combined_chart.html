@@ -478,19 +478,19 @@
                     // Find the last close from previous trading day
                     for (let i = histData.length - 2; i >= 0; i--) {
                         const point = histData[i];
-                        const pointDate = new Date(point.Datetime || point.Date);
-                        const currentDate = new Date(histData[histData.length - 1].Datetime || histData[histData.length - 1].Date);
+                        const pointDate = new Date(point.Datetime || point.Date || point.date);
+                        const currentDate = new Date(histData[histData.length - 1].Datetime || histData[histData.length - 1].Date || histData[histData.length - 1].date);
                         
                         // If dates are different, this is previous day's close
                         if (pointDate.getDate() !== currentDate.getDate()) {
-                            previousClose = point.Close;
+                            previousClose = point.Close || point.close;
                             break;
                         }
                     }
                     
                     // If no previous day found in data, use first point
                     if (!previousClose) {
-                        previousClose = histData[0].Close;
+                        previousClose = histData[0].Close || histData[0].close;
                     }
                 }
                 
@@ -694,7 +694,8 @@
             if (!data || data.length === 0 || !previousClose) return [];
             
             return data.map(point => {
-                const change = ((point.Close - previousClose) / previousClose) * 100;
+                const closePrice = point.Close || point.close;
+                const change = ((closePrice - previousClose) / previousClose) * 100;
                 return change;
             });
         }
@@ -703,7 +704,7 @@
             if (!data || data.length === 0) return [];
             
             return data.map(point => {
-                const date = new Date(point.Datetime || point.Date);
+                const date = new Date(point.Datetime || point.Date || point.date);
                 
                 if (currentPeriod === 'today') {
                     // For today, show time
