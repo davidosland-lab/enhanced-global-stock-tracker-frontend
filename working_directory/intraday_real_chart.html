@@ -477,37 +477,67 @@
             
             // Process multiple data points
             const now = new Date();
-            const todayStart = new Date(now);
-            todayStart.setHours(9, 0, 0, 0); // 09:00 AEST today
+            const aestNow = new Date(now.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
+            
+            // For 24h view: show last 24 hours from current time
+            // For 48h view: show last 48 hours from current time
             
             marketData.data.forEach(point => {
                 const pointDate = new Date(point.date || point.Date || point.Datetime);
                 const closePrice = point.close || point.Close;
                 const changePercent = ((closePrice - previousClose) / previousClose) * 100;
                 
-                // Calculate hours from our start time (09:00)
-                const hoursDiff = (pointDate - todayStart) / (1000 * 60 * 60);
+                // Convert point date to AEST
+                const pointAEST = new Date(pointDate.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
+                const pointHour = pointAEST.getHours();
+                const pointMinutes = pointAEST.getMinutes();
+                
+                // Calculate which time slot this belongs to based on our fixed 09:00 start
+                let slotIndex = -1;
                 
                 if (currentPeriod === '24h') {
-                    if (hoursDiff >= 0 && hoursDiff < 24) {
-                        const index = Math.floor(hoursDiff / 2); // 2-hour increments
-                        if (index >= 0 && index < dataPoints.length) {
-                            dataPoints[index] = changePercent;
-                        }
+                    // For 24h view, we show from 09:00 today to 09:00 tomorrow
+                    // Calculate hours from 09:00 AEST
+                    const todayStart = new Date(aestNow);
+                    todayStart.setHours(9, 0, 0, 0);
+                    
+                    // If current time is before 09:00, adjust start to yesterday 09:00
+                    if (aestNow.getHours() < 9) {
+                        todayStart.setDate(todayStart.getDate() - 1);
+                    }
+                    
+                    const msFromStart = pointAEST - todayStart;
+                    const hoursFromStart = msFromStart / (1000 * 60 * 60);
+                    
+                    // Only plot if within our 24-hour window
+                    if (hoursFromStart >= 0 && hoursFromStart < 24) {
+                        slotIndex = Math.floor(hoursFromStart / 2); // 2-hour increments
                     }
                 } else {
                     // 48-hour view
-                    const adjustedHours = hoursDiff + 24; // Add 24 hours for yesterday
-                    if (adjustedHours >= 0 && adjustedHours < 48) {
-                        const index = Math.floor(adjustedHours / 2); // 2-hour increments
-                        if (index >= 0 && index < dataPoints.length) {
-                            dataPoints[index] = changePercent;
-                        }
+                    const todayStart = new Date(aestNow);
+                    todayStart.setHours(9, 0, 0, 0);
+                    todayStart.setDate(todayStart.getDate() - 1); // Start from yesterday 09:00
+                    
+                    const msFromStart = pointAEST - todayStart;
+                    const hoursFromStart = msFromStart / (1000 * 60 * 60);
+                    
+                    if (hoursFromStart >= 0 && hoursFromStart < 48) {
+                        slotIndex = Math.floor(hoursFromStart / 2); // 2-hour increments
+                    }
+                }
+                
+                if (slotIndex >= 0 && slotIndex < dataPoints.length) {
+                    // Use the latest value for each slot
+                    if (dataPoints[slotIndex] === null || Math.abs(changePercent) > Math.abs(dataPoints[slotIndex])) {
+                        dataPoints[slotIndex] = changePercent;
                     }
                 }
             });
             
-            // Interpolate gaps within market hours
+            // Interpolate gaps within market hours (optional - currently disabled for clarity)
+            // Uncomment below to enable interpolation between data points
+            /*
             const market = marketData.market;
             for (let i = 1; i < dataPoints.length - 1; i++) {
                 if (dataPoints[i] === null) {
@@ -531,6 +561,7 @@
                     }
                 }
             }
+            */
             
             return dataPoints;
         }
