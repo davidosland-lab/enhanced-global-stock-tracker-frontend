@@ -1,5 +1,13 @@
 # CRITICAL PROJECT REQUIREMENTS - DO NOT VIOLATE
 
+## 🔴 UNCHANGEABLE CORE REQUIREMENTS
+
+### PROJECT INTENT: INTRADAY CHANGES ONLY
+- **PURPOSE**: Track intraday market movements ONLY
+- **TIMEFRAMES**: 24 hours and 48 hours ONLY - NO OTHER OPTIONS
+- **DATA TYPE**: Intraday data with 5-minute or 15-minute intervals
+- **NO DAILY/WEEKLY/MONTHLY**: This project is NOT for long-term trends
+
 ## 🚫 ABSOLUTE REQUIREMENTS - NO EXCEPTIONS
 
 ### 1. NO SYNTHETIC/MOCK/DEMO DATA - EVER
