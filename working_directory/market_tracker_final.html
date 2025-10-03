@@ -743,6 +743,28 @@
         function updateChart(asxData, ftseData, sp500Data) {
             const ctx = document.getElementById('marketChart').getContext('2d');
             
+            // Calculate the fixed time window for the X-axis
+            const now = new Date();
+            const aestNow = new Date(now.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
+            let xAxisMin, xAxisMax;
+            
+            if (currentPeriod === '48h') {
+                // 48h: from yesterday 10:00 AEST
+                xAxisMin = new Date(aestNow);
+                xAxisMin.setDate(xAxisMin.getDate() - 1);
+                xAxisMin.setHours(10, 0, 0, 0);
+                
+                xAxisMax = new Date(xAxisMin);
+                xAxisMax.setHours(xAxisMax.getHours() + 48);
+            } else {
+                // 24h: from today 09:00 AEST
+                xAxisMin = new Date(aestNow);
+                xAxisMin.setHours(9, 0, 0, 0);
+                
+                xAxisMax = new Date(xAxisMin);
+                xAxisMax.setHours(xAxisMax.getHours() + 24);
+            }
+            
             // Market hours for gap detection
             const marketHours = {
                 asx: { open: 10, close: 16 },
@@ -863,10 +885,12 @@
                 scales: {
                     x: {
                         type: 'time',
+                        min: xAxisMin,  // Force the X-axis to start at our fixed time
+                        max: xAxisMax,  // Force the X-axis to end at our fixed time
                         time: {
                             displayFormats: {
-                                hour: 'dd MMM HH:mm',
-                                minute: 'HH:mm'
+                                hour: 'HH:mm',
+                                day: 'dd MMM'
                             },
                             tooltipFormat: 'EEE, dd MMM yyyy HH:mm'
                         },
@@ -880,8 +904,39 @@
                                 size: 10
                             },
                             maxRotation: 45,
-                            autoSkip: true,
-                            maxTicksLimit: 12
+                            autoSkip: false,
+                            stepSize: currentPeriod === '48h' ? 4 : 2,  // Show tick every 4 hours for 48h, 2 hours for 24h
+                            major: {
+                                enabled: true
+                            },
+                            callback: function(value, index, ticks) {
+                                const date = new Date(value);
+                                const hours = date.getHours();
+                                const minutes = date.getMinutes();
+                                
+                                // For 24h view, show every 2 hours
+                                // For 48h view, show every 4 hours
+                                if (currentPeriod === '24h') {
+                                    if (hours % 2 === 0 && minutes === 0) {
+                                        return date.toLocaleString('en-AU', {
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            hour12: false
+                                        });
+                                    }
+                                } else {
+                                    if (hours % 4 === 0 && minutes === 0) {
+                                        return date.toLocaleString('en-AU', {
+                                            day: 'numeric',
+                                            month: 'short',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            hour12: false
+                                        });
+                                    }
+                                }
+                                return '';
+                            }
                         }
                     },
                     y: {
