@@ -216,7 +216,7 @@
         </div>
 
         <div class="controls">
-            <button class="btn active" data-period="24h">24h (From 09:00 Today)</button>
+            <button class="btn active" data-period="24h">Last 24 Hours</button>
             <button class="btn" data-period="48h">48h (From 10:00 Yesterday)</button>
         </div>
 
@@ -486,12 +486,13 @@
                 endTime = new Date(startTime);
                 endTime.setHours(endTime.getHours() + 48); // Add 48 hours from start
             } else {
-                // 24h view: Start from today at 09:00 AEST, show 24 hours forward
-                startTime = new Date(aestNow);
-                startTime.setHours(9, 0, 0, 0); // Set to 09:00 AEST today
+                // 24h view: Show last 24 hours of available data
+                // This ensures we see the most recent trading data
+                endTime = new Date(aestNow);
+                endTime.setHours(endTime.getHours() + 1); // Small buffer for future data
                 
-                endTime = new Date(startTime);
-                endTime.setHours(endTime.getHours() + 24); // Add 24 hours from start
+                startTime = new Date(endTime);
+                startTime.setHours(startTime.getHours() - 24); // Go back 24 hours from now
             }
             
             // Process data points
@@ -541,11 +542,10 @@
                 expectedEnd = new Date(expectedStart);
                 expectedEnd.setHours(expectedEnd.getHours() + 48);
             } else {
-                // 24h starts from today 09:00 AEST
-                expectedStart = new Date(aestNow);
-                expectedStart.setHours(9, 0, 0, 0);
-                expectedEnd = new Date(expectedStart);
-                expectedEnd.setHours(expectedEnd.getHours() + 24);
+                // 24h: rolling window
+                expectedEnd = new Date(aestNow);
+                expectedStart = new Date(expectedEnd);
+                expectedStart.setHours(expectedStart.getHours() - 24);
             }
             
             // Find actual data range
@@ -581,10 +581,10 @@
                 const hoursShown = (maxDate - minDate) / (1000 * 60 * 60);
                 
                 document.getElementById('dateRange').innerHTML = 
-                    `${currentPeriod === '48h' ? '48h from Yesterday 10:00' : '24h from Today 09:00'} AEST | Data: ${formatDate(minDate)} → ${formatDate(maxDate)}`;
+                    `${currentPeriod === '48h' ? '48h from Yesterday 10:00 AEST' : 'Last 24 Hours'} | Data: ${formatDate(minDate)} → ${formatDate(maxDate)}`;
             } else {
                 document.getElementById('dateRange').innerHTML = 
-                    `${currentPeriod === '48h' ? '48h from Yesterday 10:00' : '24h from Today 09:00'} AEST | Waiting for data...`;
+                    `${currentPeriod === '48h' ? '48h from Yesterday 10:00 AEST' : 'Last 24 Hours'} | Waiting for data...`;
             }
         }
         
@@ -757,12 +757,12 @@
                 xAxisMax = new Date(xAxisMin);
                 xAxisMax.setHours(xAxisMax.getHours() + 48);
             } else {
-                // 24h: from today 09:00 AEST
-                xAxisMin = new Date(aestNow);
-                xAxisMin.setHours(9, 0, 0, 0);
+                // 24h: Show last 24 hours on X-axis
+                xAxisMax = new Date(aestNow);
+                xAxisMax.setMinutes(Math.ceil(xAxisMax.getMinutes() / 30) * 30, 0, 0); // Round to next 30 min
                 
-                xAxisMax = new Date(xAxisMin);
-                xAxisMax.setHours(xAxisMax.getHours() + 24);
+                xAxisMin = new Date(xAxisMax);
+                xAxisMin.setHours(xAxisMin.getHours() - 24);
             }
             
             // Market hours for gap detection
