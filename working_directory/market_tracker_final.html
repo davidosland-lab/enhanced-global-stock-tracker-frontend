@@ -216,8 +216,8 @@
         </div>
 
         <div class="controls">
-            <button class="btn active" data-period="24h">Last 24 Hours</button>
-            <button class="btn" data-period="48h">Last 48 Hours</button>
+            <button class="btn active" data-period="24h">24h (From 09:00 Today)</button>
+            <button class="btn" data-period="48h">48h (From 10:00 Yesterday)</button>
         </div>
 
         <div class="market-cards">
@@ -478,19 +478,20 @@
             let startTime, endTime;
             
             if (currentPeriod === '48h') {
-                // 48h view: full 48 hours from 2 days ago to now
-                endTime = new Date(aestNow);
-                endTime.setMinutes(endTime.getMinutes() + 30); // Small buffer for current data
+                // 48h view: Start from yesterday at 10:00 AEST, show 48 hours forward
+                startTime = new Date(aestNow);
+                startTime.setDate(startTime.getDate() - 1); // Go to yesterday
+                startTime.setHours(10, 0, 0, 0); // Set to 10:00 AEST
                 
-                startTime = new Date(endTime);
-                startTime.setHours(startTime.getHours() - 48); // Go back exactly 48 hours
+                endTime = new Date(startTime);
+                endTime.setHours(endTime.getHours() + 48); // Add 48 hours from start
             } else {
-                // 24h view: full 24 hours from yesterday to now  
-                endTime = new Date(aestNow);
-                endTime.setMinutes(endTime.getMinutes() + 30); // Small buffer for current data
+                // 24h view: Start from today at 09:00 AEST, show 24 hours forward
+                startTime = new Date(aestNow);
+                startTime.setHours(9, 0, 0, 0); // Set to 09:00 AEST today
                 
-                startTime = new Date(endTime);
-                startTime.setHours(startTime.getHours() - 24); // Go back exactly 24 hours
+                endTime = new Date(startTime);
+                endTime.setHours(endTime.getHours() + 24); // Add 24 hours from start
             }
             
             // Process data points
@@ -527,19 +528,24 @@
         }
         
         function updateDateRange(datasets) {
-            // Calculate the expected time window
+            // Calculate the expected time window based on fixed start times
             const now = new Date();
             const aestNow = new Date(now.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
             
             let expectedStart, expectedEnd;
             if (currentPeriod === '48h') {
-                expectedEnd = new Date(aestNow);
-                expectedStart = new Date(expectedEnd);
-                expectedStart.setHours(expectedStart.getHours() - 48);
+                // 48h starts from yesterday 10:00 AEST
+                expectedStart = new Date(aestNow);
+                expectedStart.setDate(expectedStart.getDate() - 1);
+                expectedStart.setHours(10, 0, 0, 0);
+                expectedEnd = new Date(expectedStart);
+                expectedEnd.setHours(expectedEnd.getHours() + 48);
             } else {
-                expectedEnd = new Date(aestNow);
-                expectedStart = new Date(expectedEnd);
-                expectedStart.setHours(expectedStart.getHours() - 24);
+                // 24h starts from today 09:00 AEST
+                expectedStart = new Date(aestNow);
+                expectedStart.setHours(9, 0, 0, 0);
+                expectedEnd = new Date(expectedStart);
+                expectedEnd.setHours(expectedEnd.getHours() + 24);
             }
             
             // Find actual data range
@@ -560,24 +566,25 @@
                 }
             });
             
+            const formatDate = (date) => {
+                return date.toLocaleDateString('en-AU', { 
+                    weekday: 'short', 
+                    day: 'numeric', 
+                    month: 'short',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                });
+            };
+            
             if (minDate && maxDate) {
-                const formatDate = (date) => {
-                    return date.toLocaleDateString('en-AU', { 
-                        weekday: 'short', 
-                        day: 'numeric', 
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: false
-                    });
-                };
-                
                 const hoursShown = (maxDate - minDate) / (1000 * 60 * 60);
                 
                 document.getElementById('dateRange').innerHTML = 
-                    `Window: ${currentPeriod} | Showing: ${hoursShown.toFixed(1)} hours | ${formatDate(minDate)} → ${formatDate(maxDate)} AEST`;
+                    `${currentPeriod === '48h' ? '48h from Yesterday 10:00' : '24h from Today 09:00'} AEST | Data: ${formatDate(minDate)} → ${formatDate(maxDate)}`;
             } else {
-                document.getElementById('dateRange').innerHTML = `Window: ${currentPeriod} | No data available`;
+                document.getElementById('dateRange').innerHTML = 
+                    `${currentPeriod === '48h' ? '48h from Yesterday 10:00' : '24h from Today 09:00'} AEST | Waiting for data...`;
             }
         }
         
