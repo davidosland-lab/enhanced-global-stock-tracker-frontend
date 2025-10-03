@@ -8,7 +8,6 @@
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0/build/global/luxon.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.1.1/dist/chartjs-chart-financial.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -896,21 +895,14 @@ Please check:
                 // Generate OHLC data (simulated for now, will use real historical data when available)
                 const ohlcData = generateOHLCData();
             
-            // Create mplfinance-inspired candlestick visualization
+            // Create simplified candlestick visualization
             // Extract data arrays
             const dates = ohlcData.map(d => new Date(d.x));
-            const highs = ohlcData.map(d => d.h);
-            const lows = ohlcData.map(d => d.l);
-            const opens = ohlcData.map(d => d.o);
             const closes = ohlcData.map(d => d.c);
             const volumes = ohlcData.map(() => Math.floor(Math.random() * 5000000) + 1000000);
             
-            // Create color arrays based on price movement (green for up, red for down)
-            const candleColors = ohlcData.map(d => {
-                return d.c >= d.o ? 'rgba(38, 166, 154, 0.9)' : 'rgba(239, 83, 80, 0.9)';
-            });
-            
-            const wickColors = ohlcData.map(d => {
+            // Create color arrays for each point
+            const pointColors = ohlcData.map(d => {
                 return d.c >= d.o ? '#26a69a' : '#ef5350';
             });
             
@@ -918,49 +910,58 @@ Please check:
             const chartOhlcData = ohlcData;
             const chartVolumes = volumes;
             
-            // Create custom candlestick visualization using multiple datasets
+            // Create a simplified chart that will work reliably
             candlestickChart = new Chart(ctx, {
+                type: 'line',
                 data: {
                     labels: dates,
                     datasets: [
-                        // High-Low wicks (vertical lines)
+                        // Main price line
                         {
-                            type: 'bar',
-                            label: 'Price Range',
-                            data: ohlcData.map(d => [d.l, d.h]),
-                            backgroundColor: wickColors,
-                            borderColor: wickColors,
-                            barThickness: 1,
-                            borderWidth: 0,
-                            borderSkipped: false,
-                            order: 2
+                            label: 'Close Price',
+                            data: closes,
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.1,
+                            pointBackgroundColor: pointColors,
+                            pointBorderColor: pointColors,
+                            pointRadius: 4,
+                            pointHoverRadius: 6,
+                            yAxisID: 'y'
                         },
-                        // Candlestick bodies (open-close bars)
+                        // High prices
                         {
-                            type: 'bar',
-                            label: 'OHLC',
-                            data: ohlcData.map(d => {
-                                const min = Math.min(d.o, d.c);
-                                const max = Math.max(d.o, d.c);
-                                return [min, max];
-                            }),
-                            backgroundColor: candleColors,
-                            borderColor: wickColors,
+                            label: 'High',
+                            data: ohlcData.map(d => d.h),
+                            borderColor: 'rgba(38, 166, 154, 0.3)',
                             borderWidth: 1,
-                            barThickness: 10,
-                            borderSkipped: false,
-                            order: 1
+                            borderDash: [5, 5],
+                            fill: false,
+                            pointRadius: 0,
+                            yAxisID: 'y'
                         },
-                        // Volume bars (bottom chart)
+                        // Low prices
+                        {
+                            label: 'Low',
+                            data: ohlcData.map(d => d.l),
+                            borderColor: 'rgba(239, 83, 80, 0.3)',
+                            borderWidth: 1,
+                            borderDash: [5, 5],
+                            fill: false,
+                            pointRadius: 0,
+                            yAxisID: 'y'
+                        },
+                        // Volume bars
                         {
                             type: 'bar',
                             label: 'Volume',
                             data: volumes,
-                            backgroundColor: 'rgba(102, 126, 234, 0.3)',
-                            borderColor: 'rgba(102, 126, 234, 0.5)',
-                            borderWidth: 0,
-                            yAxisID: 'volume',
-                            order: 3
+                            backgroundColor: 'rgba(102, 126, 234, 0.2)',
+                            borderColor: 'rgba(102, 126, 234, 0.4)',
+                            borderWidth: 1,
+                            yAxisID: 'y1'
                         }
                     ]
                 },
@@ -973,11 +974,12 @@ Please check:
                     },
                     plugins: {
                         legend: {
-                            display: false
+                            display: true,
+                            position: 'top'
                         },
                         title: {
                             display: true,
-                            text: `${currentStock} - Candlestick Chart (mplfinance-style)`,
+                            text: `${currentStock} - Price Chart with OHLC Data`,
                             font: {
                                 size: 16,
                                 weight: 'bold'
@@ -985,11 +987,8 @@ Please check:
                         },
                         tooltip: {
                             callbacks: {
-                                title: function(context) {
-                                    return new Date(context[0].label).toLocaleDateString();
-                                },
-                                label: function(context) {
-                                    if (context.datasetIndex === 1) { // OHLC dataset
+                                afterLabel: function(context) {
+                                    if (context.datasetIndex === 0) { // Close price dataset
                                         const index = context.dataIndex;
                                         if (chartOhlcData && chartOhlcData[index]) {
                                             const data = chartOhlcData[index];
@@ -1000,8 +999,7 @@ Please check:
                                                 `Open: $${data.o.toFixed(2)}`,
                                                 `High: $${data.h.toFixed(2)}`,
                                                 `Low: $${data.l.toFixed(2)}`,
-                                                `Close: $${data.c.toFixed(2)}`,
-                                                `Change: ${change >= 0 ? '+' : ''}$${change.toFixed(2)} (${changePercent}%)`,
+                                                `Change: ${change >= 0 ? '↑' : '↓'} ${Math.abs(change).toFixed(2)} (${changePercent}%)`,
                                                 `Volume: ${(vol / 1000000).toFixed(2)}M`
                                             ];
                                         }
@@ -1019,9 +1017,6 @@ Please check:
                                 displayFormats: {
                                     day: 'MMM dd'
                                 }
-                            },
-                            grid: {
-                                color: 'rgba(255, 255, 255, 0.1)'
                             }
                         },
                         y: {
@@ -1031,12 +1026,9 @@ Please check:
                             title: {
                                 display: true,
                                 text: 'Price ($)'
-                            },
-                            grid: {
-                                color: 'rgba(255, 255, 255, 0.1)'
                             }
                         },
-                        volume: {
+                        y1: {
                             type: 'linear',
                             display: true,
                             position: 'left',
@@ -1046,8 +1038,7 @@ Please check:
                             },
                             grid: {
                                 drawOnChartArea: false
-                            },
-                            max: Math.max(...chartVolumes) * 4 // Scale volume to bottom 25% of chart
+                            }
                         }
                     }
                 }
