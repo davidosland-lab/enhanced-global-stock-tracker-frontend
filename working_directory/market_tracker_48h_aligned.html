@@ -370,9 +370,9 @@
         
         async function fetchMarketData(market) {
             try {
-                // For 48h view, fetch 2 days of data
-                // For 24h view, fetch 1 day of data
-                const period = currentPeriod === '48h' ? '2d' : '1d';
+                // For 48h view, fetch 5 days to ensure we have all data
+                // For 24h view, fetch 2 days to ensure today's data
+                const period = currentPeriod === '48h' ? '5d' : '2d';
                 const interval = currentPeriod === '48h' ? '15m' : '5m';
                 
                 const histResponse = await fetch(`${API_BASE}/api/historical/${market.symbol}?period=${period}&interval=${interval}`);
@@ -386,7 +386,12 @@
                 const quoteResponse = await fetch(`${API_BASE}/api/stock/${market.symbol}`);
                 const quoteData = quoteResponse.ok ? await quoteResponse.json() : null;
                 
-                console.log(`${market.name}: ${histData.length} data points`);
+                console.log(`${market.name}: ${histData.length} data points received for period=${period}, interval=${interval}`);
+                if (histData.length > 0) {
+                    const firstDate = new Date(histData[0].date || histData[0].Date);
+                    const lastDate = new Date(histData[histData.length-1].date || histData[histData.length-1].Date);
+                    console.log(`  Data range: ${firstDate.toLocaleString()} to ${lastDate.toLocaleString()}`);
+                }
                 
                 return {
                     market: market,
@@ -436,20 +441,24 @@
                 startTime.setDate(startTime.getDate() - 1); // Go to yesterday
                 startTime.setHours(10, 0, 0, 0); // Set to 10:00 AM
                 
-                // End time is current time + some buffer
+                // End time is 48 hours from start (tomorrow 10:00)
+                endTime = new Date(startTime);
+                endTime.setDate(endTime.getDate() + 2); // Add 2 days to reach tomorrow 10:00
+            } else {
+                // 24h view: Show last 24 hours
                 endTime = new Date(aestNow);
                 endTime.setHours(endTime.getHours() + 1); // Add 1 hour buffer
-            } else {
-                // 24h view: Start from midnight today
-                startTime = new Date(aestNow);
-                startTime.setHours(0, 0, 0, 0);
                 
-                endTime = new Date(aestNow);
-                endTime.setHours(23, 59, 59, 999);
+                startTime = new Date(endTime);
+                startTime.setDate(startTime.getDate() - 1); // Go back 24 hours
             }
             
             // Process each data point
             const alignedData = [];
+            
+            console.log(`${marketData.market.name} - Processing ${marketData.data.length} points`);
+            console.log(`Time window: ${startTime.toLocaleString()} to ${endTime.toLocaleString()}`);
+            
             marketData.data.forEach(point => {
                 const pointDate = new Date(point.date || point.Date || point.Datetime);
                 const closePrice = point.close || point.Close;
@@ -463,6 +472,8 @@
                     });
                 }
             });
+            
+            console.log(`${marketData.market.name} - Aligned to ${alignedData.length} points within window`);
             
             return alignedData;
         }
@@ -639,20 +650,29 @@
             };
             
             // Calculate min and max dates for proper scaling
+            const now = new Date();
+            const aestNow = new Date(now.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
+            
             let minDate = null;
             let maxDate = null;
             
             if (currentPeriod === '48h') {
                 // Set to exactly 48 hours starting from yesterday 10:00 AEST
-                const now = new Date();
-                const aestNow = new Date(now.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
-                
                 minDate = new Date(aestNow);
-                minDate.setDate(minDate.getDate() - 1);
-                minDate.setHours(10, 0, 0, 0);
+                minDate.setDate(minDate.getDate() - 1); // Yesterday
+                minDate.setHours(10, 0, 0, 0); // 10:00 AM
                 
                 maxDate = new Date(minDate);
-                maxDate.setHours(maxDate.getHours() + 48);
+                maxDate.setDate(maxDate.getDate() + 2); // Tomorrow 10:00 AM (48 hours later)
+                
+                console.log(`Chart scale: ${minDate.toLocaleString()} to ${maxDate.toLocaleString()}`);
+            } else {
+                // 24h view - show last 24 hours
+                maxDate = new Date(aestNow);
+                maxDate.setHours(maxDate.getHours() + 1);
+                
+                minDate = new Date(maxDate);
+                minDate.setDate(minDate.getDate() - 1);
             }
             
             const options = {
