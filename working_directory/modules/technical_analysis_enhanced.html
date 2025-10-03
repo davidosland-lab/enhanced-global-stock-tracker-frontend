@@ -839,9 +839,9 @@
                 
                 // Get context from new canvas
                 const ctx = newCanvas.getContext('2d');
-            
-            // Generate OHLC data (simulated for now, will use real historical data when available)
-            const ohlcData = generateOHLCData();
+                
+                // Generate OHLC data (simulated for now, will use real historical data when available)
+                const ohlcData = generateOHLCData();
             
             // Create mplfinance-inspired candlestick visualization
             // Extract data arrays
@@ -860,6 +860,10 @@
             const wickColors = ohlcData.map(d => {
                 return d.c >= d.o ? '#26a69a' : '#ef5350';
             });
+            
+            // Store data for tooltip access
+            const chartOhlcData = ohlcData;
+            const chartVolumes = volumes;
             
             // Create custom candlestick visualization using multiple datasets
             candlestickChart = new Chart(ctx, {
@@ -934,17 +938,20 @@
                                 label: function(context) {
                                     if (context.datasetIndex === 1) { // OHLC dataset
                                         const index = context.dataIndex;
-                                        const data = ohlcData[index];
-                                        const change = data.c - data.o;
-                                        const changePercent = ((change / data.o) * 100).toFixed(2);
-                                        return [
-                                            `Open: $${data.o.toFixed(2)}`,
-                                            `High: $${data.h.toFixed(2)}`,
-                                            `Low: $${data.l.toFixed(2)}`,
-                                            `Close: $${data.c.toFixed(2)}`,
-                                            `Change: ${change >= 0 ? '+' : ''}$${change.toFixed(2)} (${changePercent}%)`,
-                                            `Volume: ${(volumes[index] / 1000000).toFixed(2)}M`
-                                        ];
+                                        if (chartOhlcData && chartOhlcData[index]) {
+                                            const data = chartOhlcData[index];
+                                            const change = data.c - data.o;
+                                            const changePercent = ((change / data.o) * 100).toFixed(2);
+                                            const vol = chartVolumes[index] || 0;
+                                            return [
+                                                `Open: $${data.o.toFixed(2)}`,
+                                                `High: $${data.h.toFixed(2)}`,
+                                                `Low: $${data.l.toFixed(2)}`,
+                                                `Close: $${data.c.toFixed(2)}`,
+                                                `Change: ${change >= 0 ? '+' : ''}$${change.toFixed(2)} (${changePercent}%)`,
+                                                `Volume: ${(vol / 1000000).toFixed(2)}M`
+                                            ];
+                                        }
                                     }
                                     return null;
                                 }
@@ -987,7 +994,7 @@
                             grid: {
                                 drawOnChartArea: false
                             },
-                            max: Math.max(...volumes) * 4 // Scale volume to bottom 25% of chart
+                            max: Math.max(...chartVolumes) * 4 // Scale volume to bottom 25% of chart
                         }
                     }
                 }
