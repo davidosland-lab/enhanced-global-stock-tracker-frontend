@@ -689,9 +689,18 @@
                 console.log('Stock data received:', stockData);
                 
                 // Fetch historical data for candlestick chart
-                const histResponse = await fetch(`${BACKEND_URL}/api/historical/${currentStock}`);
-                if (histResponse.ok) {
-                    historicalData = await histResponse.json();
+                try {
+                    const histResponse = await fetch(`${BACKEND_URL}/api/historical/${currentStock}`);
+                    if (histResponse.ok) {
+                        historicalData = await histResponse.json();
+                        console.log('Historical data received:', historicalData);
+                    } else {
+                        console.log('Historical data not available, using simulated data');
+                        historicalData = [];
+                    }
+                } catch (histError) {
+                    console.error('Error fetching historical data:', histError);
+                    historicalData = [];
                 }
                 
                 // Show analysis container
@@ -700,22 +709,66 @@
                 // Destroy any existing charts first
                 destroyAllCharts();
                 
-                // Update all tabs
-                updateStockInfo();
-                updateIndicators();
-                updatePatterns();
-                updateCandlestickChart();
-                updatePredictions();
-                updateSignals();
+                // Update all tabs with error handling
+                try {
+                    updateStockInfo();
+                } catch (e) {
+                    console.error('Error updating stock info:', e);
+                }
+                
+                try {
+                    updateIndicators();
+                } catch (e) {
+                    console.error('Error updating indicators:', e);
+                }
+                
+                try {
+                    updatePatterns();
+                } catch (e) {
+                    console.error('Error updating patterns:', e);
+                }
+                
+                try {
+                    updateCandlestickChart();
+                } catch (e) {
+                    console.error('Error updating candlestick chart:', e);
+                }
+                
+                try {
+                    updatePredictions();
+                } catch (e) {
+                    console.error('Error updating predictions:', e);
+                }
+                
+                try {
+                    updateSignals();
+                } catch (e) {
+                    console.error('Error updating signals:', e);
+                }
                 
                 // Only update oscillator chart if tab is active
                 if (document.getElementById('oscillatorsTab').classList.contains('active')) {
-                    updateOscillatorChart();
+                    try {
+                        updateOscillatorChart();
+                    } catch (e) {
+                        console.error('Error updating oscillator chart:', e);
+                    }
                 }
                 
             } catch (error) {
                 console.error('Error analyzing stock:', error);
-                alert(`Failed to analyze stock: ${error.message}\nBackend URL: ${BACKEND_URL}\nPlease check console for details.`);
+                // Check if it's a network error or data processing error
+                const errorMessage = error.message || 'Unknown error occurred';
+                const errorDetails = `
+Failed to analyze stock: ${errorMessage}
+Backend URL: ${BACKEND_URL}
+Stock: ${currentStock}
+
+Please check:
+1. Your internet connection
+2. The stock symbol is valid
+3. Console for detailed error information`;
+                alert(errorDetails);
             } finally {
                 document.getElementById('analyzeBtn').disabled = false;
                 document.getElementById('analyzeBtn').textContent = 'Analyze Stock';
