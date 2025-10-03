@@ -536,6 +536,22 @@
         function updateChart(asxData, ftseData, sp500Data) {
             const ctx = document.getElementById('marketChart').getContext('2d');
             
+            // Function to get date range for display
+            const getDateRange = () => {
+                let minDate = null;
+                let maxDate = null;
+                
+                const allData = [...asxData, ...ftseData, ...sp500Data];
+                allData.forEach(point => {
+                    if (!minDate || point.time < minDate) minDate = point.time;
+                    if (!maxDate || point.time > maxDate) maxDate = point.time;
+                });
+                
+                return { minDate, maxDate };
+            };
+            
+            const { minDate, maxDate } = getDateRange();
+            
             // Convert data to Chart.js format
             const datasets = [];
             
@@ -589,6 +605,46 @@
                     intersect: false
                 },
                 plugins: {
+                    title: {
+                        display: true,
+                        text: (() => {
+                            // Calculate date range for title
+                            let minDate = null;
+                            let maxDate = null;
+                            
+                            datasets.forEach(ds => {
+                                if (ds.data.length > 0) {
+                                    const firstDate = new Date(ds.data[0].x);
+                                    const lastDate = new Date(ds.data[ds.data.length - 1].x);
+                                    
+                                    if (!minDate || firstDate < minDate) minDate = firstDate;
+                                    if (!maxDate || lastDate > maxDate) maxDate = lastDate;
+                                }
+                            });
+                            
+                            if (minDate && maxDate) {
+                                const formatDate = (date) => {
+                                    const day = date.getDate();
+                                    const month = date.toLocaleString('en-AU', { month: 'short' });
+                                    const year = date.getFullYear();
+                                    const hours = date.getHours().toString().padStart(2, '0');
+                                    const minutes = date.getMinutes().toString().padStart(2, '0');
+                                    return `${day} ${month} ${year} ${hours}:${minutes}`;
+                                };
+                                
+                                return `Market Data: ${formatDate(minDate)} - ${formatDate(maxDate)} AEST`;
+                            }
+                            return `Market Data - ${currentPeriod.toUpperCase()} View`;
+                        })(),
+                        color: '#999',
+                        font: {
+                            size: 14
+                        },
+                        padding: {
+                            top: 10,
+                            bottom: 20
+                        }
+                    },
                     legend: {
                         display: true,
                         position: 'top',
@@ -637,23 +693,58 @@
                         type: 'time',
                         time: {
                             displayFormats: {
-                                hour: 'HH:mm',
-                                minute: 'HH:mm'
+                                hour: 'dd MMM HH:mm',
+                                minute: 'dd MMM HH:mm',
+                                day: 'dd MMM'
                             },
-                            tooltipFormat: 'MMM dd, HH:mm'
+                            tooltipFormat: 'EEE, dd MMM yyyy HH:mm'
                         },
                         grid: {
                             display: true,
-                            color: 'rgba(255, 255, 255, 0.05)'
+                            color: function(context) {
+                                // Make grid lines at day boundaries more visible
+                                if (context.tick && context.tick.label) {
+                                    const date = new Date(context.tick.value);
+                                    if (date.getHours() === 0) {
+                                        return 'rgba(255, 255, 255, 0.2)'; // Brighter line at midnight
+                                    }
+                                }
+                                return 'rgba(255, 255, 255, 0.05)';
+                            },
+                            lineWidth: function(context) {
+                                if (context.tick && context.tick.label) {
+                                    const date = new Date(context.tick.value);
+                                    if (date.getHours() === 0) {
+                                        return 2; // Thicker line at midnight
+                                    }
+                                }
+                                return 1;
+                            }
                         },
                         ticks: {
                             color: '#999',
                             font: {
-                                size: 11
+                                size: 10
                             },
-                            maxRotation: 0,
+                            maxRotation: 45,
                             autoSkip: true,
-                            maxTicksLimit: 12
+                            maxTicksLimit: currentPeriod === '24h' ? 12 : 16,
+                            callback: function(value, index, ticks) {
+                                // Format the date to show day and time
+                                const date = new Date(value);
+                                const day = date.getDate();
+                                const month = date.toLocaleString('en-AU', { month: 'short' });
+                                const hours = date.getHours().toString().padStart(2, '0');
+                                const minutes = date.getMinutes().toString().padStart(2, '0');
+                                
+                                // For major ticks (every few hours), show full date
+                                // For minor ticks, show just time
+                                if (index === 0 || index === Math.floor(ticks.length / 2) || index === ticks.length - 1) {
+                                    return `${day} ${month} ${hours}:${minutes}`;
+                                } else {
+                                    return `${hours}:${minutes}`;
+                                }
+                            }
                         }
                     },
                     y: {
