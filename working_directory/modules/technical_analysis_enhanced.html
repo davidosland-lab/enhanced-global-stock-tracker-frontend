@@ -590,6 +590,7 @@
         let priceVolumeChart = null;
         let oscillatorChart = null;
         let predictionChart = null;
+        let isAnalyzing = false; // Prevent multiple simultaneous analyses
         
         // Determine backend URL based on environment
         function getBackendUrl() {
@@ -649,12 +650,19 @@
         
         // Analyze stock
         async function analyzeStock(symbol = null) {
+            // Prevent multiple simultaneous analyses
+            if (isAnalyzing) {
+                console.log('Analysis already in progress');
+                return;
+            }
+            
             const stockSymbol = symbol || document.getElementById('stockSymbol').value.trim();
             if (!stockSymbol) {
                 alert('Please enter a stock symbol');
                 return;
             }
             
+            isAnalyzing = true;
             currentStock = stockSymbol.toUpperCase();
             document.getElementById('stockSymbol').value = currentStock;
             document.getElementById('analyzeBtn').disabled = true;
@@ -710,6 +718,7 @@
             } finally {
                 document.getElementById('analyzeBtn').disabled = false;
                 document.getElementById('analyzeBtn').textContent = 'Analyze Stock';
+                isAnalyzing = false;
             }
         }
         
@@ -806,16 +815,29 @@
         
         // Update candlestick chart
         function updateCandlestickChart() {
-            // Destroy existing chart first if it exists
-            if (candlestickChart) {
-                candlestickChart.destroy();
-                candlestickChart = null;
-            }
-            
-            // Get canvas and clear it
-            const canvas = document.getElementById('candlestickChart');
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            try {
+                // Destroy existing chart first if it exists
+                if (candlestickChart) {
+                    candlestickChart.destroy();
+                    candlestickChart = null;
+                }
+                
+                // Get canvas element
+                const canvas = document.getElementById('candlestickChart');
+                if (!canvas) {
+                    console.error('Candlestick canvas not found');
+                    return;
+                }
+                
+                // Remove and recreate canvas to ensure clean state
+                const parent = canvas.parentNode;
+                const newCanvas = document.createElement('canvas');
+                newCanvas.id = 'candlestickChart';
+                parent.removeChild(canvas);
+                parent.appendChild(newCanvas);
+                
+                // Get context from new canvas
+                const ctx = newCanvas.getContext('2d');
             
             // Generate OHLC data (simulated for now, will use real historical data when available)
             const ohlcData = generateOHLCData();
@@ -934,6 +956,9 @@
                     }
                 }
             });
+            } catch (error) {
+                console.error('Error creating candlestick chart:', error);
+            }
             
             // Update price & volume chart
             updatePriceVolumeChart(ohlcData);
@@ -978,16 +1003,29 @@
         
         // Update price & volume chart
         function updatePriceVolumeChart(ohlcData) {
-            // Destroy existing chart first if it exists
-            if (priceVolumeChart) {
-                priceVolumeChart.destroy();
-                priceVolumeChart = null;
-            }
-            
-            // Get canvas and clear it
-            const canvas = document.getElementById('priceVolumeChart');
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            try {
+                // Destroy existing chart first if it exists
+                if (priceVolumeChart) {
+                    priceVolumeChart.destroy();
+                    priceVolumeChart = null;
+                }
+                
+                // Get canvas element
+                const canvas = document.getElementById('priceVolumeChart');
+                if (!canvas) {
+                    console.error('Price volume canvas not found');
+                    return;
+                }
+                
+                // Remove and recreate canvas to ensure clean state
+                const parent = canvas.parentNode;
+                const newCanvas = document.createElement('canvas');
+                newCanvas.id = 'priceVolumeChart';
+                parent.removeChild(canvas);
+                parent.appendChild(newCanvas);
+                
+                // Get context from new canvas
+                const ctx = newCanvas.getContext('2d');
             
             // Extract close prices and generate volume
             const prices = ohlcData.map(d => d.c);
@@ -1051,6 +1089,9 @@
                     }
                 }
             });
+            } catch (error) {
+                console.error('Error creating price volume chart:', error);
+            }
         }
         
         // Update oscillator chart
@@ -1584,10 +1625,10 @@
         
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
-            // Auto-analyze CBA.AX on load for demo
-            setTimeout(() => {
-                analyzeStock('CBA.AX');
-            }, 500);
+            console.log('Technical Analysis Module Loaded');
+            console.log('Backend URL:', BACKEND_URL);
+            // Don't auto-analyze on load to avoid initial canvas conflicts
+            // User can click a button to start analysis
         });
         
         // Clean up on page unload
