@@ -768,8 +768,11 @@
         
         // Initialize on load
         window.onload = () => {
-            fetchCBAData();
-            setInterval(fetchCBAData, 60000); // Refresh every minute
+            // Add a small delay to ensure DOM is fully ready
+            setTimeout(() => {
+                fetchCBAData();
+                setInterval(fetchCBAData, 60000); // Refresh every minute
+            }, 500);
         };
         
         // Tab switching
@@ -798,11 +801,28 @@
             hideError();
             
             try {
-                // Fetch CBA data
-                const response = await fetch(`${API_URL}/api/stock/CBA.AX`);
-                if (!response.ok) throw new Error('Failed to fetch CBA data');
+                console.log('Fetching CBA data from:', `${API_URL}/api/stock/CBA.AX`);
+                
+                // Fetch CBA data with timeout
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 10000);
+                
+                const response = await fetch(`${API_URL}/api/stock/CBA.AX`, {
+                    signal: controller.signal,
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                clearTimeout(timeout);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
                 
                 cbaData = await response.json();
+                console.log('CBA data received:', cbaData);
                 
                 // Fetch competitor data
                 await fetchCompetitorData();
@@ -820,16 +840,31 @@
                 
             } catch (error) {
                 console.error('Error fetching data:', error);
-                showError('Failed to fetch CBA analysis data. Please try again.');
+                
+                if (error.name === 'AbortError') {
+                    showError('Request timed out. Please check your connection and try again.');
+                } else {
+                    showError(`Failed to fetch CBA analysis data: ${error.message}. Please try refreshing the page.`);
+                }
+                
                 document.getElementById('loadingDiv').style.display = 'none';
+                
+                // Retry once after 2 seconds
+                if (!window.retryAttempted) {
+                    window.retryAttempted = true;
+                    setTimeout(() => {
+                        console.log('Retrying CBA data fetch...');
+                        fetchCBAData();
+                    }, 2000);
+                }
             }
         }
         
         function displayCBAData() {
             if (!cbaData) return;
             
-            // Calculate change
-            const currentPrice = cbaData.regularMarketPrice || 0;
+            // Calculate change - handle both field names
+            const currentPrice = cbaData.regularMarketPrice || cbaData.price || 0;
             const previousClose = cbaData.previousClose || cbaData.regularMarketPreviousClose || currentPrice;
             const change = currentPrice - previousClose;
             const changePercent = previousClose ? (change / previousClose * 100) : 0;
