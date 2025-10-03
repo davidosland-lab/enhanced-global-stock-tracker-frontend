@@ -216,8 +216,8 @@
         </div>
 
         <div class="controls">
-            <button class="btn active" data-period="24h">Today (24h)</button>
-            <button class="btn" data-period="48h">Yesterday + Today (48h)</button>
+            <button class="btn active" data-period="24h">Last 24 Hours</button>
+            <button class="btn" data-period="48h">Last 48 Hours</button>
         </div>
 
         <div class="market-cards">
@@ -379,9 +379,9 @@
         
         async function fetchMarketData(market) {
             try {
-                // Fetch more days to ensure we have data
-                const period = currentPeriod === '48h' ? '5d' : '2d';
-                const interval = '15m'; // Use 15m for both views
+                // Fetch more days to ensure we have data for full time window
+                const period = currentPeriod === '48h' ? '5d' : '3d';  // Get more data to ensure coverage
+                const interval = currentPeriod === '48h' ? '15m' : '5m'; // 15m for 48h, 5m for 24h for better detail
                 
                 const histResponse = await fetch(`${API_BASE}/api/historical/${market.symbol}?period=${period}&interval=${interval}`);
                 if (!histResponse.ok) {
@@ -478,20 +478,19 @@
             let startTime, endTime;
             
             if (currentPeriod === '48h') {
-                // 48h view: from yesterday 10:00 AEST
-                startTime = new Date(aestNow);
-                startTime.setDate(startTime.getDate() - 1);
-                startTime.setHours(10, 0, 0, 0);
-                
+                // 48h view: full 48 hours from 2 days ago to now
                 endTime = new Date(aestNow);
-                endTime.setHours(23, 59, 59, 999);
+                endTime.setMinutes(endTime.getMinutes() + 30); // Small buffer for current data
+                
+                startTime = new Date(endTime);
+                startTime.setHours(startTime.getHours() - 48); // Go back exactly 48 hours
             } else {
-                // 24h view: from today 00:00 AEST to now
-                startTime = new Date(aestNow);
-                startTime.setHours(0, 0, 0, 0);
-                
+                // 24h view: full 24 hours from yesterday to now  
                 endTime = new Date(aestNow);
-                endTime.setHours(23, 59, 59, 999);
+                endTime.setMinutes(endTime.getMinutes() + 30); // Small buffer for current data
+                
+                startTime = new Date(endTime);
+                startTime.setHours(startTime.getHours() - 24); // Go back exactly 24 hours
             }
             
             // Process data points
@@ -528,15 +527,35 @@
         }
         
         function updateDateRange(datasets) {
+            // Calculate the expected time window
+            const now = new Date();
+            const aestNow = new Date(now.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
+            
+            let expectedStart, expectedEnd;
+            if (currentPeriod === '48h') {
+                expectedEnd = new Date(aestNow);
+                expectedStart = new Date(expectedEnd);
+                expectedStart.setHours(expectedStart.getHours() - 48);
+            } else {
+                expectedEnd = new Date(aestNow);
+                expectedStart = new Date(expectedEnd);
+                expectedStart.setHours(expectedStart.getHours() - 24);
+            }
+            
+            // Find actual data range
             let minDate = null;
             let maxDate = null;
+            let totalPoints = 0;
             
             datasets.forEach(ds => {
                 if (ds.data && ds.data.length > 0) {
                     ds.data.forEach(point => {
-                        const date = new Date(point.x);
-                        if (!minDate || date < minDate) minDate = date;
-                        if (!maxDate || date > maxDate) maxDate = date;
+                        if (point.y !== null) {  // Skip null points (gaps)
+                            const date = new Date(point.x);
+                            if (!minDate || date < minDate) minDate = date;
+                            if (!maxDate || date > maxDate) maxDate = date;
+                            totalPoints++;
+                        }
                     });
                 }
             });
@@ -553,10 +572,12 @@
                     });
                 };
                 
+                const hoursShown = (maxDate - minDate) / (1000 * 60 * 60);
+                
                 document.getElementById('dateRange').innerHTML = 
-                    `Data Range: ${formatDate(minDate)} → ${formatDate(maxDate)} AEST`;
+                    `Window: ${currentPeriod} | Showing: ${hoursShown.toFixed(1)} hours | ${formatDate(minDate)} → ${formatDate(maxDate)} AEST`;
             } else {
-                document.getElementById('dateRange').innerHTML = 'No data available for selected period';
+                document.getElementById('dateRange').innerHTML = `Window: ${currentPeriod} | No data available`;
             }
         }
         
