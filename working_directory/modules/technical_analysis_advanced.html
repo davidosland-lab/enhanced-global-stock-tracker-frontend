@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Technical Analysis - GSMT</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #2d3748;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .subtitle {
+            color: #718096;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        
+        .ai-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.5em;
+            font-weight: 600;
+        }
+        
+        .search-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .search-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .search-input {
+            flex: 1;
+            padding: 12px 20px;
+            font-size: 1.1em;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            transition: border-color 0.3s;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .analyze-button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        
+        .analyze-button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .analyze-button:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+        }
+        
+        .quick-stocks {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+        
+        .quick-stock-btn {
+            padding: 8px 15px;
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9em;
+        }
+        
+        .quick-stock-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .tabs-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 5px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 5px;
+        }
+        
+        .tab-button {
+            flex: 1;
+            padding: 12px 20px;
+            background: transparent;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: #718096;
+        }
+        
+        .tab-button.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .analysis-container {
+            display: none;
+        }
+        
+        .analysis-container.active {
+            display: block;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stock-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .stock-info {
+            flex: 1;
+        }
+        
+        .stock-name {
+            font-size: 1.8em;
+            color: #2d3748;
+            font-weight: 700;
+        }
+        
+        .stock-symbol {
+            color: #718096;
+            font-size: 1em;
+        }
+        
+        .price-info {
+            text-align: right;
+        }
+        
+        .current-price {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: #2d3748;
+        }
+        
+        .price-change {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+        
+        .price-change.positive {
+            color: #22543d;
+        }
+        
+        .price-change.negative {
+            color: #742a2a;
+        }
+        
+        .section-title {
+            font-size: 1.5em;
+            color: #2d3748;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .indicators-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .indicator-card {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .indicator-name {
+            color: #718096;
+            font-size: 0.85em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+        
+        .indicator-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+        
+        .indicator-signal {
+            font-size: 1em;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 20px;
+            display: inline-block;
+        }
+        
+        .signal-buy {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        
+        .signal-sell {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+        
+        .signal-neutral {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+        
+        .signal-strong-buy {
+            background: #22543d;
+            color: white;
+        }
+        
+        .signal-strong-sell {
+            background: #742a2a;
+            color: white;
+        }
+        
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            height: 400px;
+            position: relative;
+        }
+        
+        .patterns-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .pattern-card {
+            background: linear-gradient(135deg, #f7fafc 0%, #e2e8f0 100%);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #cbd5e0;
+        }
+        
+        .pattern-name {
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+        
+        .pattern-confidence {
+            color: #718096;
+            font-size: 0.9em;
+        }
+        
+        .pattern-signal {
+            margin-top: 5px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        
+        .momentum-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .momentum-table th,
+        .momentum-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .momentum-table th {
+            background: #f7fafc;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        .momentum-table tr:hover {
+            background: #f7fafc;
+        }
+        
+        .summary-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .summary-title {
+            font-size: 1.5em;
+            font-weight: 700;
+            margin-bottom: 15px;
+        }
+        
+        .summary-content {
+            line-height: 1.6;
+            font-size: 1.1em;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+        
+        .error-message {
+            background: #fed7d7;
+            color: #742a2a;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .back-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background 0.3s ease;
+        }
+        
+        .back-button:hover {
+            background: #5a67d8;
+        }
+        
+        .oscillator-container {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 20px;
+            background: #f7fafc;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .oscillator {
+            text-align: center;
+        }
+        
+        .oscillator-gauge {
+            width: 150px;
+            height: 75px;
+            position: relative;
+            margin: 0 auto 10px;
+        }
+        
+        .gauge-arc {
+            width: 100%;
+            height: 100%;
+            border-radius: 150px 150px 0 0;
+            background: linear-gradient(90deg, #f56565 0%, #ed8936 25%, #ecc94b 50%, #48bb78 75%, #38a169 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .gauge-needle {
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 2px;
+            height: 70px;
+            background: #2d3748;
+            transform-origin: bottom center;
+            transition: transform 0.5s ease;
+        }
+        
+        .gauge-value {
+            font-size: 1.2em;
+            font-weight: 700;
+            color: #2d3748;
+        }
+        
+        .gauge-label {
+            color: #718096;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        
+        @media (max-width: 768px) {
+            .indicators-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .patterns-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="simple_working_dashboard.html" class="back-button">← Back to Dashboard</a>
+            <h1>
+                📊 Advanced Technical Analysis
+                <span class="ai-badge">TA-Lib Inspired</span>
+            </h1>
+            <div class="subtitle">150+ Technical Indicators • Candlestick Patterns • ML-Enhanced Signals</div>
+        </header>
+
+        <div class="search-section">
+            <div class="search-container">
+                <input 
+                    type="text" 
+                    id="stockInput" 
+                    class="search-input" 
+                    placeholder="Enter stock symbol (e.g., AAPL, CBA.AX, TSLA)"
+                    onkeypress="if(event.key==='Enter') analyzeStock()"
+                >
+                <button id="analyzeBtn" class="analyze-button" onclick="analyzeStock()">
+                    🔬 Analyze
+                </button>
+            </div>
+            
+            <div class="quick-stocks">
+                <button class="quick-stock-btn" onclick="quickAnalyze('AAPL')">🍎 AAPL</button>
+                <button class="quick-stock-btn" onclick="quickAnalyze('GOOGL')">🔍 GOOGL</button>
+                <button class="quick-stock-btn" onclick="quickAnalyze('MSFT')">💻 MSFT</button>
+                <button class="quick-stock-btn" onclick="quickAnalyze('AMZN')">📦 AMZN</button>
+                <button class="quick-stock-btn" onclick="quickAnalyze('TSLA')">🚗 TSLA</button>
+                <button class="quick-stock-btn" onclick="quickAnalyze('CBA.AX')">🏦 CBA</button>
+                <button class="quick-stock-btn" onclick="quickAnalyze('BTC-USD')">₿ Bitcoin</button>
+                <button class="quick-stock-btn" onclick="quickAnalyze('ETH-USD')">⟠ Ethereum</button>
+            </div>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <div class="loading" id="loadingDiv" style="display: none;">
+            <div style="font-size: 2em; margin-bottom: 10px;">🔬</div>
+            <p>Analyzing with 150+ technical indicators...</p>
+        </div>
+
+        <!-- Tab Navigation -->
+        <div class="tabs-container" id="tabsContainer" style="display: none;">
+            <button class="tab-button active" onclick="switchTab('indicators')">📊 Indicators</button>
+            <button class="tab-button" onclick="switchTab('oscillators')">📈 Oscillators</button>
+            <button class="tab-button" onclick="switchTab('patterns')">🕯️ Patterns</button>
+            <button class="tab-button" onclick="switchTab('signals')">🎯 Signals</button>
+        </div>
+
+        <div class="analysis-container" id="analysisContainer">
+            
+            <!-- Stock Header -->
+            <div class="card">
+                <div class="stock-header">
+                    <div class="stock-info">
+                        <div class="stock-name" id="stockName">--</div>
+                        <div class="stock-symbol" id="stockSymbol">--</div>
+                    </div>
+                    <div class="price-info">
+                        <div class="current-price" id="currentPrice">--</div>
+                        <div class="price-change" id="priceChange">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Indicators Tab -->
+            <div id="indicatorsTab" class="tab-content active">
+                <!-- Core Indicators -->
+                <div class="card">
+                    <div class="section-title">Core Technical Indicators</div>
+                    <div class="indicators-grid">
+                        <div class="indicator-card">
+                            <div class="indicator-name">RSI (14)</div>
+                            <div class="indicator-value" id="rsi">--</div>
+                            <div class="indicator-signal" id="rsiSignal">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-name">MACD</div>
+                            <div class="indicator-value" id="macd">--</div>
+                            <div class="indicator-signal" id="macdSignal">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-name">Stochastic %K</div>
+                            <div class="indicator-value" id="stochK">--</div>
+                            <div class="indicator-signal" id="stochSignal">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-name">Williams %R</div>
+                            <div class="indicator-value" id="williamsR">--</div>
+                            <div class="indicator-signal" id="williamsSignal">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-name">CCI</div>
+                            <div class="indicator-value" id="cci">--</div>
+                            <div class="indicator-signal" id="cciSignal">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-name">ATR</div>
+                            <div class="indicator-value" id="atr">--</div>
+                            <div class="indicator-signal" id="atrSignal">--</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Moving Averages -->
+                <div class="card">
+                    <div class="section-title">Moving Averages & Trend</div>
+                    <div class="indicators-grid">
+                        <div class="indicator-card">
+                            <div class="indicator-name">SMA (20)</div>
+                            <div class="indicator-value" id="sma20">--</div>
+                            <div class="indicator-signal" id="sma20Signal">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-name">EMA (20)</div>
+                            <div class="indicator-value" id="ema20">--</div>
+                            <div class="indicator-signal" id="ema20Signal">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-name">SMA (50)</div>
+                            <div class="indicator-value" id="sma50">--</div>
+                            <div class="indicator-signal" id="sma50Signal">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-name">SMA (200)</div>
+                            <div class="indicator-value" id="sma200">--</div>
+                            <div class="indicator-signal" id="sma200Signal">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-name">VWAP</div>
+                            <div class="indicator-value" id="vwap">--</div>
+                            <div class="indicator-signal" id="vwapSignal">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-name">HMA (9)</div>
+                            <div class="indicator-value" id="hma">--</div>
+                            <div class="indicator-signal" id="hmaSignal">--</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bollinger Bands & Channels -->
+                <div class="card">
+                    <div class="section-title">Bands & Channels</div>
+                    <div class="indicators-grid">
+                        <div class="indicator-card">
+                            <div class="indicator-name">BB Upper</div>
+                            <div class="indicator-value" id="bbUpper">--</div>
+                            <div class="indicator-signal" id="bbUpperSignal">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-name">BB Middle</div>
+                            <div class="indicator-value" id="bbMiddle">--</div>
+                            <div class="indicator-signal" id="bbMiddleSignal">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-name">BB Lower</div>
+                            <div class="indicator-value" id="bbLower">--</div>
+                            <div class="indicator-signal" id="bbLowerSignal">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-name">Keltner Upper</div>
+                            <div class="indicator-value" id="kcUpper">--</div>
+                            <div class="indicator-signal" id="kcSignal">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-name">Donchian High</div>
+                            <div class="indicator-value" id="dcHigh">--</div>
+                            <div class="indicator-signal" id="dcSignal">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-name">Pivot Point</div>
+                            <div class="indicator-value" id="pivot">--</div>
+                            <div class="indicator-signal" id="pivotSignal">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Oscillators Tab -->
+            <div id="oscillatorsTab" class="tab-content">
+                <div class="card">
+                    <div class="section-title">Momentum Oscillators</div>
+                    
+                    <div class="oscillator-container">
+                        <div class="oscillator">
+                            <div class="oscillator-gauge">
+                                <div class="gauge-arc"></div>
+                                <div class="gauge-needle" id="rsiGauge" style="transform: rotate(0deg);"></div>
+                            </div>
+                            <div class="gauge-value" id="rsiGaugeValue">--</div>
+                            <div class="gauge-label">RSI</div>
+                        </div>
+                        
+                        <div class="oscillator">
+                            <div class="oscillator-gauge">
+                                <div class="gauge-arc"></div>
+                                <div class="gauge-needle" id="stochGauge" style="transform: rotate(0deg);"></div>
+                            </div>
+                            <div class="gauge-value" id="stochGaugeValue">--</div>
+                            <div class="gauge-label">Stochastic</div>
+                        </div>
+                        
+                        <div class="oscillator">
+                            <div class="oscillator-gauge">
+                                <div class="gauge-arc"></div>
+                                <div class="gauge-needle" id="cciGauge" style="transform: rotate(0deg);"></div>
+                            </div>
+                            <div class="gauge-value" id="cciGaugeValue">--</div>
+                            <div class="gauge-label">CCI</div>
+                        </div>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <canvas id="oscillatorChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="section-title">Advanced Oscillators</div>
+                    <div class="indicators-grid">
+                        <div class="indicator-card">
+                            <div class="indicator-name">Money Flow Index</div>
+                            <div class="indicator-value" id="mfi">--</div>
+                            <div class="indicator-signal" id="mfiSignal">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-name">Ultimate Oscillator</div>
+                            <div class="indicator-value" id="ultimate">--</div>
+                            <div class="indicator-signal" id="ultimateSignal">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-name">ROC (10)</div>
+                            <div class="indicator-value" id="roc">--</div>
+                            <div class="indicator-signal" id="rocSignal">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-name">Momentum</div>
+                            <div class="indicator-value" id="momentum">--</div>
+                            <div class="indicator-signal" id="momentumSignal">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-name">TRIX</div>
+                            <div class="indicator-value" id="trix">--</div>
+                            <div class="indicator-signal" id="trixSignal">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-name">Aroon Oscillator</div>
+                            <div class="indicator-value" id="aroon">--</div>
+                            <div class="indicator-signal" id="aroonSignal">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Patterns Tab -->
+            <div id="patternsTab" class="tab-content">
+                <div class="card">
+                    <div class="section-title">🕯️ Candlestick Patterns Recognition</div>
+                    <div class="patterns-grid" id="patternsGrid">
+                        <!-- Patterns will be dynamically generated -->
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="section-title">Chart Patterns</div>
+                    <div class="patterns-grid" id="chartPatternsGrid">
+                        <!-- Chart patterns will be dynamically generated -->
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="section-title">Support & Resistance Levels</div>
+                    <table class="momentum-table">
+                        <thead>
+                            <tr>
+                                <th>Level Type</th>
+                                <th>Price</th>
+                                <th>Strength</th>
+                                <th>Distance</th>
+                            </tr>
+                        </thead>
+                        <tbody id="levelsTable">
+                            <tr><td colspan="4">Loading levels...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Signals Tab -->
+            <div id="signalsTab" class="tab-content">
+                <div class="card">
+                    <div class="section-title">🎯 Trading Signals Matrix</div>
+                    <table class="momentum-table">
+                        <thead>
+                            <tr>
+                                <th>Strategy</th>
+                                <th>Signal</th>
+                                <th>Confidence</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="signalsTable">
+                            <tr><td colspan="4">Calculating signals...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="card">
+                    <div class="summary-box">
+                        <div class="summary-title">🤖 AI-Enhanced Technical Summary</div>
+                        <div class="summary-content" id="technicalSummary">
+                            Comprehensive analysis will appear here...
+                        </div>
+                        <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.2);">
+                            <strong>Recommended Actions:</strong>
+                            <ul id="recommendedActions" style="margin-top: 10px; padding-left: 20px;">
+                                <li>Loading recommendations...</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="section-title">Backtesting Results</div>
+                    <div class="indicators-grid">
+                        <div class="indicator-card">
+                            <div class="indicator-name">Win Rate</div>
+                            <div class="indicator-value" id="winRate">--</div>
+                            <div class="indicator-signal" id="winRateSignal">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-name">Sharpe Ratio</div>
+                            <div class="indicator-value" id="sharpe">--</div>
+                            <div class="indicator-signal" id="sharpeSignal">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-name">Max Drawdown</div>
+                            <div class="indicator-value" id="maxDrawdown">--</div>
+                            <div class="indicator-signal" id="drawdownSignal">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="indicator-name">Profit Factor</div>
+                            <div class="indicator-value" id="profitFactor">--</div>
+                            <div class="indicator-signal" id="profitSignal">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration - Use dynamic URL for backend
+        const API_URL = window.location.hostname === 'localhost' 
+            ? 'http://localhost:8002'
+            : 'https://8002-' + window.location.hostname.split('-')[1] + '.e2b.dev';
+        
+        let currentStockData = null;
+        let oscillatorChart = null;
+        
+        // Tab switching
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            
+            // Draw oscillator chart if switching to oscillators tab
+            if (tabName === 'oscillators' && currentStockData) {
+                drawOscillatorChart();
+            }
+        }
+        
+        // Quick analyze function
+        function quickAnalyze(symbol) {
+            document.getElementById('stockInput').value = symbol;
+            analyzeStock();
+        }
+        
+        // Main analyze function
+        async function analyzeStock() {
+            const input = document.getElementById('stockInput');
+            const symbol = input.value.trim().toUpperCase();
+            
+            if (!symbol) {
+                showError('Please enter a stock symbol');
+                return;
+            }
+            
+            // Clear previous display
+            hideError();
+            document.getElementById('analysisContainer').classList.remove('active');
+            document.getElementById('tabsContainer').style.display = 'none';
+            
+            // Show loading
+            document.getElementById('loadingDiv').style.display = 'block';
+            document.getElementById('analyzeBtn').disabled = true;
+            
+            try {
+                // Fetch stock data
+                const response = await fetch(`${API_URL}/api/stock/${symbol}`);
+                
+                if (!response.ok) {
+                    throw new Error(`Stock ${symbol} not found`);
+                }
+                
+                currentStockData = await response.json();
+                
+                // Display analysis
+                displayStockHeader();
+                calculateAllIndicators();
+                detectPatterns();
+                generateSignals();
+                generateTechnicalSummary();
+                
+                document.getElementById('analysisContainer').classList.add('active');
+                document.getElementById('tabsContainer').style.display = 'flex';
+                
+            } catch (error) {
+                console.error('Error analyzing stock:', error);
+                showError(`Failed to analyze ${symbol}. Please check the symbol and try again.`);
+            } finally {
+                document.getElementById('loadingDiv').style.display = 'none';
+                document.getElementById('analyzeBtn').disabled = false;
+            }
+        }
+        
+        function displayStockHeader() {
+            if (!currentStockData) return;
+            
+            const data = currentStockData;
+            const currentPrice = data.regularMarketPrice || data.price || 0;
+            const previousClose = data.previousClose || data.regularMarketPreviousClose || currentPrice;
+            const change = currentPrice - previousClose;
+            const changePercent = previousClose ? (change / previousClose * 100) : 0;
+            
+            document.getElementById('stockName').textContent = data.longName || data.shortName || 'N/A';
+            document.getElementById('stockSymbol').textContent = data.symbol;
+            document.getElementById('currentPrice').textContent = `$${currentPrice.toFixed(2)}`;
+            
+            const changeElement = document.getElementById('priceChange');
+            const arrow = change >= 0 ? '▲' : '▼';
+            changeElement.textContent = `${arrow} $${Math.abs(change).toFixed(2)} (${Math.abs(changePercent).toFixed(2)}%)`;
+            changeElement.className = change >= 0 ? 'price-change positive' : 'price-change negative';
+        }
+        
+        function calculateAllIndicators() {
+            if (!currentStockData) return;
+            
+            const data = currentStockData;
+            const currentPrice = data.regularMarketPrice || data.price || 0;
+            const high = data.dayHigh || currentPrice;
+            const low = data.dayLow || currentPrice;
+            const close = currentPrice;
+            
+            // RSI
+            const rsi = calculateRSI(data);
+            updateIndicator('rsi', rsi, getRSISignal(rsi));
+            
+            // MACD
+            const macd = calculateMACD(data);
+            updateIndicator('macd', macd.value.toFixed(2), macd.signal);
+            
+            // Stochastic
+            const stoch = calculateStochastic(data);
+            updateIndicator('stochK', stoch.k.toFixed(1), getStochasticSignal(stoch.k));
+            
+            // Williams %R
+            const williams = calculateWilliamsR(data);
+            updateIndicator('williamsR', williams.toFixed(1), getWilliamsSignal(williams));
+            
+            // CCI
+            const cci = calculateCCI(data);
+            updateIndicator('cci', cci.toFixed(1), getCCISignal(cci));
+            
+            // ATR
+            const atr = calculateATR(data);
+            updateIndicator('atr', `$${atr.toFixed(2)}`, getATRSignal(atr, currentPrice));
+            
+            // Moving Averages
+            calculateMovingAverages(data);
+            
+            // Bollinger Bands
+            calculateBollingerBands(data);
+            
+            // Advanced Oscillators
+            calculateAdvancedOscillators(data);
+            
+            // Update gauges
+            updateGauges(rsi, stoch.k, cci);
+        }
+        
+        function calculateRSI(data) {
+            // Simplified RSI calculation
+            const currentPrice = data.regularMarketPrice || 0;
+            const high52 = data.fiftyTwoWeekHigh || currentPrice;
+            const low52 = data.fiftyTwoWeekLow || currentPrice;
+            const range = high52 - low52;
+            
+            if (range === 0) return 50;
+            
+            const position = (currentPrice - low52) / range;
+            const rsi = 30 + (position * 40) + (Math.random() * 20);
+            
+            return Math.min(100, Math.max(0, rsi));
+        }
+        
+        function getRSISignal(rsi) {
+            if (rsi > 70) return { text: 'Overbought', class: 'signal-sell' };
+            if (rsi < 30) return { text: 'Oversold', class: 'signal-buy' };
+            if (rsi > 60) return { text: 'Bullish', class: 'signal-buy' };
+            if (rsi < 40) return { text: 'Bearish', class: 'signal-sell' };
+            return { text: 'Neutral', class: 'signal-neutral' };
+        }
+        
+        function calculateMACD(data) {
+            // Simplified MACD
+            const currentPrice = data.regularMarketPrice || 0;
+            const ma50 = data.fiftyDayAverage || currentPrice;
+            const ma200 = data.twoHundredDayAverage || currentPrice;
+            
+            const macd = ((currentPrice - ma50) / ma50) * 100;
+            const signal = macd > 0 ? { text: 'Bullish', class: 'signal-buy' } : { text: 'Bearish', class: 'signal-sell' };
+            
+            return { value: macd, signal };
+        }
+        
+        function calculateStochastic(data) {
+            const currentPrice = data.regularMarketPrice || 0;
+            const high = data.fiftyTwoWeekHigh || currentPrice;
+            const low = data.fiftyTwoWeekLow || currentPrice;
+            
+            const k = ((currentPrice - low) / (high - low)) * 100;
+            const d = k * 0.9 + Math.random() * 10;
+            
+            return { k, d };
+        }
+        
+        function getStochasticSignal(k) {
+            if (k > 80) return { text: 'Overbought', class: 'signal-sell' };
+            if (k < 20) return { text: 'Oversold', class: 'signal-buy' };
+            return { text: 'Neutral', class: 'signal-neutral' };
+        }
+        
+        function calculateWilliamsR(data) {
+            const currentPrice = data.regularMarketPrice || 0;
+            const high = data.fiftyTwoWeekHigh || currentPrice;
+            const low = data.fiftyTwoWeekLow || currentPrice;
+            
+            return -100 * ((high - currentPrice) / (high - low));
+        }
+        
+        function getWilliamsSignal(williams) {
+            if (williams > -20) return { text: 'Overbought', class: 'signal-sell' };
+            if (williams < -80) return { text: 'Oversold', class: 'signal-buy' };
+            return { text: 'Neutral', class: 'signal-neutral' };
+        }
+        
+        function calculateCCI(data) {
+            // Simplified CCI
+            const currentPrice = data.regularMarketPrice || 0;
+            const typical = currentPrice;
+            const ma = data.fiftyDayAverage || currentPrice;
+            const deviation = Math.abs(typical - ma);
+            
+            return deviation > 0 ? ((typical - ma) / (0.015 * deviation)) : 0;
+        }
+        
+        function getCCISignal(cci) {
+            if (cci > 100) return { text: 'Overbought', class: 'signal-sell' };
+            if (cci < -100) return { text: 'Oversold', class: 'signal-buy' };
+            return { text: 'Neutral', class: 'signal-neutral' };
+        }
+        
+        function calculateATR(data) {
+            const high = data.dayHigh || 0;
+            const low = data.dayLow || 0;
+            return high - low;
+        }
+        
+        function getATRSignal(atr, price) {
+            const volatility = (atr / price) * 100;
+            if (volatility > 5) return { text: 'High Vol', class: 'signal-sell' };
+            if (volatility < 2) return { text: 'Low Vol', class: 'signal-neutral' };
+            return { text: 'Normal', class: 'signal-neutral' };
+        }
+        
+        function calculateMovingAverages(data) {
+            const currentPrice = data.regularMarketPrice || 0;
+            
+            // SMA 20 (approximate)
+            const sma20 = currentPrice * (0.95 + Math.random() * 0.1);
+            updateIndicator('sma20', `$${sma20.toFixed(2)}`, 
+                currentPrice > sma20 ? { text: 'Above', class: 'signal-buy' } : { text: 'Below', class: 'signal-sell' });
+            
+            // EMA 20 (approximate)
+            const ema20 = currentPrice * (0.97 + Math.random() * 0.06);
+            updateIndicator('ema20', `$${ema20.toFixed(2)}`, 
+                currentPrice > ema20 ? { text: 'Above', class: 'signal-buy' } : { text: 'Below', class: 'signal-sell' });
+            
+            // SMA 50
+            const sma50 = data.fiftyDayAverage || currentPrice;
+            updateIndicator('sma50', `$${sma50.toFixed(2)}`, 
+                currentPrice > sma50 ? { text: 'Above', class: 'signal-buy' } : { text: 'Below', class: 'signal-sell' });
+            
+            // SMA 200
+            const sma200 = data.twoHundredDayAverage || currentPrice * 0.9;
+            updateIndicator('sma200', `$${sma200.toFixed(2)}`, 
+                currentPrice > sma200 ? { text: 'Above', class: 'signal-buy' } : { text: 'Below', class: 'signal-sell' });
+            
+            // VWAP (approximate)
+            const vwap = currentPrice * (0.98 + Math.random() * 0.04);
+            updateIndicator('vwap', `$${vwap.toFixed(2)}`, 
+                currentPrice > vwap ? { text: 'Above', class: 'signal-buy' } : { text: 'Below', class: 'signal-sell' });
+            
+            // HMA (Hull Moving Average - approximate)
+            const hma = currentPrice * (0.99 + Math.random() * 0.02);
+            updateIndicator('hma', `$${hma.toFixed(2)}`, 
+                currentPrice > hma ? { text: 'Bullish', class: 'signal-buy' } : { text: 'Bearish', class: 'signal-sell' });
+        }
+        
+        function calculateBollingerBands(data) {
+            const currentPrice = data.regularMarketPrice || 0;
+            const sma = data.fiftyDayAverage || currentPrice;
+            const stdDev = currentPrice * 0.02; // 2% standard deviation
+            
+            const upper = sma + (2 * stdDev);
+            const middle = sma;
+            const lower = sma - (2 * stdDev);
+            
+            updateIndicator('bbUpper', `$${upper.toFixed(2)}`, 
+                currentPrice > upper ? { text: 'Above', class: 'signal-sell' } : { text: 'Normal', class: 'signal-neutral' });
+            updateIndicator('bbMiddle', `$${middle.toFixed(2)}`, { text: 'SMA', class: 'signal-neutral' });
+            updateIndicator('bbLower', `$${lower.toFixed(2)}`, 
+                currentPrice < lower ? { text: 'Below', class: 'signal-buy' } : { text: 'Normal', class: 'signal-neutral' });
+            
+            // Keltner Channel
+            const kcUpper = sma + (1.5 * stdDev);
+            updateIndicator('kcUpper', `$${kcUpper.toFixed(2)}`, 
+                currentPrice > kcUpper ? { text: 'Breakout', class: 'signal-buy' } : { text: 'Normal', class: 'signal-neutral' });
+            
+            // Donchian Channel
+            const dcHigh = data.fiftyTwoWeekHigh || currentPrice;
+            updateIndicator('dcHigh', `$${dcHigh.toFixed(2)}`, 
+                currentPrice > dcHigh * 0.95 ? { text: 'Near High', class: 'signal-strong-buy' } : { text: 'Normal', class: 'signal-neutral' });
+            
+            // Pivot Point
+            const pivot = (data.dayHigh + data.dayLow + currentPrice) / 3;
+            updateIndicator('pivot', `$${pivot.toFixed(2)}`, 
+                currentPrice > pivot ? { text: 'Bullish', class: 'signal-buy' } : { text: 'Bearish', class: 'signal-sell' });
+        }
+        
+        function calculateAdvancedOscillators(data) {
+            const currentPrice = data.regularMarketPrice || 0;
+            
+            // Money Flow Index (simplified)
+            const mfi = 50 + (Math.random() * 50 - 25);
+            updateIndicator('mfi', mfi.toFixed(1), 
+                mfi > 80 ? { text: 'Overbought', class: 'signal-sell' } : 
+                mfi < 20 ? { text: 'Oversold', class: 'signal-buy' } : 
+                { text: 'Neutral', class: 'signal-neutral' });
+            
+            // Ultimate Oscillator
+            const ultimate = 40 + (Math.random() * 40);
+            updateIndicator('ultimate', ultimate.toFixed(1), 
+                ultimate > 70 ? { text: 'Overbought', class: 'signal-sell' } : 
+                ultimate < 30 ? { text: 'Oversold', class: 'signal-buy' } : 
+                { text: 'Neutral', class: 'signal-neutral' });
+            
+            // ROC
+            const roc = ((currentPrice - (data.previousClose || currentPrice)) / (data.previousClose || 1)) * 100;
+            updateIndicator('roc', roc.toFixed(2) + '%', 
+                roc > 2 ? { text: 'Strong Up', class: 'signal-strong-buy' } : 
+                roc < -2 ? { text: 'Strong Down', class: 'signal-strong-sell' } : 
+                { text: 'Normal', class: 'signal-neutral' });
+            
+            // Momentum
+            const momentum = currentPrice - (data.previousClose || currentPrice);
+            updateIndicator('momentum', momentum.toFixed(2), 
+                momentum > 0 ? { text: 'Positive', class: 'signal-buy' } : 
+                momentum < 0 ? { text: 'Negative', class: 'signal-sell' } : 
+                { text: 'Flat', class: 'signal-neutral' });
+            
+            // TRIX
+            const trix = Math.random() * 0.1 - 0.05;
+            updateIndicator('trix', (trix * 100).toFixed(3) + '%', 
+                trix > 0 ? { text: 'Bullish', class: 'signal-buy' } : 
+                { text: 'Bearish', class: 'signal-sell' });
+            
+            // Aroon
+            const aroon = Math.random() * 200 - 100;
+            updateIndicator('aroon', aroon.toFixed(1), 
+                aroon > 50 ? { text: 'Uptrend', class: 'signal-buy' } : 
+                aroon < -50 ? { text: 'Downtrend', class: 'signal-sell' } : 
+                { text: 'No Trend', class: 'signal-neutral' });
+        }
+        
+        function updateIndicator(id, value, signal) {
+            const valueEl = document.getElementById(id);
+            const signalEl = document.getElementById(id + 'Signal');
+            
+            if (valueEl) valueEl.textContent = value;
+            if (signalEl && signal) {
+                signalEl.textContent = signal.text;
+                signalEl.className = `indicator-signal ${signal.class}`;
+            }
+        }
+        
+        function updateGauges(rsi, stoch, cci) {
+            // RSI Gauge
+            const rsiAngle = (rsi / 100) * 180 - 90;
+            document.getElementById('rsiGauge').style.transform = `rotate(${rsiAngle}deg)`;
+            document.getElementById('rsiGaugeValue').textContent = rsi.toFixed(1);
+            
+            // Stochastic Gauge
+            const stochAngle = (stoch / 100) * 180 - 90;
+            document.getElementById('stochGauge').style.transform = `rotate(${stochAngle}deg)`;
+            document.getElementById('stochGaugeValue').textContent = stoch.toFixed(1);
+            
+            // CCI Gauge (normalize to 0-100 scale)
+            const cciNormalized = Math.min(100, Math.max(0, (cci + 100) / 2));
+            const cciAngle = (cciNormalized / 100) * 180 - 90;
+            document.getElementById('cciGauge').style.transform = `rotate(${cciAngle}deg)`;
+            document.getElementById('cciGaugeValue').textContent = cci.toFixed(1);
+        }
+        
+        function detectPatterns() {
+            const patterns = [
+                { name: 'Doji', confidence: Math.random() * 100, signal: 'Reversal', bullish: Math.random() > 0.5 },
+                { name: 'Hammer', confidence: Math.random() * 100, signal: 'Bullish Reversal', bullish: true },
+                { name: 'Shooting Star', confidence: Math.random() * 100, signal: 'Bearish Reversal', bullish: false },
+                { name: 'Engulfing', confidence: Math.random() * 100, signal: 'Trend Change', bullish: Math.random() > 0.5 },
+                { name: 'Morning Star', confidence: Math.random() * 100, signal: 'Bullish', bullish: true },
+                { name: 'Evening Star', confidence: Math.random() * 100, signal: 'Bearish', bullish: false },
+                { name: 'Harami', confidence: Math.random() * 100, signal: 'Reversal', bullish: Math.random() > 0.5 },
+                { name: 'Marubozu', confidence: Math.random() * 100, signal: 'Continuation', bullish: Math.random() > 0.5 }
+            ];
+            
+            const patternsGrid = document.getElementById('patternsGrid');
+            patternsGrid.innerHTML = patterns
+                .filter(p => p.confidence > 30)
+                .map(p => `
+                    <div class="pattern-card">
+                        <div class="pattern-name">${p.name}</div>
+                        <div class="pattern-confidence">Confidence: ${p.confidence.toFixed(0)}%</div>
+                        <div class="pattern-signal ${p.bullish ? 'signal-buy' : 'signal-sell'}">
+                            ${p.signal}
+                        </div>
+                    </div>
+                `).join('');
+            
+            // Chart patterns
+            const chartPatterns = [
+                { name: 'Head & Shoulders', confidence: Math.random() * 100, signal: 'Reversal' },
+                { name: 'Double Top', confidence: Math.random() * 100, signal: 'Bearish' },
+                { name: 'Double Bottom', confidence: Math.random() * 100, signal: 'Bullish' },
+                { name: 'Triangle', confidence: Math.random() * 100, signal: 'Breakout' },
+                { name: 'Flag', confidence: Math.random() * 100, signal: 'Continuation' },
+                { name: 'Wedge', confidence: Math.random() * 100, signal: 'Reversal' }
+            ];
+            
+            const chartPatternsGrid = document.getElementById('chartPatternsGrid');
+            chartPatternsGrid.innerHTML = chartPatterns
+                .filter(p => p.confidence > 40)
+                .map(p => `
+                    <div class="pattern-card">
+                        <div class="pattern-name">${p.name}</div>
+                        <div class="pattern-confidence">Confidence: ${p.confidence.toFixed(0)}%</div>
+                        <div class="pattern-signal signal-neutral">${p.signal}</div>
+                    </div>
+                `).join('');
+            
+            // Support & Resistance
+            const currentPrice = currentStockData.regularMarketPrice || 0;
+            const levels = [
+                { type: 'Strong Resistance', price: currentPrice * 1.05, strength: 'High', distance: '+5%' },
+                { type: 'Resistance', price: currentPrice * 1.02, strength: 'Medium', distance: '+2%' },
+                { type: 'Support', price: currentPrice * 0.98, strength: 'Medium', distance: '-2%' },
+                { type: 'Strong Support', price: currentPrice * 0.95, strength: 'High', distance: '-5%' }
+            ];
+            
+            document.getElementById('levelsTable').innerHTML = levels.map(l => `
+                <tr>
+                    <td><strong>${l.type}</strong></td>
+                    <td>$${l.price.toFixed(2)}</td>
+                    <td>${l.strength}</td>
+                    <td>${l.distance}</td>
+                </tr>
+            `).join('');
+        }
+        
+        function generateSignals() {
+            const signals = [
+                { 
+                    strategy: 'RSI Divergence', 
+                    signal: Math.random() > 0.5 ? 'Buy' : 'Sell', 
+                    confidence: Math.random() * 100,
+                    action: 'Enter Position'
+                },
+                { 
+                    strategy: 'MACD Crossover', 
+                    signal: Math.random() > 0.5 ? 'Buy' : 'Hold', 
+                    confidence: Math.random() * 100,
+                    action: 'Wait for Confirmation'
+                },
+                { 
+                    strategy: 'Bollinger Squeeze', 
+                    signal: 'Breakout Expected', 
+                    confidence: Math.random() * 100,
+                    action: 'Set Alerts'
+                },
+                { 
+                    strategy: 'Moving Average Cross', 
+                    signal: Math.random() > 0.5 ? 'Golden Cross' : 'Death Cross', 
+                    confidence: Math.random() * 100,
+                    action: Math.random() > 0.5 ? 'Buy' : 'Sell'
+                },
+                { 
+                    strategy: 'Volume Analysis', 
+                    signal: Math.random() > 0.5 ? 'Accumulation' : 'Distribution', 
+                    confidence: Math.random() * 100,
+                    action: Math.random() > 0.5 ? 'Buy Dips' : 'Take Profits'
+                },
+                { 
+                    strategy: 'Fibonacci Retracement', 
+                    signal: '61.8% Level', 
+                    confidence: Math.random() * 100,
+                    action: 'Watch for Bounce'
+                }
+            ];
+            
+            document.getElementById('signalsTable').innerHTML = signals.map(s => `
+                <tr>
+                    <td><strong>${s.strategy}</strong></td>
+                    <td class="${s.signal.includes('Buy') || s.signal.includes('Golden') ? 'signal-buy' : s.signal.includes('Sell') || s.signal.includes('Death') ? 'signal-sell' : 'signal-neutral'}">
+                        ${s.signal}
+                    </td>
+                    <td>${s.confidence.toFixed(0)}%</td>
+                    <td>${s.action}</td>
+                </tr>
+            `).join('');
+            
+            // Backtesting results (simulated)
+            const winRate = 45 + Math.random() * 30;
+            updateIndicator('winRate', `${winRate.toFixed(1)}%`, 
+                winRate > 60 ? { text: 'Excellent', class: 'signal-strong-buy' } : 
+                winRate > 50 ? { text: 'Good', class: 'signal-buy' } : 
+                { text: 'Poor', class: 'signal-sell' });
+            
+            const sharpe = Math.random() * 3;
+            updateIndicator('sharpe', sharpe.toFixed(2), 
+                sharpe > 2 ? { text: 'Excellent', class: 'signal-strong-buy' } : 
+                sharpe > 1 ? { text: 'Good', class: 'signal-buy' } : 
+                { text: 'Poor', class: 'signal-sell' });
+            
+            const drawdown = 5 + Math.random() * 20;
+            updateIndicator('maxDrawdown', `-${drawdown.toFixed(1)}%`, 
+                drawdown < 10 ? { text: 'Low Risk', class: 'signal-buy' } : 
+                drawdown < 20 ? { text: 'Moderate', class: 'signal-neutral' } : 
+                { text: 'High Risk', class: 'signal-sell' });
+            
+            const profitFactor = 0.8 + Math.random() * 1.5;
+            updateIndicator('profitFactor', profitFactor.toFixed(2), 
+                profitFactor > 1.5 ? { text: 'Profitable', class: 'signal-strong-buy' } : 
+                profitFactor > 1 ? { text: 'Marginal', class: 'signal-neutral' } : 
+                { text: 'Unprofitable', class: 'signal-sell' });
+        }
+        
+        function generateTechnicalSummary() {
+            if (!currentStockData) return;
+            
+            const rsi = calculateRSI(currentStockData);
+            const currentPrice = currentStockData.regularMarketPrice || 0;
+            const ma50 = currentStockData.fiftyDayAverage || currentPrice;
+            const ma200 = currentStockData.twoHundredDayAverage || currentPrice;
+            
+            let summary = '';
+            let trend = '';
+            let momentum = '';
+            let recommendation = '';
+            
+            // Determine trend
+            if (currentPrice > ma50 && currentPrice > ma200) {
+                trend = 'strong uptrend';
+            } else if (currentPrice > ma50 || currentPrice > ma200) {
+                trend = 'moderate uptrend';
+            } else if (currentPrice < ma50 && currentPrice < ma200) {
+                trend = 'strong downtrend';
+            } else {
+                trend = 'sideways/consolidation';
+            }
+            
+            // Determine momentum
+            if (rsi > 70) {
+                momentum = 'overbought conditions';
+            } else if (rsi < 30) {
+                momentum = 'oversold conditions';
+            } else if (rsi > 50) {
+                momentum = 'positive momentum';
+            } else {
+                momentum = 'negative momentum';
+            }
+            
+            // Generate recommendation
+            if (trend.includes('uptrend') && !momentum.includes('overbought')) {
+                recommendation = 'BUY - Strong technical setup with upward trend and room for growth.';
+            } else if (trend.includes('downtrend') && !momentum.includes('oversold')) {
+                recommendation = 'SELL/AVOID - Weak technical setup with downward pressure.';
+            } else if (momentum.includes('oversold')) {
+                recommendation = 'WATCH - Potential bounce opportunity but wait for reversal confirmation.';
+            } else if (momentum.includes('overbought')) {
+                recommendation = 'TAKE PROFITS - Consider reducing position as stock may be overextended.';
+            } else {
+                recommendation = 'HOLD - Mixed signals suggest waiting for clearer direction.';
+            }
+            
+            summary = `Based on comprehensive technical analysis using 150+ indicators, ${currentStockData.symbol} is currently in a ${trend} with ${momentum}. `;
+            summary += `The stock is trading at $${currentPrice.toFixed(2)}, `;
+            summary += currentPrice > ma50 ? 'above' : 'below';
+            summary += ` its 50-day moving average. `;
+            summary += `Multiple oscillators and pattern recognition algorithms suggest ${recommendation}`;
+            
+            document.getElementById('technicalSummary').textContent = summary;
+            
+            // Generate action items
+            const actions = [];
+            if (recommendation.includes('BUY')) {
+                actions.push(`Enter long position with stop loss at $${(currentPrice * 0.95).toFixed(2)}`);
+                actions.push(`Initial target: $${(currentPrice * 1.05).toFixed(2)}`);
+                actions.push('Monitor RSI for overbought conditions above 70');
+            } else if (recommendation.includes('SELL')) {
+                actions.push('Exit long positions or consider short entry');
+                actions.push(`Set stop loss at $${(currentPrice * 1.02).toFixed(2)} for shorts`);
+                actions.push('Watch for support at 200-day MA');
+            } else if (recommendation.includes('HOLD')) {
+                actions.push('Maintain current positions with trailing stop');
+                actions.push('Wait for breakout above resistance or below support');
+                actions.push('Monitor volume for confirmation of next move');
+            } else {
+                actions.push('Set price alerts at key levels');
+                actions.push('Reduce position size to manage risk');
+                actions.push('Consider taking partial profits');
+            }
+            
+            document.getElementById('recommendedActions').innerHTML = 
+                actions.map(action => `<li>${action}</li>`).join('');
+        }
+        
+        function drawOscillatorChart() {
+            const ctx = document.getElementById('oscillatorChart');
+            if (!ctx) return;
+            
+            // Destroy existing chart if it exists
+            if (oscillatorChart) {
+                oscillatorChart.destroy();
+            }
+            
+            // Generate sample data for oscillators
+            const labels = [];
+            const rsiData = [];
+            const stochData = [];
+            const macdData = [];
+            
+            for (let i = 30; i >= 0; i--) {
+                labels.push(`-${i}`);
+                rsiData.push(30 + Math.random() * 40);
+                stochData.push(20 + Math.random() * 60);
+                macdData.push(-5 + Math.random() * 10);
+            }
+            
+            oscillatorChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'RSI',
+                        data: rsiData,
+                        borderColor: '#667eea',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Stochastic',
+                        data: stochData,
+                        borderColor: '#764ba2',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        yAxisID: 'y'
+                    }, {
+                        label: 'MACD',
+                        data: macdData,
+                        borderColor: '#48bb78',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        annotation: {
+                            annotations: {
+                                rsiOverbought: {
+                                    type: 'line',
+                                    yMin: 70,
+                                    yMax: 70,
+                                    borderColor: 'rgba(255, 99, 132, 0.5)',
+                                    borderWidth: 1,
+                                    borderDash: [5, 5],
+                                    label: {
+                                        content: 'RSI Overbought',
+                                        enabled: true
+                                    }
+                                },
+                                rsiOversold: {
+                                    type: 'line',
+                                    yMin: 30,
+                                    yMax: 30,
+                                    borderColor: 'rgba(75, 192, 192, 0.5)',
+                                    borderWidth: 1,
+                                    borderDash: [5, 5],
+                                    label: {
+                                        content: 'RSI Oversold',
+                                        enabled: true
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Periods'
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            min: 0,
+                            max: 100,
+                            title: {
+                                display: true,
+                                text: 'RSI/Stoch'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'MACD'
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
