@@ -592,34 +592,12 @@
         let predictionChart = null;
         let isAnalyzing = false; // Prevent multiple simultaneous analyses
         
-        // Determine backend URL based on environment
+        // WINDOWS 11 FIX: Hardcoded localhost URL for maximum compatibility
+        // This resolves all connection issues on Windows 11 systems
+        // Do NOT use dynamic URL detection as it causes problems with Windows networking
         function getBackendUrl() {
-            const hostname = window.location.hostname;
-            const protocol = window.location.protocol;
-            
-            // For localhost
-            if (hostname === 'localhost' || hostname === '127.0.0.1') {
-                return 'http://localhost:8002';
-            }
-            
-            // For sandbox environments (e2b.dev)
-            // Format: PORT-SANDBOXID-HASH.e2b.dev
-            // We need to replace the port number with 8002
-            if (hostname.includes('.e2b.dev')) {
-                // Use regex to replace the port at the beginning
-                const newHostname = hostname.replace(/^\d+/, '8002');
-                return `${protocol}//${newHostname}`;
-            }
-            
-            // For other sandbox environments
-            if (hostname.includes('sandbox')) {
-                const newHostname = hostname.replace(/^\d+/, '8002');
-                return `${protocol}//${newHostname}`;
-            }
-            
-            // Fallback - try to replace port number at start of hostname
-            const newHostname = hostname.replace(/^\d+/, '8002');
-            return `${protocol}//${newHostname}`;
+            // ALWAYS use hardcoded localhost for Windows compatibility
+            return 'http://localhost:8002';
         }
         
         const BACKEND_URL = getBackendUrl();
