@@ -679,45 +679,91 @@
             }
         }
         
+        function detectMarketGaps(data, marketInfo) {
+            if (data.length < 2) return data;
+            
+            const processedData = [];
+            let lastDate = null;
+            
+            for (let i = 0; i < data.length; i++) {
+                const currentPoint = data[i];
+                const currentDate = new Date(currentPoint.time);
+                
+                // Check for day change or large time gap
+                if (lastDate) {
+                    const timeDiff = (currentDate - lastDate) / (1000 * 60); // Difference in minutes
+                    const dayChanged = currentDate.toDateString() !== lastDate.toDateString();
+                    
+                    // Insert null if:
+                    // 1. Day changed (market closed overnight)
+                    // 2. Gap is more than 60 minutes (lunch break or data gap)
+                    // 3. Time gap suggests market closure
+                    if (dayChanged || timeDiff > 60) {
+                        // Add null point to break the line
+                        processedData.push({x: new Date(lastDate.getTime() + 1000), y: null});
+                    }
+                }
+                
+                // Add the current point
+                processedData.push({x: currentPoint.time, y: currentPoint.value});
+                lastDate = currentDate;
+            }
+            
+            return processedData;
+        }
+        
         function updateChart(asxData, ftseData, sp500Data) {
             const ctx = document.getElementById('marketChart').getContext('2d');
             
-            // Convert data to Chart.js format
+            // Market hours for gap detection
+            const marketHours = {
+                asx: { open: 10, close: 16 },
+                ftse: { open: 18, close: 2.5 },
+                sp500: { open: 0.5, close: 7 }
+            };
+            
+            // Convert data to Chart.js format with gap detection
             const datasets = [];
             
             if (asxData.length > 0) {
+                const asxWithGaps = detectMarketGaps(asxData, marketHours.asx);
                 datasets.push({
                     label: 'ASX/AORD',
-                    data: asxData.map(d => ({x: d.time, y: d.value})),
+                    data: asxWithGaps,
                     borderColor: '#ff0000',
                     backgroundColor: 'transparent',
                     borderWidth: 2,
                     pointRadius: 0,
-                    tension: 0.1
+                    tension: 0.1,
+                    spanGaps: false  // Don't connect points across null values
                 });
             }
             
             if (ftseData.length > 0) {
+                const ftseWithGaps = detectMarketGaps(ftseData, marketHours.ftse);
                 datasets.push({
                     label: 'FTSE 100',
-                    data: ftseData.map(d => ({x: d.time, y: d.value})),
+                    data: ftseWithGaps,
                     borderColor: '#0000ff',
                     backgroundColor: 'transparent',
                     borderWidth: 2,
                     pointRadius: 0,
-                    tension: 0.1
+                    tension: 0.1,
+                    spanGaps: false  // Don't connect points across null values
                 });
             }
             
             if (sp500Data.length > 0) {
+                const sp500WithGaps = detectMarketGaps(sp500Data, marketHours.sp500);
                 datasets.push({
                     label: 'S&P 500',
-                    data: sp500Data.map(d => ({x: d.time, y: d.value})),
+                    data: sp500WithGaps,
                     borderColor: '#800080',
                     backgroundColor: 'transparent',
                     borderWidth: 2,
                     pointRadius: 0,
-                    tension: 0.1
+                    tension: 0.1,
+                    spanGaps: false  // Don't connect points across null values
                 });
             }
             
