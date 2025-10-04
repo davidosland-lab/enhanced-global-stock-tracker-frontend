@@ -62,13 +62,10 @@
                 <div class="flex items-center space-x-4">
                     <div class="text-4xl">🏦</div>
                     <div>
-                        <h1 class="text-3xl font-bold text-gray-800">CBA Enhanced Analysis</h1>
-                        <p class="text-gray-700">Commonwealth Bank - Technical, News, Publications & ML Predictions</p>
+                        <h1 class="text-3xl font-bold text-gray-800">CBA Enhanced Market Tracker</h1>
+                        <p class="text-gray-700">Commonwealth Bank of Australia - AI-Powered Analysis</p>
                     </div>
                 </div>
-                <a href="http://localhost:8002" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-300">
-                    ← Back to Dashboard
-                </a>
                 <div class="flex items-center space-x-4">
                     <div class="text-right">
                         <div class="flex items-center">
@@ -251,10 +248,12 @@
         </div>
     </div>
 
+    <script src="/config.js?v=20250125-render"></script>
     <script>
-        // Configuration
-        const API_BASE = 'http://localhost:8002';
+        // Configuration - Use backend URL from config
+        const API_BASE = window.CONFIG?.BACKEND_URL || 'http://localhost:8001';
         const SYMBOL = 'CBA.AX';
+        console.log('CBA Tracker using backend:', API_BASE);
         
         // Initialize chart
         let priceChart = null;
@@ -343,10 +342,10 @@
                 setConnectionStatus('processing');
                 
                 // Get current stock data
-                const response = await fetch(`${API_BASE}/api/stock/${SYMBOL}?period=1y&interval=1d`);
+                const response = await fetch(`${API_BASE}/api/stock/CBA.AX`);
                 const data = await response.json();
                 
-                if (data.success && data.data && data.data.length > 0) {
+                if (data && data.data && data.data.length > 0) {
                     const latest = data.data[data.data.length - 1];
                     
                     // Update current price display
@@ -412,7 +411,7 @@
             `;
             
             try {
-                const response = await fetch(`${API_BASE}/api/prediction/cba/enhanced?horizon=${horizon}&include_publications=true&include_news=true`);
+                const response = await fetch(`${API_BASE}/api/stock/CBA.AX`);
                 const data = await response.json();
                 
                 if (data.success) {
@@ -608,26 +607,57 @@
         function displayBankingSectorAnalysis(data) {
             const container = document.getElementById('bankingSectorContainer');
             
+            if (!data.sector_data || data.sector_data.length === 0) {
+                container.innerHTML = `<p class="text-gray-500">No banking sector data available</p>`;
+                return;
+            }
+            
+            const cbaRank = data.cba_ranking || 'N/A';
+            const sectorAvg = data.sector_average;
+            
             container.innerHTML = `
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <h4 class="font-semibold text-gray-800 mb-3">Market Position</h4>
-                        <p class="text-sm text-gray-700">${data.sector_analysis?.cba_market_position || 'Leading position in Australian banking sector'}</p>
-                    </div>
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <h4 class="font-semibold text-gray-800 mb-3">Peer Comparison</h4>
-                        <div class="space-y-2">
-                            ${data.banking_peers?.map(peer => `
-                                <div class="flex justify-between text-sm">
-                                    <span>${peer}</span>
-                                    <span class="text-gray-600">Correlation: High</span>
-                                </div>
-                            `).join('') || '<p class="text-sm text-gray-700">ANZ, WBC, NAB analysis available</p>'}
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                    ${data.sector_data.map(bank => `
+                        <div class="bg-gray-50 p-4 rounded-lg ${bank.symbol === 'CBA.AX' ? 'ring-2 ring-yellow-400' : ''}">
+                            <h4 class="font-semibold text-gray-800">${bank.name}</h4>
+                            <p class="text-2xl font-bold text-gray-900 mt-2">$${bank.current_price.toFixed(2)}</p>
+                            <div class="mt-2 space-y-1">
+                                <p class="text-sm ${bank.change_1d >= 0 ? 'text-green-600' : 'text-red-600'}">
+                                    1D: ${bank.change_1d >= 0 ? '+' : ''}${bank.change_1d.toFixed(2)}%
+                                </p>
+                                <p class="text-sm ${bank.change_1w >= 0 ? 'text-green-600' : 'text-red-600'}">
+                                    1W: ${bank.change_1w >= 0 ? '+' : ''}${bank.change_1w.toFixed(2)}%
+                                </p>
+                                <p class="text-sm ${bank.change_1m >= 0 ? 'text-green-600' : 'text-red-600'}">
+                                    1M: ${bank.change_1m >= 0 ? '+' : ''}${bank.change_1m.toFixed(2)}%
+                                </p>
+                            </div>
+                            <div class="mt-2 pt-2 border-t">
+                                <span class="text-xs text-gray-500">Rank: #${bank.performance_rank}</span>
+                            </div>
                         </div>
-                    </div>
-                    <div class="bg-gray-50 p-4 rounded-lg">
-                        <h4 class="font-semibold text-gray-800 mb-3">Sector Sentiment</h4>
-                        <p class="text-sm text-gray-700">${data.sector_analysis?.sector_sentiment || 'Positive outlook for banking sector with stable regulatory environment'}</p>
+                    `).join('')}
+                </div>
+                
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-800 mb-2">Sector Analysis</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <p class="text-sm text-gray-600">CBA Ranking</p>
+                            <p class="text-lg font-bold text-gray-900">#${cbaRank} of 4</p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Sector Average (1M)</p>
+                            <p class="text-lg font-bold ${sectorAvg.change_1m >= 0 ? 'text-green-600' : 'text-red-600'}">
+                                ${sectorAvg.change_1m >= 0 ? '+' : ''}${sectorAvg.change_1m.toFixed(2)}%
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-gray-600">Market Trend</p>
+                            <p class="text-lg font-bold text-gray-900">
+                                ${sectorAvg.change_1m > 1 ? '📈 Bullish' : sectorAvg.change_1m < -1 ? '📉 Bearish' : '➡️ Neutral'}
+                            </p>
+                        </div>
                     </div>
                 </div>
             `;
