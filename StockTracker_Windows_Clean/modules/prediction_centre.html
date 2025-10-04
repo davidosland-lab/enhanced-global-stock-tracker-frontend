@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediction Centre - Stock Tracker v9.0</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        .header {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .back-btn {
+            padding: 0.5rem 1rem;
+            background: rgba(79, 172, 254, 0.2);
+            border: 1px solid #4facfe;
+            color: #4facfe;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+
+        .back-btn:hover {
+            background: rgba(79, 172, 254, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        .prediction-input {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 1rem;
+            align-items: end;
+            flex-wrap: wrap;
+        }
+
+        .input-field {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .input-field label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+        }
+
+        .input-field input, .input-field select {
+            width: 100%;
+            padding: 0.75rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1rem;
+        }
+
+        .predict-btn {
+            padding: 0.75rem 2rem;
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1rem;
+        }
+
+        .predict-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
+        }
+
+        .predict-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .current-price-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .price-label {
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 0.5rem;
+        }
+
+        .price-value {
+            font-size: 3rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .price-change {
+            margin-top: 0.5rem;
+            font-size: 1.2rem;
+        }
+
+        .positive {
+            color: #00ff88;
+        }
+
+        .negative {
+            color: #ff4757;
+        }
+
+        .predictions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .prediction-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .prediction-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+        }
+
+        .prediction-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(79, 172, 254, 0.2);
+        }
+
+        .model-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #4facfe;
+        }
+
+        .prediction-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .detail-label {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+        }
+
+        .detail-value {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .confidence-bar {
+            margin-top: 0.5rem;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4facfe, #00f2fe);
+            transition: width 0.5s ease;
+        }
+
+        .direction-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .direction-up {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+        }
+
+        .direction-down {
+            background: rgba(255, 71, 87, 0.2);
+            color: #ff4757;
+        }
+
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .loading-spinner.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #4facfe;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .error-message {
+            background: rgba(255, 71, 87, 0.1);
+            border: 1px solid #ff4757;
+            color: #ff4757;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .error-message.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>🤖 ML Prediction Centre</h1>
+        <a href="/" class="back-btn">← Back to Dashboard</a>
+    </header>
+
+    <div class="container">
+        <div class="prediction-input">
+            <div class="input-group">
+                <div class="input-field">
+                    <label for="stockSymbol">Stock Symbol</label>
+                    <input type="text" id="stockSymbol" value="CBA.AX" placeholder="e.g., CBA.AX">
+                </div>
+                <div class="input-field">
+                    <label for="timeHorizon">Time Horizon</label>
+                    <select id="timeHorizon">
+                        <option value="1d">1 Day</option>
+                        <option value="1w" selected>1 Week</option>
+                        <option value="1m">1 Month</option>
+                        <option value="3m">3 Months</option>
+                    </select>
+                </div>
+                <button class="predict-btn" onclick="generatePredictions()">Generate Predictions</button>
+            </div>
+        </div>
+
+        <div id="errorMessage" class="error-message"></div>
+
+        <div id="currentPriceCard" class="current-price-card" style="display: none;">
+            <div class="price-label">Current Price</div>
+            <div class="price-value" id="currentPrice">-</div>
+            <div class="price-change" id="priceChange">-</div>
+        </div>
+
+        <div id="loadingSpinner" class="loading-spinner">
+            <div class="spinner"></div>
+            <p style="margin-top: 1rem; color: rgba(255, 255, 255, 0.6);">Generating ML predictions...</p>
+        </div>
+
+        <div id="predictionsGrid" class="predictions-grid"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8002';
+
+        async function generatePredictions() {
+            const symbol = document.getElementById('stockSymbol').value;
+            const timeHorizon = document.getElementById('timeHorizon').value;
+
+            if (!symbol) {
+                showError('Please enter a stock symbol');
+                return;
+            }
+
+            // Clear previous results
+            document.getElementById('errorMessage').classList.remove('active');
+            document.getElementById('predictionsGrid').innerHTML = '';
+            document.getElementById('currentPriceCard').style.display = 'none';
+            
+            // Show loading
+            document.getElementById('loadingSpinner').classList.add('active');
+
+            try {
+                // Fetch current stock data
+                const stockResponse = await fetch(`${API_BASE}/api/stock/${symbol}`);
+                if (!stockResponse.ok) {
+                    throw new Error('Failed to fetch stock data');
+                }
+                const stockData = await stockResponse.json();
+
+                // Fetch predictions
+                const predictionResponse = await fetch(`${API_BASE}/api/stock/${symbol}/predict`);
+                if (!predictionResponse.ok) {
+                    throw new Error('Failed to generate predictions');
+                }
+                const predictions = await predictionResponse.json();
+
+                // Display current price
+                displayCurrentPrice(stockData);
+
+                // Display predictions
+                displayPredictions(predictions);
+
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Failed to generate predictions. Please try again.');
+            } finally {
+                document.getElementById('loadingSpinner').classList.remove('active');
+            }
+        }
+
+        function displayCurrentPrice(data) {
+            const card = document.getElementById('currentPriceCard');
+            const priceElement = document.getElementById('currentPrice');
+            const changeElement = document.getElementById('priceChange');
+
+            priceElement.textContent = `$${data.price.toFixed(2)}`;
+            
+            const change = data.price - data.previousClose;
+            const changePercent = (change / data.previousClose * 100).toFixed(2);
+            
+            changeElement.innerHTML = `
+                <span class="${change >= 0 ? 'positive' : 'negative'}">
+                    ${change >= 0 ? '▲' : '▼'} ${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePercent}%)
+                </span>
+            `;
+            
+            card.style.display = 'block';
+        }
+
+        function displayPredictions(data) {
+            const grid = document.getElementById('predictionsGrid');
+            const predictions = data.predictions;
+
+            if (!predictions) {
+                showError('No predictions available');
+                return;
+            }
+
+            // Model descriptions
+            const modelDescriptions = {
+                'LSTM': 'Long Short-Term Memory neural network',
+                'GRU': 'Gated Recurrent Unit network',
+                'Random Forest': 'Ensemble decision tree algorithm',
+                'XGBoost': 'Gradient boosting framework',
+                'Transformer': 'Attention-based neural network',
+                'Ensemble': 'Combined model predictions'
+            };
+
+            // Create prediction cards
+            for (const [model, prediction] of Object.entries(predictions)) {
+                const card = document.createElement('div');
+                card.className = 'prediction-card';
+                
+                const directionClass = prediction.direction === 'up' ? 'direction-up' : 'direction-down';
+                const directionIcon = prediction.direction === 'up' ? '↑' : '↓';
+                
+                card.innerHTML = `
+                    <div class="model-name">${model}</div>
+                    <div class="prediction-details">
+                        <div class="detail-row">
+                            <span class="detail-label">Predicted Price</span>
+                            <span class="detail-value">$${prediction.value.toFixed(2)}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Direction</span>
+                            <span class="direction-indicator ${directionClass}">
+                                ${directionIcon} ${prediction.direction.toUpperCase()}
+                            </span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">Confidence</span>
+                            <span class="detail-value">${prediction.confidence}%</span>
+                        </div>
+                        <div class="confidence-bar">
+                            <div class="confidence-fill" style="width: ${prediction.confidence}%"></div>
+                        </div>
+                        <div style="margin-top: 0.75rem; font-size: 0.85rem; color: rgba(255, 255, 255, 0.5);">
+                            ${modelDescriptions[model] || ''}
+                        </div>
+                    </div>
+                `;
+                
+                grid.appendChild(card);
+            }
+        }
+
+        function showError(message) {
+            const errorElement = document.getElementById('errorMessage');
+            errorElement.textContent = message;
+            errorElement.classList.add('active');
+        }
+
+        // Auto-generate predictions on load if symbol is provided
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const symbol = urlParams.get('symbol');
+            if (symbol) {
+                document.getElementById('stockSymbol').value = symbol;
+                generatePredictions();
+            }
+        });
+    </script>
+</body>
+</html>

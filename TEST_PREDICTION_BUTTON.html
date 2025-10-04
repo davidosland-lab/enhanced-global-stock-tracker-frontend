@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Prediction Button</title>
+    <style>
+        body { 
+            font-family: Arial; 
+            padding: 20px; 
+            max-width: 800px; 
+            margin: 0 auto;
+        }
+        button { 
+            padding: 10px 20px; 
+            margin: 10px; 
+            cursor: pointer;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .result { 
+            margin: 20px 0; 
+            padding: 15px; 
+            background: #f4f4f4; 
+            border-radius: 5px;
+            white-space: pre-wrap;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .success {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Prediction Button Test</h1>
+    <p>This tests different methods to call the prediction API</p>
+    
+    <h2>Test Stock: CBA.AX</h2>
+    
+    <button onclick="testMethod1()">Method 1: GET to /api/predict/CBA.AX</button>
+    <button onclick="testMethod2()">Method 2: POST to /api/predict</button>
+    <button onclick="testMethod3()">Method 3: GET Stock + Calculate</button>
+    
+    <h3>Results:</h3>
+    <div id="results"></div>
+    
+    <script>
+        function showResult(method, data, isError = false) {
+            const resultsDiv = document.getElementById('results');
+            const resultClass = isError ? 'error' : 'success';
+            resultsDiv.innerHTML = `
+                <div class="result ${resultClass}">
+                    <strong>${method}:</strong><br>
+                    ${JSON.stringify(data, null, 2)}
+                </div>
+            ` + resultsDiv.innerHTML;
+        }
+        
+        // Method 1: Simple GET request (should work)
+        async function testMethod1() {
+            try {
+                const response = await fetch('http://localhost:8002/api/predict/CBA.AX');
+                const data = await response.json();
+                showResult('Method 1 - GET /api/predict/CBA.AX', data, !response.ok);
+            } catch (error) {
+                showResult('Method 1 - GET Failed', {error: error.message}, true);
+            }
+        }
+        
+        // Method 2: POST request (original prediction centre method)
+        async function testMethod2() {
+            try {
+                const response = await fetch('http://localhost:8004/api/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        symbol: 'CBA.AX',
+                        timeframe: '5d',
+                        models: ['LSTM', 'XGBoost', 'Ensemble'],
+                        use_real_data: true
+                    })
+                });
+                const data = await response.json();
+                showResult('Method 2 - POST to ML Backend', data, !response.ok);
+            } catch (error) {
+                showResult('Method 2 - POST Failed', {error: error.message}, true);
+            }
+        }
+        
+        // Method 3: Get stock data first, then calculate prediction
+        async function testMethod3() {
+            try {
+                // Get current stock price
+                const stockResponse = await fetch('http://localhost:8002/api/stock/CBA.AX');
+                const stockData = await stockResponse.json();
+                
+                // Simple prediction calculation
+                const currentPrice = stockData.price || 170;
+                const prediction = {
+                    symbol: 'CBA.AX',
+                    current_price: currentPrice,
+                    predicted_price: currentPrice * 1.01, // 1% increase
+                    confidence: 0.75,
+                    direction: 'UP',
+                    method: 'Calculated locally'
+                };
+                
+                showResult('Method 3 - Stock + Calculate', {stock: stockData, prediction}, false);
+            } catch (error) {
+                showResult('Method 3 - Failed', {error: error.message}, true);
+            }
+        }
+        
+        // Test all endpoints on load
+        window.onload = async function() {
+            console.log('Testing endpoints...');
+            
+            // Test main backend
+            try {
+                const resp = await fetch('http://localhost:8002/');
+                console.log('Main backend (8002):', resp.ok ? 'Online' : 'Offline');
+            } catch (e) {
+                console.log('Main backend (8002): Offline');
+            }
+            
+            // Test ML backend
+            try {
+                const resp = await fetch('http://localhost:8004/health');
+                console.log('ML backend (8004):', resp.ok ? 'Online' : 'Offline');
+            } catch (e) {
+                console.log('ML backend (8004): Offline');
+            }
+        }
+    </script>
+</body>
+</html>
