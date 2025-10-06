@@ -1,46 +1,22 @@
 @echo off
-:: Complete Stock Tracker - Desktop Launcher
-:: Place this file on your Desktop for easy access
+:: Stock Tracker Universal Launcher for Windows 11
+:: This script automatically chooses the best startup method
 
-cls
-color 0A
-echo ============================================
-echo    COMPLETE STOCK TRACKER - WINDOWS 11
-echo ============================================
-echo.
-echo Starting Stock Tracker System...
+echo ================================================================================
+echo                      STOCK TRACKER - WINDOWS 11 LAUNCHER
+echo ================================================================================
 echo.
 
-:: Change to the correct directory
-cd /d "C:\StockTrack\Complete_Stock_Tracker_Windows11"
-
-:: Check if we're in the right directory
-if not exist backend.py (
-    echo ERROR: Cannot find backend.py
-    echo Please ensure this script is in the correct location
-    echo Expected path: C:\StockTrack\Complete_Stock_Tracker_Windows11
-    pause
-    exit /b 1
+:: Check if PowerShell is available and execution policy allows scripts
+powershell -Command "Get-ExecutionPolicy" >nul 2>&1
+if %errorlevel% equ 0 (
+    echo Launching with PowerShell (recommended for Windows 11)...
+    echo.
+    powershell -ExecutionPolicy Bypass -File "%~dp0MASTER_STARTUP_WIN11.ps1"
+) else (
+    echo Launching with Command Prompt...
+    echo.
+    call "%~dp0MASTER_STARTUP_WIN11.bat"
 )
 
-:: Start the backend server
-echo [*] Starting backend server on port 8002...
-echo.
-echo ============================================
-echo    Server Status: STARTING
-echo    URL: http://localhost:8002
-echo ============================================
-echo.
-
-:: Launch browser after 3 seconds
-start /min cmd /c "timeout /t 3 >nul && start http://localhost:8002"
-
-:: Run the Python backend
-python backend.py
-
-:: If the server stops, show message
-echo.
-echo ============================================
-echo    Server has stopped
-echo ============================================
-pause
+exit /b %errorlevel%
