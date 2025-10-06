@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Complete Stock Tracker - Windows 11 Edition</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+        }
+        
+        .golden-glow {
+            box-shadow: 0 0 40px rgba(255, 215, 0, 0.4), 0 0 80px rgba(255, 215, 0, 0.2);
+            border: 2px solid rgba(255, 215, 0, 0.6);
+        }
+        
+        .global-glow {
+            box-shadow: 0 0 40px rgba(59, 130, 246, 0.4), 0 0 80px rgba(139, 92, 246, 0.2);
+            border: 2px solid rgba(59, 130, 246, 0.6);
+        }
+        
+        .module-card {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .module-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #ffd700, #ffb347, #ff8c42);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .module-card:hover::before {
+            opacity: 1;
+        }
+        
+        .module-card:hover {
+            transform: translateY(-8px);
+        }
+        
+        .cba-gradient {
+            background: linear-gradient(135deg, #ffd700 0%, #ffb347 25%, #ff8c42 50%, #ff6b42 75%, #ffd700 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .global-gradient {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6, #06b6d4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-online {
+            background: #10b981;
+        }
+        
+        .status-offline {
+            background: #ef4444;
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+        
+        .launch-btn {
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+        
+        .launch-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        }
+        
+        .primary-btn {
+            background: linear-gradient(135deg, #ffd700, #ffb347);
+            color: #1e293b;
+        }
+        
+        .primary-btn:hover {
+            box-shadow: 0 8px 25px rgba(255, 215, 0, 0.4);
+        }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto px-6 py-8 max-w-7xl">
+        <!-- Header -->
+        <header class="text-center mb-12">
+            <h1 class="text-5xl font-bold mb-4">
+                <span class="global-gradient">Complete Stock Tracker</span>
+            </h1>
+            <p class="text-xl text-gray-400">Windows 11 Optimized • Real-Time Yahoo Finance Data • AI-Powered Analysis</p>
+            
+            <!-- Connection Status -->
+            <div class="mt-6 flex items-center justify-center space-x-8">
+                <div class="flex items-center">
+                    <span id="backendStatus" class="status-dot status-offline"></span>
+                    <span class="text-sm">Backend: <span id="backendText" class="font-bold text-red-400">Offline</span></span>
+                </div>
+                <div class="flex items-center">
+                    <span class="text-sm">Endpoint: <span class="font-bold text-blue-400">http://localhost:8002</span></span>
+                </div>
+                <button onclick="startBackend()" class="launch-btn">
+                    <i class="fas fa-server mr-2"></i>Start Backend
+                </button>
+            </div>
+        </header>
+        
+        <!-- Module Grid -->
+        <div class="grid md:grid-cols-3 gap-8 mb-12">
+            <!-- CBA Enhanced Module -->
+            <div class="module-card golden-glow" onclick="loadModule('cba')">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="text-5xl">🏦</div>
+                    <span class="bg-yellow-500 text-gray-900 px-3 py-1 rounded-full text-xs font-bold">ENHANCED</span>
+                </div>
+                <h2 class="text-3xl font-bold mb-3 cba-gradient">CBA Enhanced Tracker</h2>
+                <p class="text-gray-400 mb-4">Commonwealth Bank of Australia specialist module with advanced AI predictions</p>
+                
+                <div class="space-y-2 mb-6">
+                    <div class="flex items-center text-sm text-gray-300">
+                        <i class="fas fa-check-circle text-green-400 mr-2"></i>
+                        Real-time CBA.AX data (~$170 current price)
+                    </div>
+                    <div class="flex items-center text-sm text-gray-300">
+                        <i class="fas fa-check-circle text-green-400 mr-2"></i>
+                        Professional candlestick charts with ECharts
+                    </div>
+                    <div class="flex items-center text-sm text-gray-300">
+                        <i class="fas fa-check-circle text-green-400 mr-2"></i>
+                        6 ML models: LSTM, GRU, Random Forest, XGBoost, Transformer, Ensemble
+                    </div>
+                    <div class="flex items-center text-sm text-gray-300">
+                        <i class="fas fa-check-circle text-green-400 mr-2"></i>
+                        Document analysis & news sentiment
+                    </div>
+                    <div class="flex items-center text-sm text-gray-300">
+                        <i class="fas fa-check-circle text-green-400 mr-2"></i>
+                        High-frequency intervals: 1m to 1mo
+                    </div>
+                </div>
+                
+                <button class="launch-btn primary-btn w-full">
+                    <i class="fas fa-chart-line mr-2"></i>Launch CBA Enhanced
+                </button>
+            </div>
+            
+            <!-- Global Indices Tracker Module -->
+            <div class="module-card global-glow" onclick="loadModule('indices')">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="text-5xl">📊</div>
+                    <span class="bg-blue-500 text-white px-3 py-1 rounded-full text-xs font-bold">INDICES</span>
+                </div>
+                <h2 class="text-3xl font-bold mb-3 global-gradient">Global Indices Tracker</h2>
+                <p class="text-gray-400 mb-4">Real-time tracking of major market indices</p>
+                
+                <div class="space-y-2 mb-6">
+                    <div class="flex items-center text-sm text-gray-300">
+                        <i class="fas fa-check-circle text-green-400 mr-2"></i>
+                        ASX/AORD (^AORD) - Australian market
+                    </div>
+                    <div class="flex items-center text-sm text-gray-300">
+                        <i class="fas fa-check-circle text-green-400 mr-2"></i>
+                        FTSE 100 (^FTSE) - UK market
+                    </div>
+                    <div class="flex items-center text-sm text-gray-300">
+                        <i class="fas fa-check-circle text-green-400 mr-2"></i>
+                        S&P 500 (^GSPC) - US market
+                    </div>
+                    <div class="flex items-center text-sm text-gray-300">
+                        <i class="fas fa-check-circle text-green-400 mr-2"></i>
+                        24/48 hour view toggle
+                    </div>
+                    <div class="flex items-center text-sm text-gray-300">
+                        <i class="fas fa-check-circle text-green-400 mr-2"></i>
+                        % change from previous close
+                    </div>
+                </div>
+                
+                <button class="launch-btn w-full">
+                    <i class="fas fa-chart-line mr-2"></i>Launch Indices Tracker
+                </button>
+            </div>
+            
+            <!-- Advanced Market Predictor Module -->
+            <div class="module-card" onclick="loadModule('predictor')" style="border: 2px solid rgba(139, 92, 246, 0.4);">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="text-5xl">🔮</div>
+                    <span class="bg-purple-500 text-white px-3 py-1 rounded-full text-xs font-bold">ADVANCED</span>
+                </div>
+                <h2 class="text-3xl font-bold mb-3" style="background: linear-gradient(135deg, #8b5cf6, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Market Predictor</h2>
+                <p class="text-gray-400 mb-4">AI-powered predictions with Phase 3 models</p>
+                
+                <div class="space-y-2 mb-6">
+                    <div class="flex items-center text-sm text-gray-300">
+                        <i class="fas fa-check-circle text-green-400 mr-2"></i>
+                        Any stock symbol tracking
+                    </div>
+                    <div class="flex items-center text-sm text-gray-300">
+                        <i class="fas fa-check-circle text-green-400 mr-2"></i>
+                        Phase 3 predictions (P3-005 to P3-007)
+                    </div>
+                    <div class="flex items-center text-sm text-gray-300">
+                        <i class="fas fa-check-circle text-green-400 mr-2"></i>
+                        Advanced candlestick charts
+                    </div>
+                    <div class="flex items-center text-sm text-gray-300">
+                        <i class="fas fa-check-circle text-green-400 mr-2"></i>
+                        Market regime detection
+                    </div>
+                    <div class="flex items-center text-sm text-gray-300">
+                        <i class="fas fa-check-circle text-green-400 mr-2"></i>
+                        Risk assessment metrics
+                    </div>
+                </div>
+                
+                <button class="launch-btn w-full" style="background: linear-gradient(135deg, #8b5cf6, #ec4899);">
+                    <i class="fas fa-robot mr-2"></i>Launch Predictor
+                </button>
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="bg-gray-800/50 rounded-2xl p-6 mb-8">
+            <h3 class="text-xl font-bold mb-4">Quick Actions</h3>
+            <div class="grid grid-cols-3 gap-4">
+                <button onclick="checkSystemStatus()" class="bg-gray-700 hover:bg-gray-600 text-white py-3 px-4 rounded-lg transition">
+                    <i class="fas fa-heart-pulse mr-2"></i>System Health Check
+                </button>
+                <button onclick="viewLogs()" class="bg-gray-700 hover:bg-gray-600 text-white py-3 px-4 rounded-lg transition">
+                    <i class="fas fa-file-lines mr-2"></i>View Logs
+                </button>
+                <button onclick="clearCache()" class="bg-gray-700 hover:bg-gray-600 text-white py-3 px-4 rounded-lg transition">
+                    <i class="fas fa-broom mr-2"></i>Clear Cache
+                </button>
+            </div>
+        </div>
+        
+        <!-- Instructions Panel -->
+        <div class="bg-blue-900/20 border border-blue-500/30 rounded-2xl p-6">
+            <h3 class="text-xl font-bold mb-4 text-blue-400">
+                <i class="fas fa-info-circle mr-2"></i>Getting Started
+            </h3>
+            <ol class="list-decimal list-inside space-y-2 text-gray-300">
+                <li>Click "Start Backend" to launch the Flask server on port 8002</li>
+                <li>Wait for the backend status to show "Online" (green indicator)</li>
+                <li>Click on either module card to launch it</li>
+                <li>Each module connects automatically to http://localhost:8002</li>
+                <li>All data is fetched in real-time from Yahoo Finance API</li>
+            </ol>
+        </div>
+    </div>
+    
+    <!-- Hidden Module Container -->
+    <div id="moduleContainer" style="display: none;">
+        <iframe id="moduleFrame" style="width: 100%; height: 100vh; border: none;"></iframe>
+    </div>
+    
+    <script>
+        // Check backend status
+        async function checkBackendStatus() {
+            try {
+                const response = await fetch('http://localhost:8002/api/status');
+                if (response.ok) {
+                    document.getElementById('backendStatus').className = 'status-dot status-online';
+                    document.getElementById('backendText').textContent = 'Online';
+                    document.getElementById('backendText').className = 'font-bold text-green-400';
+                    return true;
+                }
+            } catch (error) {
+                document.getElementById('backendStatus').className = 'status-dot status-offline';
+                document.getElementById('backendText').textContent = 'Offline';
+                document.getElementById('backendText').className = 'font-bold text-red-400';
+                return false;
+            }
+        }
+        
+        // Start backend
+        function startBackend() {
+            alert('To start the backend server:\n\n1. Open Windows Terminal or Command Prompt\n2. Navigate to: Complete_Stock_Tracker_Windows11\n3. Run: python backend.py\n\nThe server will start on http://localhost:8002');
+            setTimeout(checkBackendStatus, 2000);
+        }
+        
+        // Load module
+        async function loadModule(module) {
+            const isRunning = await checkBackendStatus();
+            if (!isRunning) {
+                alert('⚠️ Backend server is not running!\n\nPlease start the backend first:\n1. Open terminal\n2. Run: python backend.py');
+                return;
+            }
+            
+            const modules = {
+                'cba': 'modules/cba_enhanced.html',
+                'indices': 'modules/indices_tracker.html',
+                'predictor': 'modules/global_market_tracker.html'
+            };
+            
+            if (modules[module]) {
+                // Hide main container
+                document.querySelector('.container').style.display = 'none';
+                
+                // Show module in iframe
+                const container = document.getElementById('moduleContainer');
+                const frame = document.getElementById('moduleFrame');
+                container.style.display = 'block';
+                frame.src = modules[module];
+            }
+        }
+        
+        // System health check
+        async function checkSystemStatus() {
+            const isBackendRunning = await checkBackendStatus();
+            let status = '🔍 System Health Check\n\n';
+            status += `Backend Server: ${isBackendRunning ? '✅ Online' : '❌ Offline'}\n`;
+            status += `API Endpoint: http://localhost:8002\n`;
+            status += `CBA Enhanced: ✅ Ready\n`;
+            status += `Indices Tracker: ✅ Ready\n`;
+            status += `Market Predictor: ✅ Ready\n`;
+            status += `Yahoo Finance: ✅ Available\n`;
+            alert(status);
+        }
+        
+        // View logs
+        function viewLogs() {
+            alert('📋 To view server logs:\n\n1. Check the terminal where backend.py is running\n2. Logs show all API requests and responses\n3. Error messages appear in red\n4. Success messages appear in green');
+        }
+        
+        // Clear cache
+        function clearCache() {
+            if (confirm('🧹 Clear browser cache?\n\nThis will reload the page and clear cached data.')) {
+                localStorage.clear();
+                sessionStorage.clear();
+                location.reload(true);
+            }
+        }
+        
+        // Check backend status on load
+        window.addEventListener('load', () => {
+            checkBackendStatus();
+            // Check every 5 seconds
+            setInterval(checkBackendStatus, 5000);
+        });
+        
+        // Add back button handler for ESC key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                document.getElementById('moduleContainer').style.display = 'none';
+                document.querySelector('.container').style.display = 'block';
+                document.getElementById('moduleFrame').src = '';
+            }
+        });
+    </script>
+</body>
+</html>

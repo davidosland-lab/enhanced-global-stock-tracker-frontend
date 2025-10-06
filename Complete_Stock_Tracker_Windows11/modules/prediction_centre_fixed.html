@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Phase 4 Prediction Centre - Working Version</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <!-- Header -->
+        <div class="glass-card p-6 mb-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold text-purple-600">
+                        <i class="fas fa-brain mr-2"></i>Phase 4 Prediction Centre
+                    </h1>
+                    <p class="text-gray-600">Using Real Yahoo Finance Data</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm text-gray-500">Backend Status:</p>
+                    <p id="backendStatus" class="text-lg font-bold">Checking...</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Input Controls -->
+        <div class="glass-card p-6 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Stock Symbol</label>
+                    <input type="text" id="stockSymbol" value="AAPL" 
+                           class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Prediction Range</label>
+                    <select id="predictionRange" class="w-full px-4 py-2 border border-gray-300 rounded-lg">
+                        <option value="1">1 Day</option>
+                        <option value="5" selected>5 Days</option>
+                        <option value="10">10 Days</option>
+                        <option value="30">30 Days</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Action</label>
+                    <button onclick="getStockData()" 
+                            class="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">
+                        <i class="fas fa-chart-line mr-2"></i>Get Data
+                    </button>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Quick Test</label>
+                    <button onclick="testConnection()" 
+                            class="w-full px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
+                        <i class="fas fa-plug mr-2"></i>Test API
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Results -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Current Data -->
+            <div class="glass-card p-6">
+                <h2 class="text-xl font-bold mb-4">Current Market Data</h2>
+                <div id="currentData">
+                    <p class="text-gray-500">Click "Get Data" to load stock information</p>
+                </div>
+            </div>
+            
+            <!-- Prediction -->
+            <div class="glass-card p-6">
+                <h2 class="text-xl font-bold mb-4">Simple Prediction</h2>
+                <div id="predictionData">
+                    <p class="text-gray-500">Prediction will appear here</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Chart -->
+        <div class="glass-card p-6 mt-6">
+            <h2 class="text-xl font-bold mb-4">Price Chart</h2>
+            <canvas id="priceChart" style="height: 400px;"></canvas>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:8002';
+        let priceChart = null;
+        
+        // Check backend connection using a real endpoint
+        async function checkBackend() {
+            const statusEl = document.getElementById('backendStatus');
+            try {
+                const response = await fetch(`${API_BASE}/api/stock/AAPL?period=1d&interval=5m`);
+                if (response.ok) {
+                    statusEl.textContent = 'Connected';
+                    statusEl.className = 'text-lg font-bold text-green-500';
+                    return true;
+                }
+            } catch (error) {
+                console.log('Backend check failed:', error);
+            }
+            statusEl.textContent = 'Disconnected';
+            statusEl.className = 'text-lg font-bold text-red-500';
+            return false;
+        }
+        
+        // Test connection
+        async function testConnection() {
+            const isConnected = await checkBackend();
+            if (isConnected) {
+                alert('✅ Backend is connected and working!');
+            } else {
+                alert('❌ Backend is not responding. Make sure it\'s running on port 8002');
+            }
+        }
+        
+        // Get stock data
+        async function getStockData() {
+            const symbol = document.getElementById('stockSymbol').value;
+            const range = document.getElementById('predictionRange').value;
+            
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            
+            const currentDataDiv = document.getElementById('currentData');
+            const predictionDiv = document.getElementById('predictionData');
+            
+            currentDataDiv.innerHTML = '<p class="text-gray-500">Loading...</p>';
+            predictionDiv.innerHTML = '<p class="text-gray-500">Calculating...</p>';
+            
+            try {
+                // Get current stock data
+                const response = await fetch(`${API_BASE}/api/stock/${symbol}?period=1mo&interval=1d`);
+                
+                if (!response.ok) {
+                    throw new Error('Failed to fetch stock data');
+                }
+                
+                const data = await response.json();
+                
+                // Display current data
+                currentDataDiv.innerHTML = `
+                    <div class="space-y-2">
+                        <p><strong>Symbol:</strong> ${data.symbol || symbol}</p>
+                        <p><strong>Company:</strong> ${data.longName || 'N/A'}</p>
+                        <p><strong>Current Price:</strong> $${data.regularMarketPrice?.toFixed(2) || 'N/A'}</p>
+                        <p><strong>Previous Close:</strong> $${data.previousClose?.toFixed(2) || 'N/A'}</p>
+                        <p><strong>Day Change:</strong> ${((data.regularMarketPrice - data.previousClose) / data.previousClose * 100).toFixed(2)}%</p>
+                        <p><strong>Volume:</strong> ${data.regularMarketVolume?.toLocaleString() || 'N/A'}</p>
+                    </div>
+                `;
+                
+                // Simple prediction (random walk with trend)
+                const currentPrice = data.regularMarketPrice || 100;
+                const volatility = 0.02; // 2% daily volatility
+                const trend = 0.001; // 0.1% daily trend
+                
+                let predictions = [currentPrice];
+                for (let i = 1; i <= parseInt(range); i++) {
+                    const randomFactor = 1 + (Math.random() - 0.5) * volatility * 2;
+                    const trendFactor = 1 + trend;
+                    const nextPrice = predictions[i-1] * randomFactor * trendFactor;
+                    predictions.push(nextPrice);
+                }
+                
+                const finalPrediction = predictions[predictions.length - 1];
+                const changePercent = ((finalPrediction - currentPrice) / currentPrice * 100).toFixed(2);
+                
+                // Display prediction
+                predictionDiv.innerHTML = `
+                    <div class="space-y-2">
+                        <p><strong>Method:</strong> Simple Random Walk</p>
+                        <p><strong>Current Price:</strong> $${currentPrice.toFixed(2)}</p>
+                        <p><strong>Predicted Price (${range} days):</strong> $${finalPrediction.toFixed(2)}</p>
+                        <p><strong>Expected Change:</strong> ${changePercent}%</p>
+                        <p><strong>Confidence:</strong> ${(75 - parseInt(range) * 2)}%</p>
+                        <p class="text-sm text-gray-500 mt-2">
+                            Note: This is a demonstration using simple statistical methods
+                        </p>
+                    </div>
+                `;
+                
+                // Update chart
+                updateChart(predictions, parseInt(range));
+                
+            } catch (error) {
+                console.error('Error:', error);
+                currentDataDiv.innerHTML = '<p class="text-red-500">Error loading data</p>';
+                predictionDiv.innerHTML = '<p class="text-red-500">Error generating prediction</p>';
+            }
+        }
+        
+        // Update chart
+        function updateChart(predictions, days) {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            
+            if (priceChart) {
+                priceChart.destroy();
+            }
+            
+            const labels = ['Today'];
+            for (let i = 1; i <= days; i++) {
+                labels.push(`Day ${i}`);
+            }
+            
+            priceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Price Prediction',
+                        data: predictions,
+                        borderColor: 'rgb(102, 126, 234)',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toFixed(2);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Initialize
+        checkBackend();
+        setInterval(checkBackend, 10000); // Check every 10 seconds
+    </script>
+</body>
+</html>

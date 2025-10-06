@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Fix Prediction Centre</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 20px;
+        }
+        h1 { color: #ffd700; }
+        .btn {
+            padding: 15px 30px;
+            margin: 10px;
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+            color: #333;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        .btn:hover {
+            transform: scale(1.05);
+        }
+        .status {
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+        .success { color: #4ade80; }
+        .error { color: #ef4444; }
+        pre {
+            text-align: left;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 10px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Fix Prediction Centre</h1>
+        <p>This tool will fix the Phase 4 Prediction Centre to work properly with the backend.</p>
+        
+        <div class="status" id="status">
+            Click the buttons below to test and fix the prediction functionality.
+        </div>
+        
+        <button class="btn" onclick="testBackend()">1️⃣ Test Backend Connection</button>
+        <button class="btn" onclick="testPrediction()">2️⃣ Test Prediction API</button>
+        <button class="btn" onclick="applyFix()">3️⃣ Apply Fix to Module</button>
+        
+        <div style="margin-top: 30px;">
+            <h2>Manual Fix Instructions:</h2>
+            <ol style="text-align: left;">
+                <li>Open the Phase 4 Prediction Centre module</li>
+                <li>Open browser Developer Console (F12)</li>
+                <li>Copy and paste the fix code shown below</li>
+                <li>Press Enter to run it</li>
+                <li>Click "Generate Prediction" button - it should work now!</li>
+            </ol>
+        </div>
+        
+        <h3>Fix Code:</h3>
+        <pre id="fixCode">Loading fix code...</pre>
+    </div>
+    
+    <script>
+        const BACKEND_URL = 'http://localhost:8002';
+        
+        async function testBackend() {
+            const status = document.getElementById('status');
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/status`);
+                const data = await response.json();
+                status.innerHTML = `<span class="success">✅ Backend is running! Status: ${data.status}</span>`;
+            } catch (error) {
+                status.innerHTML = `<span class="error">❌ Backend not responding: ${error.message}</span>`;
+            }
+        }
+        
+        async function testPrediction() {
+            const status = document.getElementById('status');
+            try {
+                status.innerHTML = 'Testing prediction API...';
+                
+                const response = await fetch(`${BACKEND_URL}/api/predict`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        symbol: 'CBA.AX',
+                        period: '1mo',
+                        model_type: 'simple'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.predictions && data.predictions.length > 0) {
+                    const pred = data.predictions[0];
+                    status.innerHTML = `<span class="success">✅ Prediction API working!<br>
+                        CBA.AX Current: $${data.current_price.toFixed(2)}<br>
+                        1-Day Prediction: $${pred.predicted_price.toFixed(2)} (${pred.change_percent > 0 ? '+' : ''}${pred.change_percent.toFixed(2)}%)</span>`;
+                } else {
+                    status.innerHTML = `<span class="error">❌ Prediction API returned no predictions</span>`;
+                }
+            } catch (error) {
+                status.innerHTML = `<span class="error">❌ Prediction API error: ${error.message}</span>`;
+            }
+        }
+        
+        function applyFix() {
+            const fixCode = `
+// Fix for Phase 4 Prediction Centre
+window.generatePrediction = async function() {
+    const symbol = document.getElementById('stockSymbol').value.trim() || 'CBA.AX';
+    const modelType = document.getElementById('modelType').value || 'ensemble';
+    
+    try {
+        // Update UI
+        document.querySelectorAll('.prediction-value')[1].textContent = 'Loading...';
+        
+        // Call API
+        const response = await fetch('${BACKEND_URL}/api/predict', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                symbol: symbol,
+                period: '1mo',
+                model_type: modelType.toLowerCase()
+            })
+        });
+        
+        const data = await response.json();
+        
+        // Update displays
+        document.querySelectorAll('.prediction-value')[0].textContent = '$' + data.current_price.toFixed(2);
+        if (data.predictions && data.predictions[0]) {
+            document.querySelectorAll('.prediction-value')[1].textContent = '$' + data.predictions[0].predicted_price.toFixed(2);
+            document.querySelectorAll('.prediction-value')[2].textContent = (data.predictions[0].confidence * 100).toFixed(1) + '%';
+        }
+        
+        console.log('✅ Prediction generated!', data);
+    } catch (error) {
+        console.error('Error:', error);
+        document.querySelectorAll('.prediction-value')[1].textContent = '$--';
+    }
+};
+console.log('✅ Fix applied! Click Generate Prediction button now.');`;
+            
+            // Show the fix code
+            document.getElementById('fixCode').textContent = fixCode;
+            
+            // Copy to clipboard
+            navigator.clipboard.writeText(fixCode).then(() => {
+                document.getElementById('status').innerHTML = 
+                    '<span class="success">✅ Fix code copied to clipboard!<br>' +
+                    'Now paste it in the browser console of the Prediction Centre page.</span>';
+            }).catch(() => {
+                document.getElementById('status').innerHTML = 
+                    '<span class="success">✅ Fix code ready!<br>' +
+                    'Copy the code below and paste it in the browser console.</span>';
+            });
+        }
+        
+        // Load fix code on page load
+        window.onload = () => {
+            applyFix();
+        };
+    </script>
+</body>
+</html>
