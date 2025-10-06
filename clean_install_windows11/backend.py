@@ -159,42 +159,6 @@ async def get_stock(symbol: str):
         logger.error(f"Error in get_stock for {symbol}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/api/historical/{symbol}")
-async def get_historical_data(symbol: str, period: str = "1mo", interval: str = "1d"):
-    """Get historical stock data"""
-    try:
-        logger.info(f"Fetching historical data for {symbol}, period={period}, interval={interval}")
-        
-        ticker = yf.Ticker(symbol)
-        hist = ticker.history(period=period, interval=interval)
-        
-        if hist.empty:
-            raise HTTPException(status_code=404, detail=f"No data found for {symbol}")
-        
-        # Format data for response
-        data = []
-        for idx, row in hist.iterrows():
-            data.append({
-                "date": idx.strftime('%Y-%m-%d %H:%M:%S'),
-                "timestamp": int(idx.timestamp() * 1000),
-                "open": float(row['Open']),
-                "high": float(row['High']),
-                "low": float(row['Low']),
-                "close": float(row['Close']),
-                "volume": int(row['Volume'])
-            })
-        
-        return {
-            "symbol": symbol,
-            "period": period,
-            "interval": interval,
-            "data": data,
-            "count": len(data)
-        }
-    except Exception as e:
-        logger.error(f"Error fetching historical data for {symbol}: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
-
 # ============= HISTORICAL DATA MANAGER ENDPOINTS =============
 
 @app.post("/api/historical/batch-download")
@@ -501,6 +465,44 @@ async def clear_historical_cache():
             "success": False,
             "error": str(e)
         }
+
+
+
+@app.get("/api/historical/{symbol}")
+async def get_historical_data(symbol: str, period: str = "1mo", interval: str = "1d"):
+    """Get historical stock data"""
+    try:
+        logger.info(f"Fetching historical data for {symbol}, period={period}, interval={interval}")
+        
+        ticker = yf.Ticker(symbol)
+        hist = ticker.history(period=period, interval=interval)
+        
+        if hist.empty:
+            raise HTTPException(status_code=404, detail=f"No data found for {symbol}")
+        
+        # Format data for response
+        data = []
+        for idx, row in hist.iterrows():
+            data.append({
+                "date": idx.strftime('%Y-%m-%d %H:%M:%S'),
+                "timestamp": int(idx.timestamp() * 1000),
+                "open": float(row['Open']),
+                "high": float(row['High']),
+                "low": float(row['Low']),
+                "close": float(row['Close']),
+                "volume": int(row['Volume'])
+            })
+        
+        return {
+            "symbol": symbol,
+            "period": period,
+            "interval": interval,
+            "data": data,
+            "count": len(data)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching historical data for {symbol}: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ============= END HISTORICAL DATA MANAGER ENDPOINTS =============
 
