@@ -1,5 +1,18 @@
 #!/usr/bin/env python3
 """
+Complete Fix for Historical Data Manager
+This script updates backend.py with fully functional historical data endpoints
+"""
+
+import os
+import re
+from datetime import datetime
+
+def create_fixed_backend():
+    """Create a completely fixed backend with proper historical endpoints"""
+    
+    backend_code = '''#!/usr/bin/env python3
+"""
 Complete Fixed Backend with Working Historical Data Manager
 All endpoints properly implemented with real Yahoo Finance data
 Port: 8002
@@ -781,3 +794,56 @@ if __name__ == "__main__":
     logger.info("Historical Data Manager endpoints are active")
     logger.info("All endpoints use real Yahoo Finance data")
     uvicorn.run(app, host="0.0.0.0", port=8002)
+'''
+    
+    return backend_code
+
+def main():
+    print("=" * 60)
+    print("FIXING HISTORICAL DATA MANAGER - COMPLETE SOLUTION")
+    print("=" * 60)
+    print()
+    
+    # Backup current backend
+    if os.path.exists('backend.py'):
+        backup_name = f'backend_backup_{datetime.now().strftime("%Y%m%d_%H%M%S")}.py'
+        with open('backend.py', 'r', encoding='utf-8') as f:
+            backup_content = f.read()
+        with open(backup_name, 'w', encoding='utf-8') as f:
+            f.write(backup_content)
+        print(f"✓ Backed up current backend to {backup_name}")
+    
+    # Create fixed backend
+    fixed_backend = create_fixed_backend()
+    
+    # Write the fixed backend
+    with open('backend.py', 'w', encoding='utf-8') as f:
+        f.write(fixed_backend)
+    
+    print("✓ Created new backend.py with complete Historical Data Manager support")
+    print()
+    print("Endpoints implemented:")
+    print("  POST /api/historical/batch-download - Download multiple symbols")
+    print("  POST /api/historical/download - Download custom symbols with intervals")
+    print("  GET  /api/historical/statistics - Get download statistics")
+    print("  GET  /api/historical/best-models/{symbol} - Get best models for symbol")
+    print("  GET  /api/historical/clear-cache - Clear cached data")
+    print()
+    print("Features:")
+    print("  • Accepts request body parameters for custom downloads")
+    print("  • Saves data to historical_data directory")
+    print("  • Supports multiple time intervals")
+    print("  • Returns proper statistics")
+    print("  • Full error handling")
+    print()
+    print("=" * 60)
+    print("NEXT STEPS:")
+    print("=" * 60)
+    print("1. Stop the current backend (Ctrl+C in the backend window)")
+    print("2. Start the new backend:")
+    print("   python backend.py")
+    print("3. Test the Historical Data Manager in your browser")
+    print("4. Click 'Download Common Symbols' to test")
+
+if __name__ == "__main__":
+    main()
