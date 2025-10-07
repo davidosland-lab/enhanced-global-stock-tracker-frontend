@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Analyzer - 100MB Upload Support</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .upload-card {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 20px;
+            padding: 3rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .drop-zone {
+            border: 3px dashed #ccc;
+            border-radius: 15px;
+            padding: 3rem;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        }
+        
+        .drop-zone:hover, .drop-zone.dragover {
+            border-color: #fbbf24;
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+            transform: scale(1.02);
+        }
+        
+        .file-info {
+            background: white;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .progress-custom {
+            height: 30px;
+            border-radius: 15px;
+            overflow: hidden;
+            background: #e9ecef;
+        }
+        
+        .progress-bar-custom {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .btn-upload {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .btn-upload:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(245, 158, 11, 0.3);
+        }
+        
+        .analysis-result {
+            background: white;
+            border-radius: 10px;
+            padding: 2rem;
+            margin-top: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .sentiment-badge {
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: inline-block;
+        }
+        
+        .sentiment-positive {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+        
+        .sentiment-negative {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+        }
+        
+        .sentiment-neutral {
+            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+            color: white;
+        }
+        
+        .file-size-info {
+            background: #fef3c7;
+            border: 2px solid #fbbf24;
+            border-radius: 10px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-online { background: #10b981; box-shadow: 0 0 10px #10b981; }
+        .status-offline { background: #ef4444; box-shadow: 0 0 10px #ef4444; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .uploaded-files-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .file-item {
+            background: white;
+            border-radius: 10px;
+            padding: 1rem;
+            margin: 0.5rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s;
+        }
+        
+        .file-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="../index.html">
+                <i class="fas fa-chart-line"></i> Stock Tracker
+            </a>
+            <span class="navbar-text">
+                <span id="connectionStatus" class="status-indicator status-offline"></span>
+                <span id="statusText">Backend: Disconnected</span>
+            </span>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="upload-card">
+            <h1 class="mb-4">
+                <i class="fas fa-file-upload"></i> Document Analyzer
+                <span class="badge bg-success ms-2">100MB Max</span>
+            </h1>
+            
+            <div class="file-size-info">
+                <h5><i class="fas fa-info-circle"></i> Enhanced Upload Limits</h5>
+                <p class="mb-0">
+                    <strong>Maximum file size:</strong> 100MB per file<br>
+                    <strong>Supported formats:</strong> PDF, TXT, CSV, DOC, DOCX, XLS, XLSX<br>
+                    <strong>Multiple files:</strong> Drag and drop multiple files at once
+                </p>
+            </div>
+            
+            <!-- Drop Zone -->
+            <div id="dropZone" class="drop-zone">
+                <i class="fas fa-cloud-upload-alt fa-4x text-muted mb-3"></i>
+                <h3>Drop files here or click to browse</h3>
+                <p class="text-muted">Maximum file size: 100MB</p>
+                <input type="file" id="fileInput" multiple hidden accept=".pdf,.txt,.csv,.doc,.docx,.xls,.xlsx">
+            </div>
+            
+            <!-- File Queue -->
+            <div id="fileQueue" class="mt-4" style="display: none;">
+                <h4>Files to Upload</h4>
+                <div id="fileList"></div>
+                <button id="uploadBtn" class="btn btn-upload mt-3" onclick="uploadFiles()">
+                    <i class="fas fa-upload"></i> Upload All Files
+                </button>
+                <button class="btn btn-secondary mt-3 ms-2" onclick="clearQueue()">
+                    <i class="fas fa-trash"></i> Clear Queue
+                </button>
+            </div>
+            
+            <!-- Upload Progress -->
+            <div id="uploadProgress" style="display: none;" class="mt-4">
+                <h4>Upload Progress</h4>
+                <div class="progress-custom">
+                    <div id="progressBar" class="progress-bar-custom" style="width: 0%">0%</div>
+                </div>
+                <p id="uploadStatus" class="mt-2"></p>
+            </div>
+            
+            <!-- Analysis Results -->
+            <div id="analysisResults" style="display: none;" class="analysis-result">
+                <h3><i class="fas fa-chart-pie"></i> Analysis Results</h3>
+                <div id="resultsContent"></div>
+            </div>
+            
+            <!-- Uploaded Files History -->
+            <div class="mt-5">
+                <h3><i class="fas fa-history"></i> Recent Uploads</h3>
+                <div id="uploadHistory" class="uploaded-files-list">
+                    <p class="text-muted">No files uploaded yet</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Instructions -->
+        <div class="upload-card">
+            <h4><i class="fas fa-question-circle"></i> How to Use</h4>
+            <ol>
+                <li>Drag and drop files onto the upload zone or click to browse</li>
+                <li>Review the file queue and remove any unwanted files</li>
+                <li>Click "Upload All Files" to process</li>
+                <li>View sentiment analysis and extracted information</li>
+                <li>Results are automatically saved to the database</li>
+            </ol>
+            
+            <div class="alert alert-info mt-3">
+                <strong>FinBERT Analysis:</strong> This module uses advanced NLP to analyze financial documents,
+                extract sentiment, identify key entities, and provide market insights.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = 'http://localhost:8002';
+        const MAX_FILE_SIZE = 100 * 1024 * 1024; // 100MB in bytes
+        let fileQueue = [];
+        let uploadHistory = [];
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            setupDropZone();
+            checkBackendConnection();
+            setInterval(checkBackendConnection, 10000);
+        });
+        
+        // Check backend connection
+        async function checkBackendConnection() {
+            try {
+                const response = await fetch(`${API_BASE}/api/status`);
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('connectionStatus').className = 'status-indicator status-online';
+                    document.getElementById('statusText').textContent = `Backend: Connected (Max: ${data.max_file_upload || '100MB'})`;
+                    return true;
+                }
+            } catch (error) {
+                console.error('Connection error:', error);
+            }
+            document.getElementById('connectionStatus').className = 'status-indicator status-offline';
+            document.getElementById('statusText').textContent = 'Backend: Disconnected';
+            return false;
+        }
+        
+        // Setup drop zone
+        function setupDropZone() {
+            const dropZone = document.getElementById('dropZone');
+            const fileInput = document.getElementById('fileInput');
+            
+            // Click to browse
+            dropZone.addEventListener('click', () => fileInput.click());
+            
+            // File input change
+            fileInput.addEventListener('change', (e) => {
+                handleFiles(e.target.files);
+            });
+            
+            // Drag and drop events
+            dropZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                dropZone.classList.add('dragover');
+            });
+            
+            dropZone.addEventListener('dragleave', () => {
+                dropZone.classList.remove('dragover');
+            });
+            
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.classList.remove('dragover');
+                handleFiles(e.dataTransfer.files);
+            });
+        }
+        
+        // Handle files
+        function handleFiles(files) {
+            for (let file of files) {
+                if (file.size > MAX_FILE_SIZE) {
+                    alert(`File "${file.name}" exceeds 100MB limit (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+                    continue;
+                }
+                
+                // Check if file already in queue
+                if (!fileQueue.find(f => f.name === file.name)) {
+                    fileQueue.push(file);
+                }
+            }
+            
+            updateFileQueue();
+        }
+        
+        // Update file queue display
+        function updateFileQueue() {
+            const fileList = document.getElementById('fileList');
+            const fileQueueDiv = document.getElementById('fileQueue');
+            
+            if (fileQueue.length === 0) {
+                fileQueueDiv.style.display = 'none';
+                return;
+            }
+            
+            fileQueueDiv.style.display = 'block';
+            fileList.innerHTML = '';
+            
+            fileQueue.forEach((file, index) => {
+                const fileDiv = document.createElement('div');
+                fileDiv.className = 'file-info';
+                fileDiv.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fas fa-file-alt me-2"></i>
+                            <strong>${file.name}</strong>
+                            <span class="text-muted ms-2">(${(file.size / 1024 / 1024).toFixed(2)}MB)</span>
+                        </div>
+                        <button class="btn btn-sm btn-danger" onclick="removeFile(${index})">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                `;
+                fileList.appendChild(fileDiv);
+            });
+        }
+        
+        // Remove file from queue
+        function removeFile(index) {
+            fileQueue.splice(index, 1);
+            updateFileQueue();
+        }
+        
+        // Clear queue
+        function clearQueue() {
+            fileQueue = [];
+            updateFileQueue();
+            document.getElementById('fileInput').value = '';
+        }
+        
+        // Upload files
+        async function uploadFiles() {
+            if (fileQueue.length === 0) {
+                alert('No files to upload');
+                return;
+            }
+            
+            const isConnected = await checkBackendConnection();
+            if (!isConnected) {
+                alert('Backend server is not connected. Please start the backend first.');
+                return;
+            }
+            
+            document.getElementById('uploadProgress').style.display = 'block';
+            document.getElementById('analysisResults').style.display = 'none';
+            
+            let successCount = 0;
+            let failCount = 0;
+            const results = [];
+            
+            for (let i = 0; i < fileQueue.length; i++) {
+                const file = fileQueue[i];
+                const progress = ((i + 1) / fileQueue.length * 100).toFixed(0);
+                
+                document.getElementById('progressBar').style.width = progress + '%';
+                document.getElementById('progressBar').textContent = progress + '%';
+                document.getElementById('uploadStatus').textContent = `Uploading ${file.name}...`;
+                
+                try {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    
+                    const response = await fetch(`${API_BASE}/api/documents/upload`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        results.push(result);
+                        successCount++;
+                        
+                        // Add to history
+                        uploadHistory.unshift({
+                            filename: file.name,
+                            size: file.size,
+                            timestamp: new Date().toISOString(),
+                            status: 'success',
+                            analysis: result.analysis
+                        });
+                    } else {
+                        const error = await response.text();
+                        console.error('Upload error:', error);
+                        failCount++;
+                        
+                        uploadHistory.unshift({
+                            filename: file.name,
+                            size: file.size,
+                            timestamp: new Date().toISOString(),
+                            status: 'failed',
+                            error: error
+                        });
+                    }
+                } catch (error) {
+                    console.error('Upload error:', error);
+                    failCount++;
+                }
+            }
+            
+            // Display results
+            displayResults(results);
+            updateUploadHistory();
+            
+            // Clear queue after upload
+            clearQueue();
+            
+            // Update status
+            document.getElementById('uploadStatus').innerHTML = `
+                <strong>Upload Complete!</strong><br>
+                Success: ${successCount} | Failed: ${failCount}
+            `;
+        }
+        
+        // Display analysis results
+        function displayResults(results) {
+            if (results.length === 0) return;
+            
+            document.getElementById('analysisResults').style.display = 'block';
+            const resultsContent = document.getElementById('resultsContent');
+            
+            let html = '';
+            results.forEach(result => {
+                const sentiment = result.analysis?.sentiment || 'neutral';
+                const sentimentClass = `sentiment-${sentiment}`;
+                
+                html += `
+                    <div class="file-item">
+                        <div>
+                            <h5>${result.filename}</h5>
+                            <p class="mb-1">Size: ${result.size_mb}MB</p>
+                            <span class="sentiment-badge ${sentimentClass}">${sentiment.toUpperCase()}</span>
+                            <p class="mt-2 mb-0"><small>${result.analysis?.summary || 'Analysis pending...'}</small></p>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            resultsContent.innerHTML = html;
+        }
+        
+        // Update upload history
+        function updateUploadHistory() {
+            const historyDiv = document.getElementById('uploadHistory');
+            
+            if (uploadHistory.length === 0) {
+                historyDiv.innerHTML = '<p class="text-muted">No files uploaded yet</p>';
+                return;
+            }
+            
+            let html = '';
+            uploadHistory.slice(0, 10).forEach(item => {
+                const date = new Date(item.timestamp).toLocaleString();
+                const statusIcon = item.status === 'success' ? 
+                    '<i class="fas fa-check-circle text-success"></i>' : 
+                    '<i class="fas fa-times-circle text-danger"></i>';
+                
+                html += `
+                    <div class="file-item">
+                        <div>
+                            ${statusIcon}
+                            <strong class="ms-2">${item.filename}</strong>
+                            <small class="text-muted ms-2">${(item.size / 1024 / 1024).toFixed(2)}MB</small>
+                        </div>
+                        <small class="text-muted">${date}</small>
+                    </div>
+                `;
+            });
+            
+            historyDiv.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
