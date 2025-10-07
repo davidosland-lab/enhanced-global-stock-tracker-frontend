@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Test Console</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f7fa;
+        }
+        
+        h1 {
+            color: #2d3748;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .endpoint {
+            font-family: 'Courier New', monospace;
+            background: #f7fafc;
+            padding: 8px 12px;
+            border-radius: 4px;
+            color: #4a5568;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #5a67d8;
+        }
+        
+        button:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+        }
+        
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f7fafc;
+            border-radius: 6px;
+            border-left: 4px solid #cbd5e0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 400px;
+            overflow: auto;
+            white-space: pre-wrap;
+        }
+        
+        .result.success {
+            border-left-color: #48bb78;
+            background: #f0fff4;
+        }
+        
+        .result.error {
+            border-left-color: #f56565;
+            background: #fff5f5;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .status.success {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        
+        .status.error {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+        
+        .loading {
+            color: #718096;
+            font-style: italic;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #4a5568;
+            font-weight: 600;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 API Test Console - Windows 11</h1>
+    
+    <div class="test-section">
+        <div class="test-header">
+            <h3>Main Backend Status</h3>
+            <button onclick="testMainBackend()">Test Connection</button>
+        </div>
+        <div class="endpoint">http://localhost:8002/</div>
+        <div id="mainBackendResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <div class="test-header">
+            <h3>ML Backend Status</h3>
+            <button onclick="testMLBackend()">Test Connection</button>
+        </div>
+        <div class="endpoint">http://localhost:8003/health</div>
+        <div id="mlBackendResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <div class="test-header">
+            <h3>Stock Data API</h3>
+            <button onclick="testStockAPI()">Test CBA.AX</button>
+        </div>
+        <div class="endpoint">http://localhost:8002/api/stock/CBA.AX</div>
+        <div id="stockAPIResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <div class="test-header">
+            <h3>Historical Data API</h3>
+            <button onclick="testHistoricalAPI()">Test Historical</button>
+        </div>
+        <div class="endpoint">http://localhost:8002/api/historical/CBA.AX?period=5d&interval=1h</div>
+        <div id="historicalAPIResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <div class="test-header">
+            <h3>Indices API</h3>
+            <button onclick="testIndicesAPI()">Test Indices</button>
+        </div>
+        <div class="endpoint">http://localhost:8002/api/indices</div>
+        <div id="indicesAPIResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <div class="test-header">
+            <h3>Custom Stock Test</h3>
+        </div>
+        <div class="input-group">
+            <label for="customSymbol">Stock Symbol (e.g., AAPL, MSFT, CBA.AX):</label>
+            <input type="text" id="customSymbol" value="AAPL" />
+        </div>
+        <button onclick="testCustomStock()">Test Custom Symbol</button>
+        <div class="endpoint">http://localhost:8002/api/stock/[SYMBOL]</div>
+        <div id="customStockResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <div class="test-header">
+            <h3>ML Prediction Test</h3>
+            <button onclick="testMLPrediction()">Test Prediction</button>
+        </div>
+        <div class="endpoint">http://localhost:8003/api/predict/CBA.AX</div>
+        <div id="mlPredictionResult"></div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:8002';
+        const ML_API_BASE = 'http://localhost:8003';
+        
+        async function makeRequest(url, resultId) {
+            const resultDiv = document.getElementById(resultId);
+            resultDiv.innerHTML = '<div class="loading">Testing connection...</div>';
+            
+            try {
+                const startTime = Date.now();
+                const response = await fetch(url);
+                const elapsed = Date.now() - startTime;
+                const data = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <div class="result success">
+                        <strong>✅ Success</strong> <span class="status success">200 OK</span> <small>(${elapsed}ms)</small>
+                        \n${JSON.stringify(data, null, 2)}
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <strong>❌ Error</strong> <span class="status error">Failed</span>
+                        \n${error.message}
+                        \n\nMake sure the backend server is running:
+                        python backend.py (for main backend)
+                        python backend_ml_enhanced.py (for ML backend)
+                    </div>
+                `;
+            }
+        }
+        
+        function testMainBackend() {
+            makeRequest(`${API_BASE}/`, 'mainBackendResult');
+        }
+        
+        function testMLBackend() {
+            makeRequest(`${ML_API_BASE}/health`, 'mlBackendResult');
+        }
+        
+        function testStockAPI() {
+            makeRequest(`${API_BASE}/api/stock/CBA.AX`, 'stockAPIResult');
+        }
+        
+        function testHistoricalAPI() {
+            makeRequest(`${API_BASE}/api/historical/CBA.AX?period=5d&interval=1h`, 'historicalAPIResult');
+        }
+        
+        function testIndicesAPI() {
+            makeRequest(`${API_BASE}/api/indices`, 'indicesAPIResult');
+        }
+        
+        function testCustomStock() {
+            const symbol = document.getElementById('customSymbol').value;
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            makeRequest(`${API_BASE}/api/stock/${symbol}`, 'customStockResult');
+        }
+        
+        function testMLPrediction() {
+            makeRequest(`${ML_API_BASE}/api/predict/CBA.AX`, 'mlPredictionResult');
+        }
+        
+        // Auto-test on load
+        window.addEventListener('load', () => {
+            console.log('API Test Console loaded');
+            console.log('Testing backends automatically...');
+            
+            // Test main backend
+            fetch(`${API_BASE}/`)
+                .then(r => console.log('Main backend:', r.ok ? 'Online' : 'Offline'))
+                .catch(() => console.log('Main backend: Offline'));
+            
+            // Test ML backend
+            fetch(`${ML_API_BASE}/health`)
+                .then(r => console.log('ML backend:', r.ok ? 'Online' : 'Offline'))
+                .catch(() => console.log('ML backend: Offline'));
+        });
+    </script>
+</body>
+</html>

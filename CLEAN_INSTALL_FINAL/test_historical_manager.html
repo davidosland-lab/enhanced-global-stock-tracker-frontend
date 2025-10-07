@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historical Data Manager - Test Suite</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        .test-result {
+            padding: 1rem;
+            margin: 0.5rem 0;
+            border-radius: 10px;
+            font-family: monospace;
+        }
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+        }
+        .btn-test {
+            margin: 0.25rem;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🔬 Historical Data Manager Test Suite</h1>
+        <p>Test all Historical Data Manager API endpoints</p>
+        <hr>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <h3>API Tests</h3>
+                <button class="btn btn-primary btn-test" onclick="testConnection()">Test Connection</button>
+                <button class="btn btn-info btn-test" onclick="testStatistics()">Test Statistics</button>
+                <button class="btn btn-success btn-test" onclick="testBatchDownload()">Test Batch Download</button>
+                <button class="btn btn-success btn-test" onclick="testCustomDownload()">Test Custom Download</button>
+                <button class="btn btn-warning btn-test" onclick="testBestModels()">Test Best Models</button>
+                <button class="btn btn-danger btn-test" onclick="testClearCache()">Test Clear Cache</button>
+                <button class="btn btn-dark btn-test" onclick="runAllTests()">Run All Tests</button>
+            </div>
+            <div class="col-md-6">
+                <h3>Quick Actions</h3>
+                <button class="btn btn-primary btn-test" onclick="downloadASX()">Download ASX Stocks</button>
+                <button class="btn btn-primary btn-test" onclick="downloadUS()">Download US Stocks</button>
+                <button class="btn btn-primary btn-test" onclick="downloadIndices()">Download Indices</button>
+                <button class="btn btn-info btn-test" onclick="checkCachedData()">Check Cached Data</button>
+            </div>
+        </div>
+        
+        <hr>
+        
+        <div id="results">
+            <h3>Test Results</h3>
+            <div id="test-output"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8002';
+        const output = document.getElementById('test-output');
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong> - ${message}`;
+            output.insertBefore(div, output.firstChild);
+        }
+        
+        async function testConnection() {
+            log('Testing backend connection...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/`);
+                const data = await response.json();
+                if (data.status === 'active') {
+                    log(`✅ Connected to backend: ${data.message}`, 'success');
+                    log(`Available endpoints: ${Object.keys(data.endpoints).join(', ')}`, 'info');
+                } else {
+                    log('⚠️ Backend returned unexpected response', 'error');
+                }
+            } catch (error) {
+                log(`❌ Cannot connect to backend: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testStatistics() {
+            log('Testing /api/historical/statistics...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/api/historical/statistics`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const stats = data.statistics;
+                    log(`✅ Statistics retrieved successfully`, 'success');
+                    log(`Cached symbols: ${stats.unique_symbols || 0}`, 'info');
+                    log(`Total records: ${stats.total_price_records || 0}`, 'info');
+                    log(`Storage size: ${stats.database_size_mb || 0} MB`, 'info');
+                    if (stats.cached_symbols && stats.cached_symbols.length > 0) {
+                        log(`Symbols: ${stats.cached_symbols.join(', ')}`, 'info');
+                    }
+                } else {
+                    log('⚠️ Statistics endpoint returned error', 'error');
+                }
+            } catch (error) {
+                log(`❌ Statistics test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testBatchDownload() {
+            log('Testing POST /api/historical/batch-download...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/api/historical/batch-download`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        symbols: ['CBA.AX', 'BHP.AX', 'NAB.AX'],
+                        period: '1mo',
+                        intervals: ['1d', '1h']
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    log(`✅ Batch download successful!`, 'success');
+                    log(`Downloaded symbols: ${data.symbols.join(', ')}`, 'info');
+                    log(`Total downloads: ${data.total_downloaded}, Failed: ${data.total_failed}`, 'info');
+                    
+                    // Show some results
+                    if (data.results && data.results.length > 0) {
+                        data.results.slice(0, 3).forEach(r => {
+                            log(`${r.symbol} (${r.interval}): ${r.records} records from ${r.start} to ${r.end}`, 'info');
+                        });
+                    }
+                } else {
+                    log(`⚠️ Batch download failed: ${data.error || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Batch download test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testCustomDownload() {
+            log('Testing POST /api/historical/download...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/api/historical/download`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        symbols: ['AAPL', 'MSFT'],
+                        period: '5d',
+                        intervals: ['1h', '1d']
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    log(`✅ Custom download successful!`, 'success');
+                    log(`Processed: ${data.symbols_processed.join(', ')}`, 'info');
+                    
+                    if (data.processed && data.processed.length > 0) {
+                        data.processed.forEach(p => {
+                            log(`${p.symbol}: ${p.data.length} intervals downloaded`, 'info');
+                        });
+                    }
+                } else {
+                    log(`⚠️ Download failed: ${data.detail || 'Unknown error'}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Custom download test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testBestModels() {
+            log('Testing GET /api/historical/best-models/CBA.AX...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/api/historical/best-models/CBA.AX?metric=accuracy`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    log(`✅ Best models retrieved for ${data.symbol}`, 'success');
+                    if (data.models && data.models.length > 0) {
+                        data.models.forEach(m => {
+                            log(`${m.model_name}: ${m.avg_metric} (${m.test_count} tests)`, 'info');
+                        });
+                    }
+                } else {
+                    log('⚠️ Best models endpoint returned error', 'error');
+                }
+            } catch (error) {
+                log(`❌ Best models test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testClearCache() {
+            if (!confirm('This will clear all cached historical data. Continue?')) {
+                return;
+            }
+            
+            log('Testing GET /api/historical/clear-cache...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/api/historical/clear-cache`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    log(`✅ Cache cleared: ${data.message}`, 'success');
+                } else {
+                    log(`⚠️ Clear cache failed: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ Clear cache test failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function downloadASX() {
+            log('Downloading ASX stocks...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/api/historical/batch-download`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        symbols: ['CBA.AX', 'BHP.AX', 'CSL.AX', 'NAB.AX', 'WBC.AX'],
+                        period: '3mo',
+                        intervals: ['1d', '1h']
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    log(`✅ Downloaded ${data.symbols.length} ASX stocks`, 'success');
+                }
+            } catch (error) {
+                log(`❌ ASX download failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function downloadUS() {
+            log('Downloading US stocks...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/api/historical/download`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        symbols: ['AAPL', 'GOOGL', 'MSFT', 'AMZN', 'NVDA'],
+                        period: '1mo',
+                        intervals: ['1d', '1h']
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    log(`✅ Downloaded ${data.symbols_processed.length} US stocks`, 'success');
+                }
+            } catch (error) {
+                log(`❌ US download failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function downloadIndices() {
+            log('Downloading market indices...', 'info');
+            try {
+                const response = await fetch(`${API_BASE}/api/historical/download`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        symbols: ['^AORD', '^GSPC', '^FTSE', '^DJI'],
+                        period: '1mo',
+                        intervals: ['1d']
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.success) {
+                    log(`✅ Downloaded ${data.symbols_processed.length} indices`, 'success');
+                }
+            } catch (error) {
+                log(`❌ Indices download failed: ${error.message}`, 'error');
+            }
+        }
+        
+        async function checkCachedData() {
+            await testStatistics();
+        }
+        
+        async function runAllTests() {
+            log('Running all tests...', 'info');
+            await testConnection();
+            await new Promise(r => setTimeout(r, 500));
+            await testStatistics();
+            await new Promise(r => setTimeout(r, 500));
+            await testBatchDownload();
+            await new Promise(r => setTimeout(r, 500));
+            await testCustomDownload();
+            await new Promise(r => setTimeout(r, 500));
+            await testBestModels();
+            log('✅ All tests completed!', 'success');
+        }
+        
+        // Auto-test connection on load
+        window.addEventListener('DOMContentLoaded', () => {
+            testConnection();
+        });
+    </script>
+</body>
+</html>
