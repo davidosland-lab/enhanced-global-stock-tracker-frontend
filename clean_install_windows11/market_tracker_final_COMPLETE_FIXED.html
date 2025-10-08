@@ -203,17 +203,11 @@
             </div>
         </div>
 
-        <div class="backend-status" id="backendStatus">
-            Connecting to backend...
-        </div>
+        <div class="backend-status" id="backendStatus">Checking backend...</div>
         
-        <div class="data-warning" id="dataWarning">
-            ⚠️ Waiting for Yahoo Finance to publish today's data...
-        </div>
+        <div class="data-warning" id="dataWarning"></div>
         
-        <div class="info-panel" id="dateRange">
-            Loading date range...
-        </div>
+        <div class="info-panel" id="dateRange">Waiting for data...</div>
 
         <div class="controls">
             <button class="btn active" data-period="24h">Last 24 Hours</button>
@@ -254,7 +248,7 @@
 
         <div class="chart-container">
             <canvas id="marketChart"></canvas>
-            <div class="loading" id="loadingIndicator">Loading market data...</div>
+            <div class="loading" id="loadingIndicator" style="display:none;">Loading market data...</div>
         </div>
     </div>
 
@@ -275,15 +269,15 @@
                 symbol: '^FTSE',
                 name: 'FTSE 100',
                 color: '#0000ff',
-                openHour: 18,
-                closeHour: 2.5  // 02:30
+                openHour: 19,       // 19:00 ADST
+                closeHour: 3.5      // 03:30 ADST
             },
             sp500: {
                 symbol: '^GSPC',
                 name: 'S&P 500',
                 color: '#800080',
-                openHour: 0.5,  // 00:30
-                closeHour: 7
+                openHour: 1.5,      // 01:30 ADST
+                closeHour: 8        // 08:00 ADST
             }
         };
         
@@ -344,7 +338,7 @@
                 document.getElementById('asxStatus').className = 'status-badge closed';
             }
             
-            if (currentHour >= 18 || currentHour < 2.5) {
+            if (currentHour >= 19 || currentHour < 3.5) {
                 openMarkets.push('FTSE');
                 document.getElementById('ftseStatus').textContent = 'OPEN';
                 document.getElementById('ftseStatus').className = 'status-badge open';
@@ -353,7 +347,7 @@
                 document.getElementById('ftseStatus').className = 'status-badge closed';
             }
             
-            if (currentHour >= 0.5 && currentHour < 7) {
+            if (currentHour >= 1.5 && currentHour < 8) {
                 openMarkets.push('S&P');
                 document.getElementById('spStatus').textContent = 'OPEN';
                 document.getElementById('spStatus').className = 'status-badge open';
@@ -518,12 +512,24 @@
                 
                 const changePercent = ((closePrice - previousClose) / previousClose) * 100;
                 
+                // FIXED: ADD TIME OFFSET FOR INTERNATIONAL MARKETS
+                let displayDate = pointDate;
+                if (marketData.market.symbol === '^FTSE') {
+                    // FTSE: Add 11 hours to shift UK time to ADST
+                    // UK market 08:00 becomes ADST 19:00
+                    displayDate = new Date(pointDate.getTime() + (11 * 60 * 60 * 1000));
+                } else if (marketData.market.symbol === '^GSPC') {
+                    // S&P 500: Add 16 hours to shift US Eastern to ADST
+                    // NY market 09:30 becomes ADST 01:30 (next day)
+                    displayDate = new Date(pointDate.getTime() + (16 * 60 * 60 * 1000));
+                }
+                
                 // Convert to ADST for comparison
-                const pointADST = new Date(pointDate.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
+                const pointADST = getADSTTime(displayDate);
                 
                 if (pointADST >= startTime && pointADST <= endTime) {
                     processedData.push({
-                        time: pointDate,  // Keep original time for chart
+                        time: displayDate,  // FIXED: Use adjusted time for display
                         value: changePercent
                     });
                 }
@@ -664,11 +670,11 @@
                     }
                 }
                 
-                // FTSE market hours: 18:00 - 02:30 ADST
+                // FTSE market hours: 19:00 - 03:30 ADST
                 const now = new Date();
                 const aestNow = getADSTTime(now);
                 const currentHour = aestNow.getHours() + aestNow.getMinutes() / 60;
-                const ftseIsOpen = currentHour >= 18 || currentHour < 2.5;
+                const ftseIsOpen = currentHour >= 19 || currentHour < 3.5;
                 
                 if (!ftseData.hasTodayData && ftseIsOpen) {
                     missingDataMarkets.push('FTSE');
@@ -774,8 +780,8 @@
             // Market hours for gap detection
             const marketHours = {
                 asx: { open: 10, close: 16 },
-                ftse: { open: 18, close: 2.5 },
-                sp500: { open: 0.5, close: 7 }
+                ftse: { open: 19, close: 3.5 },
+                sp500: { open: 1.5, close: 8 }
             };
             
             // Convert data to Chart.js format with gap detection

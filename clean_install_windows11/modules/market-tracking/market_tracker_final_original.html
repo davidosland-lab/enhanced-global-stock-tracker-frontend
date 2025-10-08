@@ -198,7 +198,7 @@
         <div class="header">
             <h1>📊 Market Tracker - Real-Time Data</h1>
             <div class="time-info">
-                <span id="currentTime">Loading...</span> ADST | 
+                <span id="currentTime">Loading...</span> AEST | 
                 <span id="marketStatus">Checking markets...</span>
             </div>
         </div>
@@ -226,7 +226,7 @@
                 <div class="market-price" id="asxPrice">-</div>
                 <div class="market-change" id="asxChange">-</div>
                 <div class="market-status">
-                    Trading: 10:00 - 16:00 ADST
+                    Trading: 10:00 - 16:00 AEST
                     <span class="status-badge" id="asxStatus">-</span>
                 </div>
             </div>
@@ -236,7 +236,7 @@
                 <div class="market-price" id="ftsePrice">-</div>
                 <div class="market-change" id="ftseChange">-</div>
                 <div class="market-status">
-                    Trading: 19:00 - 03:30 ADST
+                    Trading: 18:00 - 02:30 AEST
                     <span class="status-badge" id="ftseStatus">-</span>
                 </div>
             </div>
@@ -246,7 +246,7 @@
                 <div class="market-price" id="spPrice">-</div>
                 <div class="market-change" id="spChange">-</div>
                 <div class="market-status">
-                    Trading: 01:30 - 08:00 ADST
+                    Trading: 00:30 - 07:00 AEST
                     <span class="status-badge" id="spStatus">-</span>
                 </div>
             </div>
@@ -262,7 +262,7 @@
         // CONFIGURATION - FIXED FOR WINDOWS
         const API_BASE = 'http://localhost:8002';  // Hardcoded for file:// protocol
         
-        // Market definitions with ADST hours
+        // Market definitions with AEST hours
         const MARKETS = {
             asx: {
                 symbol: '^AORD',
@@ -286,14 +286,6 @@
                 closeHour: 7
             }
         };
-        
-        
-        // Get current time in ADST (Australian Daylight Saving Time = UTC+11)
-        function getADSTTime(date = new Date()) {
-            // During daylight saving (Oct-Apr), Sydney is UTC+11
-            const utcTime = date.getTime() + (date.getTimezoneOffset() * 60000);
-            return new Date(utcTime + (11 * 3600000));
-        }
         
         let chart = null;
         let currentPeriod = '24h';
@@ -324,7 +316,7 @@
         
         function updateTime() {
             const now = new Date();
-            const aestTime = getADSTTime(now);
+            const aestTime = new Date(now.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
             const hours = aestTime.getHours();
             const minutes = aestTime.getMinutes();
             const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
@@ -406,9 +398,9 @@
                 const quoteResponse = await fetch(`${API_BASE}/api/stock/${market.symbol}`);
                 const quoteData = quoteResponse.ok ? await quoteResponse.json() : null;
                 
-                // Check for today's data (use ADST timezone)
+                // Check for today's data (use AEST timezone)
                 const now = new Date();
-                const aestNow = getADSTTime(now);
+                const aestNow = new Date(now.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
                 const today = aestNow.toISOString().split('T')[0];
                 
                 const hasTodayData = histData.some(point => {
@@ -454,7 +446,7 @@
             if (!previousClose && marketData.data.length > 0) {
                 // Find the first data point from yesterday or earlier
                 const now = new Date();
-                const aestNow = getADSTTime(now);
+                const aestNow = new Date(now.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
                 const todayStr = aestNow.toISOString().split('T')[0];
                 
                 for (let i = marketData.data.length - 1; i >= 0; i--) {
@@ -476,18 +468,18 @@
                 return [];
             }
             
-            // Get current time in ADST
+            // Get current time in AEST
             const now = new Date();
-            const aestNow = getADSTTime(now);
+            const aestNow = new Date(now.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
             
             // Calculate time window
             let startTime, endTime;
             
             if (currentPeriod === '48h') {
-                // 48h view: Start from yesterday at 10:00 ADST, show 48 hours forward
+                // 48h view: Start from yesterday at 10:00 AEST, show 48 hours forward
                 startTime = new Date(aestNow);
                 startTime.setDate(startTime.getDate() - 1); // Go to yesterday
-                startTime.setHours(10, 0, 0, 0); // Set to 10:00 ADST
+                startTime.setHours(10, 0, 0, 0); // Set to 10:00 AEST
                 
                 endTime = new Date(startTime);
                 endTime.setHours(endTime.getHours() + 48); // Add 48 hours from start
@@ -518,10 +510,10 @@
                 
                 const changePercent = ((closePrice - previousClose) / previousClose) * 100;
                 
-                // Convert to ADST for comparison
-                const pointADST = new Date(pointDate.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
+                // Convert to AEST for comparison
+                const pointAEST = new Date(pointDate.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
                 
-                if (pointADST >= startTime && pointADST <= endTime) {
+                if (pointAEST >= startTime && pointAEST <= endTime) {
                     processedData.push({
                         time: pointDate,  // Keep original time for chart
                         value: changePercent
@@ -537,11 +529,11 @@
         function updateDateRange(datasets) {
             // Calculate the expected time window based on fixed start times
             const now = new Date();
-            const aestNow = getADSTTime(now);
+            const aestNow = new Date(now.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
             
             let expectedStart, expectedEnd;
             if (currentPeriod === '48h') {
-                // 48h starts from yesterday 10:00 ADST
+                // 48h starts from yesterday 10:00 AEST
                 expectedStart = new Date(aestNow);
                 expectedStart.setDate(expectedStart.getDate() - 1);
                 expectedStart.setHours(10, 0, 0, 0);
@@ -587,10 +579,10 @@
                 const hoursShown = (maxDate - minDate) / (1000 * 60 * 60);
                 
                 document.getElementById('dateRange').innerHTML = 
-                    `${currentPeriod === '48h' ? '48h from Yesterday 10:00 ADST' : 'Last 24 Hours'} | Data: ${formatDate(minDate)} → ${formatDate(maxDate)}`;
+                    `${currentPeriod === '48h' ? '48h from Yesterday 10:00 AEST' : 'Last 24 Hours'} | Data: ${formatDate(minDate)} → ${formatDate(maxDate)}`;
             } else {
                 document.getElementById('dateRange').innerHTML = 
-                    `${currentPeriod === '48h' ? '48h from Yesterday 10:00 ADST' : 'Last 24 Hours'} | Waiting for data...`;
+                    `${currentPeriod === '48h' ? '48h from Yesterday 10:00 AEST' : 'Last 24 Hours'} | Waiting for data...`;
             }
         }
         
@@ -664,9 +656,9 @@
                     }
                 }
                 
-                // FTSE market hours: 18:00 - 02:30 ADST
+                // FTSE market hours: 18:00 - 02:30 AEST
                 const now = new Date();
-                const aestNow = getADSTTime(now);
+                const aestNow = new Date(now.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
                 const currentHour = aestNow.getHours() + aestNow.getMinutes() / 60;
                 const ftseIsOpen = currentHour >= 18 || currentHour < 2.5;
                 
@@ -751,11 +743,11 @@
             
             // Calculate the fixed time window for the X-axis
             const now = new Date();
-            const aestNow = getADSTTime(now);
+            const aestNow = new Date(now.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
             let xAxisMin, xAxisMax;
             
             if (currentPeriod === '48h') {
-                // 48h: from yesterday 10:00 ADST
+                // 48h: from yesterday 10:00 AEST
                 xAxisMin = new Date(aestNow);
                 xAxisMin.setDate(xAxisMin.getDate() - 1);
                 xAxisMin.setHours(10, 0, 0, 0);
