@@ -77,6 +77,16 @@ class BacktestRequest(BaseModel):
     initial_capital: float = 10000
     strategy: str = "sma_crossover"
 
+
+@app.get("/api/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "service": "Stock Tracker Backend",
+        "timestamp": datetime.now().isoformat()
+    }
+
 @app.get("/")
 async def root():
     """Root endpoint showing API status"""
@@ -467,6 +477,49 @@ async def clear_historical_cache():
         }
 
 
+
+@app.get("/api/historical/symbols")
+async def get_historical_symbols():
+    """Get list of available symbols with historical data"""
+    try:
+        # Common symbols to check - you can expand this list
+        symbols = [
+            "CBA.AX", "BHP.AX", "ANZ.AX", "WBC.AX", "NAB.AX",
+            "CSL.AX", "WDS.AX", "MQG.AX", "WES.AX", "TLS.AX",
+            "AAPL", "GOOGL", "MSFT", "TSLA", "AMZN"
+        ]
+        
+        available_symbols = []
+        for symbol in symbols:
+            try:
+                ticker = yf.Ticker(symbol)
+                info = ticker.info
+                if info and info.get('symbol'):
+                    available_symbols.append({
+                        "symbol": symbol,
+                        "name": info.get('longName', info.get('shortName', symbol)),
+                        "type": "stock",
+                        "exchange": info.get('exchange', 'Unknown')
+                    })
+            except:
+                # Symbol might not be available, skip it
+                pass
+        
+        return {
+            "symbols": available_symbols,
+            "count": len(available_symbols)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching historical symbols: {str(e)}")
+        # Return a default list even if there's an error
+        return {
+            "symbols": [
+                {"symbol": "CBA.AX", "name": "Commonwealth Bank", "type": "stock", "exchange": "ASX"},
+                {"symbol": "BHP.AX", "name": "BHP Group", "type": "stock", "exchange": "ASX"},
+                {"symbol": "AAPL", "name": "Apple Inc.", "type": "stock", "exchange": "NASDAQ"}
+            ],
+            "count": 3
+        }
 
 @app.get("/api/historical/{symbol}")
 async def get_historical_data(symbol: str, period: str = "1mo", interval: str = "1d"):
