@@ -114,14 +114,14 @@ def get_stock_info(symbol: str) -> Dict[str, Any]:
         info = ticker.info
         
         # Get current price
-        current_price = info.get('currentPrice') or info.get('regularMarketPrice')
+        current_price = info.get('currentPrice') or info.get('regularMarketPrice', 0)
         if not current_price:
             hist = ticker.history(period='1d')
             if not hist.empty:
                 current_price = float(hist['Close'].iloc[-1])
         
         # Calculate daily change
-        prev_close = info.get('previousClose') or info.get('regularMarketPreviousClose')
+        prev_close = info.get('previousClose', 0) or info.get('regularMarketPreviousClose', 0)
         if prev_close and current_price:
             change = current_price - prev_close
             change_percent = (change / prev_close) * 100
@@ -135,14 +135,14 @@ def get_stock_info(symbol: str) -> Dict[str, Any]:
             "price": round(current_price, 2) if current_price else 0,
             "change": round(change, 2),
             "changePercent": round(change_percent, 2),
-            "volume": info.get('volume'),
-            "marketCap": info.get('marketCap'),
-            "dayHigh": info.get('dayHigh'),
-            "dayLow": info.get('dayLow'),
-            "yearHigh": info.get('fiftyTwoWeekHigh'),
-            "yearLow": info.get('fiftyTwoWeekLow'),
-            "pe_ratio": info.get('forwardPE'),
-            "dividend_yield": info.get('dividendYield'),
+            "volume": info.get('volume', 0),
+            "marketCap": info.get('marketCap', 0),
+            "dayHigh": info.get('dayHigh', 0),
+            "dayLow": info.get('dayLow', 0),
+            "yearHigh": info.get('fiftyTwoWeekHigh', 0),
+            "yearLow": info.get('fiftyTwoWeekLow', 0),
+            "pe_ratio": info.get('forwardPE', 0),
+            "dividend_yield": info.get('dividendYield', 0),
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
