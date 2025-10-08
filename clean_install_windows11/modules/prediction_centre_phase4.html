@@ -373,6 +373,8 @@
             100% { transform: rotate(360deg); }
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>
 </head>
 <body>
     <div class="container">
@@ -760,7 +762,7 @@
                 if (!response.ok) throw new Error('Failed to fetch stock data');
                 
                 const stockData = await response.json();
-                const currentPrice = stockData.regularMarketPrice || 100;
+                const currentPrice = stockData.price || stockData.price || stockData.regularMarketPrice || 170;
                 
                 // Generate prediction (simulated - replace with real ML model)
                 const prediction = generateMLPrediction(currentPrice, modelType, timeframe);
@@ -922,7 +924,7 @@
                 predictedData.push(price);
             }
             
-            predictionChart = new Chart(ctx, {
+            window.predictionChart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: dates,

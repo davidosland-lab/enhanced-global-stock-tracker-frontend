@@ -85,6 +85,7 @@
             100% { opacity: 1; }
         }
     </style>
+<script src="error_handler.js"></script>
 </head>
 <body class="bg-gray-900 text-white">
     <div class="container mx-auto px-4 py-8">
@@ -226,7 +227,7 @@
             </div>
 
             <!-- 7. Prediction Centre -->
-            <div class="module-card pred-glow rounded-xl p-6" onclick="launchModule('/modules/prediction_centre_phase4.html')">
+            <div class="module-card pred-glow rounded-xl p-6" onclick="launchModule('/modules/prediction_centre.html')">
                 <div class="flex items-center mb-4">
                     <i class="fas fa-chart-area text-4xl text-indigo-400 mr-4"></i>
                     <div>
@@ -303,7 +304,10 @@
             
             // Check Backend API
             try {
-                const response = await fetch(`${API_BASE}/api/health`);
+                const response = await fetch(`${API_BASE}/api/health`).catch(err => {
+                    console.log('Backend health check failed, trying alternative endpoint');
+                    return fetch(`${API_BASE}/`);
+                });
                 if (response.ok) {
                     document.getElementById('backend-status').className = 'status-dot status-online';
                     document.getElementById('backend-text').textContent = 'Connected';
@@ -317,7 +321,10 @@
             
             // Check ML Backend
             try {
-                const response = await fetch(`${ML_API_BASE}/health`);
+                const response = await fetch(`${ML_API_BASE}/health`).catch(err => {
+                    console.log('ML Backend not available');
+                    return null;
+                });
                 if (response.ok) {
                     document.getElementById('ml-status').className = 'status-dot status-online';
                     document.getElementById('ml-text').textContent = 'Connected';

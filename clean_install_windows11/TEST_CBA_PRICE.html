@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CBA.AX Price Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .price-box {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .price {
+            font-size: 48px;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+        .error {
+            color: #f44336;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <h1>CBA.AX Real Price Test</h1>
+    
+    <div class="price-box">
+        <h2>Testing Backend API</h2>
+        <div id="backend-result">Loading...</div>
+    </div>
+    
+    <div class="price-box">
+        <h2>Testing ML Backend</h2>
+        <div id="ml-result">Loading...</div>
+    </div>
+    
+    <button onclick="testAll()">Refresh Tests</button>
+    
+    <script>
+        async function testBackend() {
+            const resultDiv = document.getElementById('backend-result');
+            try {
+                const response = await fetch('http://localhost:8002/api/stock/CBA.AX');
+                const data = await response.json();
+                
+                if (response.ok && data.price) {
+                    const price = parseFloat(data.price);
+                    if (price < 120) {
+                        resultDiv.innerHTML = `<span class="error">ERROR: Price too low!</span><br>CBA.AX: <span class="price">$${price.toFixed(2)}</span>`;
+                    } else {
+                        resultDiv.innerHTML = `CBA.AX: <span class="price">$${price.toFixed(2)}</span><br>✓ Real market price`;
+                    }
+                } else {
+                    resultDiv.innerHTML = `<span class="error">Error: ${data.detail || 'Failed to fetch'}</span>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">Backend not responding: ${error.message}</span>`;
+            }
+        }
+        
+        async function testML() {
+            const resultDiv = document.getElementById('ml-result');
+            try {
+                const response = await fetch('http://localhost:8003/api/ml/predict', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        symbol: 'CBA.AX',
+                        timeframe: '5d',
+                        models: ['lstm']
+                    })
+                });
+                const data = await response.json();
+                
+                if (response.ok && data.current_price) {
+                    const price = parseFloat(data.current_price);
+                    if (price < 120) {
+                        resultDiv.innerHTML = `<span class="error">ERROR: Price too low!</span><br>Current: <span class="price">$${price.toFixed(2)}</span>`;
+                    } else {
+                        resultDiv.innerHTML = `Current: <span class="price">$${price.toFixed(2)}</span><br>✓ Using real data`;
+                    }
+                } else {
+                    resultDiv.innerHTML = `<span class="error">Error: ${data.detail || 'Failed to predict'}</span>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">ML Backend not responding: ${error.message}</span>`;
+            }
+        }
+        
+        async function testAll() {
+            document.getElementById('backend-result').innerHTML = 'Testing...';
+            document.getElementById('ml-result').innerHTML = 'Testing...';
+            await testBackend();
+            await testML();
+        }
+        
+        // Run tests on load
+        testAll();
+    </script>
+</body>
+</html>

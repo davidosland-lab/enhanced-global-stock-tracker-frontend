@@ -77,6 +77,16 @@ class BacktestRequest(BaseModel):
     initial_capital: float = 10000
     strategy: str = "sma_crossover"
 
+
+@app.get("/api/health")
+async def health_check():
+    """Health check endpoint"""
+    return {
+        "status": "healthy",
+        "service": "Stock Tracker Backend",
+        "timestamp": datetime.now().isoformat()
+    }
+
 @app.get("/")
 async def root():
     """Root endpoint showing API status"""
@@ -104,14 +114,14 @@ def get_stock_info(symbol: str) -> Dict[str, Any]:
         info = ticker.info
         
         # Get current price
-        current_price = info.get('currentPrice') or info.get('regularMarketPrice', 0)
+        current_price = info.get('currentPrice') or info.get('regularMarketPrice')
         if not current_price:
             hist = ticker.history(period='1d')
             if not hist.empty:
                 current_price = float(hist['Close'].iloc[-1])
         
         # Calculate daily change
-        prev_close = info.get('previousClose', 0) or info.get('regularMarketPreviousClose', 0)
+        prev_close = info.get('previousClose') or info.get('regularMarketPreviousClose')
         if prev_close and current_price:
             change = current_price - prev_close
             change_percent = (change / prev_close) * 100
@@ -125,14 +135,14 @@ def get_stock_info(symbol: str) -> Dict[str, Any]:
             "price": round(current_price, 2) if current_price else 0,
             "change": round(change, 2),
             "changePercent": round(change_percent, 2),
-            "volume": info.get('volume', 0),
-            "marketCap": info.get('marketCap', 0),
-            "dayHigh": info.get('dayHigh', 0),
-            "dayLow": info.get('dayLow', 0),
-            "yearHigh": info.get('fiftyTwoWeekHigh', 0),
-            "yearLow": info.get('fiftyTwoWeekLow', 0),
-            "pe_ratio": info.get('forwardPE', 0),
-            "dividend_yield": info.get('dividendYield', 0),
+            "volume": info.get('volume'),
+            "marketCap": info.get('marketCap'),
+            "dayHigh": info.get('dayHigh'),
+            "dayLow": info.get('dayLow'),
+            "yearHigh": info.get('fiftyTwoWeekHigh'),
+            "yearLow": info.get('fiftyTwoWeekLow'),
+            "pe_ratio": info.get('forwardPE'),
+            "dividend_yield": info.get('dividendYield'),
             "timestamp": datetime.now().isoformat()
         }
     except Exception as e:
@@ -467,6 +477,49 @@ async def clear_historical_cache():
         }
 
 
+
+@app.get("/api/historical/symbols")
+async def get_historical_symbols():
+    """Get list of available symbols with historical data"""
+    try:
+        # Common symbols to check - you can expand this list
+        symbols = [
+            "CBA.AX", "BHP.AX", "ANZ.AX", "WBC.AX", "NAB.AX",
+            "CSL.AX", "WDS.AX", "MQG.AX", "WES.AX", "TLS.AX",
+            "AAPL", "GOOGL", "MSFT", "TSLA", "AMZN"
+        ]
+        
+        available_symbols = []
+        for symbol in symbols:
+            try:
+                ticker = yf.Ticker(symbol)
+                info = ticker.info
+                if info and info.get('symbol'):
+                    available_symbols.append({
+                        "symbol": symbol,
+                        "name": info.get('longName', info.get('shortName', symbol)),
+                        "type": "stock",
+                        "exchange": info.get('exchange', 'Unknown')
+                    })
+            except:
+                # Symbol might not be available, skip it
+                pass
+        
+        return {
+            "symbols": available_symbols,
+            "count": len(available_symbols)
+        }
+    except Exception as e:
+        logger.error(f"Error fetching historical symbols: {str(e)}")
+        # Return a default list even if there's an error
+        return {
+            "symbols": [
+                {"symbol": "CBA.AX", "name": "Commonwealth Bank", "type": "stock", "exchange": "ASX"},
+                {"symbol": "BHP.AX", "name": "BHP Group", "type": "stock", "exchange": "ASX"},
+                {"symbol": "AAPL", "name": "Apple Inc.", "type": "stock", "exchange": "NASDAQ"}
+            ],
+            "count": 3
+        }
 
 @app.get("/api/historical/{symbol}")
 async def get_historical_data(symbol: str, period: str = "1mo", interval: str = "1d"):
