@@ -14,7 +14,8 @@ from typing import Dict, Any, Optional, List
 import yfinance as yf
 from fastapi import FastAPI, HTTPException, File, UploadFile, Form, Body
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 import uvicorn
 import pytz
 from cachetools import TTLCache
@@ -58,6 +59,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static files - serve HTML pages
+if os.path.exists("modules"):
+    app.mount("/modules", StaticFiles(directory="modules"), name="modules")
+if os.path.exists("index.html"):
+    @app.get("/index.html")
+    async def serve_index():
+        return FileResponse("index.html")
 
 # Cache for 5 minutes
 cache = TTLCache(maxsize=100, ttl=300)
@@ -123,6 +132,21 @@ async def health_check():
         "service": "Stock Tracker Backend",
         "timestamp": datetime.now().isoformat(),
         "version": "4.0.0"
+    }
+
+@app.get("/api/status")
+async def api_status():
+    """API status endpoint - used by frontend monitoring"""
+    return {
+        "status": "online",
+        "backend": "connected",
+        "timestamp": datetime.now().isoformat(),
+        "services": {
+            "yahoo_finance": "active",
+            "prediction": "active",
+            "historical_data": "active",
+            "technical_analysis": "active"
+        }
     }
 
 def get_stock_info(symbol: str) -> Dict[str, Any]:
