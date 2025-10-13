@@ -28,6 +28,17 @@ from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
 import ta
 warnings.filterwarnings('ignore')
 
+# Import historical data service for faster data access
+try:
+    from historical_data_service import get_service as get_historical_service
+    HISTORICAL_SERVICE = True
+    logger = logging.getLogger(__name__)
+    logger.info("Historical data service available - using local database for faster access")
+except ImportError:
+    HISTORICAL_SERVICE = False
+    logger = logging.getLogger(__name__)
+    logger.warning("Historical data service not available - using Yahoo Finance directly")
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -242,9 +253,22 @@ class EnhancedModelTrainer:
                                    iterations: int = 5) -> Dict:
         """Train model iteratively, building on previous knowledge"""
         
-        # Fetch data
-        ticker = yf.Ticker(symbol)
-        df = ticker.history(period="2y")
+        # Fetch data - use historical service if available for faster access
+        if HISTORICAL_SERVICE:
+            try:
+                service = get_historical_service()
+                df = service.get_data(symbol, auto_download=True)
+                if df is None or df.empty:
+                    # Fallback to Yahoo Finance
+                    ticker = yf.Ticker(symbol)
+                    df = ticker.history(period="2y")
+            except Exception as e:
+                logger.warning(f"Historical service error, falling back to Yahoo Finance: {e}")
+                ticker = yf.Ticker(symbol)
+                df = ticker.history(period="2y")
+        else:
+            ticker = yf.Ticker(symbol)
+            df = ticker.history(period="2y")
         
         if df.empty:
             raise ValueError(f"No data available for {symbol}")

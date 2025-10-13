@@ -32,6 +32,15 @@ except ImportError:
     logger = logging.getLogger(__name__)
     logger.warning("FinBERT analyzer not available. Using keyword-based fallback.")
 
+# Import Historical Data Service
+try:
+    from historical_data_service import get_service as get_historical_service
+    HISTORICAL_SERVICE_AVAILABLE = True
+except ImportError:
+    HISTORICAL_SERVICE_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+    logger.warning("Historical data service not available.")
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -179,6 +188,85 @@ async def get_stock(symbol: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 # ============= HISTORICAL DATA MANAGER ENDPOINTS =============
+
+@app.get("/api/historical/data/{symbol}")
+async def get_historical_data(symbol: str, start: str = None, end: str = None):
+    """Get historical data from local database"""
+    try:
+        if not HISTORICAL_SERVICE_AVAILABLE:
+            # Fallback to Yahoo Finance
+            ticker = yf.Ticker(symbol)
+            hist = ticker.history(period="1mo")
+            return {
+                "source": "yahoo_finance",
+                "data": hist.to_dict('records') if not hist.empty else []
+            }
+        
+        service = get_historical_service()
+        df = service.get_data(symbol, start, end)
+        
+        if df is None or df.empty:
+            return {"error": f"No data available for {symbol}"}
+        
+        return {
+            "source": "local_database",
+            "symbol": symbol,
+            "data": df.reset_index().to_dict('records'),
+            "records": len(df),
+            "date_range": {
+                "start": str(df.index[0].date()),
+                "end": str(df.index[-1].date())
+            }
+        }
+    except Exception as e:
+        logger.error(f"Error getting historical data: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/historical/statistics")
+async def get_historical_statistics():
+    """Get statistics about stored historical data"""
+    try:
+        if not HISTORICAL_SERVICE_AVAILABLE:
+            return {"error": "Historical service not available"}
+        
+        service = get_historical_service()
+        stats = service.get_statistics()
+        return stats
+    except Exception as e:
+        logger.error(f"Error getting statistics: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/historical/download/{symbol}")
+async def download_symbol_data(symbol: str, period: str = "2y"):
+    """Download and store historical data for a symbol"""
+    try:
+        if not HISTORICAL_SERVICE_AVAILABLE:
+            return {"error": "Historical service not available"}
+        
+        service = get_historical_service()
+        result = service.download_historical_data(symbol, period)
+        return result
+    except Exception as e:
+        logger.error(f"Error downloading data: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/historical/ml-data/{symbol}")
+async def get_ml_formatted_data(symbol: str, lookback: int = 365):
+    """Get historical data formatted for ML models"""
+    try:
+        if not HISTORICAL_SERVICE_AVAILABLE:
+            return {"error": "Historical service not available"}
+        
+        service = get_historical_service()
+        data = service.get_data_for_ml(symbol, lookback)
+        
+        if data is None:
+            return {"error": f"No ML data available for {symbol}"}
+        
+        return data
+    except Exception as e:
+        logger.error(f"Error getting ML data: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/historical/batch-download")
 async def batch_download_historical(request: Dict[str, Any] = Body(default={})):
