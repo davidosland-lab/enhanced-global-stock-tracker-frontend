@@ -23,6 +23,15 @@ import numpy as np
 from pydantic import BaseModel
 import asyncio
 
+# Import FinBERT analyzer
+try:
+    from finbert_analyzer import analyze_financial_text
+    FINBERT_AVAILABLE = True
+except ImportError:
+    FINBERT_AVAILABLE = False
+    logger = logging.getLogger(__name__)
+    logger.warning("FinBERT analyzer not available. Using keyword-based fallback.")
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -841,6 +850,111 @@ async def upload_document(
     except Exception as e:
         logger.error(f"Upload error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/documents/analyze")
+async def analyze_document(request: dict = Body(...)):
+    """Analyze financial document using FinBERT sentiment analysis"""
+    try:
+        text = request.get("text", "")
+        doc_type = request.get("type", "financial_report")
+        symbol = request.get("symbol", None)
+        
+        if not text:
+            raise HTTPException(status_code=400, detail="No text provided for analysis")
+        
+        # Use FinBERT analyzer if available
+        if FINBERT_AVAILABLE:
+            result = analyze_financial_text(text)
+        else:
+            # Fallback to keyword-based analysis for consistent results
+            result = analyze_text_keywords(text)
+        
+        # Add document type and symbol if provided
+        result["document_type"] = doc_type
+        if symbol:
+            result["symbol"] = symbol
+            result["predicted_impact"] = calculate_predicted_impact(result["sentiment_score"])
+        
+        logger.info(f"Document analyzed: type={doc_type}, sentiment={result['sentiment_score']:.3f}")
+        return result
+        
+    except Exception as e:
+        logger.error(f"Analysis error: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+def analyze_text_keywords(text: str) -> dict:
+    """Keyword-based sentiment analysis fallback (deterministic)"""
+    text_lower = text.lower()
+    
+    # Financial keyword dictionaries
+    positive_keywords = {
+        'strong': 0.8, 'growth': 0.7, 'profit': 0.8, 'increase': 0.6,
+        'positive': 0.7, 'improvement': 0.6, 'gain': 0.7, 'success': 0.8,
+        'outperform': 0.9, 'exceed': 0.8, 'revenue': 0.5, 'expansion': 0.7,
+        'bullish': 0.8, 'upgrade': 0.7, 'buy': 0.6, 'opportunity': 0.6
+    }
+    
+    negative_keywords = {
+        'loss': -0.8, 'decline': -0.7, 'weak': -0.6, 'decrease': -0.6,
+        'negative': -0.7, 'risk': -0.5, 'concern': -0.6, 'fall': -0.7,
+        'underperform': -0.9, 'miss': -0.7, 'debt': -0.5, 'warning': -0.7,
+        'bearish': -0.8, 'downgrade': -0.7, 'sell': -0.6, 'recession': -0.8
+    }
+    
+    # Calculate weighted sentiment
+    score = 0.0
+    word_count = 0
+    key_phrases = []
+    
+    for word, weight in positive_keywords.items():
+        count = text_lower.count(word)
+        if count > 0:
+            score += weight * count
+            word_count += count
+            key_phrases.append(word)
+    
+    for word, weight in negative_keywords.items():
+        count = text_lower.count(word)
+        if count > 0:
+            score += weight * count
+            word_count += count
+            key_phrases.append(word)
+    
+    # Normalize score
+    if word_count > 0:
+        score = max(-1.0, min(1.0, score / word_count))
+    else:
+        score = 0.0
+    
+    # Determine label
+    if score > 0.1:
+        label = "positive"
+    elif score < -0.1:
+        label = "negative"
+    else:
+        label = "neutral"
+    
+    # Calculate confidence based on keyword density
+    confidence = min(0.95, abs(score) + (word_count / max(1, len(text.split())) * 0.3))
+    
+    return {
+        "sentiment_score": round(score, 3),
+        "sentiment_label": label,
+        "confidence": round(confidence, 3),
+        "key_phrases": key_phrases[:10],  # Top 10 phrases
+        "analysis_method": "keyword_based"
+    }
+
+def calculate_predicted_impact(sentiment_score: float) -> float:
+    """Calculate predicted price impact based on sentiment"""
+    # Non-linear mapping for realistic impact
+    base_impact = sentiment_score * 2.5  # -2.5% to +2.5% range
+    
+    # Apply dampening for extreme values
+    if abs(base_impact) > 1.5:
+        base_impact = 1.5 * (1 if base_impact > 0 else -1) + (base_impact - 1.5 * (1 if base_impact > 0 else -1)) * 0.5
+    
+    return round(base_impact, 2)
 
 @app.get("/api/ml/status")
 async def ml_status():

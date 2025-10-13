@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predictions Centre - Sentiment Enhanced</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .prediction-card {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .stock-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .stock-input-group input {
+            flex: 1;
+        }
+        
+        .sentiment-indicator {
+            padding: 10px 20px;
+            border-radius: 10px;
+            display: inline-block;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        
+        .sentiment-positive { background: #d4edda; color: #155724; }
+        .sentiment-negative { background: #f8d7da; color: #721c24; }
+        .sentiment-neutral { background: #fff3cd; color: #856404; }
+        
+        .prediction-result {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .price-prediction {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #1f2937;
+            margin: 10px 0;
+        }
+        
+        .impact-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-left: 10px;
+        }
+        
+        .impact-positive { background: #10b981; color: white; }
+        .impact-negative { background: #ef4444; color: white; }
+        
+        .chart-container {
+            height: 400px;
+            margin: 20px 0;
+        }
+        
+        .comparison-table {
+            width: 100%;
+            margin-top: 20px;
+        }
+        
+        .comparison-table th {
+            background: #f3f4f6;
+            padding: 10px;
+        }
+        
+        .comparison-table td {
+            padding: 10px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .toggle-group {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .toggle-btn {
+            padding: 8px 20px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .toggle-btn.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .sentiment-details {
+            background: linear-gradient(135deg, #f0f4ff 0%, #e8efff 100%);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .confidence-bar {
+            width: 100%;
+            height: 30px;
+            background: #e5e5e5;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="prediction-card">
+            <h1>📈 Prediction Centre - Sentiment Enhanced</h1>
+            <p class="text-muted">AI-powered price predictions with document sentiment analysis</p>
+        </div>
+        
+        <!-- Input Section -->
+        <div class="prediction-card">
+            <h3>Generate Prediction</h3>
+            <div class="row">
+                <div class="col-md-6">
+                    <label class="form-label">Stock Symbol</label>
+                    <select id="stockSelect" class="form-select">
+                        <option value="">-- Select Stock --</option>
+                        <optgroup label="ASX">
+                            <option value="CBA.AX">CBA - Commonwealth Bank</option>
+                            <option value="BHP.AX">BHP - BHP Group</option>
+                            <option value="CSL.AX">CSL - CSL Limited</option>
+                            <option value="NAB.AX">NAB - National Australia Bank</option>
+                            <option value="WBC.AX">WBC - Westpac</option>
+                        </optgroup>
+                        <optgroup label="US Tech">
+                            <option value="AAPL">AAPL - Apple</option>
+                            <option value="MSFT">MSFT - Microsoft</option>
+                            <option value="GOOGL">GOOGL - Google</option>
+                            <option value="NVDA">NVDA - NVIDIA</option>
+                        </optgroup>
+                    </select>
+                    <input type="text" id="customSymbol" class="form-control mt-2" placeholder="Or enter custom symbol">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Prediction Days</label>
+                    <select id="daysSelect" class="form-select">
+                        <option value="7">7 Days</option>
+                        <option value="14">14 Days</option>
+                        <option value="30">30 Days</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Sentiment Analysis</label>
+                    <div class="toggle-group">
+                        <button class="toggle-btn active" id="sentimentOn" onclick="toggleSentiment(true)">ON</button>
+                        <button class="toggle-btn" id="sentimentOff" onclick="toggleSentiment(false)">OFF</button>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn btn-primary btn-lg mt-3" onclick="generatePrediction()">
+                🔮 Generate Prediction
+            </button>
+        </div>
+        
+        <!-- Sentiment Analysis Panel -->
+        <div class="prediction-card" id="sentimentPanel" style="display: none;">
+            <h3>📊 Document Sentiment Analysis</h3>
+            <div class="sentiment-details">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Current Sentiment</h5>
+                        <div id="sentimentIndicator" class="sentiment-indicator sentiment-neutral">
+                            No Data Available
+                        </div>
+                        <div class="confidence-bar mt-3">
+                            <div id="confidenceFill" class="confidence-fill" style="width: 0%">
+                                0% Confidence
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Sentiment Impact on Prediction</h5>
+                        <p id="sentimentImpact">Sentiment analysis will adjust predictions based on document analysis.</p>
+                        <ul id="documentStats">
+                            <li>Documents Analyzed: <span id="docCount">0</span></li>
+                            <li>Latest Analysis: <span id="latestAnalysis">N/A</span></li>
+                            <li>Trend: <span id="sentimentTrend">N/A</span></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Prediction Results -->
+        <div class="prediction-card" id="resultsPanel" style="display: none;">
+            <h3>📈 Prediction Results</h3>
+            
+            <!-- Chart -->
+            <div class="chart-container">
+                <canvas id="predictionChart"></canvas>
+            </div>
+            
+            <!-- Comparison Table -->
+            <h4 class="mt-4">Prediction Comparison</h4>
+            <div class="table-responsive">
+                <table class="table comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Base Prediction</th>
+                            <th>Sentiment Adjusted</th>
+                            <th>Difference</th>
+                            <th>Confidence</th>
+                        </tr>
+                    </thead>
+                    <tbody id="predictionTable">
+                        <!-- Populated by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Summary -->
+            <div class="prediction-result">
+                <h4>Prediction Summary</h4>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <p class="text-muted">Current Price</p>
+                            <div class="price-prediction" id="currentPriceSummary">-</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <p class="text-muted">7-Day Target</p>
+                            <div class="price-prediction" id="targetPrice">-</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <p class="text-muted">Sentiment Impact</p>
+                            <div class="price-prediction" id="totalImpact">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Market Sentiment Overview -->
+        <div class="prediction-card">
+            <h3>🌍 Market Sentiment Overview</h3>
+            <div id="marketSentiment" class="row">
+                <!-- Populated by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8002';
+        let useSentiment = true;
+        let predictionChart = null;
+        let currentPredictionData = null;
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            loadMarketSentiment();
+        });
+        
+        function toggleSentiment(enabled) {
+            useSentiment = enabled;
+            document.getElementById('sentimentOn').classList.toggle('active', enabled);
+            document.getElementById('sentimentOff').classList.toggle('active', !enabled);
+        }
+        
+        async function generatePrediction() {
+            const symbol = document.getElementById('stockSelect').value || 
+                          document.getElementById('customSymbol').value;
+            
+            if (!symbol) {
+                alert('Please select or enter a stock symbol');
+                return;
+            }
+            
+            const days = parseInt(document.getElementById('daysSelect').value);
+            
+            // Show panels
+            document.getElementById('sentimentPanel').style.display = 'block';
+            document.getElementById('resultsPanel').style.display = 'block';
+            
+            // Load sentiment data if enabled
+            if (useSentiment) {
+                await loadSentimentData(symbol);
+            }
+            
+            // Generate predictions
+            try {
+                const response = await fetch(`${API_BASE}/api/predict`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        days: days,
+                        use_sentiment: useSentiment
+                    })
+                });
+                
+                const data = await response.json();
+                currentPredictionData = data;
+                
+                displayPredictions(data);
+                
+            } catch (error) {
+                console.error('Error generating predictions:', error);
+                alert('Error generating predictions');
+            }
+        }
+        
+        async function loadSentimentData(symbol) {
+            try {
+                const response = await fetch(`${API_BASE}/api/documents/sentiment/${symbol}`);
+                const data = await response.json();
+                
+                // Update sentiment indicator
+                const indicator = document.getElementById('sentimentIndicator');
+                indicator.textContent = `${data.sentiment.toUpperCase()}`;
+                indicator.className = `sentiment-indicator sentiment-${data.sentiment}`;
+                
+                // Update confidence
+                const confidence = (data.confidence * 100).toFixed(1);
+                const confidenceFill = document.getElementById('confidenceFill');
+                confidenceFill.style.width = confidence + '%';
+                confidenceFill.textContent = confidence + '% Confidence';
+                
+                // Update stats
+                document.getElementById('docCount').textContent = data.document_count;
+                document.getElementById('latestAnalysis').textContent = 
+                    data.latest_analysis ? new Date(data.latest_analysis).toLocaleDateString() : 'N/A';
+                document.getElementById('sentimentTrend').textContent = data.trend || 'stable';
+                
+                // Update impact description
+                let impactText = '';
+                if (data.sentiment === 'positive') {
+                    impactText = '📈 Positive sentiment will increase price predictions';
+                } else if (data.sentiment === 'negative') {
+                    impactText = '📉 Negative sentiment will decrease price predictions';
+                } else {
+                    impactText = '➡️ Neutral sentiment - minimal impact on predictions';
+                }
+                document.getElementById('sentimentImpact').textContent = impactText;
+                
+            } catch (error) {
+                console.error('Error loading sentiment:', error);
+                document.getElementById('sentimentIndicator').textContent = 'No Data';
+                document.getElementById('sentimentIndicator').className = 'sentiment-indicator sentiment-neutral';
+            }
+        }
+        
+        function displayPredictions(data) {
+            // Update summary
+            document.getElementById('currentPriceSummary').textContent = `$${data.current_price.toFixed(2)}`;
+            
+            if (data.predictions.length > 0) {
+                const lastPrediction = data.predictions[6] || data.predictions[data.predictions.length - 1];
+                document.getElementById('targetPrice').textContent = `$${lastPrediction.predicted_price.toFixed(2)}`;
+                
+                const totalImpact = lastPrediction.predicted_price - lastPrediction.base_price;
+                const impactClass = totalImpact >= 0 ? 'text-success' : 'text-danger';
+                document.getElementById('totalImpact').innerHTML = 
+                    `<span class="${impactClass}">${totalImpact >= 0 ? '+' : ''}$${totalImpact.toFixed(2)}</span>`;
+            }
+            
+            // Update table
+            const tableBody = document.getElementById('predictionTable');
+            tableBody.innerHTML = '';
+            
+            data.predictions.forEach((pred, index) => {
+                const impact = pred.predicted_price - pred.base_price;
+                const impactClass = impact >= 0 ? 'text-success' : 'text-danger';
+                
+                const confidence = data.sentiment_analysis ? 
+                    (data.sentiment_analysis.confidence * 100).toFixed(1) + '%' : 'N/A';
+                
+                tableBody.innerHTML += `
+                    <tr>
+                        <td>${pred.date}</td>
+                        <td>$${pred.base_price.toFixed(2)}</td>
+                        <td><strong>$${pred.predicted_price.toFixed(2)}</strong></td>
+                        <td class="${impactClass}">${impact >= 0 ? '+' : ''}$${impact.toFixed(2)}</td>
+                        <td>${confidence}</td>
+                    </tr>
+                `;
+            });
+            
+            // Update chart
+            updatePredictionChart(data);
+        }
+        
+        function updatePredictionChart(data) {
+            const ctx = document.getElementById('predictionChart').getContext('2d');
+            
+            if (predictionChart) {
+                predictionChart.destroy();
+            }
+            
+            const dates = ['Today', ...data.predictions.map(p => p.date)];
+            const basePrices = [data.current_price, ...data.predictions.map(p => p.base_price)];
+            const adjustedPrices = [data.current_price, ...data.predictions.map(p => p.predicted_price)];
+            
+            const datasets = [
+                {
+                    label: 'Sentiment Adjusted',
+                    data: adjustedPrices,
+                    borderColor: '#667eea',
+                    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                    borderWidth: 3,
+                    tension: 0.1
+                }
+            ];
+            
+            if (useSentiment) {
+                datasets.push({
+                    label: 'Base Prediction',
+                    data: basePrices,
+                    borderColor: '#9ca3af',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    tension: 0.1
+                });
+            }
+            
+            predictionChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        title: {
+                            display: true,
+                            text: `${data.symbol} Price Prediction`
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toFixed(2);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        async function loadMarketSentiment() {
+            try {
+                const response = await fetch(`${API_BASE}/api/market-sentiment`);
+                const data = await response.json();
+                
+                let html = '';
+                
+                // Top positive stocks
+                html += '<div class="col-md-6"><h5>📈 Most Positive Stocks</h5><ul class="list-group">';
+                data.top_positive_stocks.forEach(stock => {
+                    html += `
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>${stock.symbol}</span>
+                            <span class="badge bg-success">${(stock.net_sentiment * 100).toFixed(1)}%</span>
+                        </li>
+                    `;
+                });
+                html += '</ul></div>';
+                
+                // Top negative stocks
+                html += '<div class="col-md-6"><h5>📉 Most Negative Stocks</h5><ul class="list-group">';
+                data.top_negative_stocks.forEach(stock => {
+                    html += `
+                        <li class="list-group-item d-flex justify-content-between">
+                            <span>${stock.symbol}</span>
+                            <span class="badge bg-danger">${(stock.net_sentiment * 100).toFixed(1)}%</span>
+                        </li>
+                    `;
+                });
+                html += '</ul></div>';
+                
+                document.getElementById('marketSentiment').innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error loading market sentiment:', error);
+            }
+        }
+    </script>
+</body>
+</html>

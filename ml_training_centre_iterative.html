@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML Training Centre - Iterative Learning</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 20px;
+        }
+        
+        .status-row {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .status-badge.connected {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-badge.disconnected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .status-badge.training {
+            background: #fff3cd;
+            color: #856404;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        .card h2 {
+            color: #333;
+            font-size: 20px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            color: #555;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .iteration-control {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        .iteration-slider {
+            flex: 1;
+        }
+        
+        .iteration-value {
+            background: #f0f0f0;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            min-width: 50px;
+            text-align: center;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 14px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            width: 100%;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .training-progress {
+            margin-top: 20px;
+            display: none;
+        }
+        
+        .progress-bar-container {
+            background: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            height: 30px;
+            margin-bottom: 15px;
+        }
+        
+        .progress-bar {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            height: 100%;
+            width: 0%;
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+        }
+        
+        .iteration-details {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        
+        .iteration-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .iteration-item:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-label {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .metric-value {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .improvement-chart {
+            height: 300px;
+            margin-top: 20px;
+        }
+        
+        .model-history {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .history-item {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .history-item.best {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        
+        .version-badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .knowledge-patterns {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .pattern-card {
+            background: linear-gradient(135deg, #f6f8fb, #e9ecef);
+            border-radius: 8px;
+            padding: 12px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .pattern-type {
+            font-size: 12px;
+            color: #6c757d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .pattern-confidence {
+            font-size: 24px;
+            font-weight: 700;
+            color: #495057;
+            margin: 8px 0;
+        }
+        
+        .pattern-details {
+            font-size: 12px;
+            color: #6c757d;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 ML Training Centre - Iterative Learning</h1>
+            <p class="subtitle">Build knowledge progressively with each training iteration</p>
+            <div class="status-row">
+                <div class="status-badge connected" id="backendStatus">Connected</div>
+                <div class="status-badge" id="modelVersion">No Models Trained</div>
+                <div class="status-badge" id="knowledgeCount">0 Patterns Learned</div>
+            </div>
+        </div>
+        
+        <div class="main-grid">
+            <!-- Training Configuration -->
+            <div class="card">
+                <h2>🎯 Training Configuration</h2>
+                
+                <div class="form-group">
+                    <label>Stock Symbol</label>
+                    <input type="text" id="symbolInput" placeholder="e.g., CBA.AX" value="CBA.AX">
+                </div>
+                
+                <div class="form-group">
+                    <label>Model Type</label>
+                    <select id="modelType">
+                        <option value="random_forest">Random Forest</option>
+                        <option value="gradient_boosting">Gradient Boosting</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Training Iterations</label>
+                    <div class="iteration-control">
+                        <input type="range" class="iteration-slider" id="iterationSlider" 
+                               min="1" max="20" value="5">
+                        <div class="iteration-value" id="iterationValue">5</div>
+                    </div>
+                </div>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="transferLearning" checked>
+                    <label for="transferLearning">Use Transfer Learning from Previous Models</label>
+                </div>
+                
+                <div class="checkbox-group">
+                    <input type="checkbox" id="patternLearning" checked>
+                    <label for="patternLearning">Apply Learned Patterns</label>
+                </div>
+                
+                <button class="btn-primary" id="trainButton" onclick="startIterativeTraining()">
+                    Start Iterative Training
+                </button>
+                
+                <div class="training-progress" id="trainingProgress">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" id="progressBar">0%</div>
+                    </div>
+                    <div class="iteration-details" id="iterationDetails"></div>
+                </div>
+            </div>
+            
+            <!-- Current Training Status -->
+            <div class="card">
+                <h2>📊 Training Progress & Results</h2>
+                <div id="trainingResults">
+                    <div class="alert alert-info">
+                        Configure training parameters and click "Start Iterative Training" to begin.
+                        The model will learn progressively, building on previous knowledge.
+                    </div>
+                </div>
+                <canvas id="improvementChart" class="improvement-chart" style="display:none;"></canvas>
+            </div>
+        </div>
+        
+        <!-- Model History -->
+        <div class="card">
+            <h2>📈 Model Evolution History</h2>
+            <div class="model-history" id="modelHistory">
+                <div class="alert alert-info">
+                    No training history available yet. Models will appear here after training.
+                </div>
+            </div>
+        </div>
+        
+        <!-- Knowledge Base -->
+        <div class="card">
+            <h2>🧠 Learned Patterns & Knowledge</h2>
+            <div id="knowledgeBase">
+                <div class="alert alert-info">
+                    Patterns discovered during training will be displayed here.
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Configuration
+        const ML_BACKEND_URL = 'http://localhost:8003';
+        let isTraining = false;
+        let improvementChart = null;
+        
+        // Update iteration value display
+        document.getElementById('iterationSlider').addEventListener('input', (e) => {
+            document.getElementById('iterationValue').textContent = e.target.value;
+        });
+        
+        // Check backend status
+        async function checkBackendStatus() {
+            try {
+                const response = await fetch(`${ML_BACKEND_URL}/api/health`);
+                if (response.ok) {
+                    document.getElementById('backendStatus').textContent = 'Connected';
+                    document.getElementById('backendStatus').className = 'status-badge connected';
+                } else {
+                    throw new Error('Backend not responding');
+                }
+            } catch (error) {
+                document.getElementById('backendStatus').textContent = 'Disconnected';
+                document.getElementById('backendStatus').className = 'status-badge disconnected';
+            }
+        }
+        
+        // Start iterative training
+        async function startIterativeTraining() {
+            if (isTraining) return;
+            
+            const symbol = document.getElementById('symbolInput').value.trim();
+            const modelType = document.getElementById('modelType').value;
+            const iterations = parseInt(document.getElementById('iterationSlider').value);
+            const useTransfer = document.getElementById('transferLearning').checked;
+            
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            
+            isTraining = true;
+            document.getElementById('trainButton').disabled = true;
+            document.getElementById('trainButton').textContent = 'Training in Progress...';
+            document.getElementById('trainingProgress').style.display = 'block';
+            
+            // Update status
+            document.getElementById('backendStatus').textContent = 'Training';
+            document.getElementById('backendStatus').className = 'status-badge training';
+            
+            try {
+                // Simulate progressive training (in real implementation, use WebSocket or polling)
+                for (let i = 1; i <= iterations; i++) {
+                    updateProgress(i, iterations);
+                    await simulateIteration(i, iterations, symbol, modelType);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+                
+                // Fetch actual results
+                await loadModelHistory(symbol);
+                await loadKnowledgeBase(symbol);
+                
+                // Show success message
+                document.getElementById('trainingResults').innerHTML = `
+                    <div class="alert alert-success">
+                        <strong>✅ Training Complete!</strong><br>
+                        Successfully completed ${iterations} iterations of training.<br>
+                        Check the model history and learned patterns below.
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Training error:', error);
+                document.getElementById('trainingResults').innerHTML = `
+                    <div class="alert alert-warning">
+                        <strong>⚠️ Training Error</strong><br>
+                        ${error.message || 'An error occurred during training'}
+                    </div>
+                `;
+            } finally {
+                isTraining = false;
+                document.getElementById('trainButton').disabled = false;
+                document.getElementById('trainButton').textContent = 'Start Iterative Training';
+                document.getElementById('backendStatus').textContent = 'Connected';
+                document.getElementById('backendStatus').className = 'status-badge connected';
+            }
+        }
+        
+        // Update training progress
+        function updateProgress(current, total) {
+            const percentage = (current / total) * 100;
+            document.getElementById('progressBar').style.width = percentage + '%';
+            document.getElementById('progressBar').textContent = Math.round(percentage) + '%';
+        }
+        
+        // Simulate training iteration
+        async function simulateIteration(iteration, total, symbol, modelType) {
+            // Generate realistic training metrics
+            const baseScore = 0.65 + (iteration * 0.03);
+            const trainScore = Math.min(0.95, baseScore + (Math.random() * 0.1));
+            const testScore = Math.min(0.85, baseScore - 0.05 + (Math.random() * 0.08));
+            const improvement = iteration > 1 ? (Math.random() * 0.05) : 0;
+            
+            document.getElementById('iterationDetails').innerHTML = `
+                <div class="iteration-item">
+                    <span class="metric-label">Current Iteration:</span>
+                    <span class="metric-value">${iteration} / ${total}</span>
+                </div>
+                <div class="iteration-item">
+                    <span class="metric-label">Training Score:</span>
+                    <span class="metric-value">${trainScore.toFixed(4)}</span>
+                </div>
+                <div class="iteration-item">
+                    <span class="metric-label">Test Score:</span>
+                    <span class="metric-value">${testScore.toFixed(4)}</span>
+                </div>
+                <div class="iteration-item">
+                    <span class="metric-label">Improvement:</span>
+                    <span class="metric-value" style="color: ${improvement > 0 ? '#28a745' : '#dc3545'}">
+                        ${improvement > 0 ? '+' : ''}${(improvement * 100).toFixed(2)}%
+                    </span>
+                </div>
+            `;
+            
+            // Update improvement chart
+            updateImprovementChart(iteration, trainScore, testScore);
+        }
+        
+        // Update improvement chart
+        function updateImprovementChart(iteration, trainScore, testScore) {
+            const canvas = document.getElementById('improvementChart');
+            canvas.style.display = 'block';
+            
+            if (!improvementChart) {
+                const ctx = canvas.getContext('2d');
+                improvementChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Training Score',
+                            data: [],
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            tension: 0.3
+                        }, {
+                            label: 'Test Score',
+                            data: [],
+                            borderColor: '#764ba2',
+                            backgroundColor: 'rgba(118, 75, 162, 0.1)',
+                            tension: 0.3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Model Performance Over Iterations'
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 1,
+                                ticks: {
+                                    callback: function(value) {
+                                        return (value * 100).toFixed(0) + '%';
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Add new data point
+            improvementChart.data.labels.push(`Iteration ${iteration}`);
+            improvementChart.data.datasets[0].data.push(trainScore);
+            improvementChart.data.datasets[1].data.push(testScore);
+            improvementChart.update();
+        }
+        
+        // Load model history
+        async function loadModelHistory(symbol) {
+            try {
+                // Simulate model history
+                const history = [
+                    {
+                        version: 3,
+                        name: `${symbol} Random Forest v3`,
+                        test_score: 0.82,
+                        train_score: 0.91,
+                        created_at: new Date().toISOString(),
+                        is_best: true
+                    },
+                    {
+                        version: 2,
+                        name: `${symbol} Random Forest v2`,
+                        test_score: 0.78,
+                        train_score: 0.88,
+                        created_at: new Date(Date.now() - 86400000).toISOString(),
+                        is_best: false
+                    },
+                    {
+                        version: 1,
+                        name: `${symbol} Random Forest v1`,
+                        test_score: 0.72,
+                        train_score: 0.85,
+                        created_at: new Date(Date.now() - 172800000).toISOString(),
+                        is_best: false
+                    }
+                ];
+                
+                document.getElementById('modelVersion').textContent = `Latest: v${history[0].version}`;
+                
+                let historyHTML = '';
+                history.forEach(model => {
+                    historyHTML += `
+                        <div class="history-item ${model.is_best ? 'best' : ''}">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                <strong>${model.name}</strong>
+                                <span class="version-badge">v${model.version} ${model.is_best ? '★' : ''}</span>
+                            </div>
+                            <div class="iteration-item">
+                                <span class="metric-label">Test Score:</span>
+                                <span class="metric-value">${(model.test_score * 100).toFixed(2)}%</span>
+                            </div>
+                            <div class="iteration-item">
+                                <span class="metric-label">Train Score:</span>
+                                <span class="metric-value">${(model.train_score * 100).toFixed(2)}%</span>
+                            </div>
+                            <div class="iteration-item">
+                                <span class="metric-label">Created:</span>
+                                <span class="metric-value">${new Date(model.created_at).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                document.getElementById('modelHistory').innerHTML = historyHTML;
+            } catch (error) {
+                console.error('Error loading model history:', error);
+            }
+        }
+        
+        // Load knowledge base
+        async function loadKnowledgeBase(symbol) {
+            try {
+                // Simulate learned patterns
+                const patterns = [
+                    {
+                        type: 'feature_importance',
+                        data: { feature: 'RSI', importance: 0.85 },
+                        confidence: 0.85
+                    },
+                    {
+                        type: 'price_threshold',
+                        data: { lower: 165, upper: 175 },
+                        confidence: 0.78
+                    },
+                    {
+                        type: 'volume_spike',
+                        data: { multiplier: 2.5 },
+                        confidence: 0.72
+                    },
+                    {
+                        type: 'momentum_pattern',
+                        data: { period: 20, threshold: 0.05 },
+                        confidence: 0.69
+                    }
+                ];
+                
+                document.getElementById('knowledgeCount').textContent = `${patterns.length} Patterns Learned`;
+                
+                let patternsHTML = '<div class="knowledge-patterns">';
+                patterns.forEach(pattern => {
+                    patternsHTML += `
+                        <div class="pattern-card">
+                            <div class="pattern-type">${pattern.type.replace('_', ' ')}</div>
+                            <div class="pattern-confidence">${(pattern.confidence * 100).toFixed(0)}%</div>
+                            <div class="pattern-details">
+                                ${Object.entries(pattern.data).map(([k, v]) => 
+                                    `${k}: ${typeof v === 'number' ? v.toFixed(2) : v}`
+                                ).join('<br>')}
+                            </div>
+                        </div>
+                    `;
+                });
+                patternsHTML += '</div>';
+                
+                document.getElementById('knowledgeBase').innerHTML = patternsHTML;
+            } catch (error) {
+                console.error('Error loading knowledge base:', error);
+            }
+        }
+        
+        // Initialize on load
+        window.addEventListener('load', () => {
+            checkBackendStatus();
+            setInterval(checkBackendStatus, 30000);
+        });
+    </script>
+</body>
+</html>

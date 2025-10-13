@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML Training Centre - Fixed Version</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        .back-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-left: 20px;
+        }
+        
+        .status-badge.connected {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .status-badge.disconnected {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .status-badge.sandbox {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        @media (max-width: 968px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .section h2 {
+            margin-bottom: 20px;
+            color: #333;
+            border-bottom: 2px solid #f0f0f0;
+            padding-bottom: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+        }
+        
+        .button:hover {
+            opacity: 0.9;
+        }
+        
+        .button.secondary {
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+        }
+        
+        .button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .results {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9fafb;
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .metric-label {
+            color: #6b7280;
+            font-size: 14px;
+        }
+        
+        .metric-value {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6c757d;
+        }
+        
+        .error {
+            background: #fee;
+            color: #c00;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .warning {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .chart-container {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid #e9ecef;
+            display: none;
+        }
+        
+        .chart-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        #backtestChart {
+            height: 300px;
+        }
+        
+        .demo-mode-notice {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border: 2px solid #f59e0b;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .demo-mode-notice h3 {
+            color: #92400e;
+            margin-bottom: 10px;
+        }
+        
+        .demo-mode-notice p {
+            color: #78350f;
+        }
+    </style>
+    <!-- ML Integration (Optional Enhancement) -->
+    <meta name="module-name" content="ml_training_centre">
+    <script src="ml_integration_client.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="index.html" class="back-button">← Back to Dashboard</a>
+            <h1>🤖 ML Training Centre</h1>
+            <span id="connectionStatus" class="status-badge disconnected">Checking...</span>
+            <p style="margin-top: 10px;">Train models and run unified backtesting</p>
+        </div>
+        
+        <div id="sandboxNotice" style="display:none;">
+            <div class="demo-mode-notice">
+                <h3>🌐 Running in Sandbox Demo Mode</h3>
+                <p>ML Training uses simulated data in the sandbox environment. For real ML training with your own backend, download and run locally on Windows 11.</p>
+            </div>
+        </div>
+        
+        <div class="main-grid">
+            <!-- Training Section -->
+            <div class="section">
+                <h2>Model Training</h2>
+                <form id="trainingForm">
+                    <div class="form-group">
+                        <label>Stock Symbol</label>
+                        <input type="text" id="symbol" value="CBA.AX" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Model Type</label>
+                        <select id="modelType">
+                            <option value="random_forest">Random Forest</option>
+                            <option value="gradient_boost">Gradient Boosting</option>
+                            <option value="neural_network">Neural Network</option>
+                            <option value="lstm">LSTM</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Training Period (days)</label>
+                        <input type="number" id="lookbackDays" value="365" min="30" max="1825">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Train/Test Split</label>
+                        <input type="number" id="trainSplit" value="0.8" min="0.5" max="0.95" step="0.05">
+                    </div>
+                    
+                    <button type="submit" class="button">Train Model</button>
+                </form>
+                
+                <div id="trainingResults" class="results" style="display:none;"></div>
+            </div>
+            
+            <!-- Backtesting Section -->
+            <div class="section">
+                <h2>Unified Backtesting</h2>
+                <form id="backtestForm">
+                    <div class="form-group">
+                        <label>Stock Symbol</label>
+                        <input type="text" id="btSymbol" value="CBA.AX" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Model Name</label>
+                        <input type="text" id="btModelName" placeholder="Enter model name or 'default'" value="default">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Start Date</label>
+                        <input type="date" id="btStartDate">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>End Date</label>
+                        <input type="date" id="btEndDate">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Initial Capital</label>
+                        <input type="number" id="btCapital" value="100000" min="1000">
+                    </div>
+                    
+                    <button type="submit" class="button secondary">Run Backtest</button>
+                </form>
+                
+                <div id="backtestResults" class="results" style="display:none;"></div>
+                <div class="chart-container" id="chartContainer">
+                    <div class="chart-title">Equity Curve Performance</div>
+                    <canvas id="backtestChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Detect environment
+        const IS_SANDBOX = window.location.hostname.includes('.e2b.dev');
+        const ML_BACKEND_URL = IS_SANDBOX ? null : 'http://localhost:8003';
+        let backtestChart = null;
+        let demoMode = false;
+        
+        // Check connection status
+        async function checkConnection() {
+            const statusEl = document.getElementById('connectionStatus');
+            
+            if (IS_SANDBOX) {
+                // In sandbox, show special status
+                statusEl.textContent = 'Demo Mode (Sandbox)';
+                statusEl.className = 'status-badge sandbox';
+                document.getElementById('sandboxNotice').style.display = 'block';
+                demoMode = true;
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${ML_BACKEND_URL}/api/health`, {
+                    method: 'GET',
+                    mode: 'cors',
+                    cache: 'no-cache'
+                });
+                
+                if (response.ok) {
+                    statusEl.textContent = 'Connected';
+                    statusEl.className = 'status-badge connected';
+                    demoMode = false;
+                } else {
+                    statusEl.textContent = 'Disconnected';
+                    statusEl.className = 'status-badge disconnected';
+                    demoMode = true;
+                }
+            } catch (error) {
+                console.log('Connection check failed:', error.message);
+                // If fetch fails, use demo mode
+                statusEl.textContent = 'Demo Mode';
+                statusEl.className = 'status-badge disconnected';
+                demoMode = true;
+            }
+        }
+        
+        // Simulate training for demo mode
+        function simulateTraining(data) {
+            const trainScore = 0.75 + Math.random() * 0.2;
+            const testScore = 0.65 + Math.random() * 0.15;
+            const totalReturn = -0.2 + Math.random() * 0.6;
+            const sharpeRatio = -1 + Math.random() * 3;
+            
+            return {
+                model_name: `${data.symbol}_${data.model_type}_${Date.now()}`,
+                symbol: data.symbol,
+                model_type: data.model_type,
+                train_score: trainScore,
+                test_score: testScore,
+                features: ['returns', 'rsi', 'macd', 'volume_ratio'],
+                training_samples: Math.floor(data.lookback_days * data.train_split),
+                test_samples: Math.floor(data.lookback_days * (1 - data.train_split)),
+                backtest_summary: {
+                    total_return: totalReturn,
+                    sharpe_ratio: sharpeRatio,
+                    max_drawdown: -Math.random() * 0.3,
+                    win_rate: 0.4 + Math.random() * 0.3
+                }
+            };
+        }
+        
+        // Simulate backtest for demo mode
+        function simulateBacktest(data) {
+            const totalReturn = -0.2 + Math.random() * 0.6;
+            const trades = [];
+            const equityCurve = [];
+            let value = data.initial_capital;
+            
+            for (let i = 0; i < 30; i++) {
+                const date = new Date();
+                date.setDate(date.getDate() - (30 - i));
+                value *= (1 + (Math.random() - 0.5) * 0.02);
+                equityCurve.push({
+                    date: date.toISOString().split('T')[0],
+                    value: value,
+                    benchmark: data.initial_capital * (1 + i * 0.001)
+                });
+                
+                if (i % 3 === 0) {
+                    trades.push({
+                        entry_date: date.toISOString(),
+                        exit_date: new Date(date.getTime() + 86400000).toISOString(),
+                        entry_price: 100 + Math.random() * 10,
+                        exit_price: 100 + Math.random() * 10,
+                        position: Math.random() > 0.5 ? 'long' : 'short',
+                        return: (Math.random() - 0.5) * 0.1
+                    });
+                }
+            }
+            
+            return {
+                symbol: data.symbol,
+                model_name: data.model_name,
+                initial_capital: data.initial_capital,
+                final_value: value,
+                total_return: (value - data.initial_capital) / data.initial_capital,
+                sharpe_ratio: -1 + Math.random() * 3,
+                max_drawdown: -Math.random() * 0.3,
+                win_rate: 0.4 + Math.random() * 0.3,
+                num_trades: trades.length,
+                avg_return_per_trade: totalReturn / trades.length,
+                volatility: 0.15 + Math.random() * 0.1,
+                trades: trades,
+                equity_curve: equityCurve
+            };
+        }
+        
+        // Training form submission
+        document.getElementById('trainingForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const resultsDiv = document.getElementById('trainingResults');
+            resultsDiv.style.display = 'block';
+            resultsDiv.innerHTML = '<div class="loading">Training model...</div>';
+            
+            const data = {
+                symbol: document.getElementById('symbol').value,
+                model_type: document.getElementById('modelType').value,
+                lookback_days: parseInt(document.getElementById('lookbackDays').value),
+                train_split: parseFloat(document.getElementById('trainSplit').value)
+            };
+            
+            try {
+                let result;
+                
+                if (demoMode) {
+                    // Use simulated data
+                    await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate delay
+                    result = simulateTraining(data);
+                } else {
+                    // Try real API
+                    const response = await fetch(`${ML_BACKEND_URL}/api/train`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    
+                    if (response.ok) {
+                        result = await response.json();
+                    } else {
+                        throw new Error('Training failed');
+                    }
+                }
+                
+                displayTrainingResults(result);
+                
+            } catch (error) {
+                // Fall back to demo mode on error
+                console.log('Using demo mode due to:', error.message);
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                const result = simulateTraining(data);
+                displayTrainingResults(result);
+                resultsDiv.innerHTML = '<div class="warning">Running in demo mode</div>' + resultsDiv.innerHTML;
+            }
+        });
+        
+        // Backtest form submission
+        document.getElementById('backtestForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const resultsDiv = document.getElementById('backtestResults');
+            const chartContainer = document.getElementById('chartContainer');
+            resultsDiv.style.display = 'block';
+            resultsDiv.innerHTML = '<div class="loading">Running backtest...</div>';
+            
+            const data = {
+                symbol: document.getElementById('btSymbol').value,
+                model_name: document.getElementById('btModelName').value || 'default',
+                start_date: document.getElementById('btStartDate').value,
+                end_date: document.getElementById('btEndDate').value,
+                initial_capital: parseFloat(document.getElementById('btCapital').value)
+            };
+            
+            try {
+                let result;
+                
+                if (demoMode) {
+                    // Use simulated data
+                    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate delay
+                    result = simulateBacktest(data);
+                } else {
+                    // Try real API
+                    const response = await fetch(`${ML_BACKEND_URL}/api/ml/backtest`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
+                    
+                    if (response.ok) {
+                        result = await response.json();
+                    } else {
+                        throw new Error('Backtest failed');
+                    }
+                }
+                
+                displayBacktestResults(result);
+                if (result.equity_curve) {
+                    chartContainer.style.display = 'block';
+                    updateBacktestChart(result.equity_curve);
+                }
+                
+            } catch (error) {
+                // Fall back to demo mode on error
+                console.log('Using demo mode due to:', error.message);
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                const result = simulateBacktest(data);
+                displayBacktestResults(result);
+                if (result.equity_curve) {
+                    chartContainer.style.display = 'block';
+                    updateBacktestChart(result.equity_curve);
+                }
+                resultsDiv.innerHTML = '<div class="warning">Running in demo mode</div>' + resultsDiv.innerHTML;
+            }
+        });
+        
+        function displayTrainingResults(result) {
+            const resultsDiv = document.getElementById('trainingResults');
+            resultsDiv.innerHTML = `
+                <div class="success">Model trained successfully!</div>
+                <div class="metric">
+                    <span class="metric-label">Model Name:</span>
+                    <span class="metric-value">${result.model_name}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Train Score:</span>
+                    <span class="metric-value">${(result.train_score * 100).toFixed(2)}%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Test Score:</span>
+                    <span class="metric-value">${(result.test_score * 100).toFixed(2)}%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Training Samples:</span>
+                    <span class="metric-value">${result.training_samples}</span>
+                </div>
+                ${result.backtest_summary ? `
+                <div class="metric">
+                    <span class="metric-label">Backtest Return:</span>
+                    <span class="metric-value">${(result.backtest_summary.total_return * 100).toFixed(2)}%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Sharpe Ratio:</span>
+                    <span class="metric-value">${result.backtest_summary.sharpe_ratio.toFixed(2)}</span>
+                </div>
+                ` : ''}
+            `;
+        }
+        
+        function displayBacktestResults(result) {
+            const resultsDiv = document.getElementById('backtestResults');
+            resultsDiv.innerHTML = `
+                <div class="success">Backtest completed!</div>
+                <div class="metric">
+                    <span class="metric-label">Total Return:</span>
+                    <span class="metric-value">${(result.total_return * 100).toFixed(2)}%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Final Value:</span>
+                    <span class="metric-value">$${result.final_value.toFixed(2)}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Sharpe Ratio:</span>
+                    <span class="metric-value">${result.sharpe_ratio.toFixed(2)}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Max Drawdown:</span>
+                    <span class="metric-value">${(result.max_drawdown * 100).toFixed(2)}%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Win Rate:</span>
+                    <span class="metric-value">${(result.win_rate * 100).toFixed(2)}%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Number of Trades:</span>
+                    <span class="metric-value">${result.num_trades}</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Volatility:</span>
+                    <span class="metric-value">${(result.volatility * 100).toFixed(2)}%</span>
+                </div>
+            `;
+        }
+        
+        function updateBacktestChart(equityCurve) {
+            const ctx = document.getElementById('backtestChart').getContext('2d');
+            
+            if (backtestChart) {
+                backtestChart.destroy();
+            }
+            
+            const labels = equityCurve.map(p => new Date(p.date).toLocaleDateString());
+            const strategyValues = equityCurve.map(p => p.value);
+            const benchmarkValues = equityCurve.map(p => p.benchmark);
+            
+            backtestChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Strategy',
+                        data: strategyValues,
+                        borderColor: '#22c55e',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        borderWidth: 2
+                    }, {
+                        label: 'Benchmark',
+                        data: benchmarkValues,
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toFixed(0);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Set default dates
+        window.onload = () => {
+            const today = new Date();
+            const yearAgo = new Date(today.getFullYear() - 1, today.getMonth(), today.getDate());
+            
+            document.getElementById('btEndDate').valueAsDate = today;
+            document.getElementById('btStartDate').valueAsDate = yearAgo;
+            
+            // Check connection immediately
+            checkConnection();
+            
+            // Only check periodically if not in sandbox
+            if (!IS_SANDBOX) {
+                setInterval(checkConnection, 10000); // Check every 10 seconds instead of 5
+            }
+        };
+        
+        // Show environment info
+        console.log(IS_SANDBOX ? 
+            '🌐 Running in E2B Sandbox - Using demo mode for ML training' : 
+            '💻 Running locally - Connecting to ML backend on port 8003'
+        );
+    </script>
+</body>
+</html>

@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Movers - Real-Time Tracking</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid #333;
+        }
+        
+        .back-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .market-status {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-badge.open {
+            background: rgba(34, 197, 94, 0.2);
+            color: #22c55e;
+            border: 1px solid #22c55e;
+        }
+        
+        .status-badge.closed {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid #ef4444;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .filters-section {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 1px solid #333;
+        }
+        
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .filter-button {
+            padding: 10px 20px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        
+        .filter-button:hover {
+            background: #3a3a3a;
+            border-color: #667eea;
+        }
+        
+        .filter-button.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-color: #667eea;
+        }
+        
+        .movers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 868px) {
+            .movers-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .mover-section {
+            background: #1a1a1a;
+            border-radius: 12px;
+            border: 1px solid #333;
+            overflow: hidden;
+        }
+        
+        .mover-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .mover-title {
+            font-size: 20px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .gainers .mover-title { color: #22c55e; }
+        .losers .mover-title { color: #ef4444; }
+        .volume .mover-title { color: #3b82f6; }
+        .volatility .mover-title { color: #f59e0b; }
+        
+        .refresh-button {
+            padding: 6px 12px;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 6px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .mover-list {
+            padding: 10px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .mover-item {
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 15px;
+            padding: 15px;
+            background: #2a2a2a;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            transition: all 0.3s;
+            cursor: pointer;
+            align-items: center;
+        }
+        
+        .mover-item:hover {
+            background: #333;
+            transform: translateX(5px);
+        }
+        
+        .stock-info {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .stock-symbol {
+            font-weight: 600;
+            font-size: 16px;
+            color: #fff;
+        }
+        
+        .stock-name {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .stock-price {
+            text-align: right;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .stock-change {
+            text-align: right;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        
+        .change-value {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .change-percent {
+            font-size: 14px;
+        }
+        
+        .positive { color: #22c55e; }
+        .negative { color: #ef4444; }
+        
+        .heatmap-section {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 25px;
+            border: 1px solid #333;
+            margin-bottom: 30px;
+        }
+        
+        .heatmap-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .heatmap-item {
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+        
+        .heatmap-item:hover {
+            transform: scale(1.05);
+            border-color: #667eea;
+        }
+        
+        .heatmap-symbol {
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        
+        .heatmap-change {
+            font-size: 12px;
+            font-weight: 500;
+        }
+        
+        .stats-bar {
+            background: #1a1a1a;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 1px solid #333;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            background: #2a2a2a;
+            border-radius: 8px;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .spinner {
+            border: 3px solid #333;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+    
+    <!-- ML Integration (Optional Enhancement) -->
+    <meta name="module-name" content="market_movers">
+    <script src="ml_integration_client.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="index.html" class="back-button">← Back to Dashboard</a>
+            <h1>🚀 Market Movers</h1>
+            <p>Real-time tracking of top gainers, losers, and most active stocks</p>
+            
+            <div class="market-status">
+                <div class="status-badge open" id="asxStatus">
+                    <span class="status-dot"></span>
+                    ASX: <span id="asxTime">--:--</span>
+                </div>
+                <div class="status-badge closed" id="nyseStatus">
+                    <span class="status-dot"></span>
+                    NYSE: <span id="nyseTime">--:--</span>
+                </div>
+                <div class="status-badge closed" id="nasdaqStatus">
+                    <span class="status-dot"></span>
+                    NASDAQ: <span id="nasdaqTime">--:--</span>
+                </div>
+                <div class="status-badge closed" id="lseStatus">
+                    <span class="status-dot"></span>
+                    LSE: <span id="lseTime">--:--</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Statistics Bar -->
+        <div class="stats-bar">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-label">Total Volume</div>
+                    <div class="stat-value" id="totalVolume">--</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Advancing</div>
+                    <div class="stat-value positive" id="advancingStocks">--</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Declining</div>
+                    <div class="stat-value negative" id="decliningStocks">--</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Unchanged</div>
+                    <div class="stat-value" id="unchangedStocks">--</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">52W Highs</div>
+                    <div class="stat-value positive" id="new52wHighs">--</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">52W Lows</div>
+                    <div class="stat-value negative" id="new52wLows">--</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Filters -->
+        <div class="filters-section">
+            <div class="filters-grid">
+                <button class="filter-button active" onclick="filterMarket('all')">All Markets</button>
+                <button class="filter-button" onclick="filterMarket('asx')">ASX</button>
+                <button class="filter-button" onclick="filterMarket('nasdaq')">NASDAQ</button>
+                <button class="filter-button" onclick="filterMarket('nyse')">NYSE</button>
+                <button class="filter-button" onclick="filterMarket('crypto')">Crypto</button>
+                <button class="filter-button" onclick="filterMarket('forex')">Forex</button>
+            </div>
+        </div>
+        
+        <!-- Market Movers Grid -->
+        <div class="movers-grid">
+            <!-- Top Gainers -->
+            <div class="mover-section gainers">
+                <div class="mover-header">
+                    <div class="mover-title">
+                        📈 Top Gainers
+                    </div>
+                    <button class="refresh-button" onclick="refreshGainers()">↻ Refresh</button>
+                </div>
+                <div class="mover-list" id="gainersList">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading gainers...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Top Losers -->
+            <div class="mover-section losers">
+                <div class="mover-header">
+                    <div class="mover-title">
+                        📉 Top Losers
+                    </div>
+                    <button class="refresh-button" onclick="refreshLosers()">↻ Refresh</button>
+                </div>
+                <div class="mover-list" id="losersList">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading losers...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Most Active -->
+            <div class="mover-section volume">
+                <div class="mover-header">
+                    <div class="mover-title">
+                        📊 Most Active
+                    </div>
+                    <button class="refresh-button" onclick="refreshActive()">↻ Refresh</button>
+                </div>
+                <div class="mover-list" id="activeList">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading most active...</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Most Volatile -->
+            <div class="mover-section volatility">
+                <div class="mover-header">
+                    <div class="mover-title">
+                        ⚡ Most Volatile
+                    </div>
+                    <button class="refresh-button" onclick="refreshVolatile()">↻ Refresh</button>
+                </div>
+                <div class="mover-list" id="volatileList">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Loading volatile stocks...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sector Heatmap -->
+        <div class="heatmap-section">
+            <h2>🔥 Sector Heatmap</h2>
+            <div class="heatmap-grid" id="heatmapGrid">
+                <!-- Heatmap items will be populated here -->
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const BACKEND_URL = 'http://localhost:8002';
+        let currentMarket = 'all';
+        let marketData = {};
+        
+        // Market hours (simplified)
+        const marketHours = {
+            asx: { open: 10, close: 16, timezone: 'Australia/Sydney' },
+            nyse: { open: 9.5, close: 16, timezone: 'America/New_York' },
+            nasdaq: { open: 9.5, close: 16, timezone: 'America/New_York' },
+            lse: { open: 8, close: 16.5, timezone: 'Europe/London' }
+        };
+        
+        function updateMarketStatus() {
+            Object.keys(marketHours).forEach(market => {
+                const hours = marketHours[market];
+                const now = new Date();
+                const marketTime = new Date(now.toLocaleString("en-US", {timeZone: hours.timezone}));
+                const currentHour = marketTime.getHours() + marketTime.getMinutes() / 60;
+                
+                const isOpen = currentHour >= hours.open && currentHour < hours.close;
+                const statusEl = document.getElementById(`${market}Status`);
+                const timeEl = document.getElementById(`${market}Time`);
+                
+                if (statusEl && timeEl) {
+                    statusEl.className = `status-badge ${isOpen ? 'open' : 'closed'}`;
+                    timeEl.textContent = marketTime.toLocaleTimeString('en-US', { 
+                        hour: '2-digit', 
+                        minute: '2-digit',
+                        hour12: false 
+                    });
+                }
+            });
+        }
+        
+        async function fetchMarketMovers() {
+            try {
+                // Fetch from backend
+                const response = await fetch(`${BACKEND_URL}/api/market-movers`);
+                if (response.ok) {
+                    const data = await response.json();
+                    displayMarketMovers(data);
+                } else {
+                    // Use mock data for demo
+                    displayMockData();
+                }
+            } catch (error) {
+                console.error('Error fetching market movers:', error);
+                displayMockData();
+            }
+        }
+        
+        function displayMockData() {
+            // Generate realistic mock data
+            const asxStocks = [
+                { symbol: 'BHP.AX', name: 'BHP Group', price: 45.32, change: 2.15, changePercent: 4.98, volume: 8234567 },
+                { symbol: 'CBA.AX', name: 'Commonwealth Bank', price: 167.45, change: 3.21, changePercent: 1.95, volume: 3456789 },
+                { symbol: 'CSL.AX', name: 'CSL Limited', price: 298.76, change: -5.43, changePercent: -1.78, volume: 1234567 },
+                { symbol: 'WBC.AX', name: 'Westpac Banking', price: 28.90, change: 0.45, changePercent: 1.58, volume: 5678901 },
+                { symbol: 'ANZ.AX', name: 'ANZ Banking', price: 30.12, change: -0.89, changePercent: -2.87, volume: 4567890 },
+                { symbol: 'NAB.AX', name: 'National Australia Bank', price: 38.45, change: 1.23, changePercent: 3.30, volume: 3789012 },
+                { symbol: 'WOW.AX', name: 'Woolworths', price: 35.67, change: -0.34, changePercent: -0.94, volume: 2345678 },
+                { symbol: 'TLS.AX', name: 'Telstra', price: 4.12, change: 0.08, changePercent: 1.98, volume: 12345678 },
+                { symbol: 'WES.AX', name: 'Wesfarmers', price: 68.90, change: 2.34, changePercent: 3.51, volume: 1890123 },
+                { symbol: 'RIO.AX', name: 'Rio Tinto', price: 120.45, change: -3.21, changePercent: -2.60, volume: 2678901 }
+            ];
+            
+            // Sort for different categories
+            const gainers = [...asxStocks].filter(s => s.change > 0).sort((a, b) => b.changePercent - a.changePercent);
+            const losers = [...asxStocks].filter(s => s.change < 0).sort((a, b) => a.changePercent - b.changePercent);
+            const active = [...asxStocks].sort((a, b) => b.volume - a.volume);
+            const volatile = [...asxStocks].sort((a, b) => Math.abs(b.changePercent) - Math.abs(a.changePercent));
+            
+            // Display data
+            displayList('gainersList', gainers.slice(0, 10));
+            displayList('losersList', losers.slice(0, 10));
+            displayList('activeList', active.slice(0, 10));
+            displayList('volatileList', volatile.slice(0, 10));
+            
+            // ML Integration - Share significant movements
+            if (window.mlIntegration && window.mlIntegration.enabled) {
+                // Share top gainers and losers with ML
+                const significantMovers = [...gainers.slice(0, 3), ...losers.slice(0, 3)];
+                significantMovers.forEach(async (mover) => {
+                    if (Math.abs(mover.changePercent) > 3) { // Only significant moves > 3%
+                        try {
+                            const mlResponse = await window.mlIntegration.sendMarketMovement({
+                                symbol: mover.symbol,
+                                changePercent: mover.changePercent,
+                                volumeSpike: mover.volume / (mover.avgVolume || mover.volume),
+                                sector: mover.sector || 'Unknown'
+                            });
+                            
+                            // Store ML predictions for display
+                            if (mlResponse && mlResponse.ml_prediction) {
+                                mover.mlPrediction = mlResponse.suggested_action.action;
+                                mover.mlConfidence = mlResponse.suggested_action.confidence;
+                            }
+                        } catch (error) {
+                            console.log('ML movement sharing not available:', error);
+                        }
+                    }
+                });
+            }
+            
+            // Update statistics
+            updateStatistics(asxStocks);
+            
+            // Update heatmap
+            updateHeatmap(asxStocks);
+        }
+        
+        function displayList(listId, stocks) {
+            const listEl = document.getElementById(listId);
+            if (!listEl) return;
+            
+            listEl.innerHTML = stocks.map(stock => `
+                <div class="mover-item" onclick="viewStock('${stock.symbol}')" data-symbol="${stock.symbol}">
+                    <div class="stock-info">
+                        <div class="stock-symbol">
+                            ${stock.symbol}
+                            ${stock.mlPrediction ? `<span style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; margin-left: 5px;">ML: ${stock.mlPrediction}</span>` : ''}
+                        </div>
+                        <div class="stock-name">${stock.name}</div>
+                    </div>
+                    <div class="stock-price">$${stock.price.toFixed(2)}</div>
+                    <div class="stock-change">
+                        <div class="change-value ${stock.change >= 0 ? 'positive' : 'negative'}">
+                            ${stock.change >= 0 ? '+' : ''}${stock.change.toFixed(2)}
+                        </div>
+                        <div class="change-percent ${stock.change >= 0 ? 'positive' : 'negative'}">
+                            ${stock.changePercent >= 0 ? '+' : ''}${stock.changePercent.toFixed(2)}%
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function updateStatistics(stocks) {
+            const totalVolume = stocks.reduce((sum, s) => sum + s.volume, 0);
+            const advancing = stocks.filter(s => s.change > 0).length;
+            const declining = stocks.filter(s => s.change < 0).length;
+            const unchanged = stocks.filter(s => s.change === 0).length;
+            
+            document.getElementById('totalVolume').textContent = (totalVolume / 1000000).toFixed(1) + 'M';
+            document.getElementById('advancingStocks').textContent = advancing;
+            document.getElementById('decliningStocks').textContent = declining;
+            document.getElementById('unchangedStocks').textContent = unchanged;
+            
+            // Mock 52-week highs/lows
+            document.getElementById('new52wHighs').textContent = Math.floor(Math.random() * 20) + 5;
+            document.getElementById('new52wLows').textContent = Math.floor(Math.random() * 15) + 3;
+        }
+        
+        function updateHeatmap(stocks) {
+            const sectors = [
+                { name: 'Financials', change: 2.3 },
+                { name: 'Materials', change: -1.5 },
+                { name: 'Energy', change: 3.8 },
+                { name: 'Healthcare', change: 0.5 },
+                { name: 'Technology', change: -2.1 },
+                { name: 'Industrials', change: 1.2 },
+                { name: 'Consumer', change: -0.8 },
+                { name: 'Utilities', change: 0.3 },
+                { name: 'Real Estate', change: 1.7 },
+                { name: 'Telecom', change: -0.4 }
+            ];
+            
+            const heatmapGrid = document.getElementById('heatmapGrid');
+            heatmapGrid.innerHTML = sectors.map(sector => {
+                const color = getHeatmapColor(sector.change);
+                return `
+                    <div class="heatmap-item" style="background: ${color};">
+                        <div class="heatmap-symbol">${sector.name}</div>
+                        <div class="heatmap-change ${sector.change >= 0 ? 'positive' : 'negative'}">
+                            ${sector.change >= 0 ? '+' : ''}${sector.change.toFixed(1)}%
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function getHeatmapColor(change) {
+            const maxChange = 5;
+            const normalized = Math.max(-1, Math.min(1, change / maxChange));
+            
+            if (normalized > 0) {
+                const intensity = Math.floor(normalized * 100);
+                return `rgba(34, 197, 94, ${intensity / 100})`;
+            } else {
+                const intensity = Math.floor(Math.abs(normalized) * 100);
+                return `rgba(239, 68, 68, ${intensity / 100})`;
+            }
+        }
+        
+        function filterMarket(market) {
+            currentMarket = market;
+            
+            // Update button states
+            document.querySelectorAll('.filter-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Refresh data with filter
+            fetchMarketMovers();
+        }
+        
+        function viewStock(symbol) {
+            // Open stock analysis for the selected symbol
+            window.open(`stock_analysis.html?symbol=${symbol}`, '_blank');
+        }
+        
+        function refreshGainers() {
+            const listEl = document.getElementById('gainersList');
+            listEl.innerHTML = '<div class="loading"><div class="spinner"></div><p>Refreshing...</p></div>';
+            setTimeout(() => fetchMarketMovers(), 500);
+        }
+        
+        function refreshLosers() {
+            const listEl = document.getElementById('losersList');
+            listEl.innerHTML = '<div class="loading"><div class="spinner"></div><p>Refreshing...</p></div>';
+            setTimeout(() => fetchMarketMovers(), 500);
+        }
+        
+        function refreshActive() {
+            const listEl = document.getElementById('activeList');
+            listEl.innerHTML = '<div class="loading"><div class="spinner"></div><p>Refreshing...</p></div>';
+            setTimeout(() => fetchMarketMovers(), 500);
+        }
+        
+        function refreshVolatile() {
+            const listEl = document.getElementById('volatileList');
+            listEl.innerHTML = '<div class="loading"><div class="spinner"></div><p>Refreshing...</p></div>';
+            setTimeout(() => fetchMarketMovers(), 500);
+        }
+        
+        // Auto-refresh every 30 seconds
+        setInterval(() => {
+            fetchMarketMovers();
+            updateMarketStatus();
+        }, 30000);
+        
+        // Initialize on load
+        window.onload = () => {
+            updateMarketStatus();
+            fetchMarketMovers();
+            
+            // Update market status every minute
+            setInterval(updateMarketStatus, 60000);
+        };
+    </script>
+</body>
+</html>
