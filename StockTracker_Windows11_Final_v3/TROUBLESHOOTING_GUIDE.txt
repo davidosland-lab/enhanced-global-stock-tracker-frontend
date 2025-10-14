@@ -1,0 +1,169 @@
+================================================================================
+STOCK TRACKER V3 - WINDOWS 11 TROUBLESHOOTING GUIDE
+================================================================================
+
+QUICK FIXES FOR COMMON ISSUES
+==============================
+
+1. MODULES SHOWING 404 / NOT FOUND
+-----------------------------------
+Problem: Clicking module links shows "404 Not Found"
+Solution: 
+   - Make sure you're accessing http://localhost:8000 (not 8002)
+   - Run START_FRONTEND.bat to serve HTML files
+   - Or use START_ALL.bat which starts everything
+
+2. "LOCALHOST REFUSED TO CONNECT"
+----------------------------------
+Problem: Can't access localhost:8000
+Solution:
+   - The frontend server isn't running
+   - Run: START_FRONTEND.bat
+   - Or run: python -m http.server 8000
+   - Then access: http://localhost:8000
+
+3. BACKEND NOT RESPONDING
+--------------------------
+Problem: API calls failing, no data loading
+Solution:
+   - Check if backend is running on port 8002
+   - Open new cmd: netstat -an | findstr :8002
+   - If not listed, run: python backend.py
+   - Check http://localhost:8002/docs
+
+4. "MODULE NOT FOUND" ERRORS
+-----------------------------
+Problem: Python says modules not installed
+Solution:
+   - Run: INSTALL_ALL.bat
+   - Or manually: pip install -r requirements.txt
+   - For FinBERT: pip install transformers torch
+
+5. "PORT ALREADY IN USE"
+-------------------------
+Problem: Can't start services, port conflict
+Solution:
+   - Kill all Python: taskkill /F /IM python.exe
+   - Wait 5 seconds
+   - Run: START_ALL.bat
+
+6. CHARTS NOT DISPLAYING
+-------------------------
+Problem: Historical Data Module charts are blank
+Solution:
+   - Clear browser cache (Ctrl+F5)
+   - Make sure JavaScript is enabled
+   - Check browser console (F12) for errors
+   - Try different browser (Chrome/Edge recommended)
+
+7. FINBERT NOT WORKING
+-----------------------
+Problem: Document Analyzer not analyzing
+Solution:
+   - Check if transformers installed: pip list | findstr transformers
+   - If not: pip install transformers torch
+   - Note: First run downloads 400MB model
+   - Fallback to keyword analysis if no GPU
+
+8. HISTORICAL DATA NOT SAVING
+------------------------------
+Problem: Downloaded data not persisting
+Solution:
+   - Check historical_data folder exists
+   - Check write permissions
+   - Database at: historical_data\market_data.db
+   - Try running as Administrator
+
+STEP-BY-STEP VERIFICATION
+==========================
+
+1. Check Python Installation:
+   python --version
+   (Should show 3.8 or higher)
+
+2. Check Service Ports:
+   netstat -an | findstr :8000    (Frontend)
+   netstat -an | findstr :8002    (Backend)
+   netstat -an | findstr :8003    (ML Backend)
+   netstat -an | findstr :8004    (Integration)
+
+3. Test Each Service:
+   curl http://localhost:8000
+   curl http://localhost:8002/api/status
+   curl http://localhost:8003/api/ml/status
+   curl http://localhost:8004/health
+
+4. Check Logs:
+   - Look at command prompt windows for errors
+   - Python errors show in red
+   - Check for "ModuleNotFoundError"
+
+COMPLETE RESET
+==============
+
+If nothing works, do a complete reset:
+
+1. Stop Everything:
+   taskkill /F /IM python.exe
+   
+2. Clean Install Dependencies:
+   pip uninstall -y -r requirements.txt
+   pip install -r requirements.txt
+   
+3. Delete Cache:
+   del /Q historical_data\*.db
+   del /Q cache\*
+   del /Q models\*
+   
+4. Fresh Start:
+   START_ALL.bat
+
+WINDOWS FIREWALL
+================
+
+If services run but can't connect:
+
+1. Open Windows Security
+2. Go to Firewall & network protection
+3. Click "Allow an app through firewall"
+4. Add Python.exe for both Private and Public
+5. Or temporarily disable firewall to test
+
+MANUAL SERVICE START
+=====================
+
+If batch files don't work, start manually:
+
+Terminal 1:
+cd C:\path\to\StockTracker
+python backend.py
+
+Terminal 2:
+cd C:\path\to\StockTracker
+python ml_backend_enhanced.py
+
+Terminal 3:
+cd C:\path\to\StockTracker
+python integration_bridge.py
+
+Terminal 4:
+cd C:\path\to\StockTracker
+python -m http.server 8000
+
+Then open: http://localhost:8000
+
+CONTACT FOR HELP
+=================
+
+If issues persist:
+1. Note the exact error message
+2. Check which step fails in START_ALL.bat
+3. Save the command prompt output
+4. Document which Windows 11 version (winver)
+
+================================================================================
+Remember: Most issues are solved by:
+1. Running START_ALL.bat as Administrator
+2. Making sure Python is in PATH
+3. Installing all requirements with INSTALL_ALL.bat
+================================================================================
