@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Tracker ML Enhanced - Complete System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.98);
+            padding: 1rem 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .system-status {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.5rem 1rem;
+            background: #f0f9ff;
+            border-radius: 8px;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #10b981;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .tabs-container {
+            background: white;
+            margin: 1rem auto;
+            max-width: 1400px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .tabs {
+            display: flex;
+            background: #f8f9fa;
+            overflow-x: auto;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        .tab {
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: #6c757d;
+            transition: all 0.3s;
+            white-space: nowrap;
+            position: relative;
+        }
+
+        .tab:hover {
+            color: #495057;
+            background: rgba(108, 117, 125, 0.05);
+        }
+
+        .tab.active {
+            color: #667eea;
+            background: white;
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .tab-content {
+            padding: 2rem;
+            min-height: 600px;
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* ML Training Section */
+        .ml-section {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 2rem;
+        }
+
+        .training-panel {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        .results-panel {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .metric-card {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 6px;
+            border-left: 3px solid #667eea;
+        }
+
+        .metric-label {
+            font-size: 0.875rem;
+            color: #6c757d;
+            margin-bottom: 0.25rem;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #212529;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e9ecef;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 1rem 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 500;
+        }
+
+        /* Prediction Charts */
+        .chart-container {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-top: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        /* Backtesting Results */
+        .backtest-results {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .backtest-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .backtest-card h3 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .backtest-card p {
+            opacity: 0.9;
+        }
+
+        /* Sentiment Analysis */
+        .sentiment-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .sentiment-card {
+            padding: 1.5rem;
+            border-radius: 8px;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+
+        .sentiment-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .sentiment-positive {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .sentiment-negative {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        .sentiment-neutral {
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+            color: white;
+        }
+
+        /* News Articles */
+        .news-list {
+            margin-top: 2rem;
+        }
+
+        .news-item {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            border-left: 4px solid #667eea;
+            transition: all 0.3s;
+        }
+
+        .news-item:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transform: translateX(5px);
+        }
+
+        .news-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #212529;
+            margin-bottom: 0.5rem;
+        }
+
+        .news-meta {
+            display: flex;
+            gap: 1rem;
+            color: #6c757d;
+            font-size: 0.875rem;
+        }
+
+        .news-sentiment {
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 3rem;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid #e9ecef;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .ml-section {
+                grid-template-columns: 1fr;
+            }
+
+            .tabs {
+                overflow-x: scroll;
+            }
+
+            .metrics-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="logo">
+                📈 Stock Tracker ML Enhanced v2.0
+            </div>
+            <div class="system-status">
+                <div class="status-indicator"></div>
+                <span id="system-status">System Operational</span>
+                <span id="server-time"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="tabs-container">
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('dashboard')">📊 Dashboard</button>
+            <button class="tab" onclick="switchTab('ml-training')">🎯 ML Training</button>
+            <button class="tab" onclick="switchTab('predictions')">📈 Predictions</button>
+            <button class="tab" onclick="switchTab('backtesting')">⚡ Backtesting</button>
+            <button class="tab" onclick="switchTab('sentiment')">💭 Sentiment Analysis</button>
+            <button class="tab" onclick="switchTab('indices')">🌍 Global Indices</button>
+            <button class="tab" onclick="switchTab('cba-enhanced')">🏦 CBA Enhanced</button>
+            <button class="tab" onclick="switchTab('technical')">📉 Technical Analysis</button>
+            <button class="tab" onclick="switchTab('documents')">📄 Document Analyzer</button>
+            <button class="tab" onclick="switchTab('performance')">🏆 Performance Tracker</button>
+        </div>
+
+        <!-- Dashboard -->
+        <div class="tab-content active" id="dashboard">
+            <h2>System Dashboard</h2>
+            <div class="metrics-grid" id="dashboard-metrics">
+                <div class="metric-card">
+                    <div class="metric-label">Models Trained</div>
+                    <div class="metric-value" id="models-count">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Avg Accuracy</div>
+                    <div class="metric-value" id="avg-accuracy">0%</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Active Backtests</div>
+                    <div class="metric-value" id="active-backtests">0</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Cache Hit Rate</div>
+                    <div class="metric-value" id="cache-hit-rate">0%</div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <h3>Recent Performance</h3>
+                <canvas id="performance-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- ML Training -->
+        <div class="tab-content" id="ml-training">
+            <div class="ml-section">
+                <div class="training-panel">
+                    <h3>Train New Model</h3>
+                    <form id="training-form">
+                        <div class="form-group">
+                            <label>Stock Symbol</label>
+                            <input type="text" class="form-control" id="train-symbol" 
+                                   placeholder="e.g., AAPL, MSFT, CBA.AX" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Training Configuration</label>
+                            <select class="form-control" id="training-config">
+                                <option value="optimal">Optimal (35 features, 5 models)</option>
+                                <option value="fast">Fast (20 features, 3 models)</option>
+                                <option value="comprehensive">Comprehensive (50 features, 7 models)</option>
+                            </select>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary">
+                            <span>🚀</span> Start Training
+                        </button>
+                    </form>
+                    
+                    <div class="progress-bar" id="training-progress" style="display: none;">
+                        <div class="progress-fill" id="training-progress-fill">0%</div>
+                    </div>
+                    
+                    <div id="training-status"></div>
+                </div>
+                
+                <div class="results-panel">
+                    <h3>Training Results</h3>
+                    <div id="training-results">
+                        <p style="color: #6c757d;">No training results yet. Start training a model to see results.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Predictions -->
+        <div class="tab-content" id="predictions">
+            <h2>Stock Price Predictions</h2>
+            <div class="form-group" style="max-width: 400px;">
+                <label>Stock Symbol</label>
+                <input type="text" class="form-control" id="predict-symbol" placeholder="e.g., AAPL">
+            </div>
+            <div class="form-group" style="max-width: 400px;">
+                <label>Prediction Days</label>
+                <select class="form-control" id="predict-days">
+                    <option value="5">5 Days</option>
+                    <option value="10">10 Days</option>
+                    <option value="30">30 Days</option>
+                </select>
+            </div>
+            <button class="btn btn-success" onclick="runPrediction()">
+                <span>📊</span> Generate Predictions
+            </button>
+            
+            <div id="prediction-results"></div>
+            <div class="chart-container" id="prediction-chart-container" style="display: none;">
+                <canvas id="prediction-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- Backtesting -->
+        <div class="tab-content" id="backtesting">
+            <h2>Strategy Backtesting</h2>
+            <div class="form-group" style="max-width: 400px;">
+                <label>Stock Symbol</label>
+                <input type="text" class="form-control" id="backtest-symbol" placeholder="e.g., AAPL">
+            </div>
+            <div class="form-group" style="max-width: 400px;">
+                <label>Initial Capital</label>
+                <input type="number" class="form-control" id="backtest-capital" value="100000">
+            </div>
+            <button class="btn btn-warning" onclick="runBacktest()">
+                <span>⚡</span> Run Backtest
+            </button>
+            
+            <div class="backtest-results" id="backtest-results"></div>
+        </div>
+
+        <!-- Sentiment Analysis -->
+        <div class="tab-content" id="sentiment">
+            <h2>FinBERT Sentiment Analysis</h2>
+            <div class="form-group" style="max-width: 600px;">
+                <label>Analyze Text or Symbol</label>
+                <textarea class="form-control" id="sentiment-text" rows="4" 
+                          placeholder="Enter text to analyze or stock symbol for news sentiment"></textarea>
+            </div>
+            <button class="btn btn-primary" onclick="analyzeSentiment()">
+                <span>🔍</span> Analyze Sentiment
+            </button>
+            
+            <div id="sentiment-results"></div>
+            <div class="news-list" id="news-list"></div>
+        </div>
+
+        <!-- Global Indices -->
+        <div class="tab-content" id="indices">
+            <h2>Global Market Indices</h2>
+            <div class="metrics-grid" id="indices-grid">
+                <!-- Will be populated dynamically -->
+            </div>
+        </div>
+
+        <!-- CBA Enhanced -->
+        <div class="tab-content" id="cba-enhanced">
+            <h2>CBA Enhanced Analysis</h2>
+            <div id="cba-content">
+                <!-- CBA specific content -->
+            </div>
+        </div>
+
+        <!-- Technical Analysis -->
+        <div class="tab-content" id="technical">
+            <h2>Technical Analysis</h2>
+            <div id="technical-content">
+                <!-- Technical analysis charts and indicators -->
+            </div>
+        </div>
+
+        <!-- Document Analyzer -->
+        <div class="tab-content" id="documents">
+            <h2>Document Analyzer with FinBERT</h2>
+            <div class="form-group">
+                <label>Upload Document</label>
+                <input type="file" class="form-control" id="document-upload" accept=".pdf,.txt,.doc,.docx">
+            </div>
+            <button class="btn btn-primary" onclick="analyzeDocument()">
+                <span>📄</span> Analyze Document
+            </button>
+            <div id="document-results"></div>
+        </div>
+
+        <!-- Performance Tracker -->
+        <div class="tab-content" id="performance">
+            <h2>Performance Tracker</h2>
+            <div id="performance-content">
+                <!-- Performance tracking content -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API Base URL
+        const API_URL = 'http://localhost:8000';
+        
+        // Tab Switching
+        function switchTab(tabName) {
+            // Update tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            // Update content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName).classList.add('active');
+        }
+        
+        // System Status Check
+        async function checkSystemStatus() {
+            try {
+                const response = await fetch(`${API_URL}/api/system/status`);
+                const data = await response.json();
+                
+                if (data.status === 'operational') {
+                    document.getElementById('system-status').textContent = 'System Operational';
+                    document.querySelector('.status-indicator').style.background = '#10b981';
+                } else {
+                    document.getElementById('system-status').textContent = 'System Issues';
+                    document.querySelector('.status-indicator').style.background = '#ef4444';
+                }
+                
+                // Update metrics
+                if (data.model_count !== undefined) {
+                    document.getElementById('models-count').textContent = data.model_count;
+                }
+            } catch (error) {
+                console.error('Status check failed:', error);
+                document.getElementById('system-status').textContent = 'Connection Error';
+                document.querySelector('.status-indicator').style.background = '#f59e0b';
+            }
+        }
+        
+        // ML Training
+        document.getElementById('training-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const symbol = document.getElementById('train-symbol').value.toUpperCase();
+            const config = document.getElementById('training-config').value;
+            
+            // Show progress bar
+            document.getElementById('training-progress').style.display = 'block';
+            document.getElementById('training-status').innerHTML = '<p>Starting training...</p>';
+            
+            // Simulate progress updates
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress > 95) progress = 95;
+                document.getElementById('training-progress-fill').style.width = progress + '%';
+                document.getElementById('training-progress-fill').textContent = Math.round(progress) + '%';
+            }, 1000);
+            
+            try {
+                const response = await fetch(`${API_URL}/api/ml/train`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol: symbol })
+                });
+                
+                const result = await response.json();
+                
+                clearInterval(progressInterval);
+                document.getElementById('training-progress-fill').style.width = '100%';
+                document.getElementById('training-progress-fill').textContent = '100%';
+                
+                if (result.success) {
+                    displayTrainingResults(result);
+                } else {
+                    document.getElementById('training-results').innerHTML = 
+                        `<div class="alert alert-danger">Training failed: ${result.error}</div>`;
+                }
+            } catch (error) {
+                clearInterval(progressInterval);
+                console.error('Training error:', error);
+                document.getElementById('training-results').innerHTML = 
+                    `<div class="alert alert-danger">Training error: ${error.message}</div>`;
+            }
+        });
+        
+        function displayTrainingResults(result) {
+            let html = `
+                <h4>Model Training Complete! 🎉</h4>
+                <p>Symbol: <strong>${result.symbol}</strong></p>
+                <p>Training Time: <strong>${result.training_time.toFixed(2)}s</strong></p>
+                
+                <h5>Model Metrics</h5>
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-label">R² Score</div>
+                        <div class="metric-value">${(result.metrics.r2 * 100).toFixed(2)}%</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">Direction Accuracy</div>
+                        <div class="metric-value">${(result.metrics.direction_accuracy * 100).toFixed(2)}%</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-label">RMSE</div>
+                        <div class="metric-value">${result.metrics.rmse.toFixed(4)}</div>
+                    </div>
+                </div>
+                
+                <h5>Backtest Results</h5>
+                <div class="backtest-results">
+                    <div class="backtest-card">
+                        <h3>${(result.backtest.total_return * 100).toFixed(2)}%</h3>
+                        <p>Total Return</p>
+                    </div>
+                    <div class="backtest-card">
+                        <h3>${result.backtest.sharpe_ratio.toFixed(2)}</h3>
+                        <p>Sharpe Ratio</p>
+                    </div>
+                    <div class="backtest-card">
+                        <h3>${(result.backtest.win_rate * 100).toFixed(1)}%</h3>
+                        <p>Win Rate</p>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('training-results').innerHTML = html;
+        }
+        
+        // Predictions
+        async function runPrediction() {
+            const symbol = document.getElementById('predict-symbol').value.toUpperCase();
+            const days = parseInt(document.getElementById('predict-days').value);
+            
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/api/ml/predict`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol: symbol, days: days })
+                });
+                
+                const result = await response.json();
+                displayPredictions(result);
+            } catch (error) {
+                console.error('Prediction error:', error);
+                document.getElementById('prediction-results').innerHTML = 
+                    `<div class="alert alert-danger">Prediction error: ${error.message}</div>`;
+            }
+        }
+        
+        function displayPredictions(result) {
+            let html = `
+                <h4>Predictions for ${result.symbol}</h4>
+                <p>Current Price: <strong>$${result.current_price.toFixed(2)}</strong></p>
+                
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Predicted Price</th>
+                            <th>Change</th>
+                            <th>Confidence</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            result.predictions.forEach(pred => {
+                const change = ((pred.predicted_price - result.current_price) / result.current_price * 100).toFixed(2);
+                const changeClass = change > 0 ? 'text-success' : 'text-danger';
+                
+                html += `
+                    <tr>
+                        <td>${pred.date}</td>
+                        <td>$${pred.predicted_price.toFixed(2)}</td>
+                        <td class="${changeClass}">${change > 0 ? '+' : ''}${change}%</td>
+                        <td>${(pred.confidence * 100).toFixed(0)}%</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            document.getElementById('prediction-results').innerHTML = html;
+        }
+        
+        // Sentiment Analysis
+        async function analyzeSentiment() {
+            const text = document.getElementById('sentiment-text').value;
+            
+            if (!text) {
+                alert('Please enter text or a stock symbol');
+                return;
+            }
+            
+            try {
+                // Check if input is a stock symbol (short and uppercase)
+                const isSymbol = text.length <= 5 && text === text.toUpperCase();
+                
+                const params = isSymbol ? 
+                    `symbol=${text}` : 
+                    `text=${encodeURIComponent(text)}`;
+                
+                const response = await fetch(`${API_URL}/api/sentiment/analyze?${params}`, {
+                    method: 'POST'
+                });
+                
+                const result = await response.json();
+                displaySentiment(result);
+            } catch (error) {
+                console.error('Sentiment error:', error);
+                document.getElementById('sentiment-results').innerHTML = 
+                    `<div class="alert alert-danger">Analysis error: ${error.message}</div>`;
+            }
+        }
+        
+        function displaySentiment(result) {
+            if (result.articles) {
+                // News sentiment
+                let html = `
+                    <h4>News Sentiment Analysis</h4>
+                    <div class="sentiment-grid">
+                        <div class="sentiment-card sentiment-positive">
+                            <h3>${result.sentiment_distribution.positive}</h3>
+                            <p>Positive Articles</p>
+                        </div>
+                        <div class="sentiment-card sentiment-negative">
+                            <h3>${result.sentiment_distribution.negative}</h3>
+                            <p>Negative Articles</p>
+                        </div>
+                        <div class="sentiment-card sentiment-neutral">
+                            <h3>${result.sentiment_distribution.neutral}</h3>
+                            <p>Neutral Articles</p>
+                        </div>
+                    </div>
+                    <p>Average Sentiment: <strong>${(result.average_sentiment * 100).toFixed(2)}%</strong></p>
+                `;
+                
+                document.getElementById('sentiment-results').innerHTML = html;
+                
+                // Display news articles
+                let newsHtml = '<h4>Recent News</h4>';
+                result.articles.forEach(article => {
+                    const sentClass = article.sentiment.overall > 0.1 ? 'sentiment-positive' :
+                                     article.sentiment.overall < -0.1 ? 'sentiment-negative' : 
+                                     'sentiment-neutral';
+                    
+                    newsHtml += `
+                        <div class="news-item">
+                            <div class="news-title">${article.title}</div>
+                            <div class="news-meta">
+                                <span class="news-sentiment ${sentClass}">
+                                    ${article.sentiment.overall > 0.1 ? 'Positive' :
+                                      article.sentiment.overall < -0.1 ? 'Negative' : 'Neutral'}
+                                </span>
+                                <span>${article.published || 'Recent'}</span>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                document.getElementById('news-list').innerHTML = newsHtml;
+            } else {
+                // Text sentiment
+                let html = `
+                    <h4>Sentiment Analysis Results</h4>
+                    <div class="sentiment-grid">
+                        <div class="sentiment-card sentiment-positive">
+                            <h3>${(result.positive * 100).toFixed(1)}%</h3>
+                            <p>Positive</p>
+                        </div>
+                        <div class="sentiment-card sentiment-negative">
+                            <h3>${(result.negative * 100).toFixed(1)}%</h3>
+                            <p>Negative</p>
+                        </div>
+                        <div class="sentiment-card sentiment-neutral">
+                            <h3>${(result.neutral * 100).toFixed(1)}%</h3>
+                            <p>Neutral</p>
+                        </div>
+                    </div>
+                    <p>Overall Sentiment: <strong>${(result.overall * 100).toFixed(2)}%</strong></p>
+                `;
+                
+                document.getElementById('sentiment-results').innerHTML = html;
+            }
+        }
+        
+        // Update time
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('server-time').textContent = now.toLocaleTimeString();
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkSystemStatus();
+            setInterval(checkSystemStatus, 30000); // Check every 30 seconds
+            setInterval(updateTime, 1000);
+            updateTime();
+        });
+    </script>
+</body>
+</html>
