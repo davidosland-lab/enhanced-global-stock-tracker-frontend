@@ -1250,15 +1250,92 @@ async def run_backtest(request: BacktestRequest):
 
 @app.post("/api/predict")
 async def predict(request: PredictRequest):
-    """Make prediction endpoint"""
+    """Make real-time prediction"""
     try:
-        # Implementation for real-time prediction
-        # This would load the model and make predictions
+        symbol = request.symbol
+        horizon = getattr(request, 'horizon', 1)  # Days ahead to predict
+        
+        # Load the latest trained model for this symbol
+        with sqlite3.connect(orchestrator.db_manager.models_db) as conn:
+            cursor = conn.execute("""
+                SELECT model_data, feature_names, ensemble_type 
+                FROM trained_models 
+                WHERE symbol = ? 
+                ORDER BY training_date DESC 
+                LIMIT 1
+            """, (symbol,))
+            row = cursor.fetchone()
+            
+            if not row:
+                # If no model exists, train one quickly with 60 days of data
+                logger.info(f"No model found for {symbol}, training new model...")
+                train_result = orchestrator.train_model(symbol, "voting", days=60)
+                
+                # Fetch the newly trained model
+                cursor = conn.execute("""
+                    SELECT model_data, feature_names, ensemble_type 
+                    FROM trained_models 
+                    WHERE symbol = ? 
+                    ORDER BY training_date DESC 
+                    LIMIT 1
+                """, (symbol,))
+                row = cursor.fetchone()
+                
+                if not row:
+                    raise ValueError(f"Failed to train model for {symbol}")
+            
+            model_data = pickle.loads(row[0])
+            feature_names = json.loads(row[1])
+            ensemble_type = row[2]
+        
+        # Fetch latest data
+        df = orchestrator.data_fetcher.fetch_data(symbol, period="1mo")
+        
+        # Calculate features
+        df_features = orchestrator.feature_engineer.calculate_all_features(df)
+        
+        # Get the latest features for prediction
+        latest_features = df_features[feature_names].iloc[-1:].values
+        
+        # Make prediction
+        model = model_data['model']
+        predicted_price = orchestrator.model_builder.predict(model, latest_features)[0]
+        
+        # Get current price
+        current_price = df['Close'].iloc[-1]
+        
+        # Calculate expected change
+        expected_change = ((predicted_price - current_price) / current_price) * 100
+        
+        # Determine signal
+        if expected_change > 2:  # 2% threshold
+            signal = "BUY"
+            confidence = min(abs(expected_change) / 10, 1.0)  # Scale confidence
+        elif expected_change < -2:
+            signal = "SELL"
+            confidence = min(abs(expected_change) / 10, 1.0)
+        else:
+            signal = "HOLD"
+            confidence = 0.5
+        
+        # Get recent price history for chart
+        price_history = df['Close'].tail(20).tolist() if len(df) > 20 else df['Close'].tolist()
+        
         return {
-            "symbol": request.symbol,
-            "prediction": "Implementation pending",
-            "confidence": 0.75
+            "symbol": symbol,
+            "current_price": float(current_price),
+            "predicted_price": float(predicted_price),
+            "expected_change": float(expected_change),
+            "signal": signal,
+            "confidence": float(confidence),
+            "horizon": horizon,
+            "model_type": ensemble_type,
+            "features_used": len(feature_names),
+            "price_history": [float(p) for p in price_history],
+            "prediction_date": datetime.now().isoformat(),
+            "disclaimer": "This is an ML prediction, not financial advice"
         }
+        
     except Exception as e:
         logger.error(f"Prediction error: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

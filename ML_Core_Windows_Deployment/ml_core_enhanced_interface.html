@@ -837,6 +837,157 @@
                 Math.round(result.cache_hit_rate * 100) + '%' : '0%';
         }
 
+        // Prediction functions
+        async function makePrediction() {
+            const symbol = document.getElementById('predSymbol').value;
+            const horizon = document.getElementById('predHorizon').value;
+            
+            if (!symbol) {
+                showNotification('Please enter a symbol', 'error');
+                return;
+            }
+            
+            showNotification('Generating prediction...', 'info');
+            
+            try {
+                const response = await fetch('/api/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        horizon: parseInt(horizon)
+                    })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Prediction failed');
+                }
+                
+                const result = await response.json();
+                displayPredictionResults(result);
+                showNotification('Prediction generated successfully!', 'success');
+                
+            } catch (error) {
+                showNotification(`Prediction failed: ${error.message}`, 'error');
+                console.error('Prediction error:', error);
+            }
+        }
+        
+        function displayPredictionResults(result) {
+            const resultsSection = document.getElementById('predictionResults');
+            const metricsDiv = document.getElementById('predictionMetrics');
+            
+            // Display basic prediction info
+            metricsDiv.innerHTML = `
+                <div class="metric-card">
+                    <h4>Symbol</h4>
+                    <p class="metric-value">${result.symbol || 'N/A'}</p>
+                </div>
+                <div class="metric-card">
+                    <h4>Current Price</h4>
+                    <p class="metric-value">$${result.current_price?.toFixed(2) || 'N/A'}</p>
+                </div>
+                <div class="metric-card">
+                    <h4>Predicted Price</h4>
+                    <p class="metric-value">$${result.predicted_price?.toFixed(2) || 'N/A'}</p>
+                </div>
+                <div class="metric-card">
+                    <h4>Expected Change</h4>
+                    <p class="metric-value ${result.expected_change > 0 ? 'positive' : 'negative'}">
+                        ${result.expected_change > 0 ? '↑' : '↓'} ${Math.abs(result.expected_change || 0).toFixed(2)}%
+                    </p>
+                </div>
+                <div class="metric-card">
+                    <h4>Confidence</h4>
+                    <p class="metric-value">${((result.confidence || 0) * 100).toFixed(1)}%</p>
+                </div>
+                <div class="metric-card">
+                    <h4>Signal</h4>
+                    <p class="metric-value ${result.signal === 'BUY' ? 'positive' : result.signal === 'SELL' ? 'negative' : ''}">
+                        ${result.signal || 'HOLD'}
+                    </p>
+                </div>
+                <div class="metric-card">
+                    <h4>Model Used</h4>
+                    <p class="metric-value">${result.model_type || 'Ensemble'}</p>
+                </div>
+                <div class="metric-card">
+                    <h4>Prediction Date</h4>
+                    <p class="metric-value">${new Date().toLocaleDateString()}</p>
+                </div>
+            `;
+            
+            // Show results section
+            resultsSection.style.display = 'block';
+            
+            // If there's price history, create a simple chart
+            if (result.price_history && result.price_history.length > 0) {
+                createPredictionChart(result);
+            }
+        }
+        
+        function createPredictionChart(result) {
+            const ctx = document.getElementById('predictionChart');
+            if (!ctx) return;
+            
+            // Destroy existing chart if any
+            if (window.predictionChartInstance) {
+                window.predictionChartInstance.destroy();
+            }
+            
+            // Prepare data
+            const history = result.price_history || [];
+            const labels = history.map((_, i) => `Day ${i + 1}`);
+            labels.push(`Prediction`);
+            
+            const prices = history.map(p => p);
+            prices.push(result.predicted_price);
+            
+            window.predictionChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Price',
+                        data: prices,
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        tension: 0.1,
+                        pointBackgroundColor: function(context) {
+                            return context.dataIndex === prices.length - 1 ? 'red' : 'rgb(75, 192, 192)';
+                        },
+                        pointRadius: function(context) {
+                            return context.dataIndex === prices.length - 1 ? 8 : 3;
+                        }
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Price History & Prediction'
+                        },
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Price ($)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
         // Backtesting functions
         async function runBacktest() {
             const symbol = document.getElementById('backtestSymbol').value;
