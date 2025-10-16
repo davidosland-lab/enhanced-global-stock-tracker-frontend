@@ -779,7 +779,7 @@ class RobustBacktestingEngine:
         # Profit Factor
         gross_profit = trades_df[trades_df['pnl'] > 0]['pnl'].sum()
         gross_loss = abs(trades_df[trades_df['pnl'] < 0]['pnl'].sum())
-        profit_factor = gross_profit / gross_loss if gross_loss > 0 else float('inf')
+        profit_factor = gross_profit / gross_loss if gross_loss > 0 else 999.99  # Use large number instead of inf for JSON compatibility
         
         # Commission and slippage costs
         total_commission = trades_df['commission'].sum()
@@ -1231,7 +1231,9 @@ async def run_backtest(request: BacktestRequest):
                 return [convert_timestamps(item) for item in obj]
             elif hasattr(obj, 'isoformat'):
                 return obj.isoformat()
-            elif pd.api.types.is_datetime64_any_dtype(obj):
+            elif isinstance(obj, pd.Timestamp):
+                return str(obj)
+            elif isinstance(obj, (pd.DatetimeIndex, pd.Series)) and pd.api.types.is_datetime64_any_dtype(obj):
                 return str(obj)
             else:
                 return obj
