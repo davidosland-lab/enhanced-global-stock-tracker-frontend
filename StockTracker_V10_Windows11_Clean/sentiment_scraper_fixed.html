@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Sentiment Web Scraper</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px 0;
+        }
+        
+        .main-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        
+        .header-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin: 0 5px;
+        }
+        
+        .status-online {
+            background: rgba(76, 175, 80, 0.2);
+            color: #4CAF50;
+        }
+        
+        .status-offline {
+            background: rgba(244, 67, 54, 0.2);
+            color: #f44336;
+        }
+        
+        .source-checkbox {
+            display: inline-block;
+            margin: 5px;
+            padding: 10px 20px;
+            border: 2px solid #ddd;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .source-checkbox:hover {
+            border-color: #667eea;
+            background: #f8f9fa;
+        }
+        
+        .source-checkbox.checked {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .sentiment-card {
+            padding: 20px;
+            border-radius: 15px;
+            margin: 10px 0;
+            background: white;
+            border: 1px solid #e0e0e0;
+            transition: transform 0.2s;
+        }
+        
+        .sentiment-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .sentiment-positive {
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .sentiment-negative {
+            border-left: 4px solid #f44336;
+        }
+        
+        .sentiment-neutral {
+            border-left: 4px solid #FFC107;
+        }
+        
+        .aggregate-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin: 20px 0;
+        }
+        
+        .sentiment-bar {
+            height: 40px;
+            border-radius: 20px;
+            overflow: hidden;
+            background: #e0e0e0;
+            display: flex;
+            margin: 20px 0;
+        }
+        
+        .sentiment-positive-bar {
+            background: #4CAF50;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        .sentiment-neutral-bar {
+            background: #FFC107;
+            color: black;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        .sentiment-negative-bar {
+            background: #f44336;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+        
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .loading-overlay.active {
+            display: flex;
+        }
+        
+        .loading-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-card">
+            <!-- Header -->
+            <div class="header-section">
+                <h1><i class="fas fa-chart-line"></i> Stock Sentiment Web Scraper</h1>
+                <p class="mb-3">Real-time news and sentiment analysis</p>
+                <div>
+                    <span id="scraperStatus" class="status-badge status-offline">
+                        <i class="fas fa-circle"></i> Scraper Offline
+                    </span>
+                    <span id="finbertStatus" class="status-badge status-offline">
+                        <i class="fas fa-circle"></i> FinBERT Offline
+                    </span>
+                </div>
+            </div>
+            
+            <!-- Controls -->
+            <div class="p-4">
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-chart-line"></i> Stock Symbol
+                        </label>
+                        <input type="text" class="form-control form-control-lg" id="stockSymbol" 
+                               placeholder="Enter symbol (e.g., AAPL)" value="AAPL">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-newspaper"></i> Data Sources
+                        </label>
+                        <div id="sourceCheckboxes">
+                            <label class="source-checkbox checked">
+                                <input type="checkbox" value="yahoo" checked> Yahoo Finance
+                            </label>
+                            <label class="source-checkbox checked">
+                                <input type="checkbox" value="finviz" checked> Finviz
+                            </label>
+                            <label class="source-checkbox">
+                                <input type="checkbox" value="reddit"> Reddit
+                            </label>
+                            <label class="source-checkbox">
+                                <input type="checkbox" value="google"> Google News
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <button id="scrapeBtn" class="btn btn-lg btn-primary" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                        <i class="fas fa-search"></i> Scrape & Analyze
+                    </button>
+                    <button onclick="clearResults()" class="btn btn-lg btn-secondary ms-2">
+                        <i class="fas fa-trash"></i> Clear Results
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Aggregate Results -->
+            <div id="aggregateResults" class="p-4" style="display: none;">
+                <div class="aggregate-section">
+                    <h3><i class="fas fa-chart-pie"></i> Aggregate Sentiment Analysis</h3>
+                    
+                    <div class="sentiment-bar" id="sentimentBar">
+                        <!-- Will be filled dynamically -->
+                    </div>
+                    
+                    <div class="row text-center mt-4">
+                        <div class="col-md-4">
+                            <h5 id="positivePercent" style="color: #4CAF50;">0%</h5>
+                            <small>Positive</small>
+                        </div>
+                        <div class="col-md-4">
+                            <h5 id="neutralPercent" style="color: #FFC107;">0%</h5>
+                            <small>Neutral</small>
+                        </div>
+                        <div class="col-md-4">
+                            <h5 id="negativePercent" style="color: #f44336;">0%</h5>
+                            <small>Negative</small>
+                        </div>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <div class="col-md-6">
+                            <strong>Total Articles:</strong> <span id="totalArticles">0</span>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Average Score:</strong> <span id="avgScore">0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Detailed Results -->
+            <div id="detailedResults" class="p-4" style="display: none;">
+                <h3><i class="fas fa-list"></i> Detailed Results</h3>
+                <div id="resultsList">
+                    <!-- Will be filled dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <h5>Scraping data...</h5>
+            <p class="mb-0">This may take a few seconds</p>
+        </div>
+    </div>
+    
+    <script>
+        // Check service status
+        async function checkStatus() {
+            // Check scraper
+            try {
+                const response = await fetch('http://localhost:8006/health');
+                if (response.ok) {
+                    document.getElementById('scraperStatus').className = 'status-badge status-online';
+                    document.getElementById('scraperStatus').innerHTML = '<i class="fas fa-circle"></i> Scraper Online';
+                }
+            } catch (error) {
+                console.log('Scraper offline');
+            }
+            
+            // Check FinBERT
+            try {
+                const response = await fetch('http://localhost:8003/health');
+                if (response.ok) {
+                    document.getElementById('finbertStatus').className = 'status-badge status-online';
+                    document.getElementById('finbertStatus').innerHTML = '<i class="fas fa-circle"></i> FinBERT Online';
+                }
+            } catch (error) {
+                console.log('FinBERT offline');
+            }
+        }
+        
+        // Handle source checkboxes
+        document.querySelectorAll('.source-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('click', function() {
+                const input = this.querySelector('input');
+                input.checked = !input.checked;
+                this.classList.toggle('checked', input.checked);
+            });
+        });
+        
+        // Scrape data
+        async function scrapeData() {
+            const symbol = document.getElementById('stockSymbol').value.trim().toUpperCase();
+            
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            
+            // Get selected sources
+            const sources = [];
+            document.querySelectorAll('.source-checkbox input:checked').forEach(input => {
+                sources.push(input.value);
+            });
+            
+            if (sources.length === 0) {
+                alert('Please select at least one source');
+                return;
+            }
+            
+            // Show loading
+            document.getElementById('loadingOverlay').classList.add('active');
+            document.getElementById('scrapeBtn').disabled = true;
+            
+            try {
+                const response = await fetch('http://localhost:8006/scrape', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        sources: sources,
+                        analyze_sentiment: true
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Scraper response:', data);
+                displayResults(data);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert(`Error scraping data: ${error.message}`);
+            } finally {
+                document.getElementById('loadingOverlay').classList.remove('active');
+                document.getElementById('scrapeBtn').disabled = false;
+            }
+        }
+        
+        // Display results
+        function displayResults(data) {
+            // Show sections
+            document.getElementById('aggregateResults').style.display = 'block';
+            document.getElementById('detailedResults').style.display = 'block';
+            
+            // Calculate sentiment distribution
+            const articles = data.sentiment_results || data.items || [];
+            let positive = 0, negative = 0, neutral = 0;
+            
+            articles.forEach(article => {
+                const sentiment = article.sentiment || 'neutral';
+                if (sentiment === 'positive') positive++;
+                else if (sentiment === 'negative') negative++;
+                else neutral++;
+            });
+            
+            const total = articles.length || 1;
+            const posPercent = Math.round((positive / total) * 100);
+            const negPercent = Math.round((negative / total) * 100);
+            const neuPercent = Math.round((neutral / total) * 100);
+            
+            // Update aggregate display
+            document.getElementById('positivePercent').textContent = posPercent + '%';
+            document.getElementById('neutralPercent').textContent = neuPercent + '%';
+            document.getElementById('negativePercent').textContent = negPercent + '%';
+            document.getElementById('totalArticles').textContent = total;
+            document.getElementById('avgScore').textContent = (data.average_score || 0).toFixed(3);
+            
+            // Update sentiment bar
+            const sentimentBar = document.getElementById('sentimentBar');
+            sentimentBar.innerHTML = `
+                ${posPercent > 0 ? `<div class="sentiment-positive-bar" style="width: ${posPercent}%">${posPercent}%</div>` : ''}
+                ${neuPercent > 0 ? `<div class="sentiment-neutral-bar" style="width: ${neuPercent}%">${neuPercent}%</div>` : ''}
+                ${negPercent > 0 ? `<div class="sentiment-negative-bar" style="width: ${negPercent}%">${negPercent}%</div>` : ''}
+            `;
+            
+            // Display detailed results
+            const resultsList = document.getElementById('resultsList');
+            resultsList.innerHTML = '';
+            
+            if (articles.length === 0) {
+                resultsList.innerHTML = '<p class="text-muted">No articles found</p>';
+                return;
+            }
+            
+            articles.forEach(article => {
+                const sentiment = article.sentiment || 'neutral';
+                const card = document.createElement('div');
+                card.className = `sentiment-card sentiment-${sentiment}`;
+                
+                card.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-9">
+                            <h6>${article.title || 'No title'}</h6>
+                            <small class="text-muted">
+                                <i class="fas fa-globe"></i> ${article.source || 'Unknown'} | 
+                                ${article.publisher || ''}
+                            </small>
+                        </div>
+                        <div class="col-md-3 text-end">
+                            <span class="badge bg-${getSentimentColor(sentiment)}">
+                                ${sentiment.toUpperCase()}
+                            </span>
+                            <br>
+                            <small>Score: ${(article.score || 0).toFixed(3)}</small>
+                        </div>
+                    </div>
+                    ${article.url ? `<a href="${article.url}" target="_blank" class="btn btn-sm btn-outline-primary mt-2">
+                        <i class="fas fa-external-link-alt"></i> Read More
+                    </a>` : ''}
+                `;
+                
+                resultsList.appendChild(card);
+            });
+        }
+        
+        function getSentimentColor(sentiment) {
+            switch(sentiment) {
+                case 'positive': return 'success';
+                case 'negative': return 'danger';
+                default: return 'warning';
+            }
+        }
+        
+        function clearResults() {
+            document.getElementById('aggregateResults').style.display = 'none';
+            document.getElementById('detailedResults').style.display = 'none';
+            document.getElementById('resultsList').innerHTML = '';
+        }
+        
+        // Add click handler to scrape button
+        document.getElementById('scrapeBtn').onclick = scrapeData;
+        
+        // Check status on load
+        checkStatus();
+        setInterval(checkStatus, 10000);
+    </script>
+</body>
+</html>
