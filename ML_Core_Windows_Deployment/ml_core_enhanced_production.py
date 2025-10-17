@@ -49,6 +49,14 @@ class CustomJSONEncoder(json.JSONEncoder):
 import yfinance as yf
 from scipy import stats
 
+# Import comprehensive sentiment analyzer
+try:
+    from comprehensive_sentiment_analyzer import sentiment_analyzer
+    SENTIMENT_AVAILABLE = True
+except ImportError:
+    SENTIMENT_AVAILABLE = False
+    logger.warning("Comprehensive sentiment analyzer not available, will use neutral value")
+
 # Machine Learning
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, VotingRegressor, StackingRegressor
 from sklearn.svm import SVR
@@ -306,17 +314,23 @@ class ComprehensiveFeatureEngineer:
         'adx_14', 'plus_di', 'minus_di', 'aroon_osc',
         
         # Market Structure (3)
-        'high_low_spread', 'close_open_spread', 'support_resistance_ratio'
+        'high_low_spread', 'close_open_spread', 'support_resistance_ratio',
+        
+        # Comprehensive Sentiment (1) - THE 36TH FEATURE
+        'comprehensive_sentiment'
     ]
     
     def __init__(self):
         self.scaler = StandardScaler()
         self.feature_importance = {}
     
-    def calculate_all_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Calculate all technical indicators (30-35 features)"""
+    def calculate_all_features(self, df: pd.DataFrame, symbol: str = None) -> pd.DataFrame:
+        """Calculate all technical indicators (36 features including sentiment)"""
         
         df = df.copy()
+        # Store symbol for sentiment calculation
+        if symbol:
+            df.symbol = symbol
         
         # Price-based features
         df['returns_1'] = df['Close'].pct_change(1)
@@ -426,10 +440,39 @@ class ComprehensiveFeatureEngineer:
         df['support'] = df['Low'].rolling(window=20).min()
         df['support_resistance_ratio'] = (df['Close'] - df['support']) / (df['resistance'] - df['support'] + 1e-10)
         
+        # COMPREHENSIVE SENTIMENT - 36TH FEATURE
+        # Calculate sentiment for each row (can be optimized for batch)
+        if SENTIMENT_AVAILABLE and hasattr(df.index[0], 'strftime'):
+            # Get symbol from the dataframe if available
+            symbol = getattr(df, 'symbol', 'SPY')  # Default to SPY if no symbol
+            
+            # For efficiency, calculate sentiment once per day
+            unique_dates = df.index.normalize().unique()
+            sentiment_scores = {}
+            
+            for date in unique_dates:
+                try:
+                    # Get sentiment score for this date
+                    sentiment_score = sentiment_analyzer.calculate_comprehensive_sentiment(symbol)
+                    sentiment_scores[date] = sentiment_score
+                except Exception as e:
+                    logger.warning(f"Error calculating sentiment for {date}: {e}")
+                    sentiment_scores[date] = 0.5  # Neutral
+            
+            # Apply sentiment scores to all rows
+            df['comprehensive_sentiment'] = df.index.normalize().map(sentiment_scores)
+            
+            # Fill any missing values with neutral sentiment
+            df['comprehensive_sentiment'] = df['comprehensive_sentiment'].fillna(0.5)
+        else:
+            # If sentiment analyzer not available or date index issues, use neutral
+            df['comprehensive_sentiment'] = 0.5
+            logger.info("Using neutral sentiment (0.5) as sentiment analyzer not available")
+        
         # Drop NaN values
         df = df.dropna()
         
-        logger.info(f"Calculated {len(self.ESSENTIAL_FEATURES)} features")
+        logger.info(f"Calculated {len(self.ESSENTIAL_FEATURES)} features (including sentiment)")
         return df
     
     def select_optimal_features(self, X: pd.DataFrame, y: pd.Series, n_features: int = 35) -> List[str]:
@@ -904,7 +947,7 @@ class MLTrainingOrchestrator:
         df = self.data_fetcher.fetch_data(symbol, period="2y")
         
         # Step 2: Calculate features
-        df_features = self.feature_engineer.calculate_all_features(df)
+        df_features = self.feature_engineer.calculate_all_features(df, symbol)
         
         # Step 3: Prepare training data
         feature_cols = self.feature_engineer.ESSENTIAL_FEATURES
@@ -1035,7 +1078,7 @@ class MLTrainingOrchestrator:
         
         # Fetch data for backtesting
         df = self.data_fetcher.fetch_data(symbol)
-        df_features = self.feature_engineer.calculate_all_features(df)
+        df_features = self.feature_engineer.calculate_all_features(df, symbol)
         
         # Filter date range
         if start_date:
@@ -1288,18 +1331,48 @@ async def predict(request: PredictRequest):
             feature_names = json.loads(row[1])
             ensemble_type = row[2]
         
-        # Fetch latest data
-        df = orchestrator.data_fetcher.fetch_data(symbol, period="1mo")
+        # Fetch latest data - need at least 3 months for all indicators
+        df = orchestrator.data_fetcher.fetch_data(symbol, period="3mo")
         
         # Calculate features
-        df_features = orchestrator.feature_engineer.calculate_all_features(df)
+        df_features = orchestrator.feature_engineer.calculate_all_features(df, symbol)
+        
+        # Drop NaN values to ensure we have valid features
+        df_features = df_features.dropna()
+        
+        # Check if we have data after dropping NaNs
+        if df_features.empty or len(df_features) == 0:
+            # Fallback: fetch more data
+            df = orchestrator.data_fetcher.fetch_data(symbol, period="6mo")
+            df_features = orchestrator.feature_engineer.calculate_all_features(df, symbol)
+            df_features = df_features.dropna()
+            
+            if df_features.empty:
+                raise ValueError(f"Unable to calculate features for {symbol}. Try fetching more historical data.")
         
         # Get the latest features for prediction
         latest_features = df_features[feature_names].iloc[-1:].values
         
-        # Make prediction
+        # Validate features
+        if latest_features.shape[0] == 0:
+            raise ValueError(f"No valid features for prediction. Shape: {latest_features.shape}")
+        
+        # Make prediction using the saved scaler
         model = model_data['model']
-        predicted_price = orchestrator.model_builder.predict(model, latest_features)[0]
+        scaler = model_data.get('scaler')
+        
+        # If scaler exists in saved model, use it
+        if scaler:
+            latest_features_scaled = scaler.transform(latest_features)
+            predicted_price = model.predict(latest_features_scaled)[0]
+        else:
+            # Fallback: use the model builder's predict method
+            # This might fail if the scaler isn't fitted
+            try:
+                predicted_price = orchestrator.model_builder.predict(model, latest_features)[0]
+            except:
+                # Last resort: predict without scaling (less accurate but won't crash)
+                predicted_price = model.predict(latest_features)[0]
         
         # Get current price
         current_price = df['Close'].iloc[-1]

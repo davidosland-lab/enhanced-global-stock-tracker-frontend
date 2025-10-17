@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ML Core Enhanced - Production System</title>
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -709,6 +711,50 @@
             }
         }
 
+        // Notification function
+        function showNotification(message, type = 'info') {
+            // Create notification div if it doesn't exist
+            let notificationDiv = document.getElementById('notification');
+            if (!notificationDiv) {
+                notificationDiv = document.createElement('div');
+                notificationDiv.id = 'notification';
+                notificationDiv.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    padding: 15px 20px;
+                    border-radius: 5px;
+                    color: white;
+                    font-weight: 500;
+                    z-index: 1000;
+                    transition: opacity 0.3s;
+                    max-width: 400px;
+                `;
+                document.body.appendChild(notificationDiv);
+            }
+            
+            // Set color based on type
+            const colors = {
+                'success': '#4CAF50',
+                'error': '#f44336',
+                'warning': '#ff9800',
+                'info': '#2196F3'
+            };
+            
+            notificationDiv.style.backgroundColor = colors[type] || colors['info'];
+            notificationDiv.textContent = message;
+            notificationDiv.style.opacity = '1';
+            notificationDiv.style.display = 'block';
+            
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+                notificationDiv.style.opacity = '0';
+                setTimeout(() => {
+                    notificationDiv.style.display = 'none';
+                }, 300);
+            }, 5000);
+        }
+
         // Training functions
         async function trainModel() {
             const symbol = document.getElementById('trainSymbol').value;
@@ -839,8 +885,8 @@
 
         // Prediction functions
         async function makePrediction() {
-            const symbol = document.getElementById('predSymbol').value;
-            const horizon = document.getElementById('predHorizon').value;
+            const symbol = document.getElementById('predictSymbol').value;
+            const horizon = document.getElementById('predictionHorizon').value;
             
             if (!symbol) {
                 showNotification('Please enter a symbol', 'error');
