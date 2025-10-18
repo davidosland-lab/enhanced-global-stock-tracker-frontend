@@ -686,6 +686,27 @@
     <script>
         const API_BASE = 'http://localhost:8000';
         let currentTab = 'training';
+        
+        // Helper function for fetch with timeout to prevent freezing
+        async function fetchWithTimeout(url, options = {}, timeout = 10000) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+            
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                return response;
+            } catch (error) {
+                clearTimeout(timeoutId);
+                if (error.name === 'AbortError') {
+                    throw new Error(`Request timed out after ${timeout}ms`);
+                }
+                throw error;
+            }
+        }
 
         // Tab switching
         function switchTab(tabName) {
@@ -780,7 +801,8 @@
             }, 1000);
 
             try {
-                const response = await fetch(`${API_BASE}/api/train`, {
+                // Use timeout to prevent freezing (60 seconds for training)
+                const response = await fetchWithTimeout(`${API_BASE}/api/train`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -790,7 +812,7 @@
                         ensemble_type: ensembleType,
                         days: days
                     })
-                });
+                }, 60000);
 
                 clearInterval(progressInterval);
                 
@@ -1213,18 +1235,47 @@
 
         async function updateCacheStats() {
             try {
-                const response = await fetch(`${API_BASE}/api/cache/stats`);
+                // Add timeout to prevent hanging
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                const response = await fetch(`${API_BASE}/api/cache/stats`, {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    console.warn('Cache stats not available');
+                    return;
+                }
+                
                 const data = await response.json();
                 
-                document.getElementById('cacheHitRate').textContent = 
-                    (data.hit_rate * 100).toFixed(1) + '%';
-                    
-                const speedUp = data.hit_rate > 0 ? 
-                    Math.round(1 / (1 - data.hit_rate)) : 1;
-                document.getElementById('speedImprovement').textContent = speedUp + 'x';
+                // Check if elements exist before updating
+                const hitRateElement = document.getElementById('cacheHitRate');
+                if (hitRateElement) {
+                    hitRateElement.textContent = (data.hit_rate * 100).toFixed(1) + '%';
+                }
+                
+                const speedElement = document.getElementById('speedImprovement');
+                if (speedElement) {
+                    const speedUp = data.hit_rate > 0 ? 
+                        Math.round(1 / (1 - data.hit_rate)) : 1;
+                    speedElement.textContent = speedUp + 'x';
+                }
                 
             } catch (error) {
-                console.error('Error updating cache stats:', error);
+                if (error.name === 'AbortError') {
+                    console.warn('Cache stats request timed out');
+                } else {
+                    console.error('Error updating cache stats:', error);
+                }
+                // Set default values if error
+                const hitRateElement = document.getElementById('cacheHitRate');
+                if (hitRateElement) hitRateElement.textContent = 'N/A';
+                
+                const speedElement = document.getElementById('speedImprovement');
+                if (speedElement) speedElement.textContent = 'N/A';
             }
         }
 
@@ -1240,7 +1291,10 @@
 
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
-            updateCacheStats();
+            // Delay cache stats to not block page load
+            setTimeout(() => {
+                updateCacheStats();
+            }, 1000);
             
             // Set default dates for backtesting
             const today = new Date();

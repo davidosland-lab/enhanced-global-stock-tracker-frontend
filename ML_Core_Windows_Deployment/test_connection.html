@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML Core Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .test-item {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success {
+            border-left: 4px solid #4CAF50;
+        }
+        .error {
+            border-left: 4px solid #f44336;
+        }
+        .warning {
+            border-left: 4px solid #ff9800;
+        }
+        .status {
+            font-weight: bold;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        pre {
+            background: #f0f0f0;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4CAF50;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <h1>🔧 ML Core Connection Test</h1>
+    
+    <div id="results"></div>
+    
+    <button onclick="runAllTests()">Run All Tests</button>
+    <button onclick="testTraining()">Test Training (Simple)</button>
+    <button onclick="clearResults()">Clear Results</button>
+    
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        const resultsDiv = document.getElementById('results');
+        
+        function addResult(title, status, details = '') {
+            const div = document.createElement('div');
+            div.className = `test-item ${status}`;
+            div.innerHTML = `
+                <div class="status">${title}</div>
+                ${details ? `<pre>${details}</pre>` : ''}
+            `;
+            resultsDiv.appendChild(div);
+        }
+        
+        function clearResults() {
+            resultsDiv.innerHTML = '';
+        }
+        
+        async function testConnection() {
+            addResult('Testing Server Connection...', 'warning', 'Checking http://localhost:8000');
+            
+            try {
+                const response = await fetch(API_BASE + '/', { 
+                    method: 'GET',
+                    mode: 'cors'
+                });
+                const data = await response.json();
+                addResult('✅ Server Connected', 'success', JSON.stringify(data, null, 2));
+                return true;
+            } catch (error) {
+                addResult('❌ Server Connection Failed', 'error', 
+                    'Make sure the server is running:\n' +
+                    '1. Open Command Prompt\n' +
+                    '2. Navigate to ML_Core_Windows_Deployment\n' +
+                    '3. Run: python ml_core_enhanced_production.py\n\n' +
+                    'Error: ' + error.message);
+                return false;
+            }
+        }
+        
+        async function testCacheStats() {
+            addResult('Testing Cache Stats...', 'warning', 'Checking /api/cache/stats');
+            
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3000);
+                
+                const response = await fetch(API_BASE + '/api/cache/stats', {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                addResult('✅ Cache Stats Working', 'success', 
+                    `Hit Rate: ${(data.hit_rate * 100).toFixed(1)}%\n` +
+                    `Cache Hits: ${data.cache_hits || 0}\n` +
+                    `Cache Misses: ${data.cache_misses || 0}`);
+                return true;
+            } catch (error) {
+                if (error.name === 'AbortError') {
+                    addResult('⚠️ Cache Stats Timeout', 'warning', 
+                        'Endpoint timed out after 3 seconds.\n' +
+                        'This is normal if cache not initialized yet.');
+                } else {
+                    addResult('❌ Cache Stats Error', 'error', error.message);
+                }
+                return false;
+            }
+        }
+        
+        async function testModels() {
+            addResult('Testing Models Endpoint...', 'warning', 'Checking /api/models');
+            
+            try {
+                const response = await fetch(API_BASE + '/api/models');
+                const data = await response.json();
+                
+                if (Array.isArray(data)) {
+                    addResult('✅ Models Endpoint Working', 'success', 
+                        `Found ${data.length} trained model(s)\n` +
+                        (data.length > 0 ? 
+                            data.slice(0, 3).map(m => 
+                                `- ${m.symbol} (${m.ensemble_type})`
+                            ).join('\n') : 
+                            'No models trained yet'));
+                    return true;
+                }
+            } catch (error) {
+                addResult('❌ Models Endpoint Error', 'error', error.message);
+                return false;
+            }
+        }
+        
+        async function testTraining() {
+            addResult('Testing Quick Training...', 'warning', 
+                'Training AAPL with 30 days data\n<div class="spinner"></div>');
+            
+            try {
+                const response = await fetch(API_BASE + '/api/train', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        symbol: 'AAPL',
+                        ensemble_type: 'voting',
+                        days: 30
+                    })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.text();
+                    throw new Error(error);
+                }
+                
+                const data = await response.json();
+                
+                // Clear the last warning message
+                resultsDiv.lastChild.remove();
+                
+                addResult('✅ Training Successful', 'success', 
+                    `Symbol: ${data.symbol}\n` +
+                    `R² Score: ${data.metrics?.r2?.toFixed(4) || 'N/A'}\n` +
+                    `Training Time: ${data.training_time?.toFixed(2) || 'N/A'}s\n` +
+                    `Features: ${data.features_used || 36}\n` +
+                    `Cache Hit Rate: ${((data.cache_hit_rate || 0) * 100).toFixed(1)}%`);
+                return true;
+            } catch (error) {
+                // Clear the spinner message
+                resultsDiv.lastChild.remove();
+                
+                addResult('❌ Training Failed', 'error', 
+                    'Error: ' + error.message + '\n\n' +
+                    'Possible causes:\n' +
+                    '1. Dependencies not installed\n' +
+                    '2. Internet connection issue (Yahoo Finance)\n' +
+                    '3. Insufficient memory\n\n' +
+                    'Try: pip install -r requirements.txt');
+                return false;
+            }
+        }
+        
+        async function runAllTests() {
+            clearResults();
+            
+            addResult('🔍 Starting Complete System Test', 'warning', new Date().toLocaleString());
+            
+            // Test 1: Connection
+            const connected = await testConnection();
+            if (!connected) {
+                addResult('⛔ Cannot continue without server connection', 'error');
+                return;
+            }
+            
+            // Test 2: Cache Stats
+            await testCacheStats();
+            
+            // Test 3: Models
+            await testModels();
+            
+            // Test 4: Quick Training
+            const userConfirm = confirm('Test training? This will take 10-30 seconds and download data.');
+            if (userConfirm) {
+                await testTraining();
+            }
+            
+            addResult('✅ Test Complete', 'success', 
+                'If all tests passed, the system is working correctly.\n' +
+                'You can now use ml_core_enhanced_interface.html');
+        }
+        
+        // Auto-run connection test on load
+        window.onload = () => {
+            testConnection();
+        };
+    </script>
+</body>
+</html>
