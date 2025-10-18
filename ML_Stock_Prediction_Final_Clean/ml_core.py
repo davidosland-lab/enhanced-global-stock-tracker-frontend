@@ -43,7 +43,6 @@ import numpy as np
 
 # Yahoo Finance
 import yfinance as yf
-from requests import Session
 
 # Technical Analysis
 import ta
@@ -150,8 +149,7 @@ class DataFetcher:
     
     def __init__(self, db_manager: DatabaseManager):
         self.db = db_manager
-        self.session = Session()
-        self.session.headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        # DON'T create session - yfinance now requires curl_cffi which it handles internally
     
     def fetch_data(self, symbol: str, period: str = "2y", interval: str = "1d") -> pd.DataFrame:
         """Fetch data with caching"""
@@ -163,23 +161,35 @@ class DataFetcher:
             logger.info(f"Using cached data for {symbol}")
             return cached
         
-        # Fetch fresh data
+        # Fetch fresh data - NO SESSION (yfinance handles curl_cffi internally)
         logger.info(f"Fetching fresh data for {symbol}")
-        try:
-            ticker = yf.Ticker(symbol, session=self.session)
-            df = ticker.history(period=period, interval=interval)
+        
+        # Try multiple methods WITHOUT session (yfinance now uses curl_cffi)
+        methods = [
+            # Method 1: Standard Ticker (let yfinance handle session)
+            lambda: yf.Ticker(symbol).history(period=period, interval=interval),
             
-            if df.empty:
-                # Try alternative method
-                df = yf.download(symbol, period=period, interval=interval, 
-                               progress=False, session=self.session)
+            # Method 2: Download without session
+            lambda: yf.download(symbol, period=period, interval=interval, progress=False, threads=False),
             
-            if not df.empty:
-                # Cache the data
-                self.cache_data(cache_key, df)
-                return df
-            else:
-                raise ValueError(f"No data available for {symbol}")
+            # Method 3: Download with different parameters
+            lambda: yf.download(symbol, period=period, progress=False)
+        ]
+        
+        for i, method in enumerate(methods, 1):
+            try:
+                df = method()
+                if df is not None and not df.empty:
+                    logger.info(f"Successfully fetched {len(df)} days of data using method {i}")
+                    # Cache the data
+                    self.cache_data(cache_key, df)
+                    return df
+            except Exception as e:
+                logger.warning(f"Method {i} failed: {e}")
+                continue
+        
+        # If all methods fail
+        raise ValueError(f"No data available for {symbol} - all methods failed")
                 
         except Exception as e:
             logger.error(f"Error fetching data for {symbol}: {e}")

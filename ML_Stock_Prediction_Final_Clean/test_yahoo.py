@@ -5,6 +5,8 @@ import yfinance as yf
 
 try:
     print("Testing Yahoo Finance API...")
+    
+    # DON'T set session - let yfinance handle it with curl_cffi
     ticker = yf.Ticker("AAPL")
     hist = ticker.history(period="5d")
     
