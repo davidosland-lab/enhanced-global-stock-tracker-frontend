@@ -25,11 +25,11 @@ if errorlevel 1 (
 
 echo.
 echo Checking sentiment configuration...
-python -c "from ml_config import USE_SENTIMENT_ANALYSIS; print(f'Sentiment Analysis: {'ENABLED' if USE_SENTIMENT_ANALYSIS else 'DISABLED (Safe Mode)'}')"
+python -c "from ml_config import USE_SENTIMENT_ANALYSIS; print('Sentiment Analysis: ENABLED' if USE_SENTIMENT_ANALYSIS else 'Sentiment Analysis: DISABLED (Safe Mode)')"
 
 echo.
 echo Testing Yahoo Finance connection...
-python -c "import yfinance as yf; d=yf.Ticker('AAPL').history(period='5d'); print('✅ Yahoo Finance working') if not d.empty else print('❌ Yahoo Finance issue')"
+python test_yahoo_simple.py
 
 echo.
 echo ============================================================

@@ -26,6 +26,13 @@ from typing import Dict, List, Optional, Any, Tuple, Union
 import warnings
 warnings.filterwarnings('ignore')
 
+# Setup logging FIRST
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 # FastAPI imports
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
@@ -53,6 +60,8 @@ class CustomJSONEncoder(json.JSONEncoder):
         elif pd.api.types.is_datetime64_any_dtype(obj):
             return str(obj)
         return super().default(obj)
+
+# Data source imports
 import yfinance as yf
 from scipy import stats
 
@@ -101,12 +110,7 @@ except ImportError:
     HAS_XGBOOST = False
     print("XGBoost not available, using GradientBoosting as fallback")
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# Logging already set up at the beginning of the file
 
 # Create FastAPI app
 app = FastAPI(
