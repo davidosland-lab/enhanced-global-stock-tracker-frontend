@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML Stock Prediction System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .card h2 {
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 600;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .results {
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            display: none;
+        }
+        
+        .results.show {
+            display: block;
+        }
+        
+        .metric {
+            display: inline-block;
+            margin: 10px;
+            padding: 15px;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .metric-label {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+        }
+        
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .positive {
+            color: #27ae60;
+        }
+        
+        .negative {
+            color: #e74c3c;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        
+        .status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+            display: block;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading.show {
+            display: block;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 ML Stock Prediction System</h1>
+        
+        <div class="card">
+            <h2>System Status</h2>
+            <div id="systemStatus" class="status info">Checking system...</div>
+        </div>
+        
+        <div class="card">
+            <h2>Train Model</h2>
+            <div class="form-group">
+                <label for="trainSymbol">Stock Symbol</label>
+                <input type="text" id="trainSymbol" placeholder="e.g., AAPL, MSFT, GOOGL" value="AAPL">
+            </div>
+            <div class="form-group">
+                <label for="modelType">Model Type</label>
+                <select id="modelType">
+                    <option value="ensemble">Ensemble (Recommended)</option>
+                    <option value="random_forest">Random Forest</option>
+                    <option value="gradient_boosting">Gradient Boosting</option>
+                </select>
+            </div>
+            <button onclick="trainModel()">Train Model</button>
+            <div id="trainLoading" class="loading">
+                <div class="spinner"></div>
+                <p>Training model... This may take a minute.</p>
+            </div>
+            <div id="trainResults" class="results"></div>
+        </div>
+        
+        <div class="card">
+            <h2>Make Prediction</h2>
+            <div class="form-group">
+                <label for="predictSymbol">Stock Symbol</label>
+                <input type="text" id="predictSymbol" placeholder="e.g., AAPL, MSFT, GOOGL" value="AAPL">
+            </div>
+            <div class="form-group">
+                <label for="days">Days Ahead</label>
+                <input type="number" id="days" value="1" min="1" max="30">
+            </div>
+            <button onclick="makePrediction()">Predict</button>
+            <div id="predictLoading" class="loading">
+                <div class="spinner"></div>
+                <p>Generating prediction...</p>
+            </div>
+            <div id="predictResults" class="results"></div>
+        </div>
+        
+        <div class="card">
+            <h2>Available Models</h2>
+            <button onclick="loadModels()">Refresh Models</button>
+            <div id="modelsLoading" class="loading">
+                <div class="spinner"></div>
+            </div>
+            <div id="modelsList" class="results"></div>
+        </div>
+    </div>
+    
+    <script>
+        // Check system status on load
+        window.onload = function() {
+            checkSystem();
+        }
+        
+        async function checkSystem() {
+            try {
+                const response = await fetch('/');
+                const data = await response.json();
+                
+                const statusDiv = document.getElementById('systemStatus');
+                statusDiv.className = 'status success';
+                statusDiv.innerHTML = `
+                    ✅ System: ${data.system} v${data.version}<br>
+                    Status: ${data.status}<br>
+                    Sentiment Analysis: ${data.sentiment}
+                `;
+            } catch (error) {
+                const statusDiv = document.getElementById('systemStatus');
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = '❌ System not responding. Please check if the server is running.';
+            }
+        }
+        
+        async function trainModel() {
+            const symbol = document.getElementById('trainSymbol').value.toUpperCase();
+            const modelType = document.getElementById('modelType').value;
+            
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            
+            // Show loading
+            document.getElementById('trainLoading').classList.add('show');
+            document.getElementById('trainResults').classList.remove('show');
+            
+            try {
+                const response = await fetch('/api/train', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        model_type: modelType
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    document.getElementById('trainResults').innerHTML = `
+                        <h3>✅ Training Complete!</h3>
+                        <div class="metric">
+                            <div class="metric-label">Symbol</div>
+                            <div class="metric-value">${data.symbol}</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Model Type</div>
+                            <div class="metric-value">${data.model_type}</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Training Score</div>
+                            <div class="metric-value">${(data.train_score * 100).toFixed(2)}%</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Test Score</div>
+                            <div class="metric-value">${(data.test_score * 100).toFixed(2)}%</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">MSE</div>
+                            <div class="metric-value">${data.mse.toFixed(4)}</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">MAE</div>
+                            <div class="metric-value">${data.mae.toFixed(4)}</div>
+                        </div>
+                    `;
+                    document.getElementById('trainResults').classList.add('show');
+                } else {
+                    throw new Error(data.detail || 'Training failed');
+                }
+            } catch (error) {
+                document.getElementById('trainResults').innerHTML = `
+                    <h3>❌ Training Failed</h3>
+                    <p>${error.message}</p>
+                `;
+                document.getElementById('trainResults').classList.add('show');
+            } finally {
+                document.getElementById('trainLoading').classList.remove('show');
+            }
+        }
+        
+        async function makePrediction() {
+            const symbol = document.getElementById('predictSymbol').value.toUpperCase();
+            const days = parseInt(document.getElementById('days').value);
+            
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            
+            // Show loading
+            document.getElementById('predictLoading').classList.add('show');
+            document.getElementById('predictResults').classList.remove('show');
+            
+            try {
+                const response = await fetch('/api/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        days: days
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    const changeClass = data.change_percent > 0 ? 'positive' : 'negative';
+                    const arrow = data.change_percent > 0 ? '↑' : '↓';
+                    
+                    document.getElementById('predictResults').innerHTML = `
+                        <h3>📊 Prediction Results</h3>
+                        <div class="metric">
+                            <div class="metric-label">Symbol</div>
+                            <div class="metric-value">${data.symbol}</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Current Price</div>
+                            <div class="metric-value">$${data.current_price.toFixed(2)}</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Predicted Price</div>
+                            <div class="metric-value">$${data.predicted_price.toFixed(2)}</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Expected Change</div>
+                            <div class="metric-value ${changeClass}">${arrow} ${Math.abs(data.change_percent).toFixed(2)}%</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Direction</div>
+                            <div class="metric-value ${changeClass}">${data.direction}</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Confidence</div>
+                            <div class="metric-value">${(data.confidence * 100).toFixed(1)}%</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Prediction Date</div>
+                            <div class="metric-value">${data.prediction_date}</div>
+                        </div>
+                    `;
+                    document.getElementById('predictResults').classList.add('show');
+                } else {
+                    throw new Error(data.detail || 'Prediction failed');
+                }
+            } catch (error) {
+                document.getElementById('predictResults').innerHTML = `
+                    <h3>❌ Prediction Failed</h3>
+                    <p>${error.message}</p>
+                    <p>Please train a model first.</p>
+                `;
+                document.getElementById('predictResults').classList.add('show');
+            } finally {
+                document.getElementById('predictLoading').classList.remove('show');
+            }
+        }
+        
+        async function loadModels() {
+            document.getElementById('modelsLoading').classList.add('show');
+            document.getElementById('modelsList').classList.remove('show');
+            
+            try {
+                const response = await fetch('/api/models');
+                const models = await response.json();
+                
+                if (models.length > 0) {
+                    let html = '<h3>📁 Saved Models</h3><ul>';
+                    models.forEach(model => {
+                        html += `<li><strong>${model.symbol}</strong> - ${model.type} - ${new Date(model.created).toLocaleString()}</li>`;
+                    });
+                    html += '</ul>';
+                    document.getElementById('modelsList').innerHTML = html;
+                } else {
+                    document.getElementById('modelsList').innerHTML = '<p>No models trained yet.</p>';
+                }
+                document.getElementById('modelsList').classList.add('show');
+            } catch (error) {
+                document.getElementById('modelsList').innerHTML = `<p>Error loading models: ${error.message}</p>`;
+                document.getElementById('modelsList').classList.add('show');
+            } finally {
+                document.getElementById('modelsLoading').classList.remove('show');
+            }
+        }
+    </script>
+</body>
+</html>
