@@ -6,6 +6,13 @@ Version: 2.0 Production
 Port: 8000
 """
 
+# Load configuration
+try:
+    from ml_config import USE_SENTIMENT_ANALYSIS, PORT
+except ImportError:
+    USE_SENTIMENT_ANALYSIS = False  # Default to disabled
+    PORT = 8000
+
 import os
 import sys
 import json
@@ -49,13 +56,25 @@ class CustomJSONEncoder(json.JSONEncoder):
 import yfinance as yf
 from scipy import stats
 
-# Import comprehensive sentiment analyzer
-try:
-    from comprehensive_sentiment_analyzer import sentiment_analyzer
-    SENTIMENT_AVAILABLE = True
-except ImportError:
+# Import comprehensive sentiment analyzer (controlled by config)
+if USE_SENTIMENT_ANALYSIS:
+    try:
+        # Use the fixed version if available
+        try:
+            from comprehensive_sentiment_analyzer_fixed import sentiment_analyzer
+            logger.info("Using FIXED sentiment analyzer with batch processing")
+        except ImportError:
+            from comprehensive_sentiment_analyzer import sentiment_analyzer
+            logger.warning("Using original sentiment analyzer - may cause Yahoo Finance issues")
+        SENTIMENT_AVAILABLE = True
+    except ImportError:
+        SENTIMENT_AVAILABLE = False
+        sentiment_analyzer = None
+        logger.warning("Sentiment analyzer not found, using neutral value")
+else:
     SENTIMENT_AVAILABLE = False
-    logger.warning("Comprehensive sentiment analyzer not available, will use neutral value")
+    sentiment_analyzer = None
+    logger.info("Sentiment analyzer DISABLED via configuration (USE_SENTIMENT_ANALYSIS=False)")
 
 # Machine Learning
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, VotingRegressor, StackingRegressor

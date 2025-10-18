@@ -269,18 +269,22 @@ class ComprehensiveSentimentAnalyzer:
         OPTIMIZED VERSION - Minimal API calls
         """
         
-        # Check cache first
+        # Check cache first - extended cache time to reduce calls
         cache_key = f"{symbol}_sentiment"
         if cache_key in self.sentiment_cache:
             cached_time = self.last_update.get(cache_key)
-            if cached_time and (datetime.now() - cached_time).seconds < self.cache_duration:
+            if cached_time and (datetime.now() - cached_time).seconds < 600:  # 10 minute cache
                 logger.info(f"Using cached sentiment for {symbol}")
                 return self.sentiment_cache[cache_key]
         
         logger.info(f"Calculating new sentiment for {symbol}")
         
-        # Pre-fetch all market data in one batch
-        self.batch_fetch_market_data()
+        try:
+            # Pre-fetch all market data in one batch
+            self.batch_fetch_market_data()
+        except Exception as e:
+            logger.warning(f"Failed to fetch market data: {e}. Using neutral sentiment.")
+            return 0.5  # Return neutral if we can't fetch data
         
         # Get all component scores
         earnings = self.analyze_earnings_sentiment(symbol)
