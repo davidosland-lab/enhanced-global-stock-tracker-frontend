@@ -1152,94 +1152,9 @@ def index():
                     <div class="card">
                         <h3>Technical Indicators</h3>
                         ${indicatorsHtml}
-                    
-                                    <div class="indicator-label">RSI (14)</div>
-                                    <div class="indicator-value" style="color: ${
-                                        indicators.RSI > 70 ? '#f44336' : 
-                                        indicators.RSI < 30 ? '#4CAF50' : '#333'
-                                    }">
-                                        ${indicators.RSI.toFixed(2)}
-                                    </div>
-                                </div>
-                            ` : ''}
-                            
-                            ${indicators.MACD !== undefined ? `
-                                <div class="indicator">
-                                    <div class="indicator-label">MACD</div>
-                                    <div class="indicator-value">
-                                        ${indicators.MACD.toFixed(3)}
-                                    </div>
-                                </div>
-                            ` : ''}
-                            
-                            ${indicators.SMA_20 !== undefined ? `
-                                <div class="indicator">
-                                    <div class="indicator-label">SMA (20)</div>
-                                    <div class="indicator-value">
-                                        $${indicators.SMA_20.toFixed(2)}
-                                    </div>
-                                </div>
-                            ` : ''}
-                            
-                            ${indicators.EMA_12 !== undefined ? `
-                                <div class="indicator">
-                                    <div class="indicator-label">EMA (12)</div>
-                                    <div class="indicator-value">
-                                        $${indicators.EMA_12.toFixed(2)}
-                                    </div>
-                                </div>
-                            ` : ''}
-                            
-                            ${indicators.BB_upper !== undefined ? `
-                                <div class="indicator">
-                                    <div class="indicator-label">BB Upper</div>
-                                    <div class="indicator-value">
-                                        $${indicators.BB_upper.toFixed(2)}
-                                    </div>
-                                </div>
-                            ` : ''}
-                            
-                            ${indicators.BB_lower !== undefined ? `
-                                <div class="indicator">
-                                    <div class="indicator-label">BB Lower</div>
-                                    <div class="indicator-value">
-                                        $${indicators.BB_lower.toFixed(2)}
-                                    </div>
-                                </div>
-                            ` : ''}
-                            
-                            ${indicators.ATR !== undefined ? `
-                                <div class="indicator">
-                                    <div class="indicator-label">ATR (14)</div>
-                                    <div class="indicator-value">
-                                        ${indicators.ATR.toFixed(3)}
-                                    </div>
-                                </div>
-                            ` : ''}
-                            
-                            ${indicators.STOCH_K !== undefined ? `
-                                <div class="indicator">
-                                    <div class="indicator-label">Stochastic</div>
-                                    <div class="indicator-value">
-                                        ${indicators.STOCH_K.toFixed(2)}
-                                    </div>
-                                </div>
-                            ` : ''}
-                        </div>
-                        
-                        </div>
-                        
-                        ${generateSignal(indicators)}
                     </div>
                     
-                    ${!predictions.error ? `
-                        <div class="card">
-                            <h3>ML Predictions</h3>
-                            
-                            <div class="prediction-box">
-                                <h4>Price Prediction</h4>
-                                <div class="prediction-value">
-                                    $${predictions.ensemble ? predictions.ensemble.toFixed(2) : 'N/A'}
+ `
                                 </div>
                                 <div style="opacity: 0.9;">
                                     ${predictions.predicted_change ? 

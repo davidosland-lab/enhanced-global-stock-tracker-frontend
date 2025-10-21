@@ -174,9 +174,16 @@ def fetch_alpha_vantage_data(symbol):
         
         prices = []
         volumes = []
+        opens = []
+        highs = []
+        lows = []
+        
         for date in reversed(dates):
             prices.append(float(time_series[date]['4. close']))
             volumes.append(float(time_series[date]['5. volume']))
+            opens.append(float(time_series[date]['1. open']))
+            highs.append(float(time_series[date]['2. high']))
+            lows.append(float(time_series[date]['3. low']))
         
         current_price = prices[-1] if prices else 0
         previous_close = prices[-2] if len(prices) > 1 else current_price
@@ -186,6 +193,9 @@ def fetch_alpha_vantage_data(symbol):
             'prices': prices,
             'dates': dates[::-1],
             'volume': volumes,
+            'open': opens,
+            'high': highs,
+            'low': lows,
             'current_price': current_price,
             'previous_close': previous_close,
             'change': current_price - previous_close,
@@ -201,9 +211,8 @@ def fetch_alpha_vantage_data(symbol):
 
 def calculate_technical_indicators(prices, volumes=None):
     """Calculate comprehensive technical indicators"""
-    # Return partial indicators even with less data
     if len(prices) < 3:
-        return {'message': 'Too few data points for meaningful indicators'}
+        return {}
     
     prices_array = np.array(prices, dtype=float)
     indicators = {}
@@ -234,8 +243,7 @@ def calculate_technical_indicators(prices, volumes=None):
         else:
             # Manual calculations when TA-Lib is not available
             
-            # Calculate what we can based on available data
-            # Simple Moving Average - adjust period based on available data
+            # Simple Moving Averages - calculate what we can
             if len(prices) >= 20:
                 indicators['SMA_20'] = float(np.mean(prices_array[-20:]))
             elif len(prices) >= 10:
@@ -244,7 +252,7 @@ def calculate_technical_indicators(prices, volumes=None):
                 indicators['SMA_5'] = float(np.mean(prices_array[-5:]))
             else:
                 indicators['SMA'] = float(np.mean(prices_array))
-            
+                
             if len(prices) >= 50:
                 indicators['SMA_50'] = float(np.mean(prices_array[-50:]))
             
@@ -265,7 +273,10 @@ def calculate_technical_indicators(prices, volumes=None):
             
             # RSI (Relative Strength Index) - manual calculation
             def calculate_rsi(data, period=14):
-                if len(data) < period + 1:
+                # Adjust period if we have fewer data points
+                if len(data) < 15 and len(data) >= 7:
+                    period = max(2, len(data) - 2)  # Use smaller period for less data
+                elif len(data) < period + 1:
                     return None
                 
                 deltas = np.diff(data)
@@ -475,11 +486,8 @@ def index():
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Unified Stock Analysis System</title>
-    <!-- Chart.js embedded locally - no CDN needed -->
-    <script>
-    // Chart.js will be served from /static/chart.js route
-    </script>
-    <script src="/static/chart.js"></script>
+    <!-- TradingView Lightweight Charts - Professional Financial Charts -->
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -609,6 +617,30 @@ def index():
         .quick-btn.australian:hover {
             background: #FFA500;
             color: white;
+        }
+        
+        .chart-btn {
+            padding: 8px 16px;
+            background: white;
+            border: 1px solid #ddd;
+            color: #333;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+            font-weight: 500;
+            margin-left: 5px;
+        }
+        
+        .chart-btn:hover {
+            background: #f5f5f5;
+            border-color: #667eea;
+        }
+        
+        .chart-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
         }
         
         .results {
@@ -867,10 +899,18 @@ def index():
             </div>
         </div>
         
-        <!-- Chart Container -->
+        <!-- Professional Chart Container -->
         <div id="chartContainer" style="display:none; background:white; border-radius:15px; padding:25px; margin-bottom:30px; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
-            <h3 style="margin-bottom:20px; color:#333;">Price Chart</h3>
-            <canvas id="priceChart" style="max-height:400px;"></canvas>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3 style="color:#333; margin:0;">Professional Trading Chart</h3>
+                <div>
+                    <button onclick="setChartType('candlestick', event)" class="chart-btn active" id="btnCandlestick">Candlestick</button>
+                    <button onclick="setChartType('line', event)" class="chart-btn" id="btnLine">Line</button>
+                    <button onclick="setChartType('area', event)" class="chart-btn" id="btnArea">Area</button>
+                    <button onclick="toggleVolume(event)" class="chart-btn active" id="btnVolume">Volume</button>
+                </div>
+            </div>
+            <div id="tradingViewChart" style="width:100%; height:500px;"></div>
         </div>
         
         <div id="results"></div>
@@ -938,16 +978,15 @@ def index():
                 });
                 
                 const indicators = await indicatorsResponse.json();
-                console.log('Indicators received:', indicators);
+                console.log('Indicators received:', JSON.stringify(indicators));
+                console.log('Data had', data.prices.length, 'prices');
                 
-                // Display chart first
-                displayChart(data);
+                // Display chart with a small delay to ensure DOM is ready
+                setTimeout(() => {
+                    displayChart(data);
+                }, 100);
                 
-                // Build indicators HTML separately to avoid template literal issues
-                let indicatorsHtml = buildIndicatorsHtml(indicators);
-                
-                // Display all results
-                displayResults(data, predictions, indicatorsHtml);
+                displayResults(data, predictions, indicators);
                 
             } catch (error) {
                 resultsDiv.innerHTML = `
@@ -960,138 +999,193 @@ def index():
             }
         }
         
-        let priceChart = null;
-        
-        function buildIndicatorsHtml(indicators) {
-            if (!indicators || Object.keys(indicators).length === 0) {
-                return '<p>No indicators available</p>';
-            }
-            
-            if (indicators.error) {
-                return '<p>' + indicators.error + '</p>';
-            }
-            
-            let html = '<div class="indicator-grid">';
-            
-            // Add each indicator
-            if (indicators.RSI !== undefined) {
-                const color = indicators.RSI > 70 ? '#f44336' : indicators.RSI < 30 ? '#4CAF50' : '#333';
-                html += '<div class="indicator"><div class="indicator-label">RSI (14)</div>';
-                html += '<div class="indicator-value" style="color:' + color + '">' + indicators.RSI.toFixed(2) + '</div></div>';
-            }
-            
-            if (indicators.SMA_20 !== undefined) {
-                html += '<div class="indicator"><div class="indicator-label">SMA (20)</div>';
-                html += '<div class="indicator-value">$' + indicators.SMA_20.toFixed(2) + '</div></div>';
-            }
-            
-            if (indicators.EMA_12 !== undefined) {
-                html += '<div class="indicator"><div class="indicator-label">EMA (12)</div>';
-                html += '<div class="indicator-value">$' + indicators.EMA_12.toFixed(2) + '</div></div>';
-            }
-            
-            if (indicators.MACD !== undefined) {
-                html += '<div class="indicator"><div class="indicator-label">MACD</div>';
-                html += '<div class="indicator-value">' + indicators.MACD.toFixed(3) + '</div></div>';
-            }
-            
-            if (indicators.BB_upper !== undefined) {
-                html += '<div class="indicator"><div class="indicator-label">BB Upper</div>';
-                html += '<div class="indicator-value">$' + indicators.BB_upper.toFixed(2) + '</div></div>';
-            }
-            
-            if (indicators.BB_lower !== undefined) {
-                html += '<div class="indicator"><div class="indicator-label">BB Lower</div>';
-                html += '<div class="indicator-value">$' + indicators.BB_lower.toFixed(2) + '</div></div>';
-            }
-            
-            if (indicators.ATR !== undefined) {
-                html += '<div class="indicator"><div class="indicator-label">ATR</div>';
-                html += '<div class="indicator-value">' + indicators.ATR.toFixed(3) + '</div></div>';
-            }
-            
-            html += '</div>';
-            return html;
-        }
+        let tvChart = null;
+        let candleSeries = null;
+        let volumeSeries = null;
+        let lineSeries = null;
+        let areaSeries = null;
+        let currentChartType = 'candlestick';
+        let showVolume = true;
         
         function displayChart(data) {
+            console.log('Creating professional TradingView chart with', data.prices.length, 'data points');
+            
             // Show chart container
             document.getElementById('chartContainer').style.display = 'block';
             
             // Destroy existing chart if any
-            if (priceChart) {
-                priceChart.destroy();
+            if (tvChart) {
+                tvChart.remove();
+                tvChart = null;
             }
             
-            // Prepare chart data
-            const ctx = document.getElementById('priceChart').getContext('2d');
+            // Create new chart
+            const chartContainer = document.getElementById('tradingViewChart');
             
-            priceChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: data.dates.map(d => d.slice(5)), // MM-DD format
-                    datasets: [{
-                        label: 'Price',
-                        data: data.prices,
-                        borderColor: 'rgb(102, 126, 234)',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.1
-                    }]
+            tvChart = LightweightCharts.createChart(chartContainer, {
+                width: chartContainer.offsetWidth,
+                height: 500,
+                layout: {
+                    backgroundColor: '#ffffff',
+                    textColor: '#333',
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: data.symbol + ' - ' + data.company_name,
-                            font: {
-                                size: 16
-                            }
-                        },
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
-                            callbacks: {
-                                label: function(context) {
-                                    return '$' + context.parsed.y.toFixed(2);
-                                }
-                            }
-                        }
+                grid: {
+                    vertLines: { color: '#e1e4e8' },
+                    horzLines: { color: '#e1e4e8' },
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                },
+                priceScale: {
+                    borderColor: '#d1d4dc',
+                },
+                timeScale: {
+                    borderColor: '#d1d4dc',
+                    timeVisible: true,
+                    secondsVisible: false,
+                },
+            });
+            
+            // Prepare data for TradingView format
+            const candleData = [];
+            const volumeData = [];
+            const lineData = [];
+            
+            for (let i = 0; i < data.dates.length; i++) {
+                const date = data.dates[i];
+                
+                // Candlestick data - only if we have OHLC data
+                if (data.open && data.high && data.low && data.open[i] && data.high[i] && data.low[i]) {
+                    candleData.push({
+                        time: date,
+                        open: data.open[i],
+                        high: data.high[i],
+                        low: data.low[i],
+                        close: data.prices[i]
+                    });
+                }
+                
+                // Line/Area data
+                lineData.push({
+                    time: date,
+                    value: data.prices[i]
+                });
+                
+                // Volume data
+                if (data.volume && data.volume[i]) {
+                    const prevPrice = i > 0 ? data.prices[i-1] : data.prices[i];
+                    const openPrice = (data.open && data.open[i]) ? data.open[i] : prevPrice;
+                    volumeData.push({
+                        time: date,
+                        value: data.volume[i],
+                        color: data.prices[i] >= openPrice 
+                            ? 'rgba(38, 166, 154, 0.5)' 
+                            : 'rgba(239, 83, 80, 0.5)'
+                    });
+                }
+            }
+            
+            // Add the appropriate series based on chart type
+            // If candlestick is selected but no OHLC data, fall back to line chart
+            let actualChartType = currentChartType;
+            if (currentChartType === 'candlestick' && candleData.length === 0) {
+                console.log('No OHLC data available, falling back to line chart');
+                actualChartType = 'line';
+            }
+            
+            if (actualChartType === 'candlestick' && candleData.length > 0) {
+                candleSeries = tvChart.addCandlestickSeries({
+                    upColor: '#26a69a',
+                    downColor: '#ef5350',
+                    borderVisible: false,
+                    wickUpColor: '#26a69a',
+                    wickDownColor: '#ef5350',
+                });
+                candleSeries.setData(candleData);
+            } else if (actualChartType === 'line' || (currentChartType === 'candlestick' && candleData.length === 0)) {
+                lineSeries = tvChart.addLineSeries({
+                    color: '#2962FF',
+                    lineWidth: 2,
+                    lastValueVisible: true,
+                    priceLineVisible: true,
+                });
+                lineSeries.setData(lineData);
+            } else if (actualChartType === 'area') {
+                areaSeries = tvChart.addAreaSeries({
+                    topColor: 'rgba(41, 98, 255, 0.56)',
+                    bottomColor: 'rgba(41, 98, 255, 0.04)',
+                    lineColor: 'rgba(41, 98, 255, 1)',
+                    lineWidth: 2,
+                    lastValueVisible: true,
+                    priceLineVisible: true,
+                });
+                areaSeries.setData(lineData);
+            }
+            
+            // Add volume if enabled
+            if (showVolume && volumeData.length > 0) {
+                volumeSeries = tvChart.addHistogramSeries({
+                    color: '#26a69a',
+                    priceFormat: {
+                        type: 'volume',
                     },
-                    scales: {
-                        x: {
-                            display: true,
-                            grid: {
-                                display: false
-                            }
-                        },
-                        y: {
-                            display: true,
-                            title: {
-                                display: true,
-                                text: 'Price ($)'
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return '$' + value.toFixed(0);
-                                }
-                            }
-                        }
-                    }
+                    priceScaleId: '',
+                    scaleMargins: {
+                        top: 0.8,
+                        bottom: 0,
+                    },
+                });
+                volumeSeries.setData(volumeData);
+            }
+            
+            // Fit content
+            tvChart.timeScale().fitContent();
+            
+            // Handle resize
+            window.addEventListener('resize', () => {
+                if (tvChart) {
+                    tvChart.applyOptions({ 
+                        width: chartContainer.offsetWidth 
+                    });
                 }
             });
+            
+            console.log('TradingView chart created successfully');
         }
         
-        function displayResults(data, predictions, indicatorsHtml) {
-            try {
-                const changeClass = data.change >= 0 ? 'positive' : 'negative';
-                const changeSymbol = data.change >= 0 ? '▲' : '▼';
+        function setChartType(type, evt) {
+            currentChartType = type;
+            
+            // Update button states
+            document.querySelectorAll('.chart-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Find and activate the clicked button
+            if (evt && evt.target) {
+                evt.target.classList.add('active');
+            }
+            
+            if (currentData) {
+                displayChart(currentData);
+            }
+        }
+        
+        function toggleVolume(evt) {
+            showVolume = !showVolume;
+            
+            if (evt && evt.target) {
+                evt.target.classList.toggle('active');
+            }
+            
+            if (currentData) {
+                displayChart(currentData);
+            }
+        }
+        
+        function displayResults(data, predictions, indicators) {
+            const changeClass = data.change >= 0 ? 'positive' : 'negative';
+            const changeSymbol = data.change >= 0 ? '▲' : '▼';
             
             let html = `
                 <div class="results">
@@ -1151,8 +1245,10 @@ def index():
                     
                     <div class="card">
                         <h3>Technical Indicators</h3>
-                        ${indicatorsHtml}
-                    
+                        
+                        <div class="indicator-grid">
+                            ${indicators.RSI !== undefined ? `
+                                <div class="indicator">
                                     <div class="indicator-label">RSI (14)</div>
                                     <div class="indicator-value" style="color: ${
                                         indicators.RSI > 70 ? '#f44336' : 
@@ -1227,8 +1323,6 @@ def index():
                             ` : ''}
                         </div>
                         
-                        </div>
-                        
                         ${generateSignal(indicators)}
                     </div>
                     
@@ -1290,10 +1384,6 @@ def index():
             `;
             
             document.getElementById('results').innerHTML = html;
-            } catch (error) {
-                console.error('Error displaying results:', error);
-                document.getElementById('results').innerHTML = '<div class="error">Error displaying results. Check console for details.</div>';
-            }
         }
         
         function generateSignal(indicators) {
@@ -1313,7 +1403,7 @@ def index():
                 return `
                     <div class="info-box" style="margin-top: 20px;">
                         <strong>Technical Signals:</strong><br>
-                        ${signals.join('<br>• ')}
+                        ${signals.map(s => `• ${s}`).join('<br>')}
                     </div>
                 `;
             }
@@ -1328,17 +1418,6 @@ def index():
     </script>
 </body>
 </html>"""
-
-@app.route("/static/chart.js")
-def serve_chartjs():
-    """Serve Chart.js library locally"""
-    try:
-        with open('chart.min.js', 'r', encoding='utf-8') as f:
-            js_content = f.read()
-        return js_content, 200, {'Content-Type': 'application/javascript'}
-    except FileNotFoundError:
-        # Fallback: return a simple message if file not found
-        return "console.error('Chart.js not found locally');", 200, {'Content-Type': 'application/javascript'}
 
 @app.route("/api/fetch", methods=["POST"])
 def api_fetch():
@@ -1393,13 +1472,15 @@ def api_indicators():
         volumes = data.get('volumes')
         
         print(f"Calculating indicators for {len(prices)} price points")
+        print(f"First 3 prices: {prices[:3] if prices else 'No prices'}")
         
-        # Allow partial indicators with less data
+        # Allow indicators with fewer data points  
         if not prices or len(prices) < 3:
-            return jsonify({'error': 'Need at least 3 data points for indicators'}), 400
+            print("Not enough data points for indicators")
+            return jsonify({'error': 'Need at least 3 data points'}), 400
         
         indicators = calculate_technical_indicators(prices, volumes)
-        print(f"Calculated indicators: {list(indicators.keys())}")
+        print(f"Calculated indicators: {indicators}")
         
         return jsonify(indicators)
         
