@@ -886,7 +886,10 @@ def index():
         <!-- Chart Container -->
         <div id="chartContainer" style="display:none; background:white; border-radius:15px; padding:25px; margin-bottom:30px; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
             <h3 style="margin-bottom:20px; color:#333;">Price Chart</h3>
-            <canvas id="priceChart" style="max-height:400px;"></canvas>
+            <div style="position: relative; height:400px; width:100%;">
+                <canvas id="priceChart"></canvas>
+            </div>
+            <div id="chartError" style="display:none; color:red; padding:10px;"></div>
         </div>
         
         <div id="results"></div>
@@ -957,8 +960,10 @@ def index():
                 console.log('Indicators received:', JSON.stringify(indicators));
                 console.log('Data had', data.prices.length, 'prices');
                 
-                // Display chart
-                displayChart(data);
+                // Display chart with a small delay to ensure DOM is ready
+                setTimeout(() => {
+                    displayChart(data);
+                }, 100);
                 
                 displayResults(data, predictions, indicators);
                 
@@ -976,12 +981,18 @@ def index():
         let priceChart = null;
         
         function displayChart(data) {
+            console.log('displayChart called with', data.prices ? data.prices.length : 0, 'prices');
+            
             // Show chart container FIRST (critical for proper sizing)
             const container = document.getElementById('chartContainer');
             container.style.display = 'block';
             
+            // Force a reflow to ensure container is visible
+            container.offsetHeight;
+            
             // Destroy existing chart if any
             if (priceChart) {
+                console.log('Destroying existing chart');
                 priceChart.destroy();
                 priceChart = null;
             }
@@ -993,6 +1004,10 @@ def index():
                 return;
             }
             
+            // Clear the canvas and set explicit size
+            canvas.style.width = '100%';
+            canvas.style.height = '400px';
+            
             // Get context
             const ctx = canvas.getContext('2d');
             if (!ctx) {
@@ -1000,6 +1015,7 @@ def index():
                 return;
             }
             
+            console.log('Canvas dimensions:', canvas.width, 'x', canvas.height);
             console.log('Creating chart with', data.prices.length, 'data points');
             
             // Check if Chart.js is loaded
@@ -1010,65 +1026,27 @@ def index():
             }
             
             try {
-                priceChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: data.dates.map(d => d.slice(5)), // MM-DD format
-                    datasets: [{
-                        label: 'Price',
-                        data: data.prices,
-                        borderColor: 'rgb(102, 126, 234)',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: data.symbol + ' - ' + data.company_name,
-                            font: {
-                                size: 16
-                            }
-                        },
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
-                            callbacks: {
-                                label: function(context) {
-                                    return '$' + context.parsed.y.toFixed(2);
-                                }
-                            }
-                        }
+                // Simple chart config that matches the working test
+                const chartConfig = {
+                    type: 'line',
+                    data: {
+                        labels: data.dates.map(d => d.slice(5)), // MM-DD format
+                        datasets: [{
+                            label: 'Stock Price',
+                            data: data.prices,
+                            borderColor: 'rgb(102, 126, 234)',
+                            fill: false  // Changed to false like in the test
+                        }]
                     },
-                    scales: {
-                        x: {
-                            display: true,
-                            grid: {
-                                display: false
-                            }
-                        },
-                        y: {
-                            display: true,
-                            title: {
-                                display: true,
-                                text: 'Price ($)'
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return '$' + value.toFixed(0);
-                                }
-                            }
-                        }
+                    options: {
+                        responsive: true  // Keep it simple like the test
                     }
-                }
+                };
+                
+                console.log('Chart config:', JSON.stringify(chartConfig.data.labels.slice(0, 3)));
+                console.log('Chart prices:', JSON.stringify(chartConfig.data.datasets[0].data.slice(0, 3)));
+                
+                priceChart = new Chart(ctx, chartConfig);
             });
                 console.log('Chart created successfully');
             } catch (error) {
