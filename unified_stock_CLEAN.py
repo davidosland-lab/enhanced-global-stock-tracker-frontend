@@ -478,6 +478,24 @@ def index():
     <title>Unified Stock Analysis System</title>
     <!-- Chart.js for simple, reliable charting -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Fallback if CDN fails -->
+    <script>
+        window.addEventListener('load', function() {
+            if (typeof Chart === 'undefined') {
+                console.warn('Chart.js CDN failed, trying local fallback...');
+                var script = document.createElement('script');
+                script.src = '/static/chart.js';
+                script.onload = function() {
+                    console.log('Local Chart.js loaded');
+                };
+                script.onerror = function() {
+                    console.error('Both CDN and local Chart.js failed to load');
+                };
+                document.head.appendChild(script);
+            }
+        });
+    </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -958,18 +976,41 @@ def index():
         let priceChart = null;
         
         function displayChart(data) {
-            // Show chart container
-            document.getElementById('chartContainer').style.display = 'block';
+            // Show chart container FIRST (critical for proper sizing)
+            const container = document.getElementById('chartContainer');
+            container.style.display = 'block';
             
             // Destroy existing chart if any
             if (priceChart) {
                 priceChart.destroy();
+                priceChart = null;
             }
             
-            // Prepare chart data
-            const ctx = document.getElementById('priceChart').getContext('2d');
+            // Get canvas and ensure it exists
+            const canvas = document.getElementById('priceChart');
+            if (!canvas) {
+                console.error('Canvas element not found!');
+                return;
+            }
             
-            priceChart = new Chart(ctx, {
+            // Get context
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                console.error('Could not get 2D context!');
+                return;
+            }
+            
+            console.log('Creating chart with', data.prices.length, 'data points');
+            
+            // Check if Chart.js is loaded
+            if (typeof Chart === 'undefined') {
+                console.error('Chart.js is not loaded!');
+                container.innerHTML = '<p style="color: red;">Chart library not loaded. Please refresh the page.</p>';
+                return;
+            }
+            
+            try {
+                priceChart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: data.dates.map(d => d.slice(5)), // MM-DD format
@@ -1029,6 +1070,11 @@ def index():
                     }
                 }
             });
+                console.log('Chart created successfully');
+            } catch (error) {
+                console.error('Error creating chart:', error);
+                container.innerHTML = '<p style="color: red;">Error creating chart. Check console for details.</p>';
+            }
         }
         
         function displayResults(data, predictions, indicators) {
