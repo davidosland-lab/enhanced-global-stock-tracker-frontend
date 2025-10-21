@@ -201,9 +201,8 @@ def fetch_alpha_vantage_data(symbol):
 
 def calculate_technical_indicators(prices, volumes=None):
     """Calculate comprehensive technical indicators"""
-    # Return partial indicators even with less data
-    if len(prices) < 3:
-        return {'message': 'Too few data points for meaningful indicators'}
+    if len(prices) < 20:
+        return {}
     
     prices_array = np.array(prices, dtype=float)
     indicators = {}
@@ -234,17 +233,9 @@ def calculate_technical_indicators(prices, volumes=None):
         else:
             # Manual calculations when TA-Lib is not available
             
-            # Calculate what we can based on available data
-            # Simple Moving Average - adjust period based on available data
+            # Simple Moving Averages
             if len(prices) >= 20:
                 indicators['SMA_20'] = float(np.mean(prices_array[-20:]))
-            elif len(prices) >= 10:
-                indicators['SMA_10'] = float(np.mean(prices_array[-10:]))
-            elif len(prices) >= 5:
-                indicators['SMA_5'] = float(np.mean(prices_array[-5:]))
-            else:
-                indicators['SMA'] = float(np.mean(prices_array))
-            
             if len(prices) >= 50:
                 indicators['SMA_50'] = float(np.mean(prices_array[-50:]))
             
@@ -475,11 +466,6 @@ def index():
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Unified Stock Analysis System</title>
-    <!-- Chart.js embedded locally - no CDN needed -->
-    <script>
-    // Chart.js will be served from /static/chart.js route
-    </script>
-    <script src="/static/chart.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -867,12 +853,6 @@ def index():
             </div>
         </div>
         
-        <!-- Chart Container -->
-        <div id="chartContainer" style="display:none; background:white; border-radius:15px; padding:25px; margin-bottom:30px; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
-            <h3 style="margin-bottom:20px; color:#333;">Price Chart</h3>
-            <canvas id="priceChart" style="max-height:400px;"></canvas>
-        </div>
-        
         <div id="results"></div>
     </div>
     
@@ -938,10 +918,6 @@ def index():
                 });
                 
                 const indicators = await indicatorsResponse.json();
-                console.log('Indicators received:', indicators);
-                
-                // Display chart
-                displayChart(data);
                 
                 displayResults(data, predictions, indicators);
                 
@@ -954,82 +930,6 @@ def index():
                     </div>
                 `;
             }
-        }
-        
-        let priceChart = null;
-        
-        function displayChart(data) {
-            // Show chart container
-            document.getElementById('chartContainer').style.display = 'block';
-            
-            // Destroy existing chart if any
-            if (priceChart) {
-                priceChart.destroy();
-            }
-            
-            // Prepare chart data
-            const ctx = document.getElementById('priceChart').getContext('2d');
-            
-            priceChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: data.dates.map(d => d.slice(5)), // MM-DD format
-                    datasets: [{
-                        label: 'Price',
-                        data: data.prices,
-                        borderColor: 'rgb(102, 126, 234)',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: data.symbol + ' - ' + data.company_name,
-                            font: {
-                                size: 16
-                            }
-                        },
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
-                            callbacks: {
-                                label: function(context) {
-                                    return '$' + context.parsed.y.toFixed(2);
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            display: true,
-                            grid: {
-                                display: false
-                            }
-                        },
-                        y: {
-                            display: true,
-                            title: {
-                                display: true,
-                                text: 'Price ($)'
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return '$' + value.toFixed(0);
-                                }
-                            }
-                        }
-                    }
-                }
-            });
         }
         
         function displayResults(data, predictions, indicators) {
@@ -1268,17 +1168,6 @@ def index():
 </body>
 </html>"""
 
-@app.route("/static/chart.js")
-def serve_chartjs():
-    """Serve Chart.js library locally"""
-    try:
-        with open('chart.min.js', 'r', encoding='utf-8') as f:
-            js_content = f.read()
-        return js_content, 200, {'Content-Type': 'application/javascript'}
-    except FileNotFoundError:
-        # Fallback: return a simple message if file not found
-        return "console.error('Chart.js not found locally');", 200, {'Content-Type': 'application/javascript'}
-
 @app.route("/api/fetch", methods=["POST"])
 def api_fetch():
     """Fetch stock data from Yahoo or Alpha Vantage"""
@@ -1333,9 +1222,8 @@ def api_indicators():
         
         print(f"Calculating indicators for {len(prices)} price points")
         
-        # Allow partial indicators with less data
-        if not prices or len(prices) < 3:
-            return jsonify({'error': 'Need at least 3 data points for indicators'}), 400
+        if not prices or len(prices) < 20:
+            return jsonify({'error': 'Insufficient data for indicators'}), 400
         
         indicators = calculate_technical_indicators(prices, volumes)
         print(f"Calculated indicators: {list(indicators.keys())}")

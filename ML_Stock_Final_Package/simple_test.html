@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple Stock Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .container {
+            background: #f5f5f5;
+            padding: 30px;
+            border-radius: 10px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 5px;
+            min-height: 100px;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+        input {
+            padding: 10px;
+            font-size: 16px;
+            width: 200px;
+            margin: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Simple Stock Data Test</h1>
+        <p>This is a simple test to verify the server is working correctly.</p>
+        
+        <div>
+            <input type="text" id="symbol" placeholder="Enter symbol (e.g., CBA)" value="CBA">
+            <button onclick="testFetch()">Fetch Data</button>
+            <button onclick="testStatus()">Test Status</button>
+            <button onclick="clearResult()">Clear</button>
+        </div>
+        
+        <h3>Quick Tests:</h3>
+        <button onclick="fetchSymbol('CBA')">Test CBA (Australian)</button>
+        <button onclick="fetchSymbol('CBA.AX')">Test CBA.AX</button>
+        <button onclick="fetchSymbol('AAPL')">Test AAPL (US)</button>
+        <button onclick="fetchSymbol('BHP')">Test BHP (Australian)</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        
+        function showResult(content, isError = false) {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = content;
+            resultDiv.className = isError ? 'error' : 'success';
+        }
+        
+        function clearResult() {
+            document.getElementById('result').innerHTML = '';
+        }
+        
+        async function testStatus() {
+            try {
+                showResult('Testing server status...');
+                
+                const response = await fetch(API_URL + '/api/status', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                showResult('<h3>✅ Server Status:</h3><pre>' + JSON.stringify(data, null, 2) + '</pre>');
+                
+            } catch (error) {
+                showResult('❌ Error: ' + error.message + '<br>Make sure the server is running!', true);
+            }
+        }
+        
+        async function testFetch() {
+            const symbol = document.getElementById('symbol').value.trim();
+            if (!symbol) {
+                showResult('Please enter a symbol', true);
+                return;
+            }
+            fetchSymbol(symbol);
+        }
+        
+        async function fetchSymbol(symbol) {
+            try {
+                showResult('Fetching ' + symbol + '...');
+                
+                const response = await fetch(API_URL + '/api/fetch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        period: '1mo'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || `HTTP error! status: ${response.status}`);
+                }
+                
+                const html = `
+                    <h3>✅ Success!</h3>
+                    <table>
+                        <tr><td><strong>Symbol:</strong></td><td>${data.symbol}</td></tr>
+                        <tr><td><strong>Company:</strong></td><td>${data.company || 'N/A'}</td></tr>
+                        <tr><td><strong>Currency:</strong></td><td>${data.currency || 'USD'}</td></tr>
+                        <tr><td><strong>Latest Price:</strong></td><td>$${data.latest_price.toFixed(2)}</td></tr>
+                        <tr><td><strong>Data Points:</strong></td><td>${data.data_points}</td></tr>
+                        <tr><td><strong>Source:</strong></td><td>${data.source}</td></tr>
+                        <tr><td><strong>Date Range:</strong></td><td>${data.start_date} to ${data.end_date}</td></tr>
+                    </table>
+                    <h4>Recent Prices:</h4>
+                    <pre>${data.prices.slice(-5).map(p => '$' + p.toFixed(2)).join(', ')}</pre>
+                `;
+                
+                showResult(html);
+                
+            } catch (error) {
+                showResult('❌ Error: ' + error.message, true);
+            }
+        }
+        
+        // Test status on load
+        window.onload = function() {
+            testStatus();
+        };
+    </script>
+</body>
+</html>

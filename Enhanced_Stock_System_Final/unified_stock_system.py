@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Unified Stock Analysis System
+Unified Stock Analysis System - Enhanced with Interactive Charts
 Complete solution with Yahoo Finance, Alpha Vantage, ML predictions, and technical analysis
-No external file reading - all content embedded to avoid encoding issues
+Enhanced with interactive charts and proper indicator display
 """
 
 import sys
@@ -20,7 +20,7 @@ if sys.platform == 'win32':
         sys.stderr.reconfigure(encoding='utf-8')
 
 print("=" * 70)
-print("UNIFIED STOCK ANALYSIS SYSTEM")
+print("UNIFIED STOCK ANALYSIS SYSTEM - ENHANCED")
 print("=" * 70)
 print(f"Python: {sys.version}")
 print(f"Platform: {sys.platform}")
@@ -201,9 +201,8 @@ def fetch_alpha_vantage_data(symbol):
 
 def calculate_technical_indicators(prices, volumes=None):
     """Calculate comprehensive technical indicators"""
-    # Return partial indicators even with less data
-    if len(prices) < 3:
-        return {'message': 'Too few data points for meaningful indicators'}
+    if len(prices) < 20:
+        return {}
     
     prices_array = np.array(prices, dtype=float)
     indicators = {}
@@ -234,17 +233,9 @@ def calculate_technical_indicators(prices, volumes=None):
         else:
             # Manual calculations when TA-Lib is not available
             
-            # Calculate what we can based on available data
-            # Simple Moving Average - adjust period based on available data
+            # Simple Moving Averages
             if len(prices) >= 20:
                 indicators['SMA_20'] = float(np.mean(prices_array[-20:]))
-            elif len(prices) >= 10:
-                indicators['SMA_10'] = float(np.mean(prices_array[-10:]))
-            elif len(prices) >= 5:
-                indicators['SMA_5'] = float(np.mean(prices_array[-5:]))
-            else:
-                indicators['SMA'] = float(np.mean(prices_array))
-            
             if len(prices) >= 50:
                 indicators['SMA_50'] = float(np.mean(prices_array[-50:]))
             
@@ -329,8 +320,6 @@ def calculate_technical_indicators(prices, volumes=None):
         print(f"Error calculating indicators: {str(e)}")
     
     return indicators
-
-
 
 def predict_price(data):
     """Make price prediction using ML models - simplified and robust"""
@@ -468,18 +457,14 @@ def predict_price(data):
 
 @app.route("/")
 def index():
-    """Main interface with all features"""
+    """Main interface with interactive charts and indicators"""
     return """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unified Stock Analysis System</title>
-    <!-- Chart.js embedded locally - no CDN needed -->
-    <script>
-    // Chart.js will be served from /static/chart.js route
-    </script>
-    <script src="/static/chart.js"></script>
+    <title>Unified Stock Analysis System - Enhanced</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -491,7 +476,7 @@ def index():
         }
         
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
         }
         
@@ -609,6 +594,49 @@ def index():
         .quick-btn.australian:hover {
             background: #FFA500;
             color: white;
+        }
+        
+        .chart-controls {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .chart-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .chart-btn {
+            padding: 8px 16px;
+            background: #f0f0f0;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        
+        .chart-btn:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .chart-btn.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .main-chart {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            min-height: 500px;
         }
         
         .results {
@@ -763,13 +791,14 @@ def index():
         .loading {
             text-align: center;
             padding: 60px;
-            color: white;
+            background: white;
+            border-radius: 15px;
             font-size: 1.3em;
         }
         
         .spinner {
-            border: 4px solid rgba(255,255,255,0.3);
-            border-top: 4px solid white;
+            border: 4px solid rgba(102, 126, 234, 0.3);
+            border-top: 4px solid #667eea;
             border-radius: 50%;
             width: 50px;
             height: 50px;
@@ -827,20 +856,20 @@ def index():
 <body>
     <div class="container">
         <div class="header">
-            <h1>Unified Stock Analysis System</h1>
-            <p>Real-time data from Yahoo Finance & Alpha Vantage with ML predictions
+            <h1>Unified Stock Analysis System - Enhanced</h1>
+            <p>Real-time data with Interactive Charts, Technical Indicators & ML Predictions
                 <span class="status online">● LIVE</span>
             </p>
         </div>
         
         <div class="controls">
             <div class="input-group">
-                <input type="text" id="symbol" placeholder="Enter stock symbol (e.g., CBA, AAPL)" value="CBA">
+                <input type="text" id="symbol" placeholder="Enter stock symbol (e.g., CBA, AAPL)" value="SPY">
                 <select id="period">
                     <option value="1d">1 Day</option>
                     <option value="5d">5 Days</option>
-                    <option value="1mo" selected>1 Month</option>
-                    <option value="3mo">3 Months</option>
+                    <option value="1mo">1 Month</option>
+                    <option value="3mo" selected>3 Months</option>
                     <option value="6mo">6 Months</option>
                     <option value="1y">1 Year</option>
                 </select>
@@ -859,18 +888,33 @@ def index():
                 <span class="quick-btn australian" onclick="quickFetch('CSL')">CSL 🇦🇺</span>
                 <span class="quick-btn australian" onclick="quickFetch('NAB')">NAB 🇦🇺</span>
                 <span class="quick-btn australian" onclick="quickFetch('WBC')">WBC 🇦🇺</span>
+                <span class="quick-btn" onclick="quickFetch('SPY')">SPY</span>
                 <span class="quick-btn" onclick="quickFetch('AAPL')">AAPL</span>
                 <span class="quick-btn" onclick="quickFetch('MSFT')">MSFT</span>
                 <span class="quick-btn" onclick="quickFetch('GOOGL')">GOOGL</span>
                 <span class="quick-btn" onclick="quickFetch('TSLA')">TSLA</span>
-                <span class="quick-btn" onclick="quickFetch('AMZN')">AMZN</span>
             </div>
         </div>
         
-        <!-- Chart Container -->
-        <div id="chartContainer" style="display:none; background:white; border-radius:15px; padding:25px; margin-bottom:30px; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
-            <h3 style="margin-bottom:20px; color:#333;">Price Chart</h3>
-            <canvas id="priceChart" style="max-height:400px;"></canvas>
+        <div class="chart-controls" id="chartControls" style="display:none;">
+            <h3>Chart Options</h3>
+            <div class="chart-buttons">
+                <button class="chart-btn active" onclick="setChartType('candlestick')">Candlestick</button>
+                <button class="chart-btn" onclick="setChartType('line')">Line</button>
+                <button class="chart-btn" onclick="setChartType('area')">Area</button>
+                <button class="chart-btn" onclick="setChartType('ohlc')">OHLC</button>
+                <button class="chart-btn" onclick="toggleIndicator('sma')">SMA</button>
+                <button class="chart-btn" onclick="toggleIndicator('ema')">EMA</button>
+                <button class="chart-btn" onclick="toggleIndicator('bb')">Bollinger Bands</button>
+                <button class="chart-btn" onclick="toggleIndicator('volume')">Volume</button>
+                <button class="chart-btn" onclick="toggleIndicator('rsi')">RSI</button>
+                <button class="chart-btn" onclick="toggleIndicator('macd')">MACD</button>
+            </div>
+        </div>
+        
+        <div class="main-chart" id="mainChart" style="display:none;">
+            <div id="stockChart"></div>
+            <div id="indicatorChart" style="margin-top: 20px;"></div>
         </div>
         
         <div id="results"></div>
@@ -878,10 +922,295 @@ def index():
     
     <script>
         let currentData = null;
+        let currentIndicators = null;
+        let chartType = 'candlestick';
+        let showIndicators = {
+            sma: false,
+            ema: false,
+            bb: false,
+            volume: true,
+            rsi: false,
+            macd: false
+        };
         
         async function quickFetch(symbol) {
             document.getElementById('symbol').value = symbol;
             fetchData();
+        }
+        
+        function setChartType(type) {
+            chartType = type;
+            document.querySelectorAll('.chart-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent.toLowerCase().includes(type) || 
+                    (type === 'candlestick' && btn.textContent === 'Candlestick') ||
+                    (type === 'ohlc' && btn.textContent === 'OHLC')) {
+                    btn.classList.add('active');
+                }
+            });
+            if (currentData) {
+                updateChart();
+            }
+        }
+        
+        function toggleIndicator(indicator) {
+            showIndicators[indicator] = !showIndicators[indicator];
+            const btn = Array.from(document.querySelectorAll('.chart-btn')).find(b => 
+                b.textContent.toLowerCase().includes(indicator) ||
+                (indicator === 'bb' && b.textContent === 'Bollinger Bands') ||
+                (indicator === 'sma' && b.textContent === 'SMA') ||
+                (indicator === 'ema' && b.textContent === 'EMA') ||
+                (indicator === 'rsi' && b.textContent === 'RSI') ||
+                (indicator === 'macd' && b.textContent === 'MACD')
+            );
+            if (btn) {
+                if (showIndicators[indicator]) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            }
+            if (currentData) {
+                updateChart();
+            }
+        }
+        
+        function updateChart() {
+            if (!currentData) return;
+            
+            const traces = [];
+            const layout = {
+                title: currentData.symbol + ' - ' + currentData.company_name,
+                xaxis: {
+                    type: 'date',
+                    rangeslider: { visible: false }
+                },
+                yaxis: {
+                    title: 'Price ($)',
+                    side: 'right'
+                },
+                height: 500,
+                showlegend: true,
+                hovermode: 'x unified'
+            };
+            
+            // Main price chart
+            if (chartType === 'candlestick') {
+                traces.push({
+                    type: 'candlestick',
+                    x: currentData.dates,
+                    open: currentData.open,
+                    high: currentData.high,
+                    low: currentData.low,
+                    close: currentData.prices,
+                    name: 'Price',
+                    increasing: {line: {color: '#4CAF50'}},
+                    decreasing: {line: {color: '#f44336'}}
+                });
+            } else if (chartType === 'line') {
+                traces.push({
+                    type: 'scatter',
+                    mode: 'lines',
+                    x: currentData.dates,
+                    y: currentData.prices,
+                    name: 'Close Price',
+                    line: {color: '#667eea', width: 2}
+                });
+            } else if (chartType === 'area') {
+                traces.push({
+                    type: 'scatter',
+                    mode: 'lines',
+                    x: currentData.dates,
+                    y: currentData.prices,
+                    name: 'Close Price',
+                    fill: 'tozeroy',
+                    line: {color: '#667eea'},
+                    fillcolor: 'rgba(102, 126, 234, 0.2)'
+                });
+            } else if (chartType === 'ohlc') {
+                traces.push({
+                    type: 'ohlc',
+                    x: currentData.dates,
+                    open: currentData.open,
+                    high: currentData.high,
+                    low: currentData.low,
+                    close: currentData.prices,
+                    name: 'OHLC',
+                    increasing: {line: {color: '#4CAF50'}},
+                    decreasing: {line: {color: '#f44336'}}
+                });
+            }
+            
+            // Add indicators
+            if (showIndicators.sma && currentIndicators.SMA_20) {
+                const sma20 = new Array(19).fill(null).concat(
+                    new Array(currentData.prices.length - 19).fill(currentIndicators.SMA_20)
+                );
+                traces.push({
+                    type: 'scatter',
+                    mode: 'lines',
+                    x: currentData.dates,
+                    y: sma20,
+                    name: 'SMA 20',
+                    line: {color: '#FFA500', width: 1, dash: 'dot'}
+                });
+            }
+            
+            if (showIndicators.ema && currentIndicators.EMA_12) {
+                const ema12 = new Array(11).fill(null).concat(
+                    new Array(currentData.prices.length - 11).fill(currentIndicators.EMA_12)
+                );
+                traces.push({
+                    type: 'scatter',
+                    mode: 'lines',
+                    x: currentData.dates,
+                    y: ema12,
+                    name: 'EMA 12',
+                    line: {color: '#00BCD4', width: 1}
+                });
+            }
+            
+            if (showIndicators.bb && currentIndicators.BB_upper) {
+                const bbUpper = new Array(19).fill(null).concat(
+                    new Array(currentData.prices.length - 19).fill(currentIndicators.BB_upper)
+                );
+                const bbMiddle = new Array(19).fill(null).concat(
+                    new Array(currentData.prices.length - 19).fill(currentIndicators.BB_middle)
+                );
+                const bbLower = new Array(19).fill(null).concat(
+                    new Array(currentData.prices.length - 19).fill(currentIndicators.BB_lower)
+                );
+                
+                traces.push({
+                    type: 'scatter',
+                    mode: 'lines',
+                    x: currentData.dates,
+                    y: bbUpper,
+                    name: 'BB Upper',
+                    line: {color: 'rgba(128, 128, 128, 0.3)', width: 1},
+                    showlegend: false
+                });
+                traces.push({
+                    type: 'scatter',
+                    mode: 'lines',
+                    x: currentData.dates,
+                    y: bbMiddle,
+                    name: 'BB Middle',
+                    line: {color: 'rgba(128, 128, 128, 0.5)', width: 1, dash: 'dot'},
+                    fill: 'tonexty',
+                    fillcolor: 'rgba(128, 128, 128, 0.1)'
+                });
+                traces.push({
+                    type: 'scatter',
+                    mode: 'lines',
+                    x: currentData.dates,
+                    y: bbLower,
+                    name: 'BB Lower',
+                    line: {color: 'rgba(128, 128, 128, 0.3)', width: 1},
+                    fill: 'tonexty',
+                    fillcolor: 'rgba(128, 128, 128, 0.1)',
+                    showlegend: false
+                });
+            }
+            
+            Plotly.newPlot('stockChart', traces, layout);
+            
+            // Indicator charts (RSI, MACD, Volume)
+            const indicatorTraces = [];
+            const indicatorLayout = {
+                xaxis: {type: 'date'},
+                height: 200,
+                margin: {t: 0, b: 30},
+                showlegend: true
+            };
+            
+            if (showIndicators.volume) {
+                indicatorTraces.push({
+                    type: 'bar',
+                    x: currentData.dates,
+                    y: currentData.volume,
+                    name: 'Volume',
+                    marker: {color: 'rgba(102, 126, 234, 0.5)'},
+                    yaxis: 'y'
+                });
+                indicatorLayout.yaxis = {title: 'Volume', side: 'right'};
+            }
+            
+            if (showIndicators.rsi && currentIndicators.RSI) {
+                const rsiValues = new Array(currentData.prices.length).fill(currentIndicators.RSI);
+                indicatorTraces.push({
+                    type: 'scatter',
+                    mode: 'lines',
+                    x: currentData.dates,
+                    y: rsiValues,
+                    name: 'RSI',
+                    line: {color: '#FF6B6B', width: 2},
+                    yaxis: 'y2'
+                });
+                indicatorTraces.push({
+                    type: 'scatter',
+                    mode: 'lines',
+                    x: currentData.dates,
+                    y: new Array(currentData.prices.length).fill(70),
+                    name: 'Overbought',
+                    line: {color: 'red', width: 1, dash: 'dash'},
+                    showlegend: false,
+                    yaxis: 'y2'
+                });
+                indicatorTraces.push({
+                    type: 'scatter',
+                    mode: 'lines',
+                    x: currentData.dates,
+                    y: new Array(currentData.prices.length).fill(30),
+                    name: 'Oversold',
+                    line: {color: 'green', width: 1, dash: 'dash'},
+                    showlegend: false,
+                    yaxis: 'y2'
+                });
+                indicatorLayout.yaxis2 = {
+                    title: 'RSI',
+                    overlaying: 'y',
+                    side: 'left',
+                    range: [0, 100]
+                };
+            }
+            
+            if (showIndicators.macd && currentIndicators.MACD) {
+                const macdValues = new Array(currentData.prices.length).fill(currentIndicators.MACD);
+                const signalValues = new Array(currentData.prices.length).fill(currentIndicators.MACD_signal);
+                indicatorTraces.push({
+                    type: 'scatter',
+                    mode: 'lines',
+                    x: currentData.dates,
+                    y: macdValues,
+                    name: 'MACD',
+                    line: {color: '#4CAF50', width: 2},
+                    yaxis: 'y3'
+                });
+                indicatorTraces.push({
+                    type: 'scatter',
+                    mode: 'lines',
+                    x: currentData.dates,
+                    y: signalValues,
+                    name: 'Signal',
+                    line: {color: '#f44336', width: 1},
+                    yaxis: 'y3'
+                });
+                indicatorLayout.yaxis3 = {
+                    title: 'MACD',
+                    overlaying: 'y',
+                    side: 'right',
+                    anchor: 'free',
+                    position: 0.05
+                };
+            }
+            
+            if (indicatorTraces.length > 0) {
+                Plotly.newPlot('indicatorChart', indicatorTraces, indicatorLayout);
+                document.getElementById('indicatorChart').style.display = 'block';
+            } else {
+                document.getElementById('indicatorChart').style.display = 'none';
+            }
         }
         
         async function fetchData() {
@@ -938,11 +1267,16 @@ def index():
                 });
                 
                 const indicators = await indicatorsResponse.json();
-                console.log('Indicators received:', indicators);
+                currentIndicators = indicators;
                 
-                // Display chart
-                displayChart(data);
+                // Show chart controls and chart
+                document.getElementById('chartControls').style.display = 'block';
+                document.getElementById('mainChart').style.display = 'block';
                 
+                // Update chart
+                updateChart();
+                
+                // Display results
                 displayResults(data, predictions, indicators);
                 
             } catch (error) {
@@ -953,83 +1287,9 @@ def index():
                         <small>Try using a different data source or check the symbol.</small>
                     </div>
                 `;
+                document.getElementById('chartControls').style.display = 'none';
+                document.getElementById('mainChart').style.display = 'none';
             }
-        }
-        
-        let priceChart = null;
-        
-        function displayChart(data) {
-            // Show chart container
-            document.getElementById('chartContainer').style.display = 'block';
-            
-            // Destroy existing chart if any
-            if (priceChart) {
-                priceChart.destroy();
-            }
-            
-            // Prepare chart data
-            const ctx = document.getElementById('priceChart').getContext('2d');
-            
-            priceChart = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: data.dates.map(d => d.slice(5)), // MM-DD format
-                    datasets: [{
-                        label: 'Price',
-                        data: data.prices,
-                        borderColor: 'rgb(102, 126, 234)',
-                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                        borderWidth: 2,
-                        fill: true,
-                        tension: 0.1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: data.symbol + ' - ' + data.company_name,
-                            font: {
-                                size: 16
-                            }
-                        },
-                        legend: {
-                            display: false
-                        },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
-                            callbacks: {
-                                label: function(context) {
-                                    return '$' + context.parsed.y.toFixed(2);
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            display: true,
-                            grid: {
-                                display: false
-                            }
-                        },
-                        y: {
-                            display: true,
-                            title: {
-                                display: true,
-                                text: 'Price ($)'
-                            },
-                            ticks: {
-                                callback: function(value) {
-                                    return '$' + value.toFixed(0);
-                                }
-                            }
-                        }
-                    }
-                }
-            });
         }
         
         function displayResults(data, predictions, indicators) {
@@ -1096,7 +1356,7 @@ def index():
                         <h3>Technical Indicators</h3>
                         
                         <div class="indicator-grid">
-                            ${indicators.RSI !== undefined ? `
+                            ${indicators.RSI !== undefined && indicators.RSI !== null ? `
                                 <div class="indicator">
                                     <div class="indicator-label">RSI (14)</div>
                                     <div class="indicator-value" style="color: ${
@@ -1108,7 +1368,7 @@ def index():
                                 </div>
                             ` : ''}
                             
-                            ${indicators.MACD !== undefined ? `
+                            ${indicators.MACD !== undefined && indicators.MACD !== null ? `
                                 <div class="indicator">
                                     <div class="indicator-label">MACD</div>
                                     <div class="indicator-value">
@@ -1117,7 +1377,7 @@ def index():
                                 </div>
                             ` : ''}
                             
-                            ${indicators.SMA_20 !== undefined ? `
+                            ${indicators.SMA_20 !== undefined && indicators.SMA_20 !== null ? `
                                 <div class="indicator">
                                     <div class="indicator-label">SMA (20)</div>
                                     <div class="indicator-value">
@@ -1126,7 +1386,16 @@ def index():
                                 </div>
                             ` : ''}
                             
-                            ${indicators.EMA_12 !== undefined ? `
+                            ${indicators.SMA_50 !== undefined && indicators.SMA_50 !== null ? `
+                                <div class="indicator">
+                                    <div class="indicator-label">SMA (50)</div>
+                                    <div class="indicator-value">
+                                        $${indicators.SMA_50.toFixed(2)}
+                                    </div>
+                                </div>
+                            ` : ''}
+                            
+                            ${indicators.EMA_12 !== undefined && indicators.EMA_12 !== null ? `
                                 <div class="indicator">
                                     <div class="indicator-label">EMA (12)</div>
                                     <div class="indicator-value">
@@ -1135,7 +1404,16 @@ def index():
                                 </div>
                             ` : ''}
                             
-                            ${indicators.BB_upper !== undefined ? `
+                            ${indicators.EMA_26 !== undefined && indicators.EMA_26 !== null ? `
+                                <div class="indicator">
+                                    <div class="indicator-label">EMA (26)</div>
+                                    <div class="indicator-value">
+                                        $${indicators.EMA_26.toFixed(2)}
+                                    </div>
+                                </div>
+                            ` : ''}
+                            
+                            ${indicators.BB_upper !== undefined && indicators.BB_upper !== null ? `
                                 <div class="indicator">
                                     <div class="indicator-label">BB Upper</div>
                                     <div class="indicator-value">
@@ -1144,7 +1422,7 @@ def index():
                                 </div>
                             ` : ''}
                             
-                            ${indicators.BB_lower !== undefined ? `
+                            ${indicators.BB_lower !== undefined && indicators.BB_lower !== null ? `
                                 <div class="indicator">
                                     <div class="indicator-label">BB Lower</div>
                                     <div class="indicator-value">
@@ -1153,7 +1431,7 @@ def index():
                                 </div>
                             ` : ''}
                             
-                            ${indicators.ATR !== undefined ? `
+                            ${indicators.ATR !== undefined && indicators.ATR !== null ? `
                                 <div class="indicator">
                                     <div class="indicator-label">ATR (14)</div>
                                     <div class="indicator-value">
@@ -1162,11 +1440,20 @@ def index():
                                 </div>
                             ` : ''}
                             
-                            ${indicators.STOCH_K !== undefined ? `
+                            ${indicators.MACD_signal !== undefined && indicators.MACD_signal !== null ? `
                                 <div class="indicator">
-                                    <div class="indicator-label">Stochastic</div>
+                                    <div class="indicator-label">MACD Signal</div>
                                     <div class="indicator-value">
-                                        ${indicators.STOCH_K.toFixed(2)}
+                                        ${indicators.MACD_signal.toFixed(3)}
+                                    </div>
+                                </div>
+                            ` : ''}
+                            
+                            ${indicators.MACD_histogram !== undefined && indicators.MACD_histogram !== null ? `
+                                <div class="indicator">
+                                    <div class="indicator-label">MACD Histogram</div>
+                                    <div class="indicator-value">
+                                        ${indicators.MACD_histogram.toFixed(3)}
                                     </div>
                                 </div>
                             ` : ''}
@@ -1238,12 +1525,13 @@ def index():
         function generateSignal(indicators) {
             let signals = [];
             
-            if (indicators.RSI !== undefined) {
+            if (indicators.RSI !== undefined && indicators.RSI !== null) {
                 if (indicators.RSI < 30) signals.push('RSI indicates oversold - potential buy signal');
                 else if (indicators.RSI > 70) signals.push('RSI indicates overbought - potential sell signal');
             }
             
-            if (indicators.MACD !== undefined && indicators.MACD_signal !== undefined) {
+            if (indicators.MACD !== undefined && indicators.MACD !== null && 
+                indicators.MACD_signal !== undefined && indicators.MACD_signal !== null) {
                 if (indicators.MACD > indicators.MACD_signal) signals.push('MACD bullish crossover');
                 else signals.push('MACD bearish crossover');
             }
@@ -1260,24 +1548,13 @@ def index():
             return '';
         }
         
-        // Auto-fetch on load
+        // Auto-fetch SPY on load to demonstrate
         window.onload = () => {
             fetchData();
         };
     </script>
 </body>
 </html>"""
-
-@app.route("/static/chart.js")
-def serve_chartjs():
-    """Serve Chart.js library locally"""
-    try:
-        with open('chart.min.js', 'r', encoding='utf-8') as f:
-            js_content = f.read()
-        return js_content, 200, {'Content-Type': 'application/javascript'}
-    except FileNotFoundError:
-        # Fallback: return a simple message if file not found
-        return "console.error('Chart.js not found locally');", 200, {'Content-Type': 'application/javascript'}
 
 @app.route("/api/fetch", methods=["POST"])
 def api_fetch():
@@ -1333,9 +1610,8 @@ def api_indicators():
         
         print(f"Calculating indicators for {len(prices)} price points")
         
-        # Allow partial indicators with less data
-        if not prices or len(prices) < 3:
-            return jsonify({'error': 'Need at least 3 data points for indicators'}), 400
+        if not prices or len(prices) < 20:
+            return jsonify({'error': 'Insufficient data for indicators'}), 400
         
         indicators = calculate_technical_indicators(prices, volumes)
         print(f"Calculated indicators: {list(indicators.keys())}")
@@ -1384,6 +1660,7 @@ if __name__ == "__main__":
     print("SERVER STARTING")
     print("=" * 70)
     print(f"Access the application at: http://localhost:8000")
+    print("Interactive charts with Plotly.js")
     print("Press Ctrl+C to stop the server")
     print("=" * 70 + "\n")
     

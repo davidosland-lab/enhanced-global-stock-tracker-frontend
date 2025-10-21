@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML Stock Predictor - Unified System</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.5.0/dist/axios.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 15px;
+        }
+
+        .status-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .status-item {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #28a745;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.error {
+            background: #dc3545;
+        }
+
+        .status-indicator.warning {
+            background: #ffc107;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* Navigation Tabs */
+        .nav-tabs {
+            display: flex;
+            background: white;
+            border-radius: 15px;
+            padding: 5px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+
+        .nav-tab:hover {
+            background: #f8f9fa;
+        }
+
+        .nav-tab.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        /* Content Panels */
+        .content-panel {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .content-panel.active {
+            display: block;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #495057;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+
+        /* Chart Container */
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-top: 30px;
+        }
+
+        /* Results Display */
+        .results-card {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .results-card h3 {
+            color: #495057;
+            margin-bottom: 15px;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .result-item:last-child {
+            border-bottom: none;
+        }
+
+        .result-label {
+            font-weight: 500;
+            color: #6c757d;
+        }
+
+        .result-value {
+            font-weight: 600;
+            color: #212529;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            display: none;
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Alert Messages */
+        .alert {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>ML Stock Predictor</h1>
+            <p>Unified System with Real Market Data</p>
+            
+            <div class="status-bar" id="statusBar">
+                <div class="status-item">
+                    <div class="status-indicator" id="yahooStatus"></div>
+                    <span>Yahoo Finance: <span id="yahooText">Checking...</span></span>
+                </div>
+                <div class="status-item">
+                    <div class="status-indicator" id="alphaStatus"></div>
+                    <span>Alpha Vantage: <span id="alphaText">Checking...</span></span>
+                </div>
+                <div class="status-item">
+                    <div class="status-indicator" id="mlStatus"></div>
+                    <span>ML Models: <span id="mlText">Ready</span></span>
+                </div>
+                <div class="status-item">
+                    <div class="status-indicator" id="serverStatus"></div>
+                    <span>Server: <span id="serverText">Connected</span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="nav-tabs">
+            <div class="nav-tab active" onclick="switchTab('market')">📊 Market Data</div>
+            <div class="nav-tab" onclick="switchTab('train')">🎯 Train Models</div>
+            <div class="nav-tab" onclick="switchTab('predict')">🔮 Predictions</div>
+            <div class="nav-tab" onclick="switchTab('backtest')">📈 Backtesting</div>
+            <div class="nav-tab" onclick="switchTab('mcp')">🤖 AI Assistant</div>
+        </div>
+
+        <!-- Market Data Panel -->
+        <div class="content-panel active" id="marketPanel">
+            <h2>Real-Time Market Data</h2>
+            <div id="marketAlert"></div>
+            
+            <div class="form-group">
+                <label for="symbolInput">Stock Symbol</label>
+                <input type="text" class="form-control" id="symbolInput" placeholder="e.g., AAPL, MSFT, SPY" value="AAPL">
+            </div>
+            
+            <div class="form-group">
+                <label for="periodSelect">Time Period</label>
+                <select class="form-control" id="periodSelect">
+                    <option value="5d">5 Days</option>
+                    <option value="1mo" selected>1 Month</option>
+                    <option value="3mo">3 Months</option>
+                    <option value="6mo">6 Months</option>
+                    <option value="1y">1 Year</option>
+                    <option value="2y">2 Years</option>
+                    <option value="5y">5 Years</option>
+                </select>
+            </div>
+            
+            <button class="btn btn-primary" onclick="fetchMarketData()">Fetch Data</button>
+            
+            <div class="spinner" id="marketSpinner"></div>
+            
+            <div class="results-card" id="marketResults" style="display: none;">
+                <h3>Market Data Summary</h3>
+                <div class="result-item">
+                    <span class="result-label">Symbol</span>
+                    <span class="result-value" id="resSymbol">-</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Latest Price</span>
+                    <span class="result-value" id="resPrice">-</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Data Points</span>
+                    <span class="result-value" id="resPoints">-</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Date Range</span>
+                    <span class="result-value" id="resDateRange">-</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Data Source</span>
+                    <span class="result-value" id="resSource">-</span>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="priceChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Train Models Panel -->
+        <div class="content-panel" id="trainPanel">
+            <h2>Train ML Models</h2>
+            <div id="trainAlert"></div>
+            
+            <div class="form-group">
+                <label for="trainSymbol">Stock Symbol</label>
+                <input type="text" class="form-control" id="trainSymbol" placeholder="e.g., AAPL" value="AAPL">
+            </div>
+            
+            <div class="form-group">
+                <label for="trainPeriod">Training Data Period</label>
+                <select class="form-control" id="trainPeriod">
+                    <option value="6mo">6 Months</option>
+                    <option value="1y" selected>1 Year</option>
+                    <option value="2y">2 Years</option>
+                    <option value="5y">5 Years</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="modelType">Model Type</label>
+                <select class="form-control" id="modelType">
+                    <option value="rf">Random Forest</option>
+                    <option value="gb">Gradient Boosting</option>
+                    <option value="all" selected>All Models</option>
+                </select>
+            </div>
+            
+            <button class="btn btn-primary" onclick="trainModel()">Train Model</button>
+            
+            <div class="spinner" id="trainSpinner"></div>
+            
+            <div class="results-card" id="trainResults" style="display: none;">
+                <h3>Training Results</h3>
+                <div class="result-item">
+                    <span class="result-label">Symbol</span>
+                    <span class="result-value" id="trainResSymbol">-</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Training Samples</span>
+                    <span class="result-value" id="trainResSamples">-</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Model Score</span>
+                    <span class="result-value" id="trainResScore">-</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Status</span>
+                    <span class="result-value" id="trainResStatus">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Predictions Panel -->
+        <div class="content-panel" id="predictPanel">
+            <h2>Price Predictions</h2>
+            <div id="predictAlert"></div>
+            
+            <div class="form-group">
+                <label for="predictSymbol">Stock Symbol</label>
+                <input type="text" class="form-control" id="predictSymbol" placeholder="e.g., AAPL" value="AAPL">
+            </div>
+            
+            <div class="form-group">
+                <label for="predictDays">Prediction Horizon (Days)</label>
+                <input type="number" class="form-control" id="predictDays" value="7" min="1" max="30">
+            </div>
+            
+            <button class="btn btn-primary" onclick="generatePrediction()">Generate Prediction</button>
+            
+            <div class="spinner" id="predictSpinner"></div>
+            
+            <div class="results-card" id="predictResults" style="display: none;">
+                <h3>Prediction Summary</h3>
+                <div class="result-item">
+                    <span class="result-label">Symbol</span>
+                    <span class="result-value" id="predSymbol">-</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Current Price</span>
+                    <span class="result-value" id="predCurrent">-</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Predicted Price</span>
+                    <span class="result-value" id="predPrice">-</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Expected Change</span>
+                    <span class="result-value" id="predChange">-</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Confidence</span>
+                    <span class="result-value" id="predConfidence">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Backtesting Panel -->
+        <div class="content-panel" id="backtestPanel">
+            <h2>Strategy Backtesting</h2>
+            <div id="backtestAlert"></div>
+            
+            <div class="form-group">
+                <label for="btSymbol">Stock Symbol</label>
+                <input type="text" class="form-control" id="btSymbol" placeholder="e.g., AAPL" value="AAPL">
+            </div>
+            
+            <div class="form-group">
+                <label for="btPeriod">Backtest Period</label>
+                <select class="form-control" id="btPeriod">
+                    <option value="3mo">3 Months</option>
+                    <option value="6mo">6 Months</option>
+                    <option value="1y" selected>1 Year</option>
+                    <option value="2y">2 Years</option>
+                </select>
+            </div>
+            
+            <button class="btn btn-primary" onclick="runBacktest()">Run Backtest</button>
+            
+            <div class="spinner" id="btSpinner"></div>
+            
+            <div class="results-card" id="btResults" style="display: none;">
+                <h3>Backtest Results</h3>
+                <div class="result-item">
+                    <span class="result-label">Total Return</span>
+                    <span class="result-value" id="btReturn">-</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Sharpe Ratio</span>
+                    <span class="result-value" id="btSharpe">-</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Max Drawdown</span>
+                    <span class="result-value" id="btDrawdown">-</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Win Rate</span>
+                    <span class="result-value" id="btWinRate">-</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Total Trades</span>
+                    <span class="result-value" id="btTrades">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- MCP Assistant Panel -->
+        <div class="content-panel" id="mcpPanel">
+            <h2>AI Assistant (MCP)</h2>
+            <div id="mcpAlert"></div>
+            
+            <div class="alert alert-info">
+                MCP integration provides advanced tools for stock analysis, including:
+                <ul style="margin-top: 10px; margin-left: 20px;">
+                    <li>Real-time market data fetching</li>
+                    <li>Technical analysis calculations</li>
+                    <li>Sentiment analysis from news</li>
+                    <li>Custom strategy development</li>
+                </ul>
+            </div>
+            
+            <div class="form-group">
+                <label for="mcpQuery">Ask the AI Assistant</label>
+                <textarea class="form-control" id="mcpQuery" rows="4" 
+                    placeholder="e.g., 'What are the key support levels for AAPL?' or 'Show me momentum indicators for SPY'"></textarea>
+            </div>
+            
+            <button class="btn btn-primary" onclick="queryMCP()">Send Query</button>
+            
+            <div class="spinner" id="mcpSpinner"></div>
+            
+            <div class="results-card" id="mcpResults" style="display: none;">
+                <h3>AI Response</h3>
+                <div id="mcpResponse" style="white-space: pre-wrap; line-height: 1.6;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentChart = null;
+        let currentData = null;
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkSystemStatus();
+            // Check status every 30 seconds
+            setInterval(checkSystemStatus, 30000);
+        });
+
+        // Check system status
+        async function checkSystemStatus() {
+            try {
+                const response = await axios.get('/api/status');
+                const data = response.data;
+                
+                // Update Yahoo status
+                const yahooStatus = data.data_sources?.yahoo || 'unknown';
+                updateStatusIndicator('yahoo', yahooStatus);
+                
+                // Update Alpha Vantage status
+                const alphaStatus = data.data_sources?.alpha_vantage || 'unknown';
+                updateStatusIndicator('alpha', alphaStatus);
+                
+                // Update ML status
+                const mlReady = data.ml_ready;
+                updateStatusIndicator('ml', mlReady ? 'available' : 'unavailable');
+                
+                // Server is responding
+                updateStatusIndicator('server', 'connected');
+                
+            } catch (error) {
+                console.error('Status check failed:', error);
+                updateStatusIndicator('server', 'disconnected');
+            }
+        }
+
+        // Update status indicator
+        function updateStatusIndicator(service, status) {
+            const indicator = document.getElementById(service + 'Status');
+            const text = document.getElementById(service + 'Text');
+            
+            if (!indicator || !text) return;
+            
+            indicator.className = 'status-indicator';
+            
+            switch(status) {
+                case 'available':
+                case 'configured':
+                case 'connected':
+                    text.textContent = 'Active';
+                    break;
+                case 'checking':
+                    indicator.classList.add('warning');
+                    text.textContent = 'Checking...';
+                    break;
+                case 'error':
+                case 'disconnected':
+                case 'unavailable':
+                    indicator.classList.add('error');
+                    text.textContent = 'Error';
+                    break;
+                default:
+                    indicator.classList.add('warning');
+                    text.textContent = 'Unknown';
+            }
+        }
+
+        // Switch tabs
+        function switchTab(tab) {
+            // Hide all panels
+            document.querySelectorAll('.content-panel').forEach(panel => {
+                panel.classList.remove('active');
+            });
+            
+            // Remove active from all tabs
+            document.querySelectorAll('.nav-tab').forEach(navTab => {
+                navTab.classList.remove('active');
+            });
+            
+            // Show selected panel
+            document.getElementById(tab + 'Panel').classList.add('active');
+            
+            // Activate selected tab
+            event.target.classList.add('active');
+        }
+
+        // Fetch market data
+        async function fetchMarketData() {
+            const symbol = document.getElementById('symbolInput').value.trim().toUpperCase();
+            const period = document.getElementById('periodSelect').value;
+            
+            if (!symbol) {
+                showAlert('marketAlert', 'Please enter a stock symbol', 'error');
+                return;
+            }
+            
+            showSpinner('marketSpinner');
+            hideElement('marketResults');
+            clearAlert('marketAlert');
+            
+            try {
+                console.log('Fetching data for:', symbol, 'Period:', period);
+                
+                const response = await axios.post('/api/fetch', {
+                    symbol: symbol,
+                    period: period
+                }, {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('Response received:', response.data);
+                currentData = response.data;
+                
+                // Update results
+                document.getElementById('resSymbol').textContent = currentData.symbol;
+                document.getElementById('resPrice').textContent = '$' + currentData.latest_price.toFixed(2);
+                document.getElementById('resPoints').textContent = currentData.data_points;
+                document.getElementById('resDateRange').textContent = 
+                    currentData.start_date + ' to ' + currentData.end_date;
+                document.getElementById('resSource').textContent = currentData.source;
+                
+                showElement('marketResults');
+                
+                // Update chart
+                updatePriceChart(currentData);
+                
+                showAlert('marketAlert', '✅ Data fetched successfully!', 'success');
+                
+            } catch (error) {
+                console.error('Fetch error:', error);
+                showAlert('marketAlert', 
+                    '❌ Error: ' + (error.response?.data?.error || 'Failed to fetch data'), 
+                    'error');
+            } finally {
+                hideSpinner('marketSpinner');
+            }
+        }
+
+        // Update price chart
+        function updatePriceChart(data) {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            
+            // Destroy existing chart
+            if (currentChart) {
+                currentChart.destroy();
+            }
+            
+            // Create new chart
+            currentChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.dates,
+                    datasets: [{
+                        label: data.symbol + ' Price',
+                        data: data.prices,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return '$' + context.parsed.y.toFixed(2);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            }
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Price ($)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toFixed(0);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Train model
+        async function trainModel() {
+            const symbol = document.getElementById('trainSymbol').value.trim().toUpperCase();
+            const period = document.getElementById('trainPeriod').value;
+            const modelType = document.getElementById('modelType').value;
+            
+            if (!symbol) {
+                showAlert('trainAlert', 'Please enter a stock symbol', 'error');
+                return;
+            }
+            
+            showSpinner('trainSpinner');
+            hideElement('trainResults');
+            clearAlert('trainAlert');
+            
+            try {
+                const response = await axios.post('/api/train', {
+                    symbol: symbol,
+                    period: period,
+                    model_type: modelType
+                });
+                
+                const data = response.data;
+                
+                // Update results
+                document.getElementById('trainResSymbol').textContent = symbol;
+                document.getElementById('trainResSamples').textContent = data.training_samples || 'N/A';
+                
+                // Calculate average score if multiple models
+                let avgScore = 0;
+                let modelCount = 0;
+                if (data.models) {
+                    for (let model in data.models) {
+                        if (data.models[model].score) {
+                            avgScore += data.models[model].score;
+                            modelCount++;
+                        }
+                    }
+                    avgScore = modelCount > 0 ? (avgScore / modelCount * 100).toFixed(2) + '%' : 'N/A';
+                } else {
+                    avgScore = 'N/A';
+                }
+                
+                document.getElementById('trainResScore').textContent = avgScore;
+                document.getElementById('trainResStatus').textContent = data.status || 'Complete';
+                
+                showElement('trainResults');
+                showAlert('trainAlert', '✅ Model training completed successfully!', 'success');
+                
+            } catch (error) {
+                console.error('Training error:', error);
+                showAlert('trainAlert', 
+                    '❌ Error: ' + (error.response?.data?.error || 'Failed to train model'), 
+                    'error');
+            } finally {
+                hideSpinner('trainSpinner');
+            }
+        }
+
+        // Generate prediction
+        async function generatePrediction() {
+            const symbol = document.getElementById('predictSymbol').value.trim().toUpperCase();
+            const days = document.getElementById('predictDays').value;
+            
+            if (!symbol) {
+                showAlert('predictAlert', 'Please enter a stock symbol', 'error');
+                return;
+            }
+            
+            showSpinner('predictSpinner');
+            hideElement('predictResults');
+            clearAlert('predictAlert');
+            
+            try {
+                const response = await axios.post('/api/predict', {
+                    symbol: symbol,
+                    days: parseInt(days)
+                });
+                
+                const data = response.data;
+                
+                // Update results
+                document.getElementById('predSymbol').textContent = data.symbol || symbol;
+                document.getElementById('predCurrent').textContent = 
+                    '$' + (data.current_price?.toFixed(2) || 'N/A');
+                document.getElementById('predPrice').textContent = 
+                    '$' + (data.ensemble_prediction?.toFixed(2) || 'N/A');
+                
+                const changePercent = data.price_change_pct?.toFixed(2) || 0;
+                const changeStr = changePercent > 0 ? '+' + changePercent + '%' : changePercent + '%';
+                document.getElementById('predChange').textContent = changeStr;
+                
+                document.getElementById('predConfidence').textContent = 'Medium';
+                
+                showElement('predictResults');
+                showAlert('predictAlert', '✅ Prediction generated successfully!', 'success');
+                
+            } catch (error) {
+                console.error('Prediction error:', error);
+                showAlert('predictAlert', 
+                    '❌ Error: ' + (error.response?.data?.error || 'Failed to generate prediction'), 
+                    'error');
+            } finally {
+                hideSpinner('predictSpinner');
+            }
+        }
+
+        // Run backtest
+        async function runBacktest() {
+            const symbol = document.getElementById('btSymbol').value.trim().toUpperCase();
+            const period = document.getElementById('btPeriod').value;
+            
+            if (!symbol) {
+                showAlert('backtestAlert', 'Please enter a stock symbol', 'error');
+                return;
+            }
+            
+            showSpinner('btSpinner');
+            hideElement('btResults');
+            clearAlert('backtestAlert');
+            
+            try {
+                const response = await axios.post('/api/backtest', {
+                    symbol: symbol,
+                    period: period
+                });
+                
+                const data = response.data;
+                const results = data.results || {};
+                
+                // Update results
+                document.getElementById('btReturn').textContent = 
+                    (results.total_return?.toFixed(2) || '0') + '%';
+                document.getElementById('btSharpe').textContent = 
+                    results.sharpe_ratio?.toFixed(2) || 'N/A';
+                document.getElementById('btDrawdown').textContent = 
+                    (results.max_drawdown?.toFixed(2) || '0') + '%';
+                document.getElementById('btWinRate').textContent = 
+                    ((results.win_rate || 0) * 100).toFixed(1) + '%';
+                document.getElementById('btTrades').textContent = 
+                    results.total_trades || '0';
+                
+                showElement('btResults');
+                showAlert('backtestAlert', '✅ Backtest completed successfully!', 'success');
+                
+            } catch (error) {
+                console.error('Backtest error:', error);
+                showAlert('backtestAlert', 
+                    '❌ Error: ' + (error.response?.data?.error || 'Failed to run backtest'), 
+                    'error');
+            } finally {
+                hideSpinner('btSpinner');
+            }
+        }
+
+        // Query MCP
+        async function queryMCP() {
+            const query = document.getElementById('mcpQuery').value.trim();
+            
+            if (!query) {
+                showAlert('mcpAlert', 'Please enter a query', 'error');
+                return;
+            }
+            
+            showSpinner('mcpSpinner');
+            hideElement('mcpResults');
+            clearAlert('mcpAlert');
+            
+            try {
+                const response = await axios.post('/api/mcp/query', {
+                    query: query
+                });
+                
+                const data = response.data;
+                
+                // Display the response
+                const responseDiv = document.getElementById('mcpResponse');
+                
+                // Convert markdown-style formatting to HTML
+                let formattedResponse = data.response || 'No response received';
+                
+                // Replace markdown bold with HTML
+                formattedResponse = formattedResponse.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                
+                // Replace bullet points
+                formattedResponse = formattedResponse.replace(/^• /gm, '• ');
+                
+                // Replace newlines with breaks
+                formattedResponse = formattedResponse.replace(/\n/g, '<br>');
+                
+                responseDiv.innerHTML = formattedResponse;
+                
+                showElement('mcpResults');
+                
+                // Show appropriate alert based on response type
+                if (data.type === 'prediction') {
+                    showAlert('mcpAlert', '✅ Stock prediction generated successfully!', 'success');
+                } else if (data.type === 'error') {
+                    showAlert('mcpAlert', '⚠️ ' + (data.response || 'Error processing request'), 'error');
+                } else {
+                    showAlert('mcpAlert', '✅ Analysis complete', 'success');
+                }
+                
+            } catch (error) {
+                console.error('MCP error:', error);
+                showAlert('mcpAlert', 
+                    '❌ Error: ' + (error.response?.data?.error || 'Failed to process query'), 
+                    'error');
+            } finally {
+                hideSpinner('mcpSpinner');
+            }
+        }
+
+        // Utility functions
+        function showAlert(elementId, message, type) {
+            const alertDiv = document.getElementById(elementId);
+            alertDiv.className = 'alert alert-' + type;
+            alertDiv.textContent = message;
+            alertDiv.style.display = 'block';
+        }
+
+        function clearAlert(elementId) {
+            const alertDiv = document.getElementById(elementId);
+            alertDiv.style.display = 'none';
+        }
+
+        function showSpinner(spinnerId) {
+            document.getElementById(spinnerId).style.display = 'block';
+        }
+
+        function hideSpinner(spinnerId) {
+            document.getElementById(spinnerId).style.display = 'none';
+        }
+
+        function showElement(elementId) {
+            document.getElementById(elementId).style.display = 'block';
+        }
+
+        function hideElement(elementId) {
+            document.getElementById(elementId).style.display = 'none';
+        }
+    </script>
+</body>
+</html>

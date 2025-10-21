@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test CBA Fetch</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.5.0/dist/axios.min.js"></script>
+</head>
+<body>
+    <h1>Test Commonwealth Bank Data Fetch</h1>
+    <button onclick="testFetch()">Test Fetch CBA</button>
+    <button onclick="testFetchWithAX()">Test Fetch CBA.AX</button>
+    <div id="result"></div>
+    
+    <script>
+        async function testFetch() {
+            try {
+                const response = await fetch('http://localhost:8000/api/fetch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        symbol: 'CBA',
+                        period: '1mo'
+                    })
+                });
+                
+                const data = await response.json();
+                document.getElementById('result').innerHTML = `
+                    <h2>Success!</h2>
+                    <p>Symbol: ${data.symbol}</p>
+                    <p>Company: ${data.company}</p>
+                    <p>Price: ${data.currency} $${data.latest_price}</p>
+                    <p>Data Points: ${data.data_points}</p>
+                `;
+            } catch (error) {
+                document.getElementById('result').innerHTML = `<h2>Error: ${error.message}</h2>`;
+            }
+        }
+        
+        async function testFetchWithAX() {
+            try {
+                const response = await fetch('http://localhost:8000/api/fetch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        symbol: 'CBA.AX',
+                        period: '1mo'
+                    })
+                });
+                
+                const data = await response.json();
+                document.getElementById('result').innerHTML = `
+                    <h2>Success with .AX!</h2>
+                    <p>Symbol: ${data.symbol}</p>
+                    <p>Company: ${data.company}</p>
+                    <p>Price: ${data.currency} $${data.latest_price}</p>
+                    <p>Data Points: ${data.data_points}</p>
+                `;
+            } catch (error) {
+                document.getElementById('result').innerHTML = `<h2>Error: ${error.message}</h2>`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML Stock Predictor - Windows 11</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 900px;
+            width: 100%;
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .status-bar {
+            background: #f8f9fa;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-around;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ccc;
+        }
+        
+        .status-dot.active {
+            background: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .main-content {
+            padding: 30px;
+        }
+        
+        .input-section {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        input[type="text"] {
+            flex: 1;
+            padding: 12px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        select {
+            padding: 12px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            background: white;
+            cursor: pointer;
+        }
+        
+        button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .quick-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .quick-btn {
+            padding: 10px;
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        
+        .quick-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+            transform: translateY(-2px);
+        }
+        
+        .results-container {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            min-height: 200px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+        
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #c62828;
+        }
+        
+        .success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .stock-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .info-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .info-card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+        
+        .price-display {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #333;
+            margin: 10px 0;
+        }
+        
+        .price-change {
+            font-size: 1.2em;
+            margin: 5px 0;
+        }
+        
+        .price-change.positive {
+            color: #4CAF50;
+        }
+        
+        .price-change.negative {
+            color: #f44336;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #667eea;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📈 ML Stock Predictor</h1>
+            <p>Real-time stock data powered by Yahoo Finance & Alpha Vantage</p>
+        </div>
+        
+        <div class="status-bar">
+            <div class="status-item">
+                <div id="server-dot" class="status-dot"></div>
+                <span>Server</span>
+            </div>
+            <div class="status-item">
+                <div id="yahoo-dot" class="status-dot"></div>
+                <span>Yahoo Finance</span>
+            </div>
+            <div class="status-item">
+                <div id="av-dot" class="status-dot"></div>
+                <span>Alpha Vantage</span>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="input-section">
+                <input type="text" id="symbol" placeholder="Enter stock symbol (e.g., CBA, AAPL)" value="CBA">
+                <select id="period">
+                    <option value="1d">1 Day</option>
+                    <option value="5d">5 Days</option>
+                    <option value="1mo" selected>1 Month</option>
+                    <option value="3mo">3 Months</option>
+                    <option value="6mo">6 Months</option>
+                    <option value="1y">1 Year</option>
+                </select>
+                <button onclick="fetchStock()">Fetch Data</button>
+            </div>
+            
+            <div class="quick-buttons">
+                <div class="quick-btn" onclick="quickFetch('CBA')">CBA 🇦🇺</div>
+                <div class="quick-btn" onclick="quickFetch('BHP')">BHP 🇦🇺</div>
+                <div class="quick-btn" onclick="quickFetch('CSL')">CSL 🇦🇺</div>
+                <div class="quick-btn" onclick="quickFetch('NAB')">NAB 🇦🇺</div>
+                <div class="quick-btn" onclick="quickFetch('WBC')">WBC 🇦🇺</div>
+                <div class="quick-btn" onclick="quickFetch('AAPL')">AAPL 🇺🇸</div>
+                <div class="quick-btn" onclick="quickFetch('MSFT')">MSFT 🇺🇸</div>
+                <div class="quick-btn" onclick="quickFetch('GOOGL')">GOOGL 🇺🇸</div>
+            </div>
+            
+            <div id="results" class="results-container">
+                <p style="text-align: center; color: #999;">Enter a symbol and click Fetch Data to begin</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentData = null;
+        
+        // Check server status on load
+        window.addEventListener('load', () => {
+            checkStatus();
+            setInterval(checkStatus, 30000);
+        });
+        
+        async function checkStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                
+                document.getElementById('server-dot').className = 'status-dot active';
+                
+                if (data.components) {
+                    document.getElementById('yahoo-dot').className = 
+                        data.components.yahoo_finance ? 'status-dot active' : 'status-dot';
+                    document.getElementById('av-dot').className = 
+                        data.components.alpha_vantage ? 'status-dot active' : 'status-dot';
+                }
+            } catch (error) {
+                document.getElementById('server-dot').className = 'status-dot';
+                console.error('Status check failed:', error);
+            }
+        }
+        
+        function quickFetch(symbol) {
+            document.getElementById('symbol').value = symbol;
+            fetchStock();
+        }
+        
+        async function fetchStock() {
+            const symbol = document.getElementById('symbol').value.trim().toUpperCase();
+            const period = document.getElementById('period').value;
+            
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="loading">Fetching data for ' + symbol + '</div>';
+            
+            try {
+                const response = await fetch('/api/fetch', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({ symbol, period })
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to fetch data');
+                }
+                
+                currentData = data;
+                displayStockData(data);
+                
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="error">
+                        <strong>❌ Error:</strong> ${error.message}
+                        <br><br>
+                        <small>Check if the server is running and try again.</small>
+                    </div>
+                `;
+            }
+        }
+        
+        function displayStockData(data) {
+            const changeClass = data.price_change >= 0 ? 'positive' : 'negative';
+            const changeSymbol = data.price_change >= 0 ? '▲' : '▼';
+            
+            const html = `
+                <div class="success">
+                    ✅ Data fetched successfully from ${data.source}
+                </div>
+                
+                <div class="stock-info">
+                    <div class="info-card">
+                        <h3>${data.symbol}</h3>
+                        <p style="color: #666; margin-bottom: 10px;">${data.company}</p>
+                        <div class="price-display">${data.currency} $${data.latest_price.toFixed(2)}</div>
+                        <div class="price-change ${changeClass}">
+                            ${changeSymbol} ${Math.abs(data.price_change).toFixed(2)} 
+                            (${data.price_change_pct >= 0 ? '+' : ''}${data.price_change_pct.toFixed(2)}%)
+                        </div>
+                    </div>
+                    
+                    <div class="info-card">
+                        <h3>Market Data</h3>
+                        <table>
+                            <tr><th>Data Points</th><td>${data.data_points}</td></tr>
+                            <tr><th>Period</th><td>${data.start_date} to ${data.end_date}</td></tr>
+                            <tr><th>Source</th><td>${data.source === 'yahoo' ? 'Yahoo Finance' : 'Alpha Vantage'}</td></tr>
+                            <tr><th>Last Update</th><td>${new Date(data.fetch_time).toLocaleTimeString()}</td></tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <div class="info-card" style="margin-top: 20px;">
+                    <h3>Recent Prices (Last 10 Days)</h3>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Price</th>
+                                <th>Volume</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.dates.slice(-10).reverse().map((date, i) => {
+                                const idx = data.dates.length - 10 + i;
+                                return `
+                                    <tr>
+                                        <td>${date}</td>
+                                        <td>${data.currency} $${data.prices[idx].toFixed(2)}</td>
+                                        <td>${(data.volumes[idx] / 1000000).toFixed(2)}M</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            document.getElementById('results').innerHTML = html;
+        }
+    </script>
+</body>
+</html>

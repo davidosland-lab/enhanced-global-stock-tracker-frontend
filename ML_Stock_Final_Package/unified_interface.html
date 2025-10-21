@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML Stock Predictor - Unified System</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios@1.5.0/dist/axios.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 15px;
+        }
+
+        .status-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .status-item {
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #28a745;
+            animation: pulse 2s infinite;
+        }
+
+        .status-indicator.error {
+            background: #dc3545;
+        }
+
+        .status-indicator.warning {
+            background: #ffc107;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        /* Navigation Tabs */
+        .nav-tabs {
+            display: flex;
+            background: white;
+            border-radius: 15px;
+            padding: 5px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        .nav-tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.3s;
+            font-weight: 500;
+            color: #666;
+        }
+
+        .nav-tab.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .nav-tab:hover:not(.active) {
+            background: #f8f9fa;
+        }
+
+        /* Content Panels */
+        .content-panel {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .content-panel.active {
+            display: block;
+        }
+
+        /* Form Controls */
+        .control-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group select {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #ffc107;
+            color: #333;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Charts */
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 30px 0;
+        }
+
+        /* Results */
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 30px;
+        }
+
+        .result-card {
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border-left: 4px solid #667eea;
+        }
+
+        .result-card h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .metric-row:last-child {
+            border: none;
+        }
+
+        .metric-value {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        /* Alerts */
+        .alert {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* MCP Integration Panel */
+        .mcp-panel {
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .mcp-tools {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .mcp-tool {
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .mcp-tool:hover {
+            border-color: #667eea;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .nav-tabs {
+                flex-direction: column;
+            }
+            
+            .control-group {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>ML Stock Predictor - Unified System</h1>
+            <p>Advanced Machine Learning Stock Prediction with Multi-Source Data</p>
+            
+            <div class="status-bar">
+                <div class="status-item">
+                    <div class="status-indicator" id="yahooStatus"></div>
+                    <span>Yahoo Finance: <span id="yahooStatusText">Checking...</span></span>
+                </div>
+                <div class="status-item">
+                    <div class="status-indicator" id="alphaStatus"></div>
+                    <span>Alpha Vantage: <span id="alphaStatusText">Checking...</span></span>
+                </div>
+                <div class="status-item">
+                    <div class="status-indicator" id="mlStatus"></div>
+                    <span>ML Engine: <span id="mlStatusText">Checking...</span></span>
+                </div>
+                <div class="status-item">
+                    <div class="status-indicator" id="mcpStatus"></div>
+                    <span>MCP Server: <span id="mcpStatusText">Checking...</span></span>
+                </div>
+                <div class="status-item">
+                    <div class="status-indicator" id="currentSource"></div>
+                    <span>Active Source: <span id="currentSourceText">Detecting...</span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="nav-tabs">
+            <div class="nav-tab active" onclick="switchTab('data')">📊 Market Data</div>
+            <div class="nav-tab" onclick="switchTab('train')">🎯 Train Models</div>
+            <div class="nav-tab" onclick="switchTab('predict')">🔮 Predictions</div>
+            <div class="nav-tab" onclick="switchTab('backtest')">📈 Backtesting</div>
+            <div class="nav-tab" onclick="switchTab('mcp')">🤖 AI Assistant</div>
+        </div>
+
+        <!-- Market Data Panel -->
+        <div id="dataPanel" class="content-panel active">
+            <h2>Real-Time Market Data</h2>
+            
+            <div class="control-group">
+                <div class="form-group">
+                    <label>Stock Symbol</label>
+                    <input type="text" id="dataSymbol" value="AAPL" placeholder="e.g., AAPL, MSFT">
+                </div>
+                <div class="form-group">
+                    <label>Time Period</label>
+                    <select id="dataPeriod">
+                        <option value="1d">1 Day</option>
+                        <option value="5d">5 Days</option>
+                        <option value="1mo">1 Month</option>
+                        <option value="3mo">3 Months</option>
+                        <option value="6mo">6 Months</option>
+                        <option value="1y" selected>1 Year</option>
+                        <option value="2y">2 Years</option>
+                        <option value="5y">5 Years</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary" onclick="fetchData()">
+                        <span id="fetchSpinner"></span>
+                        Fetch Data
+                    </button>
+                </div>
+            </div>
+
+            <div id="dataAlert"></div>
+            
+            <div class="chart-container">
+                <canvas id="priceChart"></canvas>
+            </div>
+            
+            <div id="dataResults" class="results-grid"></div>
+        </div>
+
+        <!-- Train Models Panel -->
+        <div id="trainPanel" class="content-panel">
+            <h2>Train Machine Learning Models</h2>
+            
+            <div class="control-group">
+                <div class="form-group">
+                    <label>Stock Symbol</label>
+                    <input type="text" id="trainSymbol" value="AAPL" placeholder="e.g., AAPL, MSFT">
+                </div>
+                <div class="form-group">
+                    <label>Model Type</label>
+                    <select id="modelType">
+                        <option value="random_forest">Random Forest</option>
+                        <option value="xgboost">XGBoost</option>
+                        <option value="gradient_boost">Gradient Boosting</option>
+                        <option value="all">Train All Models</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary" onclick="trainModel()">
+                        <span id="trainSpinner"></span>
+                        Start Training
+                    </button>
+                </div>
+            </div>
+
+            <div id="trainAlert"></div>
+            
+            <div id="trainingProgress" style="display: none;">
+                <h3>Training Progress</h3>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+            
+            <div id="trainResults" class="results-grid"></div>
+        </div>
+
+        <!-- Predictions Panel -->
+        <div id="predictPanel" class="content-panel">
+            <h2>Stock Price Predictions</h2>
+            
+            <div class="control-group">
+                <div class="form-group">
+                    <label>Stock Symbol</label>
+                    <input type="text" id="predictSymbol" value="AAPL" placeholder="e.g., AAPL, MSFT">
+                </div>
+                <div class="form-group">
+                    <label>Prediction Days</label>
+                    <input type="number" id="predictDays" value="5" min="1" max="30">
+                </div>
+                <div class="form-group">
+                    <label>Confidence Level</label>
+                    <select id="confidenceLevel">
+                        <option value="0.90">90%</option>
+                        <option value="0.95" selected>95%</option>
+                        <option value="0.99">99%</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary" onclick="makePrediction()">
+                        <span id="predictSpinner"></span>
+                        Generate Prediction
+                    </button>
+                </div>
+            </div>
+
+            <div id="predictAlert"></div>
+            
+            <div class="chart-container">
+                <canvas id="predictionChart"></canvas>
+            </div>
+            
+            <div id="predictResults" class="results-grid"></div>
+        </div>
+
+        <!-- Backtesting Panel -->
+        <div id="backtestPanel" class="content-panel">
+            <h2>Strategy Backtesting</h2>
+            
+            <div class="control-group">
+                <div class="form-group">
+                    <label>Stock Symbol</label>
+                    <input type="text" id="backtestSymbol" value="AAPL" placeholder="e.g., AAPL, MSFT">
+                </div>
+                <div class="form-group">
+                    <label>Test Period</label>
+                    <select id="backtestPeriod">
+                        <option value="3mo">3 Months</option>
+                        <option value="6mo">6 Months</option>
+                        <option value="1y" selected>1 Year</option>
+                        <option value="2y">2 Years</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary" onclick="runBacktest()">
+                        <span id="backtestSpinner"></span>
+                        Run Backtest
+                    </button>
+                </div>
+            </div>
+
+            <div id="backtestAlert"></div>
+            
+            <div class="chart-container">
+                <canvas id="backtestChart"></canvas>
+            </div>
+            
+            <div id="backtestResults" class="results-grid"></div>
+        </div>
+
+        <!-- MCP AI Assistant Panel -->
+        <div id="mcpPanel" class="content-panel">
+            <h2>AI Assistant Integration (MCP)</h2>
+            
+            <div class="mcp-panel">
+                <h3>Available MCP Tools</h3>
+                <p>These tools are available for AI assistants to interact with the ML system:</p>
+                
+                <div class="mcp-tools" id="mcpTools">
+                    <div class="mcp-tool">
+                        <strong>📊 Get Market Data</strong>
+                        <p>Fetch real-time stock prices</p>
+                    </div>
+                    <div class="mcp-tool">
+                        <strong>🎯 Train Models</strong>
+                        <p>Train ML models on demand</p>
+                    </div>
+                    <div class="mcp-tool">
+                        <strong>🔮 Make Predictions</strong>
+                        <p>Generate price forecasts</p>
+                    </div>
+                    <div class="mcp-tool">
+                        <strong>📈 Run Backtests</strong>
+                        <p>Test trading strategies</p>
+                    </div>
+                    <div class="mcp-tool">
+                        <strong>💭 Sentiment Analysis</strong>
+                        <p>Analyze market sentiment</p>
+                    </div>
+                    <div class="mcp-tool">
+                        <strong>📉 Technical Indicators</strong>
+                        <p>Calculate 35+ indicators</p>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <h4>MCP Server Status</h4>
+                    <div id="mcpServerInfo"></div>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <h4>How to Connect Your AI Assistant</h4>
+                    <ol>
+                        <li>Ensure MCP server is running (check status above)</li>
+                        <li>Configure your AI assistant to connect to: <code>http://localhost:8001</code></li>
+                        <li>Available endpoints:
+                            <ul>
+                                <li><code>/tools/list</code> - List available tools</li>
+                                <li><code>/tools/call</code> - Execute a tool</li>
+                                <li><code>/market_data</code> - Get market data</li>
+                                <li><code>/sentiment</code> - Analyze sentiment</li>
+                            </ul>
+                        </li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentChart = null;
+        let predictionChart = null;
+        let backtestChart = null;
+        const API_URL = 'http://localhost:8000';
+
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            checkSystemStatus();
+            setInterval(checkSystemStatus, 30000); // Check every 30 seconds
+        });
+
+        // Check system status
+        async function checkSystemStatus() {
+            try {
+                const response = await axios.get(`${API_URL}/api/status`);
+                const data = response.data;
+                
+                // Update status indicators
+                updateStatus('yahoo', data.data_sources.yahoo === 'available');
+                updateStatus('alpha', data.data_sources.alpha_vantage === 'available');
+                updateStatus('ml', data.ml_ready);
+                updateStatus('mcp', data.mcp_ready);
+                
+                // Update current source
+                document.getElementById('currentSourceText').textContent = 
+                    data.data_sources.current.toUpperCase();
+                
+                // Update MCP info
+                if (data.mcp_ready) {
+                    document.getElementById('mcpServerInfo').innerHTML = `
+                        <div class="alert alert-success">
+                            ✅ MCP Server is running on port 8001
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('mcpServerInfo').innerHTML = `
+                        <div class="alert alert-warning">
+                            ⚠️ MCP Server is not available
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Status check failed:', error);
+                updateStatus('yahoo', false);
+                updateStatus('alpha', false);
+                updateStatus('ml', false);
+                updateStatus('mcp', false);
+            }
+        }
+
+        // Update status indicator
+        function updateStatus(service, isActive) {
+            const indicator = document.getElementById(`${service}Status`);
+            const text = document.getElementById(`${service}StatusText`);
+            
+            if (isActive) {
+                indicator.className = 'status-indicator';
+                text.textContent = 'Active';
+            } else {
+                indicator.className = 'status-indicator error';
+                text.textContent = 'Inactive';
+            }
+        }
+
+        // Switch tabs
+        function switchTab(tab) {
+            // Update tab buttons
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Update panels
+            document.querySelectorAll('.content-panel').forEach(p => p.classList.remove('active'));
+            document.getElementById(`${tab}Panel`).classList.add('active');
+        }
+
+        // Fetch market data
+        async function fetchData() {
+            const symbol = document.getElementById('dataSymbol').value;
+            const period = document.getElementById('dataPeriod').value;
+            
+            showSpinner('fetchSpinner');
+            clearAlert('dataAlert');
+            
+            try {
+                const response = await axios.post(`${API_URL}/api/fetch`, {
+                    symbol: symbol,
+                    period: period
+                });
+                
+                const data = response.data;
+                
+                // Show success message
+                showAlert('dataAlert', `Successfully fetched ${data.data_points} data points from ${data.source.toUpperCase()}`, 'success');
+                
+                // Display results
+                displayDataResults(data);
+                
+                // Update chart
+                updatePriceChart(data);
+                
+            } catch (error) {
+                showAlert('dataAlert', `Error: ${error.response?.data?.error || error.message}`, 'error');
+            } finally {
+                hideSpinner('fetchSpinner');
+            }
+        }
+
+        // Display data results
+        function displayDataResults(data) {
+            const html = `
+                <div class="result-card">
+                    <h3>${data.symbol}</h3>
+                    <div class="metric-row">
+                        <span>Data Source</span>
+                        <span class="metric-value">${data.source.toUpperCase()}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Latest Price</span>
+                        <span class="metric-value">$${data.latest_price.toFixed(2)}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Data Points</span>
+                        <span class="metric-value">${data.data_points}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Date Range</span>
+                        <span class="metric-value">${data.start_date} to ${data.end_date}</span>
+                    </div>
+                </div>
+            `;
+            document.getElementById('dataResults').innerHTML = html;
+        }
+
+        // Update price chart
+        function updatePriceChart(data) {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            
+            if (currentChart) {
+                currentChart.destroy();
+            }
+            
+            currentChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.dates,
+                    datasets: [{
+                        label: `${data.symbol} Price`,
+                        data: data.prices,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `$${context.parsed.y.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toFixed(2);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Train model
+        async function trainModel() {
+            const symbol = document.getElementById('trainSymbol').value;
+            const modelType = document.getElementById('modelType').value;
+            
+            showSpinner('trainSpinner');
+            clearAlert('trainAlert');
+            document.getElementById('trainingProgress').style.display = 'block';
+            
+            try {
+                const response = await axios.post(`${API_URL}/api/train`, {
+                    symbol: symbol,
+                    model_type: modelType
+                });
+                
+                const data = response.data;
+                showAlert('trainAlert', `Model training completed successfully!`, 'success');
+                displayTrainResults(data);
+                
+            } catch (error) {
+                showAlert('trainAlert', `Error: ${error.response?.data?.error || error.message}`, 'error');
+            } finally {
+                hideSpinner('trainSpinner');
+                document.getElementById('trainingProgress').style.display = 'none';
+            }
+        }
+
+        // Display training results
+        function displayTrainResults(data) {
+            const html = `
+                <div class="result-card">
+                    <h3>Training Results</h3>
+                    <div class="metric-row">
+                        <span>Symbol</span>
+                        <span class="metric-value">${data.symbol}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Model Type</span>
+                        <span class="metric-value">${data.model_type}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Data Source</span>
+                        <span class="metric-value">${data.data_source}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Training Samples</span>
+                        <span class="metric-value">${data.training_samples}</span>
+                    </div>
+                </div>
+                ${data.metrics ? `
+                <div class="result-card">
+                    <h3>Model Metrics</h3>
+                    ${Object.entries(data.metrics).map(([key, value]) => `
+                        <div class="metric-row">
+                            <span>${key}</span>
+                            <span class="metric-value">${typeof value === 'number' ? value.toFixed(4) : value}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                ` : ''}
+            `;
+            document.getElementById('trainResults').innerHTML = html;
+        }
+
+        // Make prediction
+        async function makePrediction() {
+            const symbol = document.getElementById('predictSymbol').value;
+            const days = document.getElementById('predictDays').value;
+            
+            showSpinner('predictSpinner');
+            clearAlert('predictAlert');
+            
+            try {
+                const response = await axios.post(`${API_URL}/api/predict`, {
+                    symbol: symbol,
+                    days: parseInt(days)
+                });
+                
+                const data = response.data;
+                showAlert('predictAlert', `Prediction generated successfully!`, 'success');
+                displayPredictResults(data);
+                
+            } catch (error) {
+                showAlert('predictAlert', `Error: ${error.response?.data?.error || error.message}`, 'error');
+            } finally {
+                hideSpinner('predictSpinner');
+            }
+        }
+
+        // Display prediction results
+        function displayPredictResults(data) {
+            const html = `
+                <div class="result-card">
+                    <h3>Prediction Summary</h3>
+                    <div class="metric-row">
+                        <span>Symbol</span>
+                        <span class="metric-value">${data.symbol}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Current Price</span>
+                        <span class="metric-value">$${data.current_price.toFixed(2)}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Prediction Days</span>
+                        <span class="metric-value">${data.days}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Data Source</span>
+                        <span class="metric-value">${data.data_source}</span>
+                    </div>
+                </div>
+            `;
+            document.getElementById('predictResults').innerHTML = html;
+        }
+
+        // Run backtest
+        async function runBacktest() {
+            const symbol = document.getElementById('backtestSymbol').value;
+            const period = document.getElementById('backtestPeriod').value;
+            
+            showSpinner('backtestSpinner');
+            clearAlert('backtestAlert');
+            
+            try {
+                const response = await axios.post(`${API_URL}/api/backtest`, {
+                    symbol: symbol,
+                    period: period
+                });
+                
+                const data = response.data;
+                showAlert('backtestAlert', `Backtest completed successfully!`, 'success');
+                displayBacktestResults(data);
+                
+            } catch (error) {
+                showAlert('backtestAlert', `Error: ${error.response?.data?.error || error.message}`, 'error');
+            } finally {
+                hideSpinner('backtestSpinner');
+            }
+        }
+
+        // Display backtest results
+        function displayBacktestResults(data) {
+            const html = `
+                <div class="result-card">
+                    <h3>Backtest Results</h3>
+                    <div class="metric-row">
+                        <span>Symbol</span>
+                        <span class="metric-value">${data.symbol}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Period</span>
+                        <span class="metric-value">${data.period}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span>Data Source</span>
+                        <span class="metric-value">${data.data_source}</span>
+                    </div>
+                </div>
+            `;
+            document.getElementById('backtestResults').innerHTML = html;
+        }
+
+        // Helper functions
+        function showSpinner(id) {
+            document.getElementById(id).innerHTML = '<div class="spinner"></div>';
+        }
+
+        function hideSpinner(id) {
+            document.getElementById(id).innerHTML = '';
+        }
+
+        function showAlert(id, message, type) {
+            document.getElementById(id).innerHTML = `
+                <div class="alert alert-${type}">
+                    ${type === 'success' ? '✅' : type === 'error' ? '❌' : '⚠️'} ${message}
+                </div>
+            `;
+        }
+
+        function clearAlert(id) {
+            document.getElementById(id).innerHTML = '';
+        }
+    </script>
+</body>
+</html>
