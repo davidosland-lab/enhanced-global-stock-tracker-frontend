@@ -330,20 +330,17 @@ def create_plotly_chart(df, symbol, indicators=None, chart_type='candlestick'):
     
     # Choose chart type based on user selection
     if chart_type == 'candlestick' and all(col in df.columns for col in ['Open', 'High', 'Low', 'Close']):
-        # Candlestick chart
+        # Simple candlestick chart - let Plotly handle the formatting
         fig.add_trace(
             go.Candlestick(
                 x=df.index,
-                open=df['Open'].values,
-                high=df['High'].values,
-                low=df['Low'].values,
-                close=df['Close'].values,
+                open=df['Open'],
+                high=df['High'],
+                low=df['Low'],
+                close=df['Close'],
                 name='OHLC',
-                increasing_line_color='#26a69a',
-                decreasing_line_color='#ef5350',
-                increasing_fillcolor='#26a69a',
-                decreasing_fillcolor='#ef5350',
-                showlegend=False
+                increasing_line_color='green',
+                decreasing_line_color='red'
             ),
             row=1, col=1
         )
@@ -384,37 +381,19 @@ def create_plotly_chart(df, symbol, indicators=None, chart_type='candlestick'):
             row=1, col=1
         )
     
-    # Add Bollinger Bands for candlestick charts
+    # Add moving average for candlestick charts (simpler than Bollinger Bands)
     if chart_type == 'candlestick' and len(df) >= 20:
         sma20 = df['Close'].rolling(window=20).mean()
-        std20 = df['Close'].rolling(window=20).std()
-        upper_band = sma20 + (std20 * 2)
-        lower_band = sma20 - (std20 * 2)
         
-        # Upper band
+        # Add SMA line
         fig.add_trace(
             go.Scatter(
                 x=df.index,
-                y=upper_band.values,
+                y=sma20.values,
                 mode='lines',
-                name='BB Upper',
-                line=dict(color='rgba(250, 128, 128, 0.5)', width=1),
-                showlegend=False
-            ),
-            row=1, col=1
-        )
-        
-        # Lower band
-        fig.add_trace(
-            go.Scatter(
-                x=df.index,
-                y=lower_band.values,
-                mode='lines',
-                name='BB Lower',
-                line=dict(color='rgba(250, 128, 128, 0.5)', width=1),
-                fill='tonexty',
-                fillcolor='rgba(250, 128, 128, 0.1)',
-                showlegend=False
+                name='SMA 20',
+                line=dict(color='rgba(255, 165, 0, 0.7)', width=1, dash='solid'),
+                showlegend=True
             ),
             row=1, col=1
         )
@@ -487,7 +466,7 @@ def create_plotly_chart(df, symbol, indicators=None, chart_type='candlestick'):
         height=800,
         showlegend=True,
         hovermode='x unified',
-        template='plotly_white',
+        template='plotly_white' if chart_type != 'candlestick' else 'plotly',
         font=dict(family="Arial, sans-serif", size=12),
         plot_bgcolor='white',
         paper_bgcolor='white',
@@ -532,8 +511,25 @@ def create_plotly_chart(df, symbol, indicators=None, chart_type='candlestick'):
     fig.update_xaxes(
         gridcolor='lightgray',
         showgrid=True,
-        zeroline=False
+        zeroline=False,
+        rangeslider_visible=False
     )
+    
+    # Special handling for candlestick chart
+    if chart_type == 'candlestick':
+        # Update candlestick-specific settings
+        fig.update_xaxes(
+            type='date',
+            row=1, col=1
+        )
+        
+        # Ensure candlesticks are visible
+        fig.update_traces(
+            selector=dict(type='candlestick'),
+            increasing_line_width=1.5,
+            decreasing_line_width=1.5,
+            line_width=1
+        )
     
     # Only show x-axis title on bottom chart
     fig.update_xaxes(title_text="Date", row=3, col=1)
