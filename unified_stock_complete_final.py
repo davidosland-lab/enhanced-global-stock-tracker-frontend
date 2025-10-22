@@ -318,8 +318,8 @@ def generate_ml_predictions(df, symbol):
         print(f"ML prediction error: {e}")
         return None
 
-def create_plotly_chart(df, symbol, indicators=None):
-    """Create an interactive Plotly chart that actually displays"""
+def create_plotly_chart(df, symbol, indicators=None, chart_type='candlestick'):
+    """Create an interactive Plotly chart with selectable chart types"""
     fig = make_subplots(
         rows=3, cols=1,
         shared_xaxes=True,
@@ -328,8 +328,9 @@ def create_plotly_chart(df, symbol, indicators=None):
         row_heights=[0.6, 0.2, 0.2]
     )
     
-    # Candlestick chart
-    if all(col in df.columns for col in ['Open', 'High', 'Low', 'Close']):
+    # Choose chart type based on user selection
+    if chart_type == 'candlestick' and all(col in df.columns for col in ['Open', 'High', 'Low', 'Close']):
+        # Candlestick chart
         fig.add_trace(
             go.Candlestick(
                 x=df.index,
@@ -338,20 +339,38 @@ def create_plotly_chart(df, symbol, indicators=None):
                 low=df['Low'],
                 close=df['Close'],
                 name='OHLC',
-                increasing_line_color='green',
-                decreasing_line_color='red'
+                increasing_line_color='#26a69a',
+                decreasing_line_color='#ef5350',
+                increasing_fillcolor='#26a69a',
+                decreasing_fillcolor='#ef5350'
             ),
             row=1, col=1
         )
-    else:
-        # Line chart fallback
+    elif chart_type == 'line' or not all(col in df.columns for col in ['Open', 'High', 'Low', 'Close']):
+        # Line chart
         fig.add_trace(
             go.Scatter(
                 x=df.index,
                 y=df['Close'],
                 mode='lines',
                 name='Close Price',
-                line=dict(color='blue', width=2)
+                line=dict(color='#2962FF', width=2),
+                fill='tozeroy',
+                fillcolor='rgba(41, 98, 255, 0.1)'
+            ),
+            row=1, col=1
+        )
+    elif chart_type == 'area':
+        # Area chart
+        fig.add_trace(
+            go.Scatter(
+                x=df.index,
+                y=df['Close'],
+                mode='lines',
+                name='Close Price',
+                line=dict(color='#7c4dff', width=2),
+                fill='tonexty',
+                fillcolor='rgba(124, 77, 255, 0.2)'
             ),
             row=1, col=1
         )
@@ -409,9 +428,14 @@ def create_plotly_chart(df, symbol, indicators=None):
         fig.add_hline(y=70, line_dash="dash", line_color="red", opacity=0.5, row=3, col=1)
         fig.add_hline(y=30, line_dash="dash", line_color="green", opacity=0.5, row=3, col=1)
     
-    # Update layout
+    # Update layout with modern styling
     fig.update_layout(
-        title=f"{symbol} Stock Analysis",
+        title={
+            'text': f"{symbol} Stock Analysis",
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 20}
+        },
         xaxis_title="Date",
         yaxis_title="Price ($)",
         yaxis2_title="Volume",
@@ -420,10 +444,27 @@ def create_plotly_chart(df, symbol, indicators=None):
         height=800,
         showlegend=True,
         hovermode='x unified',
-        template='plotly_white'
+        template='plotly_white',
+        font=dict(family="Arial, sans-serif", size=12),
+        plot_bgcolor='rgba(240, 240, 240, 0.1)',
+        paper_bgcolor='white',
+        margin=dict(t=80, b=80, l=80, r=80)
     )
     
-    fig.update_xaxes(title_text="Date", row=3, col=1)
+    # Update axes styling
+    fig.update_xaxes(
+        gridcolor='lightgray',
+        showgrid=True,
+        zeroline=False,
+        title_text="Date", 
+        row=3, col=1
+    )
+    
+    fig.update_yaxes(
+        gridcolor='lightgray',
+        showgrid=True,
+        zeroline=False
+    )
     
     return fig
 
@@ -498,6 +539,7 @@ def generate_plotly_chart():
         symbol = data.get('symbol', 'STOCK')
         period = data.get('period', '1mo')
         interval = data.get('interval', None)
+        chart_type = data.get('chart_type', 'candlestick')
         
         # Fetch fresh data
         df = fetch_yahoo_data(symbol, period, interval)
@@ -511,15 +553,16 @@ def generate_plotly_chart():
         # Calculate indicators
         indicators = calculate_technical_indicators(df)
         
-        # Create Plotly figure
-        fig = create_plotly_chart(df, ensure_australian_suffix(symbol), indicators)
+        # Create Plotly figure with selected chart type
+        fig = create_plotly_chart(df, ensure_australian_suffix(symbol), indicators, chart_type)
         
         # Convert to JSON for client-side rendering
         chart_json = fig.to_json()
         
         return jsonify({
             'chart_data': json.loads(chart_json),
-            'success': True
+            'success': True,
+            'chart_type': chart_type
         })
         
     except Exception as e:
@@ -534,7 +577,7 @@ def index():
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stock Analysis System - Complete Final</title>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
@@ -771,6 +814,15 @@ def index():
                     </div>
                 </div>
 
+                <div class="input-group">
+                    <label>Chart Type</label>
+                    <select id="chartTypeSelect">
+                        <option value="candlestick">Candlestick</option>
+                        <option value="line">Line Chart</option>
+                        <option value="area">Area Chart</option>
+                    </select>
+                </div>
+
                 <button onclick="fetchData()">📊 Get Stock Data</button>
                 <button class="chart-btn" onclick="generateChart()">📈 Generate Chart</button>
 
@@ -958,7 +1010,8 @@ def index():
                 return;
             }
             
-            showStatus('Generating chart...', 'info');
+            const chartType = document.getElementById('chartTypeSelect').value;
+            showStatus(`Generating ${chartType} chart...`, 'info');
             
             try {
                 const period = document.getElementById('periodSelect').value;
@@ -967,7 +1020,8 @@ def index():
                 
                 const requestData = {
                     symbol: currentSymbol,
-                    period: period
+                    period: period,
+                    chart_type: chartType
                 };
                 
                 if (interval) {
@@ -988,10 +1042,18 @@ def index():
                     throw new Error(result.error || 'Failed to generate chart');
                 }
                 
-                // Display the chart using Plotly
+                // Display the chart using Plotly with modern config
                 if (result.chart_data) {
-                    Plotly.newPlot('plotlyChart', result.chart_data.data, result.chart_data.layout, {responsive: true});
-                    showStatus('Chart generated successfully!', 'success');
+                    const config = {
+                        responsive: true,
+                        displayModeBar: true,
+                        displaylogo: false,
+                        modeBarButtonsToAdd: ['drawline', 'drawopenpath', 'eraseshape'],
+                        modeBarButtonsToRemove: ['lasso2d', 'select2d']
+                    };
+                    
+                    Plotly.newPlot('plotlyChart', result.chart_data.data, result.chart_data.layout, config);
+                    showStatus(`${chartType.charAt(0).toUpperCase() + chartType.slice(1)} chart generated successfully!`, 'success');
                 } else {
                     throw new Error('No chart data received');
                 }
