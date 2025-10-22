@@ -334,99 +334,146 @@ def create_plotly_chart(df, symbol, indicators=None, chart_type='candlestick'):
         fig.add_trace(
             go.Candlestick(
                 x=df.index,
-                open=df['Open'],
-                high=df['High'],
-                low=df['Low'],
-                close=df['Close'],
+                open=df['Open'].values,
+                high=df['High'].values,
+                low=df['Low'].values,
+                close=df['Close'].values,
                 name='OHLC',
                 increasing_line_color='#26a69a',
                 decreasing_line_color='#ef5350',
                 increasing_fillcolor='#26a69a',
-                decreasing_fillcolor='#ef5350'
+                decreasing_fillcolor='#ef5350',
+                showlegend=False
             ),
             row=1, col=1
         )
-    elif chart_type == 'line' or not all(col in df.columns for col in ['Open', 'High', 'Low', 'Close']):
-        # Line chart
+    else:
+        # Line chart (for both 'line' type and fallback)
         fig.add_trace(
             go.Scatter(
                 x=df.index,
-                y=df['Close'],
+                y=df['Close'].values,
                 mode='lines',
                 name='Close Price',
                 line=dict(color='#2962FF', width=2),
-                fill='tozeroy',
-                fillcolor='rgba(41, 98, 255, 0.1)'
+                showlegend=True
             ),
             row=1, col=1
         )
-    elif chart_type == 'area':
-        # Area chart
+        
+        if chart_type == 'area':
+            # Add fill for area chart
+            fig.update_traces(
+                fill='tozeroy',
+                fillcolor='rgba(124, 77, 255, 0.2)',
+                selector=dict(name='Close Price')
+            )
+    
+    # Add SMA lines (only if not candlestick, to avoid clutter)
+    if chart_type != 'candlestick' and len(df) >= 20:
+        sma20 = df['Close'].rolling(window=20).mean()
         fig.add_trace(
             go.Scatter(
                 x=df.index,
-                y=df['Close'],
+                y=sma20.values,
                 mode='lines',
-                name='Close Price',
-                line=dict(color='#7c4dff', width=2),
-                fill='tonexty',
-                fillcolor='rgba(124, 77, 255, 0.2)'
+                name='SMA 20',
+                line=dict(color='orange', width=1, dash='dot'),
+                showlegend=True
             ),
             row=1, col=1
         )
     
-    # Add SMA lines
-    if len(df) >= 20:
-        df['SMA20'] = df['Close'].rolling(window=20).mean()
+    # Add Bollinger Bands for candlestick charts
+    if chart_type == 'candlestick' and len(df) >= 20:
+        sma20 = df['Close'].rolling(window=20).mean()
+        std20 = df['Close'].rolling(window=20).std()
+        upper_band = sma20 + (std20 * 2)
+        lower_band = sma20 - (std20 * 2)
+        
+        # Upper band
         fig.add_trace(
             go.Scatter(
                 x=df.index,
-                y=df['SMA20'],
+                y=upper_band.values,
                 mode='lines',
-                name='SMA 20',
-                line=dict(color='orange', width=1)
+                name='BB Upper',
+                line=dict(color='rgba(250, 128, 128, 0.5)', width=1),
+                showlegend=False
+            ),
+            row=1, col=1
+        )
+        
+        # Lower band
+        fig.add_trace(
+            go.Scatter(
+                x=df.index,
+                y=lower_band.values,
+                mode='lines',
+                name='BB Lower',
+                line=dict(color='rgba(250, 128, 128, 0.5)', width=1),
+                fill='tonexty',
+                fillcolor='rgba(250, 128, 128, 0.1)',
+                showlegend=False
             ),
             row=1, col=1
         )
     
     # Volume chart
-    if 'Volume' in df.columns:
-        colors = ['red' if i > 0 and df['Close'].iloc[i] < df['Close'].iloc[i-1] else 'green' 
-                  for i in range(len(df))]
+    if 'Volume' in df.columns and df['Volume'].notna().any():
+        # Determine colors based on price movement
+        colors = []
+        for i in range(len(df)):
+            if i == 0:
+                colors.append('gray')
+            elif df['Close'].iloc[i] >= df['Close'].iloc[i-1]:
+                colors.append('green')
+            else:
+                colors.append('red')
         
         fig.add_trace(
             go.Bar(
                 x=df.index,
-                y=df['Volume'],
+                y=df['Volume'].values,
                 name='Volume',
                 marker_color=colors,
+                marker_line_width=0,
+                opacity=0.7,
                 showlegend=False
             ),
             row=2, col=1
         )
     
     # RSI chart
-    if indicators and 'RSI' in indicators and len(df) >= 14:
+    if len(df) >= 14:
+        # Calculate RSI
         delta = df['Close'].diff()
-        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        rs = gain / loss
+        gain = delta.where(delta > 0, 0).rolling(window=14).mean()
+        loss = -delta.where(delta < 0, 0).rolling(window=14).mean()
+        
+        # Avoid division by zero
+        rs = gain / loss.replace(0, 0.0001)
         rsi = 100 - (100 / (1 + rs))
+        
+        # Clean up NaN values
+        rsi = rsi.fillna(50)
         
         fig.add_trace(
             go.Scatter(
                 x=df.index,
-                y=rsi,
+                y=rsi.values,
                 mode='lines',
                 name='RSI',
-                line=dict(color='purple', width=1)
+                line=dict(color='purple', width=2),
+                showlegend=False
             ),
             row=3, col=1
         )
         
         # Add RSI levels
-        fig.add_hline(y=70, line_dash="dash", line_color="red", opacity=0.5, row=3, col=1)
-        fig.add_hline(y=30, line_dash="dash", line_color="green", opacity=0.5, row=3, col=1)
+        fig.add_hline(y=70, line_dash="dash", line_color="red", opacity=0.3, row=3, col=1)
+        fig.add_hline(y=50, line_dash="dash", line_color="gray", opacity=0.3, row=3, col=1)
+        fig.add_hline(y=30, line_dash="dash", line_color="green", opacity=0.3, row=3, col=1)
     
     # Update layout with modern styling
     fig.update_layout(
@@ -436,35 +483,60 @@ def create_plotly_chart(df, symbol, indicators=None, chart_type='candlestick'):
             'xanchor': 'center',
             'font': {'size': 20}
         },
-        xaxis_title="Date",
-        yaxis_title="Price ($)",
-        yaxis2_title="Volume",
-        yaxis3_title="RSI",
         xaxis_rangeslider_visible=False,
         height=800,
         showlegend=True,
         hovermode='x unified',
         template='plotly_white',
         font=dict(family="Arial, sans-serif", size=12),
-        plot_bgcolor='rgba(240, 240, 240, 0.1)',
+        plot_bgcolor='white',
         paper_bgcolor='white',
         margin=dict(t=80, b=80, l=80, r=80)
     )
     
-    # Update axes styling
-    fig.update_xaxes(
+    # Update Y-axis for price chart (row 1)
+    price_min = df[['Open', 'High', 'Low', 'Close']].min().min() if chart_type == 'candlestick' else df['Close'].min()
+    price_max = df[['Open', 'High', 'Low', 'Close']].max().max() if chart_type == 'candlestick' else df['Close'].max()
+    price_range = price_max - price_min
+    
+    fig.update_yaxes(
+        title_text="Price ($)",
+        range=[price_min - price_range * 0.1, price_max + price_range * 0.1],
         gridcolor='lightgray',
         showgrid=True,
         zeroline=False,
-        title_text="Date", 
+        row=1, col=1
+    )
+    
+    # Update Y-axis for volume chart (row 2)
+    if 'Volume' in df.columns:
+        fig.update_yaxes(
+            title_text="Volume",
+            gridcolor='lightgray',
+            showgrid=True,
+            zeroline=False,
+            row=2, col=1
+        )
+    
+    # Update Y-axis for RSI chart (row 3)
+    fig.update_yaxes(
+        title_text="RSI",
+        range=[0, 100],
+        gridcolor='lightgray',
+        showgrid=True,
+        zeroline=False,
         row=3, col=1
     )
     
-    fig.update_yaxes(
+    # Update all X-axes
+    fig.update_xaxes(
         gridcolor='lightgray',
         showgrid=True,
         zeroline=False
     )
+    
+    # Only show x-axis title on bottom chart
+    fig.update_xaxes(title_text="Date", row=3, col=1)
     
     return fig
 
