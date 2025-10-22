@@ -556,8 +556,14 @@ def index():
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Unified Stock Analysis - Intraday Edition</title>
-    <!-- TradingView Lightweight Charts -->
-    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- TradingView Lightweight Charts - Multiple CDN sources for reliability -->
+    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- Fallback CDN -->
+    <script>
+        if (typeof LightweightCharts === 'undefined') {
+            document.write('<script src="https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></scr' + 'ipt>');
+        }
+    </script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -1167,6 +1173,13 @@ def index():
             // Show chart container
             document.getElementById('chartContainer').style.display = 'block';
             
+            // Check if LightweightCharts is loaded
+            if (typeof LightweightCharts === 'undefined') {
+                console.error('TradingView Lightweight Charts library not loaded!');
+                document.getElementById('tradingViewChart').innerHTML = '<p style="padding:20px;">Chart library loading... Please refresh the page.</p>';
+                return;
+            }
+            
             // Destroy existing chart if any
             if (tvChart) {
                 tvChart.remove();
@@ -1253,33 +1266,72 @@ def index():
                 actualChartType = 'line';
             }
             
-            if (actualChartType === 'candlestick' && candleData.length > 0) {
-                candleSeries = tvChart.addCandlestickSeries({
-                    upColor: '#26a69a',
-                    downColor: '#ef5350',
-                    borderVisible: false,
-                    wickUpColor: '#26a69a',
-                    wickDownColor: '#ef5350',
-                });
-                candleSeries.setData(candleData);
-            } else if (actualChartType === 'line' || (currentChartType === 'candlestick' && candleData.length === 0)) {
-                lineSeries = tvChart.addLineSeries({
-                    color: '#2962FF',
-                    lineWidth: 2,
-                    lastValueVisible: true,
-                    priceLineVisible: true,
-                });
-                lineSeries.setData(lineData);
-            } else if (actualChartType === 'area') {
-                areaSeries = tvChart.addAreaSeries({
-                    topColor: 'rgba(41, 98, 255, 0.56)',
-                    bottomColor: 'rgba(41, 98, 255, 0.04)',
-                    lineColor: 'rgba(41, 98, 255, 1)',
-                    lineWidth: 2,
-                    lastValueVisible: true,
-                    priceLineVisible: true,
-                });
-                areaSeries.setData(lineData);
+            try {
+                if (actualChartType === 'candlestick' && candleData.length > 0) {
+                    candleSeries = tvChart.addCandlestickSeries({
+                        upColor: '#26a69a',
+                        downColor: '#ef5350',
+                        borderVisible: false,
+                        wickUpColor: '#26a69a',
+                        wickDownColor: '#ef5350',
+                    });
+                    candleSeries.setData(candleData);
+                } else if (actualChartType === 'line' || (currentChartType === 'candlestick' && candleData.length === 0)) {
+                    // Try to add line series
+                    if (typeof tvChart.addLineSeries === 'function') {
+                        lineSeries = tvChart.addLineSeries({
+                            color: '#2962FF',
+                            lineWidth: 2,
+                            lastValueVisible: true,
+                            priceLineVisible: true,
+                        });
+                        lineSeries.setData(lineData);
+                    } else {
+                        // Fallback to basic line chart if method doesn't exist
+                        console.warn('addLineSeries not available, using alternative');
+                        // Use candlestick series with same open/close for line effect
+                        const lineAsCandleData = lineData.map(point => ({
+                            time: point.time,
+                            open: point.value,
+                            high: point.value,
+                            low: point.value,
+                            close: point.value
+                        }));
+                        candleSeries = tvChart.addCandlestickSeries({
+                            upColor: '#2962FF',
+                            downColor: '#2962FF',
+                            borderVisible: false,
+                            wickVisible: false
+                        });
+                        candleSeries.setData(lineAsCandleData);
+                    }
+                } else if (actualChartType === 'area') {
+                    if (typeof tvChart.addAreaSeries === 'function') {
+                        areaSeries = tvChart.addAreaSeries({
+                            topColor: 'rgba(41, 98, 255, 0.56)',
+                            bottomColor: 'rgba(41, 98, 255, 0.04)',
+                            lineColor: 'rgba(41, 98, 255, 1)',
+                            lineWidth: 2,
+                            lastValueVisible: true,
+                            priceLineVisible: true,
+                        });
+                        areaSeries.setData(lineData);
+                    } else {
+                        // Fallback
+                        console.warn('addAreaSeries not available');
+                    }
+                }
+            } catch (error) {
+                console.error('Error adding chart series:', error);
+                // Fallback to simple display
+                document.getElementById('tradingViewChart').innerHTML = `
+                    <div style="padding:20px;">
+                        <h3>Price Chart</h3>
+                        <p>Current: $${data.current_price ? data.current_price.toFixed(2) : 'N/A'}</p>
+                        <p>Data Points: ${data.prices ? data.prices.length : 0}</p>
+                        <p style="color:#666; margin-top:10px;">Chart rendering issue detected. Data is still accurate.</p>
+                    </div>
+                `;
             }
             
             // Add volume if enabled

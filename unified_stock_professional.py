@@ -19,6 +19,15 @@ if sys.platform == 'win32':
     if hasattr(sys.stderr, 'reconfigure'):
         sys.stderr.reconfigure(encoding='utf-8')
 
+# Import Plotly for additional charting
+try:
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    PLOTLY_AVAILABLE = True
+except ImportError:
+    PLOTLY_AVAILABLE = False
+    print("Warning: Plotly not available. Basic charts will still work.")
+
 print("=" * 70)
 print("UNIFIED STOCK ANALYSIS SYSTEM")
 print("=" * 70)
@@ -83,32 +92,48 @@ def ensure_australian_suffix(symbol):
         return f"{symbol}.AX"
     return symbol
 
-def fetch_yahoo_data(symbol, period='1mo'):
-    """Fetch data from Yahoo Finance with proper error handling"""
+def fetch_yahoo_data(symbol, period='1mo', interval=None):
+    """Fetch data from Yahoo Finance with proper error handling - includes intraday support"""
     try:
         symbol = ensure_australian_suffix(symbol)
-        print(f"Fetching Yahoo data for {symbol}, period: {period}")
         
-        # Calculate date range
-        end_date = datetime.now()
-        period_map = {
-            '1d': 1, '5d': 5, '1mo': 30, '3mo': 90,
-            '6mo': 180, '1y': 365, '2y': 730
-        }
+        # Determine if intraday data is requested
+        intraday_periods = ['1d', '5d']
+        if period in intraday_periods and interval:
+            print(f"Fetching intraday data for {symbol}, period: {period}, interval: {interval}")
+            ticker = yf.Ticker(symbol)
+            
+            # Get intraday data
+            df = ticker.history(period=period, interval=interval, prepost=True, actions=False)
+            
+            if df.empty:
+                # Fallback to download
+                end_date = datetime.now()
+                start_date = end_date - timedelta(days=5 if period == '5d' else 1)
+                df = yf.download(symbol, start=start_date, end=end_date, interval=interval,
+                               progress=False, auto_adjust=True, prepost=True, threads=True)
+        else:
+            print(f"Fetching daily data for {symbol}, period: {period}")
+            # Calculate date range for daily data
+            end_date = datetime.now()
+            period_map = {
+                '1d': 1, '5d': 5, '1mo': 30, '3mo': 90,
+                '6mo': 180, '1y': 365, '2y': 730
+            }
+            
+            days = period_map.get(period, 30)
+            start_date = end_date - timedelta(days=days)
         
-        days = period_map.get(period, 30)
-        start_date = end_date - timedelta(days=days)
-        
-        # Use yf.download for more reliable data fetching
-        df = yf.download(
-            symbol,
-            start=start_date,
-            end=end_date,
-            progress=False,
-            auto_adjust=True,
-            prepost=True,
-            threads=True
-        )
+            # Use yf.download for more reliable data fetching
+            df = yf.download(
+                symbol,
+                start=start_date,
+                end=end_date,
+                progress=False,
+                auto_adjust=True,
+                prepost=True,
+                threads=True
+            )
         
         if df.empty:
             raise ValueError(f"No data returned for {symbol}")
@@ -117,11 +142,24 @@ def fetch_yahoo_data(symbol, period='1mo'):
         ticker = yf.Ticker(symbol)
         info = ticker.info
         
+        # Try to get real-time price
+        try:
+            quote = ticker.fast_info
+            current_price = quote.get('lastPrice', df['Close'].iloc[-1] if not df.empty else 0)
+        except:
+            current_price = float(df['Close'].iloc[-1]) if not df.empty else info.get('currentPrice', 0)
+        
+        # Format dates based on whether it's intraday
+        if interval and interval in ['1m', '2m', '5m', '15m', '30m', '60m']:
+            date_format = '%Y-%m-%d %H:%M:%S'
+        else:
+            date_format = '%Y-%m-%d'
+        
         # Build response - properly convert DataFrame columns
         result = {
             'symbol': symbol,
             'prices': df['Close'].values.tolist(),
-            'dates': [d.strftime('%Y-%m-%d') for d in df.index],
+            'dates': [d.strftime(date_format) for d in df.index],
             'volume': df['Volume'].values.tolist(),
             'high': df['High'].values.tolist(),
             'low': df['Low'].values.tolist(),
@@ -486,8 +524,9 @@ def index():
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Unified Stock Analysis System</title>
-    <!-- TradingView Lightweight Charts - Professional Financial Charts -->
-    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    <!-- TradingView Lightweight Charts - Using specific version for reliability -->
+    <script src="https://cdn.jsdelivr.net/npm/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
+    <link rel="icon" href="data:,">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         
@@ -869,12 +908,19 @@ def index():
             <div class="input-group">
                 <input type="text" id="symbol" placeholder="Enter stock symbol (e.g., CBA, AAPL)" value="CBA">
                 <select id="period">
-                    <option value="1d">1 Day</option>
+                    <option value="1d">Intraday (1 Day)</option>
                     <option value="5d">5 Days</option>
                     <option value="1mo" selected>1 Month</option>
                     <option value="3mo">3 Months</option>
                     <option value="6mo">6 Months</option>
                     <option value="1y">1 Year</option>
+                </select>
+                <select id="interval" style="display:none;">
+                    <option value="1m">1 Minute</option>
+                    <option value="5m" selected>5 Minutes</option>
+                    <option value="15m">15 Minutes</option>
+                    <option value="30m">30 Minutes</option>
+                    <option value="60m">1 Hour</option>
                 </select>
                 <select id="dataSource">
                     <option value="auto">Auto (Yahoo → Alpha Vantage)</option>
@@ -899,11 +945,15 @@ def index():
             </div>
         </div>
         
-        <!-- Professional Chart Container -->
+        <!-- Main Analysis Results - PRIMARY FOCUS -->
+        <div id="results"></div>
+        
+        <!-- Professional Chart Container - ADDITIONAL FEATURE -->
         <div id="chartContainer" style="display:none; background:white; border-radius:15px; padding:25px; margin-bottom:30px; box-shadow:0 10px 30px rgba(0,0,0,0.2);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
                 <h3 style="color:#333; margin:0;">Professional Trading Chart</h3>
                 <div>
+                    <button onclick="switchToPlotly()" class="chart-btn">📊 Plotly Chart</button>
                     <button onclick="setChartType('candlestick', event)" class="chart-btn active" id="btnCandlestick">Candlestick</button>
                     <button onclick="setChartType('line', event)" class="chart-btn" id="btnLine">Line</button>
                     <button onclick="setChartType('area', event)" class="chart-btn" id="btnArea">Area</button>
@@ -911,9 +961,8 @@ def index():
                 </div>
             </div>
             <div id="tradingViewChart" style="width:100%; height:500px;"></div>
+            <div id="plotlyChart" style="width:100%; display:none;"></div>
         </div>
-        
-        <div id="results"></div>
     </div>
     
     <script>
@@ -924,9 +973,20 @@ def index():
             fetchData();
         }
         
+        // Show/hide interval selector based on period
+        document.getElementById('period').addEventListener('change', function() {
+            const intervalSelect = document.getElementById('interval');
+            if (this.value === '1d' || this.value === '5d') {
+                intervalSelect.style.display = 'inline-block';
+            } else {
+                intervalSelect.style.display = 'none';
+            }
+        });
+        
         async function fetchData() {
             const symbol = document.getElementById('symbol').value.trim().toUpperCase();
             const period = document.getElementById('period').value;
+            const interval = document.getElementById('interval').value;
             const dataSource = document.getElementById('dataSource').value;
             
             if (!symbol) {
@@ -943,11 +1003,16 @@ def index():
             `;
             
             try {
-                // Fetch stock data
+                // Fetch stock data with interval for intraday
+                const requestData = {symbol, period, dataSource};
+                if (period === '1d' || period === '5d') {
+                    requestData.interval = interval;
+                }
+                
                 const response = await fetch('/api/fetch', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({symbol, period, dataSource})
+                    body: JSON.stringify(requestData)
                 });
                 
                 const data = await response.json();
@@ -986,7 +1051,11 @@ def index():
                     displayChart(data);
                 }, 100);
                 
+                // Display results FIRST (ML predictions, indicators, live prices)
                 displayResults(data, predictions, indicators);
+                
+                // Then show chart as additional visualization
+                document.getElementById('chartContainer').style.display = 'block';
                 
             } catch (error) {
                 resultsDiv.innerHTML = `
@@ -1411,6 +1480,34 @@ def index():
             return '';
         }
         
+        async function switchToPlotly() {
+            if (!currentData) return;
+            
+            // Show Plotly chart div, hide TradingView
+            document.getElementById('tradingViewChart').style.display = 'none';
+            document.getElementById('plotlyChart').style.display = 'block';
+            
+            try {
+                const response = await fetch('/api/plotly-chart', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        stock_data: currentData,
+                        chart_type: 'candlestick'
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.chart_html) {
+                    document.getElementById('plotlyChart').innerHTML = result.chart_html;
+                }
+            } catch (error) {
+                console.error('Plotly chart error:', error);
+                document.getElementById('plotlyChart').innerHTML = '<p style="padding:20px;">Plotly chart unavailable</p>';
+            }
+        }
+        
         // Auto-fetch on load
         window.onload = () => {
             fetchData();
@@ -1421,21 +1518,23 @@ def index():
 
 @app.route("/api/fetch", methods=["POST"])
 def api_fetch():
-    """Fetch stock data from Yahoo or Alpha Vantage"""
+    """Fetch stock data from Yahoo or Alpha Vantage with intraday support"""
     try:
         data = request.json
         symbol = data.get('symbol', '').upper()
         period = data.get('period', '1mo')
+        interval = data.get('interval', None)  # For intraday data
         source = data.get('dataSource', 'auto')
         
         if not symbol:
             return jsonify({'error': 'Symbol is required'}), 400
         
-        # Check cache first
-        cache_key = f"{symbol}_{period}_{source}"
+        # Check cache first (shorter duration for intraday)
+        cache_duration_local = 60 if period in ['1d', '5d'] else cache_duration
+        cache_key = f"{symbol}_{period}_{interval if interval else 'daily'}_{source}"
         if cache_key in data_cache:
             cached = data_cache[cache_key]
-            if time.time() - cached['cached_at'] < cache_duration:
+            if time.time() - cached['cached_at'] < cache_duration_local:
                 print(f"Returning cached data for {symbol}")
                 return jsonify(cached['data'])
         
@@ -1443,7 +1542,7 @@ def api_fetch():
         
         # Try data sources based on preference
         if source == 'yahoo' or source == 'auto':
-            result = fetch_yahoo_data(symbol, period)
+            result = fetch_yahoo_data(symbol, period, interval)
         
         if not result and (source == 'alpha' or source == 'auto'):
             result = fetch_alpha_vantage_data(symbol)
@@ -1518,8 +1617,90 @@ def health():
         'status': 'healthy',
         'timestamp': datetime.now().isoformat(),
         'ml_available': ML_AVAILABLE,
+        'plotly_available': PLOTLY_AVAILABLE,
         'alpha_vantage_key': 'configured' if ALPHA_VANTAGE_KEY else 'missing'
     })
+
+@app.route("/api/plotly-chart", methods=["POST"])
+def api_plotly_chart():
+    """Generate Plotly chart and return as HTML"""
+    if not PLOTLY_AVAILABLE:
+        return jsonify({'error': 'Plotly not available'}), 503
+    
+    try:
+        data = request.json
+        stock_data = data.get('stock_data', {})
+        chart_type = data.get('chart_type', 'candlestick')
+        
+        if not stock_data or not stock_data.get('prices'):
+            return jsonify({'error': 'No stock data provided'}), 400
+        
+        # Create Plotly figure
+        fig = make_subplots(
+            rows=2, cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.03,
+            subplot_titles=(f'{stock_data.get("symbol", "Stock")} Price', 'Volume'),
+            row_width=[0.2, 0.7]
+        )
+        
+        dates = stock_data.get('dates', [])
+        prices = stock_data.get('prices', [])
+        volumes = stock_data.get('volume', [])
+        
+        # Add price chart
+        if chart_type == 'candlestick' and stock_data.get('open'):
+            fig.add_trace(
+                go.Candlestick(
+                    x=dates,
+                    open=stock_data.get('open', []),
+                    high=stock_data.get('high', []),
+                    low=stock_data.get('low', []),
+                    close=prices,
+                    name='Price'
+                ),
+                row=1, col=1
+            )
+        else:
+            fig.add_trace(
+                go.Scatter(
+                    x=dates,
+                    y=prices,
+                    mode='lines',
+                    name='Price',
+                    line=dict(color='#2962FF', width=2)
+                ),
+                row=1, col=1
+            )
+        
+        # Add volume
+        if volumes:
+            fig.add_trace(
+                go.Bar(
+                    x=dates,
+                    y=volumes,
+                    name='Volume',
+                    marker_color='lightblue'
+                ),
+                row=2, col=1
+            )
+        
+        # Update layout
+        fig.update_layout(
+            title=f"{stock_data.get('symbol')} - ${stock_data.get('current_price', 0):.2f}",
+            height=600,
+            showlegend=True,
+            xaxis_rangeslider_visible=False
+        )
+        
+        # Convert to HTML
+        chart_html = fig.to_html(include_plotlyjs='cdn', div_id="plotly-div")
+        
+        return jsonify({'chart_html': chart_html})
+        
+    except Exception as e:
+        print(f"Plotly chart error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == "__main__":
     print("\n" + "=" * 70)
