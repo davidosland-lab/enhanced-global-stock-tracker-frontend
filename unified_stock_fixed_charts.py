@@ -117,26 +117,34 @@ def fetch_yahoo_data(symbol, period='1mo', interval=None):
         
         # For intraday data
         if interval and period in ['1d', '5d', '1wk']:
-            df = ticker.history(period=period, interval=interval, prepost=False)
+            df = ticker.history(period=period, interval=interval, prepost=False, actions=False)
         else:
-            # For daily data
-            df = ticker.history(period=period, interval='1d', prepost=False)
+            # For daily data - ensure we get OHLC data
+            df = ticker.history(period=period, interval='1d', prepost=False, actions=False)
         
         if df.empty:
             print(f"No data returned for {symbol}")
             return None
         
-        # Ensure we have the required columns
+        # Drop unnecessary columns if they exist
+        cols_to_drop = ['Dividends', 'Stock Splits']
+        for col in cols_to_drop:
+            if col in df.columns:
+                df = df.drop(columns=[col])
+        
+        # Verify OHLC data is present and valid
         required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
         for col in required_cols:
             if col not in df.columns:
                 print(f"Warning: {col} column missing")
-                if col == 'Volume':
-                    df['Volume'] = 0
-                else:
-                    df[col] = df.get('Close', 0)
+                return None
+        
+        # Ensure OHLC values are floats
+        for col in ['Open', 'High', 'Low', 'Close']:
+            df[col] = df[col].astype(float)
         
         print(f"Fetched {len(df)} rows from {df.index[0]} to {df.index[-1]}")
+        print(f"OHLC spread check - Mean H-L: {(df['High'] - df['Low']).mean():.2f}")
         return df
         
     except Exception as e:
@@ -200,7 +208,7 @@ def generate_ml_predictions(df, symbol):
         return None
 
 def create_plotly_chart(df, symbol, indicators=None, chart_type='candlestick'):
-    """Create Plotly chart - COMPLETELY FIXED"""
+    """Create Plotly chart - FIXED CANDLESTICK RENDERING"""
     
     # Create subplots
     fig = make_subplots(
@@ -213,19 +221,19 @@ def create_plotly_chart(df, symbol, indicators=None, chart_type='candlestick'):
     
     # Main price chart
     if chart_type == 'candlestick' and all(col in df.columns for col in ['Open', 'High', 'Low', 'Close']):
-        fig.add_trace(
-            go.Candlestick(
-                x=df.index,
-                open=df['Open'],
-                high=df['High'],
-                low=df['Low'],
-                close=df['Close'],
-                name='Price',
-                increasing_line_color='green',
-                decreasing_line_color='red'
-            ),
-            row=1, col=1
+        # Ensure data is properly formatted for candlesticks
+        candlestick_trace = go.Candlestick(
+            x=df.index,
+            open=df['Open'].values,
+            high=df['High'].values,
+            low=df['Low'].values, 
+            close=df['Close'].values,
+            name='OHLC',
+            increasing=dict(line=dict(color='#00CC00', width=1)),
+            decreasing=dict(line=dict(color='#FF0000', width=1)),
+            showlegend=False
         )
+        fig.add_trace(candlestick_trace, row=1, col=1)
     elif chart_type == 'area':
         fig.add_trace(
             go.Scatter(
@@ -306,17 +314,33 @@ def create_plotly_chart(df, symbol, indicators=None, chart_type='candlestick'):
         fig.add_hline(y=50, line_dash="dash", line_color="gray", opacity=0.3, row=3, col=1)
         fig.add_hline(y=30, line_dash="dash", line_color="green", opacity=0.3, row=3, col=1)
     
-    # Update layout
+    # Update layout with proper configuration for candlesticks
     fig.update_layout(
         title=f"{symbol} Stock Analysis",
         height=800,
         showlegend=True,
         hovermode='x unified',
-        template='plotly_white',
-        xaxis_rangeslider_visible=False
+        template='plotly',  # Use default template for better candlestick display
+        xaxis_rangeslider_visible=False,
+        plot_bgcolor='white',
+        paper_bgcolor='white'
     )
     
-    # Update axes
+    # Update axes with proper configuration
+    fig.update_xaxes(
+        type='date',
+        rangeslider_visible=False,
+        rangeselector=dict(
+            buttons=list([
+                dict(count=1, label="1m", step="month", stepmode="backward"),
+                dict(count=6, label="6m", step="month", stepmode="backward"),
+                dict(count=1, label="1y", step="year", stepmode="backward"),
+                dict(step="all", label="All")
+            ])
+        ),
+        row=1, col=1
+    )
+    
     fig.update_yaxes(title_text="Price ($)", row=1, col=1)
     fig.update_yaxes(title_text="Volume", row=2, col=1)
     fig.update_yaxes(title_text="RSI", range=[0, 100], row=3, col=1)
