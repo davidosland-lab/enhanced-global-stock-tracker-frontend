@@ -636,6 +636,167 @@ def generate_plotly_chart():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/chart/<symbol>')
+def chart_page(symbol):
+    """Standalone chart page that opens in new window"""
+    try:
+        return '''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>''' + symbol + ''' - Stock Chart</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f5f5f5;
+        }
+        #loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-size: 20px;
+            color: #666;
+        }
+        #chartContainer {
+            height: 100vh;
+            width: 100vw;
+        }
+        .controls {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        select, button {
+            padding: 8px 12px;
+            margin: 0 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <select id="periodSelect">
+            <option value="1d">1 Day</option>
+            <option value="5d">5 Days</option>
+            <option value="1mo" selected>1 Month</option>
+            <option value="3mo">3 Months</option>
+            <option value="6mo">6 Months</option>
+            <option value="1y">1 Year</option>
+            <option value="5y">5 Years</option>
+        </select>
+        <select id="chartTypeSelect">
+            <option value="candlestick">Candlestick</option>
+            <option value="line">Line Chart</option>
+            <option value="area">Area Chart</option>
+        </select>
+        <button onclick="updateChart()">Update Chart</button>
+        <button onclick="window.close()">Close</button>
+    </div>
+    
+    <div id="loading">Loading chart...</div>
+    <div id="chartContainer" style="display:none;"></div>
+    
+    <script>
+        const symbol = "''' + symbol + '''";
+        let currentPeriod = '1mo';
+        let currentChartType = 'candlestick';
+        
+        async function loadChart(period = '1mo', chartType = 'candlestick') {
+            currentPeriod = period;
+            currentChartType = chartType;
+            
+            document.getElementById('loading').style.display = 'flex';
+            document.getElementById('chartContainer').style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/plotly-chart', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        period: period,
+                        chart_type: chartType
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.chart_data) {
+                    const config = {
+                        responsive: true,
+                        displayModeBar: true,
+                        displaylogo: false,
+                        modeBarButtonsToAdd: ['drawline', 'drawopenpath', 'eraseshape'],
+                        toImageButtonOptions: {
+                            format: 'png',
+                            filename: symbol + '_chart',
+                            height: 1080,
+                            width: 1920,
+                            scale: 1
+                        }
+                    };
+                    
+                    // Adjust layout for full screen
+                    result.chart_data.layout.height = window.innerHeight - 20;
+                    result.chart_data.layout.width = window.innerWidth - 20;
+                    
+                    Plotly.newPlot('chartContainer', result.chart_data.data, result.chart_data.layout, config);
+                    
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('chartContainer').style.display = 'block';
+                    
+                    // Handle window resize
+                    window.addEventListener('resize', () => {
+                        Plotly.relayout('chartContainer', {
+                            height: window.innerHeight - 20,
+                            width: window.innerWidth - 20
+                        });
+                    });
+                }
+            } catch (error) {
+                document.getElementById('loading').innerHTML = 'Error loading chart: ' + error.message;
+            }
+        }
+        
+        function updateChart() {
+            const period = document.getElementById('periodSelect').value;
+            const chartType = document.getElementById('chartTypeSelect').value;
+            loadChart(period, chartType);
+        }
+        
+        // Load chart on page load
+        window.addEventListener('load', () => {
+            loadChart();
+        });
+    </script>
+</body>
+</html>'''
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/')
 def index():
     """Serve the main HTML page with working chart display"""
@@ -892,7 +1053,9 @@ def index():
                 </div>
 
                 <button onclick="fetchData()">📊 Get Stock Data</button>
-                <button class="chart-btn" onclick="generateChart()">📈 Generate Chart</button>
+                <button class="chart-btn" onclick="generateChart()">📈 Generate Chart Here</button>
+                <button class="chart-btn" style="background: linear-gradient(135deg, #56CCF2 0%, #2F80ED 100%);" onclick="openChartInNewWindow()">🔲 Chart in New Window</button>
+                <button class="chart-btn" style="background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);" onclick="openChartInNewTab()">📑 Chart in New Tab</button>
 
                 <div id="indicators" class="indicators-display" style="display:none;">
                     <h3 style="margin-bottom: 15px; color: #2d3748;">Technical Indicators</h3>
@@ -1129,6 +1292,47 @@ def index():
             } catch (error) {
                 showStatus(`Error generating chart: ${error.message}`, 'error');
                 console.error('Chart generation error:', error);
+            }
+        }
+        
+        function openChartInNewWindow() {
+            if (!currentSymbol) {
+                alert('Please fetch stock data first');
+                return;
+            }
+            
+            // Open chart in new window with full screen
+            const chartWindow = window.open(
+                `/chart/${currentSymbol}`,
+                `${currentSymbol}_chart`,
+                'width=' + screen.width + ',height=' + screen.height + ',toolbar=no,menubar=no,location=no,status=no'
+            );
+            
+            if (chartWindow) {
+                chartWindow.moveTo(0, 0);
+                showStatus('Chart opened in new window', 'success');
+            } else {
+                alert('Please allow pop-ups for this site to open charts in new window');
+            }
+        }
+        
+        function openChartInNewTab() {
+            if (!currentSymbol) {
+                alert('Please fetch stock data first');
+                return;
+            }
+            
+            // Open chart in new tab (less restrictive, no popup blocker issues)
+            const newTab = window.open(`/chart/${currentSymbol}`, '_blank');
+            
+            if (newTab) {
+                showStatus('Chart opened in new tab', 'success');
+            } else {
+                // Fallback: create a link and click it
+                const link = document.createElement('a');
+                link.href = `/chart/${currentSymbol}`;
+                link.target = '_blank';
+                link.click();
             }
         }
 
