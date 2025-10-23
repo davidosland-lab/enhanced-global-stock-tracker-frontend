@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Debug & Fix Prediction Centre</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #ffd700;
+            text-align: center;
+        }
+        .test-section {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        .result {
+            background: #000;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success {
+            color: #4ade80;
+        }
+        .error {
+            color: #ef4444;
+        }
+        .warning {
+            color: #fbbf24;
+        }
+        input {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #333;
+            background: #2a2a2a;
+            color: white;
+            margin: 5px;
+            width: 200px;
+        }
+        .fix-code {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            padding: 20px;
+            border-radius: 10px;
+            position: relative;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #22c55e;
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Debug & Fix Prediction Centre</h1>
+        
+        <div class="test-section">
+            <h2>Step 1: Test Backend Connection</h2>
+            <button onclick="testBackend()">Test Backend Status</button>
+            <button onclick="testCORS()">Test CORS</button>
+            <div id="backendResult" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Step 2: Test Prediction API Directly</h2>
+            <input type="text" id="testSymbol" value="CBA.AX" placeholder="Symbol">
+            <button onclick="testPredictionAPI()">Test Prediction API</button>
+            <button onclick="testPhase4API()">Test Phase 4 API</button>
+            <div id="apiResult" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Step 3: Debug Module Elements</h2>
+            <button onclick="debugElements()">Check DOM Elements</button>
+            <button onclick="findPredictionFunction()">Find Existing Function</button>
+            <div id="domResult" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Step 4: Apply Universal Fix</h2>
+            <p>This fix will work regardless of the module's structure:</p>
+            <div class="fix-code">
+                <button class="copy-btn" onclick="copyFix()">Copy Fix</button>
+                <pre id="universalFix"></pre>
+            </div>
+            <button onclick="generateCustomFix()">Generate Custom Fix</button>
+            <div id="fixResult" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Step 5: Test in New Window</h2>
+            <button onclick="openTestWindow()">Open Test Prediction Window</button>
+        </div>
+    </div>
+
+    <script>
+        const BACKEND_URL = 'http://localhost:8002';
+        
+        function log(elementId, message, type = '') {
+            const elem = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type ? ` class="${type}"` : '';
+            elem.innerHTML += `<div${className}>[${timestamp}] ${message}</div>`;
+        }
+        
+        async function testBackend() {
+            const resultDiv = document.getElementById('backendResult');
+            resultDiv.innerHTML = '';
+            
+            try {
+                log('backendResult', 'Testing backend connection...', 'warning');
+                const response = await fetch(`${BACKEND_URL}/api/status`);
+                const data = await response.json();
+                log('backendResult', `✅ Backend Status: ${data.status}`, 'success');
+                log('backendResult', `Services: ${JSON.stringify(data.services, null, 2)}`, 'success');
+            } catch (error) {
+                log('backendResult', `❌ Backend Error: ${error.message}`, 'error');
+                log('backendResult', 'Make sure the backend is running on port 8002', 'warning');
+            }
+        }
+        
+        async function testCORS() {
+            try {
+                log('backendResult', 'Testing CORS configuration...', 'warning');
+                const response = await fetch(`${BACKEND_URL}/api/status`, {
+                    method: 'GET',
+                    headers: {
+                        'Origin': window.location.origin
+                    }
+                });
+                
+                if (response.ok) {
+                    log('backendResult', '✅ CORS is properly configured', 'success');
+                } else {
+                    log('backendResult', `⚠️ Response status: ${response.status}`, 'warning');
+                }
+            } catch (error) {
+                log('backendResult', `❌ CORS Error: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testPredictionAPI() {
+            const symbol = document.getElementById('testSymbol').value || 'CBA.AX';
+            const resultDiv = document.getElementById('apiResult');
+            resultDiv.innerHTML = '';
+            
+            try {
+                log('apiResult', `Testing prediction for ${symbol}...`, 'warning');
+                
+                const requestBody = {
+                    symbol: symbol,
+                    period: '1mo',
+                    model_type: 'simple'
+                };
+                
+                log('apiResult', `Request: POST ${BACKEND_URL}/api/predict`, 'warning');
+                log('apiResult', `Body: ${JSON.stringify(requestBody)}`, 'warning');
+                
+                const response = await fetch(`${BACKEND_URL}/api/predict`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log('apiResult', '✅ Prediction API Response:', 'success');
+                    log('apiResult', JSON.stringify(data, null, 2), 'success');
+                    
+                    if (data.predictions && data.predictions.length > 0) {
+                        log('apiResult', `\nCurrent Price: $${data.current_price}`, 'success');
+                        log('apiResult', `1-Day Prediction: $${data.predictions[0].predicted_price}`, 'success');
+                        log('apiResult', `Confidence: ${(data.predictions[0].confidence * 100).toFixed(1)}%`, 'success');
+                    }
+                } else {
+                    log('apiResult', `❌ API Error: ${response.status}`, 'error');
+                    log('apiResult', JSON.stringify(data, null, 2), 'error');
+                }
+            } catch (error) {
+                log('apiResult', `❌ Request Error: ${error.message}`, 'error');
+                log('apiResult', 'Full error: ' + error.stack, 'error');
+            }
+        }
+        
+        async function testPhase4API() {
+            const symbol = document.getElementById('testSymbol').value || 'CBA.AX';
+            
+            try {
+                log('apiResult', 'Testing Phase 4 endpoint...', 'warning');
+                
+                const response = await fetch(`${BACKEND_URL}/api/phase4/predict`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        period: '1mo',
+                        model_type: 'phase4_gnn'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log('apiResult', '✅ Phase 4 API Response:', 'success');
+                    log('apiResult', JSON.stringify(data, null, 2), 'success');
+                } else {
+                    log('apiResult', `❌ Phase 4 API Error: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log('apiResult', `❌ Phase 4 Error: ${error.message}`, 'error');
+            }
+        }
+        
+        function debugElements() {
+            const resultDiv = document.getElementById('domResult');
+            resultDiv.innerHTML = '';
+            
+            log('domResult', 'Instructions to run in Prediction Centre console:', 'warning');
+            
+            const debugCode = `
+// Debug DOM elements
+console.log('=== Debugging Prediction Centre ===');
+
+// Check for input elements
+const symbolInput = document.getElementById('stockSymbol') || document.querySelector('input[type="text"]');
+console.log('Symbol Input:', symbolInput ? symbolInput.value : 'NOT FOUND');
+
+const modelSelect = document.getElementById('modelType') || document.querySelector('select');
+console.log('Model Select:', modelSelect ? modelSelect.value : 'NOT FOUND');
+
+// Check for display elements
+const predictionValues = document.querySelectorAll('.prediction-value');
+console.log('Prediction value elements found:', predictionValues.length);
+
+const priceElements = document.querySelectorAll('[class*="price"]');
+console.log('Price elements found:', priceElements.length);
+
+// Check for buttons
+const buttons = document.querySelectorAll('button');
+console.log('Buttons found:', buttons.length);
+buttons.forEach((btn, i) => {
+    console.log(\`Button \${i}: \${btn.textContent.trim()}\`);
+    if (btn.textContent.includes('Predict') || btn.onclick) {
+        console.log('  - Has onclick:', btn.onclick ? 'Yes' : 'No');
+    }
+});
+
+// Check for existing functions
+console.log('generatePrediction exists?', typeof generatePrediction !== 'undefined');
+console.log('window.generatePrediction exists?', typeof window.generatePrediction !== 'undefined');
+`;
+            
+            log('domResult', debugCode);
+        }
+        
+        function findPredictionFunction() {
+            log('domResult', '\nChecking for prediction function in current window...', 'warning');
+            
+            if (typeof generatePrediction !== 'undefined') {
+                log('domResult', '✅ generatePrediction function exists', 'success');
+                log('domResult', generatePrediction.toString(), 'success');
+            } else if (typeof window.generatePrediction !== 'undefined') {
+                log('domResult', '✅ window.generatePrediction exists', 'success');
+                log('domResult', window.generatePrediction.toString(), 'success');
+            } else {
+                log('domResult', '❌ No generatePrediction function found', 'error');
+            }
+        }
+        
+        function generateCustomFix() {
+            const fixCode = `
+// ============================================
+// UNIVERSAL FIX FOR PREDICTION CENTRE
+// ============================================
+
+(function() {
+    console.log('🔧 Applying Universal Prediction Fix...');
+    
+    // Create new prediction function
+    const fixedPrediction = async function() {
+        console.log('🚀 Fixed prediction function called');
+        
+        // Try to find the symbol input
+        let symbol = 'CBA.AX';
+        const symbolInput = document.getElementById('stockSymbol') || 
+                          document.querySelector('input[type="text"]') ||
+                          document.querySelector('input[placeholder*="symbol"]');
+        
+        if (symbolInput) {
+            symbol = symbolInput.value.trim() || 'CBA.AX';
+        }
+        
+        console.log('📊 Generating prediction for:', symbol);
+        
+        // Find elements to update
+        const predictionElements = document.querySelectorAll('.prediction-value');
+        const priceElements = document.querySelectorAll('[class*="price"]');
+        const allElements = [...predictionElements, ...priceElements];
+        
+        // Show loading state
+        if (predictionElements.length > 1) {
+            predictionElements[1].textContent = 'Loading...';
+        }
+        
+        try {
+            // Make API call
+            const response = await fetch('http://localhost:8002/api/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({
+                    symbol: symbol,
+                    period: '1mo',
+                    model_type: 'simple'
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(\`HTTP error! status: \${response.status}\`);
+            }
+            
+            const data = await response.json();
+            console.log('✅ Prediction received:', data);
+            
+            // Update current price (first element)
+            if (predictionElements.length > 0) {
+                predictionElements[0].textContent = '$' + data.current_price.toFixed(2);
+            }
+            
+            // Update predicted price (second element)
+            if (predictionElements.length > 1 && data.predictions && data.predictions[0]) {
+                predictionElements[1].textContent = '$' + data.predictions[0].predicted_price.toFixed(2);
+            }
+            
+            // Update confidence (third element)
+            if (predictionElements.length > 2 && data.predictions && data.predictions[0]) {
+                predictionElements[2].textContent = (data.predictions[0].confidence * 100).toFixed(1) + '%';
+            }
+            
+            // Update any price displays
+            priceElements.forEach((elem, index) => {
+                if (elem.textContent.includes('--') || elem.textContent.includes('Loading')) {
+                    if (index === 0 && data.current_price) {
+                        elem.textContent = '$' + data.current_price.toFixed(2);
+                    } else if (data.predictions && data.predictions[0]) {
+                        elem.textContent = '$' + data.predictions[0].predicted_price.toFixed(2);
+                    }
+                }
+            });
+            
+            // Show success message
+            console.log('✅ Prediction displayed successfully!');
+            
+            // Try to update any charts
+            if (typeof updateChart === 'function') {
+                updateChart(data);
+            }
+            if (typeof updatePredictionChart === 'function') {
+                updatePredictionChart(data);
+            }
+            
+        } catch (error) {
+            console.error('❌ Prediction error:', error);
+            
+            // Reset display on error
+            if (predictionElements.length > 1) {
+                predictionElements[1].textContent = '$--';
+            }
+            
+            alert('Error generating prediction: ' + error.message + '\\n\\nMake sure the backend is running on port 8002');
+        }
+    };
+    
+    // Override all possible function locations
+    window.generatePrediction = fixedPrediction;
+    
+    // Find and override button onclick
+    const buttons = document.querySelectorAll('button');
+    buttons.forEach(btn => {
+        if (btn.textContent.includes('Generate') && btn.textContent.includes('Prediction')) {
+            console.log('🔧 Fixing button:', btn.textContent);
+            btn.onclick = fixedPrediction;
+        }
+    });
+    
+    // Also try to find buttons with onclick attributes
+    document.querySelectorAll('[onclick*="generatePrediction"]').forEach(elem => {
+        console.log('🔧 Fixing element with onclick');
+        elem.onclick = fixedPrediction;
+    });
+    
+    console.log('✅ Universal fix applied successfully!');
+    console.log('📝 To test: Click the "Generate Prediction" button');
+    console.log('📝 Or run: generatePrediction()');
+    
+    // Auto-run once to test
+    setTimeout(() => {
+        console.log('🔄 Auto-testing prediction...');
+        fixedPrediction();
+    }, 1000);
+})();
+`;
+            
+            document.getElementById('universalFix').textContent = fixCode;
+            log('fixResult', '✅ Universal fix code generated', 'success');
+            log('fixResult', 'Copy this code and paste it in the Prediction Centre console', 'warning');
+        }
+        
+        function copyFix() {
+            const fixCode = document.getElementById('universalFix').textContent;
+            navigator.clipboard.writeText(fixCode).then(() => {
+                log('fixResult', '✅ Fix copied to clipboard!', 'success');
+                log('fixResult', 'Now paste it in the Prediction Centre console (F12)', 'warning');
+            }).catch(() => {
+                log('fixResult', '⚠️ Could not copy automatically. Please select and copy manually.', 'warning');
+            });
+        }
+        
+        function openTestWindow() {
+            const testHTML = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Prediction</title>
+    <style>
+        body { font-family: Arial; padding: 20px; background: #1a1a1a; color: white; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .result { background: #000; padding: 20px; border-radius: 10px; margin: 20px 0; }
+        button { background: #667eea; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; }
+        input { padding: 10px; margin: 10px 0; width: 200px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test Prediction API</h1>
+        <input type="text" id="symbol" value="CBA.AX" placeholder="Enter symbol">
+        <button onclick="testPrediction()">Generate Prediction</button>
+        <div id="result" class="result">Click button to test...</div>
+    </div>
+    <script>
+        async function testPrediction() {
+            const symbol = document.getElementById('symbol').value;
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                resultDiv.innerHTML = 'Loading...';
+                
+                const response = await fetch('http://localhost:8002/api/predict', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        period: '1mo',
+                        model_type: 'simple'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                resultDiv.innerHTML = '<h3>✅ Success!</h3>' +
+                    '<p>Current Price: $' + data.current_price.toFixed(2) + '</p>' +
+                    '<p>Predicted Price: $' + data.predictions[0].predicted_price.toFixed(2) + '</p>' +
+                    '<p>Change: ' + data.predictions[0].change_percent.toFixed(2) + '%</p>' +
+                    '<p>Confidence: ' + (data.predictions[0].confidence * 100).toFixed(1) + '%</p>';
+                    
+            } catch (error) {
+                resultDiv.innerHTML = '❌ Error: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>`;
+            
+            const blob = new Blob([testHTML], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+        }
+        
+        // Initialize on load
+        window.onload = () => {
+            generateCustomFix();
+            log('backendResult', 'Ready to debug. Click the buttons above in order.', 'warning');
+        };
+    </script>
+</body>
+</html>

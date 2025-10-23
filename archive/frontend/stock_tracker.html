@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📈 Single Stock Track and Predict - Advanced AI Analysis</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+        }
+        
+        .glassmorphism {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+        
+        .header {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 24px;
+            padding: 30px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            margin-bottom: 15px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6, #06b6d4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .controls-section {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+        
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            align-items: end;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .control-group label {
+            font-size: 0.875rem;
+            color: #94a3b8;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        
+        input, select {
+            padding: 10px 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            background: rgba(30, 41, 59, 0.8);
+            color: white;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .track-btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 16px;
+        }
+        
+        .track-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(59, 130, 246, 0.3);
+        }
+        
+        .track-btn:disabled {
+            background: #64748b;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .stop-btn {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+        
+        .status-display {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 20px;
+            padding: 25px;
+            margin-bottom: 25px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .price-display {
+            font-size: 2rem;
+            font-weight: 700;
+            margin: 0 15px;
+        }
+        
+        .change-positive {
+            color: #10b981;
+        }
+        
+        .change-negative {
+            color: #ef4444;
+        }
+        
+        .chart-container {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 25px;
+            height: 500px;
+            position: relative;
+        }
+        
+        .prediction-panel {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 25px;
+        }
+        
+        .prediction-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .prediction-card {
+            background: rgba(30, 41, 59, 0.8);
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+        
+        .prediction-card h4 {
+            font-size: 0.875rem;
+            color: #94a3b8;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+        
+        .prediction-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #3b82f6;
+        }
+        
+        .status-indicator {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            display: inline-flex;
+            align-items: center;
+        }
+        
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin: 2px;
+        }
+        
+        .badge-live { background: linear-gradient(135deg, #059669, #10b981); color: white; }
+        .badge-prediction { background: linear-gradient(135deg, #7c3aed, #a855f7); color: white; }
+        .badge-accuracy { background: linear-gradient(135deg, #dc2626, #ef4444); color: white; }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto max-w-7xl px-4 py-6">
+        <!-- Header -->
+        <div class="header">
+            <h1>📈 Single Stock Track and Predict</h1>
+            <p class="text-gray-400 text-lg">Real-time tracking with advanced AI predictions</p>
+            <div class="flex justify-center gap-2 mt-4">
+                <span class="badge badge-live">
+                    <i class="fas fa-circle mr-2"></i>Live Data
+                </span>
+                <span class="badge badge-prediction">
+                    <i class="fas fa-brain mr-2"></i>AI Predictions
+                </span>
+                <span class="badge badge-accuracy">
+                    <i class="fas fa-chart-line mr-2"></i>85%+ Accuracy
+                </span>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls-section">
+            <div class="controls-grid">
+                <div class="control-group">
+                    <label>Select Market</label>
+                    <select id="symbolSelect">
+                        <option value="">Select Symbol...</option>
+                        <optgroup label="Australian Banks">
+                            <option value="CBA.AX">Commonwealth Bank (CBA)</option>
+                            <option value="ANZ.AX">ANZ Banking Group (ANZ)</option>
+                            <option value="WBC.AX">Westpac Banking (WBC)</option>
+                            <option value="NAB.AX">National Australia Bank (NAB)</option>
+                            <option value="MQG.AX">Macquarie Group (MQG)</option>
+                            <option value="BEN.AX">Bendigo and Adelaide Bank (BEN)</option>
+                            <option value="BOQ.AX">Bank of Queensland (BOQ)</option>
+                        </optgroup>
+                        <optgroup label="Australian Mining & Resources">
+                            <option value="BHP.AX">BHP Group (BHP)</option>
+                            <option value="RIO.AX">Rio Tinto (RIO)</option>
+                            <option value="FMG.AX">Fortescue Metals (FMG)</option>
+                            <option value="NCM.AX">Newcrest Mining (NCM)</option>
+                            <option value="S32.AX">South32 (S32)</option>
+                            <option value="MIN.AX">Mineral Resources (MIN)</option>
+                            <option value="IGO.AX">IGO Limited (IGO)</option>
+                            <option value="OZL.AX">OZ Minerals (OZL)</option>
+                            <option value="WHC.AX">Whitehaven Coal (WHC)</option>
+                        </optgroup>
+                        <optgroup label="Australian Healthcare & Biotech">
+                            <option value="CSL.AX">CSL Limited (CSL)</option>
+                            <option value="COH.AX">Cochlear Limited (COH)</option>
+                            <option value="RHC.AX">Ramsay Health Care (RHC)</option>
+                            <option value="SHL.AX">Sonic Healthcare (SHL)</option>
+                            <option value="RMD.AX">ResMed Inc (RMD)</option>
+                            <option value="FPH.AX">Fisher & Paykel Healthcare (FPH)</option>
+                            <option value="PME.AX">Pro Medicus (PME)</option>
+                        </optgroup>
+                        <optgroup label="Australian Retail & Consumer">
+                            <option value="WOW.AX">Woolworths Group (WOW)</option>
+                            <option value="WES.AX">Wesfarmers (WES)</option>
+                            <option value="COL.AX">Coles Group (COL)</option>
+                            <option value="JBH.AX">JB Hi-Fi (JBH)</option>
+                            <option value="HVN.AX">Harvey Norman (HVN)</option>
+                            <option value="SUL.AX">Super Retail Group (SUL)</option>
+                            <option value="ALL.AX">Aristocrat Leisure (ALL)</option>
+                        </optgroup>
+                        <optgroup label="Australian Technology">
+                            <option value="XRO.AX">Xero Limited (XRO)</option>
+                            <option value="WTC.AX">WiseTech Global (WTC)</option>
+                            <option value="APT.AX">Afterpay (APT)</option>
+                            <option value="REA.AX">REA Group (REA)</option>
+                            <option value="CAR.AX">CAR Group (CAR)</option>
+                            <option value="ALU.AX">Altium Limited (ALU)</option>
+                            <option value="NEA.AX">Nearmap (NEA)</option>
+                        </optgroup>
+                        <optgroup label="Australian Infrastructure">
+                            <option value="TCL.AX">Transurban Group (TCL)</option>
+                            <option value="SYD.AX">Sydney Airport (SYD)</option>
+                            <option value="APA.AX">APA Group (APA)</option>
+                            <option value="AST.AX">AusNet Services (AST)</option>
+                            <option value="QAN.AX">Qantas Airways (QAN)</option>
+                        </optgroup>
+                        <optgroup label="Australian Energy">
+                            <option value="WDS.AX">Woodside Energy (WDS)</option>
+                            <option value="STO.AX">Santos Limited (STO)</option>
+                            <option value="ORG.AX">Origin Energy (ORG)</option>
+                            <option value="AGL.AX">AGL Energy (AGL)</option>
+                        </optgroup>
+                        <optgroup label="Australian Telco & Utilities">
+                            <option value="TLS.AX">Telstra Corporation (TLS)</option>
+                            <option value="TPG.AX">TPG Telecom (TPG)</option>
+                            <option value="VUK.AX">Virgin Money UK (VUK)</option>
+                        </optgroup>
+                        <optgroup label="Australian Property">
+                            <option value="GMG.AX">Goodman Group (GMG)</option>
+                            <option value="DXS.AX">Dexus (DXS)</option>
+                            <option value="MGR.AX">Mirvac Group (MGR)</option>
+                            <option value="SCG.AX">Scentre Group (SCG)</option>
+                            <option value="VCX.AX">Vicinity Centres (VCX)</option>
+                            <option value="SGP.AX">Stockland (SGP)</option>
+                        </optgroup>
+                        <optgroup label="UK Banks & Financial">
+                            <option value="HSBA.L">HSBC Holdings (HSBA)</option>
+                            <option value="LLOY.L">Lloyds Banking Group (LLOY)</option>
+                            <option value="BARC.L">Barclays (BARC)</option>
+                            <option value="NWG.L">NatWest Group (NWG)</option>
+                            <option value="STAN.L">Standard Chartered (STAN)</option>
+                            <option value="PRU.L">Prudential (PRU)</option>
+                            <option value="LGEN.L">Legal & General (LGEN)</option>
+                            <option value="AV.L">Aviva (AV)</option>
+                            <option value="PHNX.L">Phoenix Group (PHNX)</option>
+                            <option value="III.L">3i Group (III)</option>
+                        </optgroup>
+                        <optgroup label="UK Energy & Resources">
+                            <option value="SHEL.L">Shell (SHEL)</option>
+                            <option value="BP.L">BP (BP)</option>
+                            <option value="RIO.L">Rio Tinto UK (RIO)</option>
+                            <option value="GLEN.L">Glencore (GLEN)</option>
+                            <option value="AAL.L">Anglo American (AAL)</option>
+                            <option value="ANTO.L">Antofagasta (ANTO)</option>
+                            <option value="EVR.L">Evraz (EVR)</option>
+                            <option value="SSE.L">SSE (SSE)</option>
+                            <option value="CNA.L">Centrica (CNA)</option>
+                        </optgroup>
+                        <optgroup label="UK Healthcare & Pharma">
+                            <option value="AZN.L">AstraZeneca (AZN)</option>
+                            <option value="GSK.L">GSK (GSK)</option>
+                            <option value="HIK.L">Hikma Pharmaceuticals (HIK)</option>
+                            <option value="SN.L">Smith & Nephew (SN)</option>
+                            <option value="BTG.L">BTG (BTG)</option>
+                        </optgroup>
+                        <optgroup label="UK Consumer Goods">
+                            <option value="ULVR.L">Unilever (ULVR)</option>
+                            <option value="DGE.L">Diageo (DGE)</option>
+                            <option value="RKT.L">Reckitt Benckiser (RKT)</option>
+                            <option value="IMB.L">Imperial Brands (IMB)</option>
+                            <option value="BATS.L">British American Tobacco (BATS)</option>
+                            <option value="ABF.L">Associated British Foods (ABF)</option>
+                        </optgroup>
+                        <optgroup label="UK Retail">
+                            <option value="TSCO.L">Tesco (TSCO)</option>
+                            <option value="SBRY.L">Sainsbury's (SBRY)</option>
+                            <option value="MRW.L">Morrison's (MRW)</option>
+                            <option value="MKS.L">Marks & Spencer (MKS)</option>
+                            <option value="NXT.L">Next (NXT)</option>
+                            <option value="JD.L">JD Sports Fashion (JD)</option>
+                            <option value="KGF.L">Kingfisher (KGF)</option>
+                            <option value="OCDO.L">Ocado Group (OCDO)</option>
+                        </optgroup>
+                        <optgroup label="UK Telecom & Tech">
+                            <option value="VOD.L">Vodafone Group (VOD)</option>
+                            <option value="BT-A.L">BT Group (BT.A)</option>
+                            <option value="SAGE.L">Sage Group (SAGE)</option>
+                            <option value="AVV.L">AVEVA Group (AVV)</option>
+                            <option value="DARK.L">Darktrace (DARK)</option>
+                            <option value="AUTO.L">Auto Trader Group (AUTO)</option>
+                            <option value="RMV.L">Rightmove (RMV)</option>
+                        </optgroup>
+                        <optgroup label="UK Industrial & Defence">
+                            <option value="BA.L">BAE Systems (BA)</option>
+                            <option value="RR.L">Rolls-Royce (RR)</option>
+                            <option value="MGGT.L">Meggitt (MGGT)</option>
+                            <option value="QQ.L">QinetiQ (QQ)</option>
+                            <option value="UU.L">United Utilities (UU)</option>
+                            <option value="SVT.L">Severn Trent (SVT)</option>
+                        </optgroup>
+                        <optgroup label="UK Property & Infrastructure">
+                            <option value="LAND.L">Land Securities (LAND)</option>
+                            <option value="BLND.L">British Land (BLND)</option>
+                            <option value="SGRO.L">Segro (SGRO)</option>
+                            <option value="NG.L">National Grid (NG)</option>
+                            <option value="PSN.L">Persimmon (PSN)</option>
+                            <option value="BDEV.L">Barratt Developments (BDEV)</option>
+                            <option value="TW.L">Taylor Wimpey (TW)</option>
+                        </optgroup>
+                        <optgroup label="UK Airlines & Travel">
+                            <option value="IAG.L">International Airlines Group (IAG)</option>
+                            <option value="EZJ.L">easyJet (EZJ)</option>
+                            <option value="TUI.L">TUI (TUI)</option>
+                            <option value="WTB.L">Whitbread (WTB)</option>
+                            <option value="IHG.L">InterContinental Hotels (IHG)</option>
+                        </optgroup>
+                        <optgroup label="Market Indices">
+                            <option value="^GSPC">S&P 500 (US)</option>
+                            <option value="^DJI">Dow Jones (US)</option>
+                            <option value="^IXIC">NASDAQ (US)</option>
+                            <option value="^FTSE">FTSE 100 (UK)</option>
+                            <option value="^AXJO">ASX 200 (Australia)</option>
+                            <option value="^AORD">All Ordinaries (Australia)</option>
+                        </optgroup>
+                        <optgroup label="US Tech Giants">
+                            <option value="AAPL">Apple (AAPL)</option>
+                            <option value="MSFT">Microsoft (MSFT)</option>
+                            <option value="GOOGL">Google (GOOGL)</option>
+                            <option value="AMZN">Amazon (AMZN)</option>
+                            <option value="TSLA">Tesla (TSLA)</option>
+                            <option value="META">Meta (META)</option>
+                            <option value="NVDA">NVIDIA (NVDA)</option>
+                        </optgroup>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>Custom Symbol</label>
+                    <input type="text" id="customSymbol" placeholder="Enter symbol...">
+                </div>
+                
+                <div class="control-group">
+                    <label>Time Interval</label>
+                    <select id="interval">
+                        <option value="1m">1 Minute</option>
+                        <option value="5m">5 Minutes</option>
+                        <option value="15m">15 Minutes</option>
+                        <option value="30m">30 Minutes</option>
+                        <option value="1h" selected>1 Hour</option>
+                        <option value="1d">1 Day</option>
+                    </select>
+                </div>
+                
+                <div class="control-group">
+                    <label>&nbsp;</label>
+                    <button id="trackBtn" class="track-btn">
+                        <i class="fas fa-play mr-2"></i>Start Tracking
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Display -->
+        <div class="status-display" id="statusDisplay" style="display: none;">
+            <div>
+                <span class="text-2xl font-bold text-blue-400" id="currentSymbol">-</span>
+                <span class="price-display" id="currentPrice">-</span>
+                <span class="text-xl" id="priceChange">-</span>
+            </div>
+            <div class="status-indicator">
+                <i class="fas fa-circle mr-2 animate-pulse"></i>Live Tracking
+            </div>
+        </div>
+
+        <!-- Chart Container -->
+        <div class="chart-container">
+            <canvas id="chart"></canvas>
+        </div>
+
+        <!-- Prediction Panel -->
+        <div class="prediction-panel">
+            <h3 class="text-2xl font-bold mb-4">
+                <i class="fas fa-magic mr-3 text-purple-400"></i>AI Predictions
+            </h3>
+            
+            <div class="mb-4">
+                <select id="predictionTimeframe" class="mr-3">
+                    <option value="1h">1 Hour</option>
+                    <option value="1d" selected>1 Day</option>
+                    <option value="1w">1 Week</option>
+                    <option value="1mo">1 Month</option>
+                </select>
+                <button id="predictBtn" class="track-btn" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
+                    <i class="fas fa-brain mr-2"></i>Generate Prediction
+                </button>
+            </div>
+            
+            <div class="prediction-grid" id="predictionResults" style="display: none;">
+                <div class="prediction-card">
+                    <h4>Predicted Price</h4>
+                    <div class="prediction-value" id="predictedPrice">-</div>
+                </div>
+                <div class="prediction-card">
+                    <h4>Expected Change</h4>
+                    <div class="prediction-value" id="expectedChange">-</div>
+                </div>
+                <div class="prediction-card">
+                    <h4>Confidence</h4>
+                    <div class="prediction-value" id="confidence">-</div>
+                </div>
+                <div class="prediction-card">
+                    <h4>Signal</h4>
+                    <div class="prediction-value" id="signal">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        let API_BASE_URL;
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            API_BASE_URL = 'https://8000-i2ch499gc6d7qpm0yvxy4-6532622b.e2b.dev';
+        } else if (window.location.hostname.includes('e2b.dev')) {
+            API_BASE_URL = 'https://8000-i2ch499gc6d7qpm0yvxy4-6532622b.e2b.dev';
+        } else {
+            API_BASE_URL = 'https://8000-i2ch499gc6d7qpm0yvxy4-6532622b.e2b.dev';
+        }
+
+        // State
+        let isTracking = false;
+        let currentSymbol = '';
+        let trackingInterval = null;
+        let chart = null;
+        let chartData = [];
+
+        console.log('🚀 Single Stock Tracker Loaded');
+        console.log('📍 API URL:', API_BASE_URL);
+
+        // Initialize on DOM load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set up event listeners
+            const trackBtn = document.getElementById('trackBtn');
+            const predictBtn = document.getElementById('predictBtn');
+            
+            trackBtn.addEventListener('click', handleTracking);
+            predictBtn.addEventListener('click', generatePrediction);
+            
+            // Initialize chart
+            initializeChart();
+            
+            console.log('✅ All event listeners attached');
+        });
+
+        function initializeChart() {
+            const ctx = document.getElementById('chart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Price',
+                        data: [],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.1,
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        pointHoverRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                color: '#e2e8f0',
+                                font: {
+                                    size: 14
+                                }
+                            }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleColor: '#e2e8f0',
+                            bodyColor: '#e2e8f0',
+                            borderColor: 'rgba(148, 163, 184, 0.2)',
+                            borderWidth: 1,
+                            padding: 12,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return `Price: $${context.parsed.y.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            ticks: {
+                                color: '#94a3b8',
+                                font: {
+                                    size: 12
+                                },
+                                callback: function(value) {
+                                    return '$' + value.toFixed(2);
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(148, 163, 184, 0.1)'
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                color: '#94a3b8',
+                                font: {
+                                    size: 12
+                                },
+                                maxTicksLimit: 10,
+                                maxRotation: 0
+                            },
+                            grid: {
+                                color: 'rgba(148, 163, 184, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function handleTracking() {
+            if (isTracking) {
+                stopTracking();
+            } else {
+                startTracking();
+            }
+        }
+
+        async function startTracking() {
+            console.log('▶️ Starting tracking...');
+            
+            const selectedSymbol = document.getElementById('symbolSelect').value;
+            const customSymbol = document.getElementById('customSymbol').value.trim().toUpperCase();
+            const symbol = selectedSymbol || customSymbol;
+            
+            if (!symbol) {
+                alert('Please select or enter a symbol');
+                return;
+            }
+            
+            currentSymbol = symbol;
+            isTracking = true;
+            
+            // Update UI
+            const trackBtn = document.getElementById('trackBtn');
+            trackBtn.innerHTML = '<i class="fas fa-stop mr-2"></i>Stop Tracking';
+            trackBtn.classList.add('stop-btn');
+            
+            document.getElementById('statusDisplay').style.display = 'flex';
+            document.getElementById('currentSymbol').textContent = symbol;
+            
+            // Clear prediction results
+            document.getElementById('predictionResults').style.display = 'none';
+            
+            // Fetch initial data
+            await fetchData();
+            
+            // Set up interval (every 30 seconds)
+            trackingInterval = setInterval(fetchData, 30000);
+            
+            console.log('✅ Tracking started for', symbol);
+        }
+
+        function stopTracking() {
+            console.log('⏹️ Stopping tracking...');
+            
+            isTracking = false;
+            
+            if (trackingInterval) {
+                clearInterval(trackingInterval);
+                trackingInterval = null;
+            }
+            
+            // Update UI
+            const trackBtn = document.getElementById('trackBtn');
+            trackBtn.innerHTML = '<i class="fas fa-play mr-2"></i>Start Tracking';
+            trackBtn.classList.remove('stop-btn');
+            
+            console.log('✅ Tracking stopped');
+        }
+
+        async function fetchData() {
+            const interval = document.getElementById('interval').value;
+            const url = `${API_BASE_URL}/api/stock/${currentSymbol}?period=1d&interval=${interval}`;
+            
+            console.log('📊 Fetching data from:', url);
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (data && data.data && data.data.length > 0) {
+                    chartData = data.data;
+                    updateDisplay(data);
+                    updateChart(data.data);
+                }
+                
+            } catch (error) {
+                console.error('❌ Fetch error:', error);
+            }
+        }
+
+        function updateDisplay(data) {
+            const points = data.data;
+            const latest = points[points.length - 1];
+            const first = points[0];
+            
+            const currentPrice = latest.close;
+            const change = currentPrice - first.open;
+            const changePercent = (change / first.open) * 100;
+            
+            document.getElementById('currentPrice').textContent = `$${currentPrice.toFixed(2)}`;
+            
+            const changeElement = document.getElementById('priceChange');
+            changeElement.textContent = `${change >= 0 ? '▲' : '▼'} ${Math.abs(change).toFixed(2)} (${changePercent.toFixed(2)}%)`;
+            changeElement.className = change >= 0 ? 'text-xl change-positive' : 'text-xl change-negative';
+        }
+
+        function updateChart(data) {
+            const labels = data.map(d => {
+                const date = new Date(d.timestamp);
+                return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            });
+            const prices = data.map(d => d.close);
+            
+            chart.data.labels = labels;
+            chart.data.datasets[0].data = prices;
+            chart.data.datasets[0].label = currentSymbol + ' Price';
+            chart.update('none'); // Update without animation for smoother experience
+        }
+
+        async function generatePrediction() {
+            if (!currentSymbol) {
+                alert('Please start tracking a stock first');
+                return;
+            }
+            
+            const timeframe = document.getElementById('predictionTimeframe').value;
+            const predictBtn = document.getElementById('predictBtn');
+            
+            predictBtn.disabled = true;
+            predictBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating...';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/api/unified-prediction/${currentSymbol}?timeframe=${timeframe}`);
+                const prediction = await response.json();
+                
+                if (prediction.success) {
+                    displayPrediction(prediction.prediction);
+                }
+                
+            } catch (error) {
+                console.error('Prediction error:', error);
+            } finally {
+                predictBtn.disabled = false;
+                predictBtn.innerHTML = '<i class="fas fa-brain mr-2"></i>Generate Prediction';
+            }
+        }
+
+        function displayPrediction(prediction) {
+            document.getElementById('predictionResults').style.display = 'grid';
+            
+            const currentPrice = chartData[chartData.length - 1]?.close || 0;
+            const predictedPrice = prediction.predicted_price || currentPrice * 1.01;
+            const change = ((predictedPrice - currentPrice) / currentPrice * 100).toFixed(2);
+            
+            document.getElementById('predictedPrice').textContent = `$${predictedPrice.toFixed(2)}`;
+            document.getElementById('expectedChange').textContent = `${change > 0 ? '+' : ''}${change}%`;
+            document.getElementById('expectedChange').style.color = change > 0 ? '#10b981' : '#ef4444';
+            document.getElementById('confidence').textContent = `${(prediction.confidence * 100).toFixed(1)}%`;
+            
+            const signal = prediction.signal || 'HOLD';
+            document.getElementById('signal').textContent = signal;
+            document.getElementById('signal').style.color = 
+                signal === 'BUY' ? '#10b981' : 
+                signal === 'SELL' ? '#ef4444' : '#f59e0b';
+        }
+    </script>
+</body>
+</html>

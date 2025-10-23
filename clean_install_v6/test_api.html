@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test - Direct</title>
+    <style>
+        body {
+            font-family: monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 20px;
+        }
+        .test {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #333;
+        }
+        .success { color: #00ff00; }
+        .error { color: #ff0000; }
+        .pending { color: #ffff00; }
+        button {
+            background: #333;
+            color: white;
+            border: 1px solid #666;
+            padding: 10px 20px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #444;
+        }
+        #output {
+            background: #0a0a0a;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Direct API Connection Test</h1>
+    
+    <div id="tests"></div>
+    
+    <div style="margin-top: 20px;">
+        <button onclick="testAll()">Run All Tests</button>
+        <button onclick="clearOutput()">Clear</button>
+    </div>
+    
+    <div id="output"></div>
+
+    <script>
+        const API_BASE = 'http://localhost:8002';
+        const output = document.getElementById('output');
+        const testsDiv = document.getElementById('tests');
+        
+        function log(msg, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff0000' : type === 'success' ? '#00ff00' : '#ffffff';
+            output.innerHTML += `<span style="color: ${color}">[${timestamp}] ${msg}</span>\n`;
+            console.log(msg);
+        }
+        
+        function clearOutput() {
+            output.innerHTML = '';
+            testsDiv.innerHTML = '';
+        }
+        
+        async function testEndpoint(name, url) {
+            const testDiv = document.createElement('div');
+            testDiv.className = 'test pending';
+            testDiv.textContent = `Testing ${name}: ${url}`;
+            testsDiv.appendChild(testDiv);
+            
+            try {
+                log(`Testing ${name}...`);
+                const startTime = Date.now();
+                const response = await fetch(url);
+                const elapsed = Date.now() - startTime;
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    testDiv.className = 'test success';
+                    testDiv.textContent = `✓ ${name}: SUCCESS (${elapsed}ms)`;
+                    log(`SUCCESS: ${name} responded in ${elapsed}ms`, 'success');
+                    log(`Data preview: ${JSON.stringify(data).substring(0, 200)}...`);
+                    return true;
+                } else {
+                    testDiv.className = 'test error';
+                    testDiv.textContent = `✗ ${name}: HTTP ${response.status}`;
+                    log(`ERROR: ${name} returned HTTP ${response.status}`, 'error');
+                    return false;
+                }
+            } catch (error) {
+                testDiv.className = 'test error';
+                testDiv.textContent = `✗ ${name}: ${error.message}`;
+                log(`ERROR: ${name} - ${error.message}`, 'error');
+                return false;
+            }
+        }
+        
+        async function testAll() {
+            clearOutput();
+            log('Starting comprehensive API tests...', 'info');
+            log('API Base: ' + API_BASE, 'info');
+            log('Current URL: ' + window.location.href, 'info');
+            log('Protocol: ' + window.location.protocol, 'info');
+            log('---', 'info');
+            
+            const tests = [
+                { name: 'Backend Root', url: `${API_BASE}/` },
+                { name: 'AAPL Quote', url: `${API_BASE}/api/stock/AAPL` },
+                { name: 'MSFT Quote', url: `${API_BASE}/api/stock/MSFT` },
+                { name: 'CBA.AX Quote', url: `${API_BASE}/api/stock/CBA.AX` },
+                { name: 'AAPL 1min Data', url: `${API_BASE}/api/historical/AAPL?period=1d&interval=1m` },
+                { name: 'AAPL 5min Data', url: `${API_BASE}/api/historical/AAPL?period=5d&interval=5m` },
+                { name: 'ASX Index', url: `${API_BASE}/api/stock/^AORD` },
+                { name: 'FTSE Index', url: `${API_BASE}/api/stock/^FTSE` },
+                { name: 'S&P 500 Index', url: `${API_BASE}/api/stock/^GSPC` },
+            ];
+            
+            let successCount = 0;
+            for (const test of tests) {
+                const success = await testEndpoint(test.name, test.url);
+                if (success) successCount++;
+                await new Promise(resolve => setTimeout(resolve, 500)); // Small delay between tests
+            }
+            
+            log('---', 'info');
+            log(`Tests completed: ${successCount}/${tests.length} successful`, successCount === tests.length ? 'success' : 'error');
+            
+            if (successCount < tests.length) {
+                log('\nTroubleshooting:', 'info');
+                log('1. Ensure backend is running (start_backend.bat)', 'info');
+                log('2. Check if port 8002 is accessible', 'info');
+                log('3. Try opening http://localhost:8002 directly in browser', 'info');
+                log('4. Check Windows Firewall settings', 'info');
+            }
+        }
+        
+        // Auto-run tests on load
+        window.addEventListener('load', () => {
+            setTimeout(testAll, 1000);
+        });
+    </script>
+</body>
+</html>

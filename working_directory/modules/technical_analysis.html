@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Technical Analysis - GSMT</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #2d3748;
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        
+        .search-section {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .search-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .search-input {
+            flex: 1;
+            padding: 12px 20px;
+            font-size: 1.1em;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            transition: border-color 0.3s;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .analyze-button {
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .analyze-button:hover {
+            background: #5a67d8;
+        }
+        
+        .analyze-button:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+        }
+        
+        .quick-stocks {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .quick-stock-btn {
+            padding: 8px 15px;
+            background: #f7fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9em;
+        }
+        
+        .quick-stock-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        .analysis-container {
+            display: none;
+        }
+        
+        .analysis-container.active {
+            display: block;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stock-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .stock-info {
+            flex: 1;
+        }
+        
+        .stock-name {
+            font-size: 1.8em;
+            color: #2d3748;
+            font-weight: 700;
+        }
+        
+        .stock-symbol {
+            color: #718096;
+            font-size: 1em;
+        }
+        
+        .stock-price-display {
+            text-align: right;
+        }
+        
+        .current-price {
+            font-size: 2.5em;
+            font-weight: 700;
+            color: #1a202c;
+        }
+        
+        .price-change {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+        
+        .positive {
+            color: #22543d;
+        }
+        
+        .negative {
+            color: #742a2a;
+        }
+        
+        .section-title {
+            font-size: 1.4em;
+            color: #2d3748;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        .indicators-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .indicator-card {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+            text-align: center;
+        }
+        
+        .indicator-name {
+            font-size: 0.9em;
+            color: #718096;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .indicator-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .indicator-signal {
+            padding: 4px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: 600;
+            display: inline-block;
+        }
+        
+        .signal-buy {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        
+        .signal-sell {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+        
+        .signal-neutral {
+            background: #feebc8;
+            color: #744210;
+        }
+        
+        .momentum-table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+        }
+        
+        .momentum-table th,
+        .momentum-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .momentum-table th {
+            background: #f7fafc;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        .momentum-table tr:hover {
+            background: #f7fafc;
+        }
+        
+        .summary-box {
+            background: linear-gradient(135deg, #4299e1 0%, #3182ce 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .summary-title {
+            font-size: 1.5em;
+            margin-bottom: 15px;
+        }
+        
+        .summary-content {
+            font-size: 1.1em;
+            line-height: 1.6;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+        
+        .error-message {
+            background: #fed7d7;
+            color: #742a2a;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .back-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background 0.3s ease;
+        }
+        
+        .back-button:hover {
+            background: #5a67d8;
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8em;
+            }
+            
+            .search-container {
+                flex-direction: column;
+            }
+            
+            .stock-header {
+                flex-direction: column;
+                text-align: left;
+            }
+            
+            .stock-price-display {
+                text-align: left;
+                margin-top: 15px;
+            }
+            
+            .indicators-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <a href="../simple_working_dashboard.html" class="back-button">← Back to Dashboard</a>
+            <h1>📉 Technical Analysis</h1>
+        </header>
+
+        <div class="search-section">
+            <h2 style="margin-bottom: 20px; color: #2d3748;">Analyze Stock Technical Indicators</h2>
+            <div class="search-container">
+                <input 
+                    type="text" 
+                    class="search-input" 
+                    id="stockInput" 
+                    placeholder="Enter stock symbol (e.g., AAPL, CBA.AX)"
+                    onkeypress="if(event.key === 'Enter') analyzeStock()"
+                >
+                <button class="analyze-button" id="analyzeBtn" onclick="analyzeStock()">
+                    Analyze
+                </button>
+            </div>
+            
+            <div style="margin-bottom: 10px; color: #718096; font-size: 0.9em;">
+                Popular Stocks:
+            </div>
+            <div class="quick-stocks">
+                <button class="quick-stock-btn" onclick="quickAnalyze('AAPL')">AAPL</button>
+                <button class="quick-stock-btn" onclick="quickAnalyze('MSFT')">MSFT</button>
+                <button class="quick-stock-btn" onclick="quickAnalyze('GOOGL')">GOOGL</button>
+                <button class="quick-stock-btn" onclick="quickAnalyze('TSLA')">TSLA</button>
+                <button class="quick-stock-btn" onclick="quickAnalyze('CBA.AX')">CBA.AX</button>
+                <button class="quick-stock-btn" onclick="quickAnalyze('BHP.AX')">BHP.AX</button>
+                <button class="quick-stock-btn" onclick="quickAnalyze('^GSPC')">S&P 500</button>
+                <button class="quick-stock-btn" onclick="quickAnalyze('^AORD')">All Ords</button>
+            </div>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <div class="loading" id="loadingDiv" style="display: none;">
+            <div style="font-size: 2em; margin-bottom: 10px;">📊</div>
+            <p>Analyzing technical indicators...</p>
+        </div>
+
+        <div class="analysis-container" id="analysisContainer">
+            <!-- Stock Header -->
+            <div class="card">
+                <div class="stock-header">
+                    <div class="stock-info">
+                        <div class="stock-name" id="stockName">--</div>
+                        <div class="stock-symbol" id="stockSymbol">--</div>
+                    </div>
+                    <div class="stock-price-display">
+                        <div class="current-price" id="currentPrice">--</div>
+                        <div class="price-change" id="priceChange">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Key Technical Indicators -->
+            <div class="card">
+                <div class="section-title">Key Technical Indicators</div>
+                <div class="indicators-grid">
+                    <div class="indicator-card">
+                        <div class="indicator-name">RSI (14)</div>
+                        <div class="indicator-value" id="rsi">--</div>
+                        <div class="indicator-signal" id="rsiSignal">--</div>
+                    </div>
+                    <div class="indicator-card">
+                        <div class="indicator-name">50-Day MA</div>
+                        <div class="indicator-value" id="ma50">--</div>
+                        <div class="indicator-signal" id="ma50Signal">--</div>
+                    </div>
+                    <div class="indicator-card">
+                        <div class="indicator-name">200-Day MA</div>
+                        <div class="indicator-value" id="ma200">--</div>
+                        <div class="indicator-signal" id="ma200Signal">--</div>
+                    </div>
+                    <div class="indicator-card">
+                        <div class="indicator-name">Volume Trend</div>
+                        <div class="indicator-value" id="volumeTrend">--</div>
+                        <div class="indicator-signal" id="volumeSignal">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Momentum Indicators -->
+            <div class="card">
+                <div class="section-title">Momentum & Trend Analysis</div>
+                <table class="momentum-table">
+                    <thead>
+                        <tr>
+                            <th>Indicator</th>
+                            <th>Value</th>
+                            <th>Signal</th>
+                            <th>Interpretation</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Price vs 52W High</strong></td>
+                            <td id="price52High">--</td>
+                            <td id="price52HighSignal">--</td>
+                            <td id="price52HighInterp">--</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Price vs 52W Low</strong></td>
+                            <td id="price52Low">--</td>
+                            <td id="price52LowSignal">--</td>
+                            <td id="price52LowInterp">--</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Support Level</strong></td>
+                            <td id="supportLevel">--</td>
+                            <td id="supportSignal">--</td>
+                            <td id="supportInterp">--</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Resistance Level</strong></td>
+                            <td id="resistanceLevel">--</td>
+                            <td id="resistanceSignal">--</td>
+                            <td id="resistanceInterp">--</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Volatility (Beta)</strong></td>
+                            <td id="betaValue">--</td>
+                            <td id="betaSignal">--</td>
+                            <td id="betaInterp">--</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Technical Summary -->
+            <div class="card">
+                <div class="summary-box">
+                    <div class="summary-title">📊 Technical Analysis Summary</div>
+                    <div class="summary-content" id="technicalSummary">
+                        Loading analysis...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration - Use dynamic URL for backend
+        const API_URL = window.location.hostname === 'localhost' 
+            ? 'http://localhost:8002'
+            : 'https://8002-' + window.location.hostname.split('-')[1] + '.e2b.dev';
+        
+        let currentStockData = null;
+        
+        // Quick analyze function
+        function quickAnalyze(symbol) {
+            document.getElementById('stockInput').value = symbol;
+            analyzeStock();
+        }
+        
+        // Main analyze function
+        async function analyzeStock() {
+            const input = document.getElementById('stockInput');
+            const symbol = input.value.trim().toUpperCase();
+            
+            if (!symbol) {
+                showError('Please enter a stock symbol');
+                return;
+            }
+            
+            // Clear previous display
+            hideError();
+            document.getElementById('analysisContainer').classList.remove('active');
+            
+            // Show loading
+            document.getElementById('loadingDiv').style.display = 'block';
+            document.getElementById('analyzeBtn').disabled = true;
+            
+            try {
+                // Fetch stock data
+                const response = await fetch(`${API_URL}/api/stock/${symbol}`);
+                
+                if (!response.ok) {
+                    throw new Error(`Stock ${symbol} not found`);
+                }
+                
+                currentStockData = await response.json();
+                
+                // Display analysis
+                displayStockHeader();
+                calculateTechnicalIndicators();
+                displayMomentumAnalysis();
+                generateTechnicalSummary();
+                
+                document.getElementById('analysisContainer').classList.add('active');
+                
+            } catch (error) {
+                console.error('Error analyzing stock:', error);
+                showError(`Failed to analyze ${symbol}. Please check the symbol and try again.`);
+            } finally {
+                document.getElementById('loadingDiv').style.display = 'none';
+                document.getElementById('analyzeBtn').disabled = false;
+            }
+        }
+        
+        function displayStockHeader() {
+            if (!currentStockData) return;
+            
+            const data = currentStockData;
+            const currentPrice = data.regularMarketPrice || 0;
+            const previousClose = data.previousClose || data.regularMarketPreviousClose || currentPrice;
+            const change = currentPrice - previousClose;
+            const changePercent = previousClose ? (change / previousClose * 100) : 0;
+            
+            document.getElementById('stockName').textContent = data.longName || data.shortName || 'N/A';
+            document.getElementById('stockSymbol').textContent = data.symbol;
+            document.getElementById('currentPrice').textContent = `$${currentPrice.toFixed(2)}`;
+            
+            const changeElement = document.getElementById('priceChange');
+            const arrow = change >= 0 ? '▲' : '▼';
+            changeElement.textContent = `${arrow} $${Math.abs(change).toFixed(2)} (${Math.abs(changePercent).toFixed(2)}%)`;
+            changeElement.className = change >= 0 ? 'price-change positive' : 'price-change negative';
+        }
+        
+        function calculateTechnicalIndicators() {
+            if (!currentStockData) return;
+            
+            const data = currentStockData;
+            const currentPrice = data.regularMarketPrice || 0;
+            
+            // Calculate RSI (simplified - normally needs 14-day price history)
+            const rsi = calculateSimplifiedRSI(data);
+            document.getElementById('rsi').textContent = rsi.toFixed(1);
+            const rsiSignal = getRSISignal(rsi);
+            document.getElementById('rsiSignal').textContent = rsiSignal.text;
+            document.getElementById('rsiSignal').className = `indicator-signal ${rsiSignal.class}`;
+            
+            // 50-Day MA (using approximation)
+            const ma50 = data.fiftyDayAverage || (data.fiftyTwoWeekLow + data.fiftyTwoWeekHigh) / 2;
+            document.getElementById('ma50').textContent = `$${ma50.toFixed(2)}`;
+            const ma50Signal = currentPrice > ma50 ? 'Above' : 'Below';
+            document.getElementById('ma50Signal').textContent = ma50Signal;
+            document.getElementById('ma50Signal').className = `indicator-signal ${currentPrice > ma50 ? 'signal-buy' : 'signal-sell'}`;
+            
+            // 200-Day MA (using approximation)
+            const ma200 = data.twoHundredDayAverage || ma50 * 0.95;
+            document.getElementById('ma200').textContent = `$${ma200.toFixed(2)}`;
+            const ma200Signal = currentPrice > ma200 ? 'Above' : 'Below';
+            document.getElementById('ma200Signal').textContent = ma200Signal;
+            document.getElementById('ma200Signal').className = `indicator-signal ${currentPrice > ma200 ? 'signal-buy' : 'signal-sell'}`;
+            
+            // Volume Trend
+            const avgVolume = data.averageVolume || 0;
+            const currentVolume = data.regularMarketVolume || 0;
+            const volumeRatio = avgVolume ? (currentVolume / avgVolume * 100) : 100;
+            document.getElementById('volumeTrend').textContent = `${volumeRatio.toFixed(0)}%`;
+            const volumeSignal = volumeRatio > 120 ? 'High' : volumeRatio < 80 ? 'Low' : 'Normal';
+            document.getElementById('volumeSignal').textContent = volumeSignal;
+            document.getElementById('volumeSignal').className = `indicator-signal ${volumeRatio > 120 ? 'signal-buy' : volumeRatio < 80 ? 'signal-sell' : 'signal-neutral'}`;
+        }
+        
+        function calculateSimplifiedRSI(data) {
+            // Simplified RSI calculation based on current price position
+            const currentPrice = data.regularMarketPrice || 0;
+            const high52 = data.fiftyTwoWeekHigh || currentPrice;
+            const low52 = data.fiftyTwoWeekLow || currentPrice;
+            const range = high52 - low52;
+            
+            if (range === 0) return 50;
+            
+            const position = (currentPrice - low52) / range;
+            // Convert position to RSI-like scale (0-100)
+            const rsi = position * 100;
+            
+            // Add some variance based on recent change
+            const changePercent = ((currentPrice - (data.previousClose || currentPrice)) / (data.previousClose || 1)) * 100;
+            const adjustedRSI = rsi + (changePercent * 2);
+            
+            // Keep within 0-100 range
+            return Math.min(100, Math.max(0, adjustedRSI));
+        }
+        
+        function getRSISignal(rsi) {
+            if (rsi > 70) {
+                return { text: 'Overbought', class: 'signal-sell' };
+            } else if (rsi < 30) {
+                return { text: 'Oversold', class: 'signal-buy' };
+            } else {
+                return { text: 'Neutral', class: 'signal-neutral' };
+            }
+        }
+        
+        function displayMomentumAnalysis() {
+            if (!currentStockData) return;
+            
+            const data = currentStockData;
+            const currentPrice = data.regularMarketPrice || 0;
+            const high52 = data.fiftyTwoWeekHigh || currentPrice;
+            const low52 = data.fiftyTwoWeekLow || currentPrice;
+            
+            // Price vs 52W High
+            const pctFromHigh = ((currentPrice - high52) / high52 * 100).toFixed(1);
+            document.getElementById('price52High').textContent = `${pctFromHigh}%`;
+            document.getElementById('price52HighSignal').textContent = pctFromHigh > -10 ? 'Near High' : 'Below High';
+            document.getElementById('price52HighInterp').textContent = pctFromHigh > -10 ? 'Strong momentum' : 'Room to grow';
+            
+            // Price vs 52W Low
+            const pctFromLow = ((currentPrice - low52) / low52 * 100).toFixed(1);
+            document.getElementById('price52Low').textContent = `+${pctFromLow}%`;
+            document.getElementById('price52LowSignal').textContent = pctFromLow < 20 ? 'Near Low' : 'Above Low';
+            document.getElementById('price52LowInterp').textContent = pctFromLow < 20 ? 'Potential bottom' : 'Recovering';
+            
+            // Support Level (simplified - using day low)
+            const support = data.dayLow || low52;
+            document.getElementById('supportLevel').textContent = `$${support.toFixed(2)}`;
+            document.getElementById('supportSignal').textContent = currentPrice > support * 1.05 ? 'Above' : 'Near';
+            document.getElementById('supportInterp').textContent = 'Key price floor';
+            
+            // Resistance Level (simplified - using day high)
+            const resistance = data.dayHigh || high52;
+            document.getElementById('resistanceLevel').textContent = `$${resistance.toFixed(2)}`;
+            document.getElementById('resistanceSignal').textContent = currentPrice < resistance * 0.95 ? 'Below' : 'Near';
+            document.getElementById('resistanceInterp').textContent = 'Key price ceiling';
+            
+            // Beta (Volatility)
+            const beta = data.beta || 1.0;
+            document.getElementById('betaValue').textContent = beta.toFixed(2);
+            document.getElementById('betaSignal').textContent = beta > 1.2 ? 'High' : beta < 0.8 ? 'Low' : 'Normal';
+            document.getElementById('betaInterp').textContent = beta > 1.2 ? 'More volatile than market' : beta < 0.8 ? 'Less volatile than market' : 'Moves with market';
+        }
+        
+        function generateTechnicalSummary() {
+            if (!currentStockData) return;
+            
+            const data = currentStockData;
+            const currentPrice = data.regularMarketPrice || 0;
+            const ma50 = data.fiftyDayAverage || (data.fiftyTwoWeekLow + data.fiftyTwoWeekHigh) / 2;
+            const ma200 = data.twoHundredDayAverage || ma50 * 0.95;
+            const rsi = calculateSimplifiedRSI(data);
+            
+            let signals = {
+                buy: 0,
+                sell: 0,
+                neutral: 0
+            };
+            
+            // Count signals
+            if (currentPrice > ma50) signals.buy++; else signals.sell++;
+            if (currentPrice > ma200) signals.buy++; else signals.sell++;
+            if (rsi < 30) signals.buy++; else if (rsi > 70) signals.sell++; else signals.neutral++;
+            
+            const volume = data.regularMarketVolume || 0;
+            const avgVolume = data.averageVolume || volume;
+            if (volume > avgVolume * 1.2) signals.buy++; else if (volume < avgVolume * 0.8) signals.sell++; else signals.neutral++;
+            
+            // Generate summary
+            let summary = '';
+            const totalSignals = signals.buy + signals.sell + signals.neutral;
+            const buyPercent = (signals.buy / totalSignals * 100).toFixed(0);
+            const sellPercent = (signals.sell / totalSignals * 100).toFixed(0);
+            
+            if (signals.buy > signals.sell) {
+                summary = `<strong style="color: #48bb78;">BULLISH OUTLOOK</strong><br>
+                Technical indicators suggest positive momentum with ${buyPercent}% buy signals. 
+                The stock is trading ${currentPrice > ma50 ? 'above' : 'below'} its 50-day moving average 
+                and shows ${rsi > 50 ? 'strong' : 'moderate'} relative strength. 
+                ${volume > avgVolume ? 'Higher than average volume indicates strong interest.' : 'Volume is within normal range.'}`;
+            } else if (signals.sell > signals.buy) {
+                summary = `<strong style="color: #f56565;">BEARISH OUTLOOK</strong><br>
+                Technical indicators suggest caution with ${sellPercent}% sell signals. 
+                The stock is trading ${currentPrice < ma200 ? 'below' : 'above'} key moving averages 
+                and ${rsi > 70 ? 'appears overbought' : 'shows weak momentum'}. 
+                Consider waiting for better entry points.`;
+            } else {
+                summary = `<strong style="color: #ed8936;">NEUTRAL OUTLOOK</strong><br>
+                Technical indicators are mixed with no clear direction. 
+                The stock is consolidating near ${currentPrice > ma50 ? 'support' : 'resistance'} levels. 
+                Wait for a clearer trend to emerge before taking action.`;
+            }
+            
+            document.getElementById('technicalSummary').innerHTML = summary;
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('errorMessage').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

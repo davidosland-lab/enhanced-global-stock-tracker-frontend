@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Technical Analysis - GSMT v9.2</title>
+    
+    <!-- CRITICAL: Include LightweightCharts library -->
+    <script src="https://unpkg.com/lightweight-charts/dist/lightweight-charts.standalone.production.js"></script>
+    
+    <!-- Other libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: #fff;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .title {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+        
+        .controls {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        
+        .control-group label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .control-group input,
+        .control-group select {
+            padding: 0.5rem;
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        
+        .btn {
+            padding: 0.5rem 1.5rem;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        
+        .btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .chart-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 10px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        #candlestickChart {
+            width: 100%;
+            height: 500px;
+        }
+        
+        .indicators-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        
+        .indicator-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1.5rem;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .indicator-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-bottom: 0.5rem;
+        }
+        
+        .indicator-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+        
+        .positive { color: #4ade80; }
+        .negative { color: #f87171; }
+        .neutral { color: #fbbf24; }
+        
+        .error-message {
+            background: rgba(248, 113, 113, 0.2);
+            border: 1px solid rgba(248, 113, 113, 0.5);
+            color: #fca5a5;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1 class="title">📊 Technical Analysis</h1>
+        <div>
+            <button onclick="window.location.href='dashboard_v92.html'" class="btn">Back to Dashboard</button>
+        </div>
+    </header>
+    
+    <div class="container">
+        <div id="errorMessage" class="error-message"></div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label>Symbol</label>
+                <input type="text" id="symbolInput" value="AAPL" placeholder="Enter symbol">
+            </div>
+            <div class="control-group">
+                <label>Period</label>
+                <select id="periodSelect">
+                    <option value="1mo">1 Month</option>
+                    <option value="3mo" selected>3 Months</option>
+                    <option value="6mo">6 Months</option>
+                    <option value="1y">1 Year</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>Chart Type</label>
+                <select id="chartType">
+                    <option value="candlestick" selected>Candlestick</option>
+                    <option value="line">Line</option>
+                    <option value="area">Area</option>
+                </select>
+            </div>
+            <div class="control-group">
+                <label>&nbsp;</label>
+                <button onclick="loadTechnicalData()" class="btn">Analyze</button>
+            </div>
+        </div>
+        
+        <div class="chart-container">
+            <h2 style="color: #333; margin-bottom: 1rem;">Price Action & Volume</h2>
+            <div id="candlestickChart"></div>
+        </div>
+        
+        <div class="indicators-grid">
+            <div class="indicator-card">
+                <div class="indicator-label">RSI (14)</div>
+                <div id="rsiValue" class="indicator-value">--</div>
+            </div>
+            <div class="indicator-card">
+                <div class="indicator-label">SMA 20</div>
+                <div id="sma20Value" class="indicator-value">--</div>
+            </div>
+            <div class="indicator-card">
+                <div class="indicator-label">SMA 50</div>
+                <div id="sma50Value" class="indicator-value">--</div>
+            </div>
+            <div class="indicator-card">
+                <div class="indicator-label">Volume</div>
+                <div id="volumeValue" class="indicator-value">--</div>
+            </div>
+            <div class="indicator-card">
+                <div class="indicator-label">Price</div>
+                <div id="priceValue" class="indicator-value">--</div>
+            </div>
+            <div class="indicator-card">
+                <div class="indicator-label">Trend</div>
+                <div id="trendValue" class="indicator-value">--</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        let chart = null;
+        let candlestickSeries = null;
+        let volumeSeries = null;
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeChart();
+            loadTechnicalData();
+        });
+        
+        function initializeChart() {
+            const chartContainer = document.getElementById('candlestickChart');
+            
+            // Create chart using LightweightCharts
+            chart = LightweightCharts.createChart(chartContainer, {
+                width: chartContainer.clientWidth,
+                height: 500,
+                layout: {
+                    backgroundColor: '#ffffff',
+                    textColor: '#333',
+                },
+                grid: {
+                    vertLines: {
+                        color: 'rgba(197, 203, 206, 0.5)',
+                    },
+                    horzLines: {
+                        color: 'rgba(197, 203, 206, 0.5)',
+                    },
+                },
+                crosshair: {
+                    mode: LightweightCharts.CrosshairMode.Normal,
+                },
+                priceScale: {
+                    borderColor: 'rgba(197, 203, 206, 0.8)',
+                },
+                timeScale: {
+                    borderColor: 'rgba(197, 203, 206, 0.8)',
+                    timeVisible: true,
+                    secondsVisible: false,
+                },
+            });
+            
+            // Add candlestick series
+            candlestickSeries = chart.addCandlestickSeries({
+                upColor: '#26a69a',
+                downColor: '#ef5350',
+                borderVisible: false,
+                wickUpColor: '#26a69a',
+                wickDownColor: '#ef5350',
+            });
+            
+            // Add volume series
+            volumeSeries = chart.addHistogramSeries({
+                color: '#26a69a',
+                priceFormat: {
+                    type: 'volume',
+                },
+                priceScaleId: '',
+                scaleMargins: {
+                    top: 0.8,
+                    bottom: 0,
+                },
+            });
+            
+            // Make chart responsive
+            window.addEventListener('resize', () => {
+                chart.applyOptions({ width: chartContainer.clientWidth });
+            });
+        }
+        
+        async function loadTechnicalData() {
+            const symbol = document.getElementById('symbolInput').value;
+            const errorDiv = document.getElementById('errorMessage');
+            
+            if (!symbol) {
+                showError('Please enter a symbol');
+                return;
+            }
+            
+            errorDiv.style.display = 'none';
+            
+            try {
+                // Show loading state
+                updateIndicators({
+                    rsi: '--',
+                    sma20: '--',
+                    sma50: '--',
+                    volume: '--',
+                    currentPrice: '--'
+                });
+                
+                const response = await fetch(`${API_BASE}/api/technical/${symbol}`);
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to load data');
+                }
+                
+                // Update chart with candlestick data
+                if (data.candleData && data.candleData.length > 0) {
+                    const candleData = data.candleData.map(item => ({
+                        time: item.date,
+                        open: item.open,
+                        high: item.high,
+                        low: item.low,
+                        close: item.close
+                    }));
+                    
+                    const volumeData = data.candleData.map(item => ({
+                        time: item.date,
+                        value: item.volume,
+                        color: item.close >= item.open ? 'rgba(38, 166, 154, 0.5)' : 'rgba(239, 83, 80, 0.5)'
+                    }));
+                    
+                    candlestickSeries.setData(candleData);
+                    volumeSeries.setData(volumeData);
+                    
+                    // Fit content
+                    chart.timeScale().fitContent();
+                }
+                
+                // Update indicators
+                updateIndicators(data.indicators);
+                
+            } catch (error) {
+                console.error('Error loading technical data:', error);
+                showError(error.message);
+            }
+        }
+        
+        function updateIndicators(indicators) {
+            // RSI
+            const rsiElement = document.getElementById('rsiValue');
+            const rsi = indicators.rsi;
+            if (rsi !== '--') {
+                rsiElement.textContent = rsi.toFixed(2);
+                rsiElement.className = 'indicator-value ' + 
+                    (rsi > 70 ? 'negative' : rsi < 30 ? 'positive' : 'neutral');
+            } else {
+                rsiElement.textContent = '--';
+            }
+            
+            // SMA 20
+            const sma20Element = document.getElementById('sma20Value');
+            if (indicators.sma20 !== '--') {
+                sma20Element.textContent = '$' + indicators.sma20.toFixed(2);
+            } else {
+                sma20Element.textContent = '--';
+            }
+            
+            // SMA 50
+            const sma50Element = document.getElementById('sma50Value');
+            if (indicators.sma50 !== '--') {
+                sma50Element.textContent = '$' + indicators.sma50.toFixed(2);
+            } else {
+                sma50Element.textContent = '--';
+            }
+            
+            // Volume
+            const volumeElement = document.getElementById('volumeValue');
+            if (indicators.volume !== '--') {
+                volumeElement.textContent = formatVolume(indicators.volume);
+            } else {
+                volumeElement.textContent = '--';
+            }
+            
+            // Current Price
+            const priceElement = document.getElementById('priceValue');
+            if (indicators.currentPrice !== '--') {
+                priceElement.textContent = '$' + indicators.currentPrice.toFixed(2);
+            } else {
+                priceElement.textContent = '--';
+            }
+            
+            // Trend
+            const trendElement = document.getElementById('trendValue');
+            if (indicators.sma20 !== '--' && indicators.sma50 !== '--') {
+                if (indicators.sma20 > indicators.sma50) {
+                    trendElement.textContent = 'BULLISH';
+                    trendElement.className = 'indicator-value positive';
+                } else {
+                    trendElement.textContent = 'BEARISH';
+                    trendElement.className = 'indicator-value negative';
+                }
+            } else {
+                trendElement.textContent = '--';
+            }
+        }
+        
+        function formatVolume(volume) {
+            if (volume >= 1000000000) {
+                return (volume / 1000000000).toFixed(2) + 'B';
+            } else if (volume >= 1000000) {
+                return (volume / 1000000).toFixed(2) + 'M';
+            } else if (volume >= 1000) {
+                return (volume / 1000).toFixed(2) + 'K';
+            }
+            return volume.toString();
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        
+        // Handle Enter key in symbol input
+        document.getElementById('symbolInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                loadTechnicalData();
+            }
+        });
+    </script>
+</body>
+</html>

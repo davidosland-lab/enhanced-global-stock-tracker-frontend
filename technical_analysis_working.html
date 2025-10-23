@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Technical Analysis - Real-Time Tracking</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.0/build/global/luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .container { 
+            max-width: 1400px; 
+            margin: 0 auto; 
+            padding: 20px;
+        }
+        
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 20px;
+            background: rgba(255, 255, 255, 0.95);
+        }
+        
+        .indicator-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            transition: transform 0.3s;
+        }
+        
+        .indicator-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .signal-buy { background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%); }
+        .signal-sell { background: linear-gradient(135deg, #ff512f 0%, #dd2476 100%); }
+        .signal-neutral { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        
+        .btn-track {
+            background: linear-gradient(135deg, #00d2ff 0%, #3a7bd5 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .btn-track:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn-track.tracking {
+            background: linear-gradient(135deg, #ff512f 0%, #dd2476 100%);
+        }
+        
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-online { background: #00ff00; box-shadow: 0 0 10px #00ff00; }
+        .status-offline { background: #ff0000; box-shadow: 0 0 10px #ff0000; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin: 20px 0;
+        }
+        
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="../index.html">
+                <i class="fas fa-chart-line"></i> Stock Tracker
+            </a>
+            <span class="navbar-text">
+                <span id="connectionStatus" class="status-indicator status-offline"></span>
+                <span id="statusText">Disconnected</span>
+            </span>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="mb-4">Technical Analysis Dashboard</h2>
+                
+                <!-- Symbol Input -->
+                <div class="row mb-4">
+                    <div class="col-md-8">
+                        <div class="input-group">
+                            <input type="text" id="symbolInput" class="form-control form-control-lg" 
+                                   placeholder="Enter stock symbol (e.g., AAPL, CBA.AX)" value="CBA.AX">
+                            <button class="btn btn-primary" onclick="loadTechnicalData()">
+                                <i class="fas fa-search"></i> Analyze
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <button id="trackBtn" class="btn btn-track w-100" onclick="toggleTracking()">
+                            <i class="fas fa-play"></i> Start Tracking
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Current Price Display -->
+                <div id="priceDisplay" class="alert alert-info hidden">
+                    <h4>
+                        <span id="currentSymbol">--</span>: 
+                        $<span id="currentPrice">--</span>
+                        <small class="ms-3">
+                            <span id="priceChange">--</span> 
+                            (<span id="priceChangePercent">--</span>%)
+                        </small>
+                    </h4>
+                </div>
+                
+                <!-- Technical Indicators Grid -->
+                <div class="row" id="indicatorsGrid">
+                    <div class="col-md-3">
+                        <div class="indicator-card">
+                            <h5>RSI (14)</h5>
+                            <h3 id="rsi">--</h3>
+                            <small id="rsiSignal">--</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="indicator-card">
+                            <h5>MACD</h5>
+                            <h3 id="macd">--</h3>
+                            <small id="macdSignal">--</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="indicator-card">
+                            <h5>Stochastic</h5>
+                            <h3 id="stoch">--</h3>
+                            <small id="stochSignal">--</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="indicator-card">
+                            <h5>Trend</h5>
+                            <h3 id="trend">--</h3>
+                            <small id="trendSignal">--</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Moving Averages -->
+                <div class="row mt-3">
+                    <div class="col-md-12">
+                        <h4>Moving Averages</h4>
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Period</th>
+                                    <th>SMA</th>
+                                    <th>EMA</th>
+                                    <th>Signal</th>
+                                </tr>
+                            </thead>
+                            <tbody id="maTable">
+                                <tr>
+                                    <td>20-day</td>
+                                    <td id="sma20">--</td>
+                                    <td id="ema20">--</td>
+                                    <td id="signal20">--</td>
+                                </tr>
+                                <tr>
+                                    <td>50-day</td>
+                                    <td id="sma50">--</td>
+                                    <td id="ema50">--</td>
+                                    <td id="signal50">--</td>
+                                </tr>
+                                <tr>
+                                    <td>200-day</td>
+                                    <td id="sma200">--</td>
+                                    <td id="ema200">--</td>
+                                    <td id="signal200">--</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Price Chart -->
+                <div class="chart-container">
+                    <div id="loadingOverlay" class="loading-overlay hidden">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                    <canvas id="priceChart"></canvas>
+                </div>
+                
+                <!-- Bollinger Bands Info -->
+                <div class="row mt-3">
+                    <div class="col-md-12">
+                        <div class="alert alert-warning">
+                            <h5>Bollinger Bands</h5>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <strong>Upper Band:</strong> $<span id="bbUpper">--</span>
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>Middle Band:</strong> $<span id="bbMiddle">--</span>
+                                </div>
+                                <div class="col-md-4">
+                                    <strong>Lower Band:</strong> $<span id="bbLower">--</span>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <strong>Signal:</strong> <span id="bbSignal">--</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script>
+        // Configuration
+        const API_BASE = 'http://localhost:8002';
+        let currentSymbol = 'CBA.AX';
+        let isTracking = false;
+        let trackingInterval = null;
+        let priceChart = null;
+        let priceData = [];
+        let ws = null;
+        
+        // Check backend connection
+        async function checkConnection() {
+            try {
+                const response = await fetch(`${API_BASE}/api/status`);
+                if (response.ok) {
+                    document.getElementById('connectionStatus').className = 'status-indicator status-online';
+                    document.getElementById('statusText').textContent = 'Connected';
+                    return true;
+                }
+            } catch (error) {
+                console.error('Connection error:', error);
+            }
+            document.getElementById('connectionStatus').className = 'status-indicator status-offline';
+            document.getElementById('statusText').textContent = 'Disconnected';
+            return false;
+        }
+        
+        // Load technical data
+        async function loadTechnicalData() {
+            const symbol = document.getElementById('symbolInput').value.trim().toUpperCase();
+            if (!symbol) return;
+            
+            currentSymbol = symbol;
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+            
+            try {
+                // Get technical indicators
+                const techResponse = await fetch(`${API_BASE}/api/technical/${symbol}`);
+                if (!techResponse.ok) throw new Error('Failed to fetch technical data');
+                
+                const techData = await techResponse.json();
+                updateIndicators(techData);
+                
+                // Get price data for chart
+                const priceResponse = await fetch(`${API_BASE}/api/stock/${symbol}?period=1mo&interval=1d`);
+                if (!priceResponse.ok) throw new Error('Failed to fetch price data');
+                
+                const stockData = await priceResponse.json();
+                updatePriceDisplay(stockData);
+                updateChart(stockData.historical);
+                
+                document.getElementById('priceDisplay').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                alert('Error loading technical data: ' + error.message);
+            } finally {
+                document.getElementById('loadingOverlay').classList.add('hidden');
+            }
+        }
+        
+        // Update indicators display
+        function updateIndicators(data) {
+            const indicators = data.indicators;
+            const signals = data.signals;
+            
+            // RSI
+            const rsi = indicators.rsi;
+            document.getElementById('rsi').textContent = rsi ? rsi.toFixed(2) : '--';
+            if (rsi) {
+                let rsiSignal = 'Neutral';
+                let cardClass = 'signal-neutral';
+                if (rsi > 70) {
+                    rsiSignal = 'Overbought';
+                    cardClass = 'signal-sell';
+                } else if (rsi < 30) {
+                    rsiSignal = 'Oversold';
+                    cardClass = 'signal-buy';
+                }
+                document.getElementById('rsiSignal').textContent = rsiSignal;
+                document.querySelector('.indicator-card').className = 'indicator-card ' + cardClass;
+            }
+            
+            // MACD
+            const macd = indicators.macd;
+            const macdSignal = indicators.macd_signal;
+            document.getElementById('macd').textContent = macd ? macd.toFixed(4) : '--';
+            document.getElementById('macdSignal').textContent = signals.macd_signal || '--';
+            
+            // Stochastic
+            const stochK = indicators.stoch_k;
+            document.getElementById('stoch').textContent = stochK ? stochK.toFixed(2) + '%' : '--';
+            let stochSignal = 'Neutral';
+            if (stochK > 80) stochSignal = 'Overbought';
+            else if (stochK < 20) stochSignal = 'Oversold';
+            document.getElementById('stochSignal').textContent = stochSignal;
+            
+            // Trend
+            document.getElementById('trend').textContent = signals.trend ? signals.trend.toUpperCase() : '--';
+            document.getElementById('trendSignal').textContent = 
+                indicators.sma_20 > indicators.sma_50 ? 'Short-term Up' : 'Short-term Down';
+            
+            // Moving Averages
+            document.getElementById('sma20').textContent = 
+                indicators.sma_20 ? '$' + indicators.sma_20.toFixed(2) : '--';
+            document.getElementById('sma50').textContent = 
+                indicators.sma_50 ? '$' + indicators.sma_50.toFixed(2) : '--';
+            document.getElementById('sma200').textContent = 
+                indicators.sma_200 ? '$' + indicators.sma_200.toFixed(2) : '--';
+            
+            document.getElementById('ema20').textContent = 
+                indicators.ema_12 ? '$' + indicators.ema_12.toFixed(2) : '--';
+            document.getElementById('ema50').textContent = 
+                indicators.ema_26 ? '$' + indicators.ema_26.toFixed(2) : '--';
+            
+            // Signals for MAs
+            const price = indicators.current_price;
+            document.getElementById('signal20').textContent = 
+                price > indicators.sma_20 ? 'BUY' : 'SELL';
+            document.getElementById('signal50').textContent = 
+                price > indicators.sma_50 ? 'BUY' : 'SELL';
+            document.getElementById('signal200').textContent = 
+                indicators.sma_200 ? (price > indicators.sma_200 ? 'BUY' : 'SELL') : '--';
+            
+            // Bollinger Bands
+            document.getElementById('bbUpper').textContent = 
+                indicators.bb_upper ? indicators.bb_upper.toFixed(2) : '--';
+            document.getElementById('bbMiddle').textContent = 
+                indicators.bb_middle ? indicators.bb_middle.toFixed(2) : '--';
+            document.getElementById('bbLower').textContent = 
+                indicators.bb_lower ? indicators.bb_lower.toFixed(2) : '--';
+            document.getElementById('bbSignal').textContent = signals.bb_signal || '--';
+        }
+        
+        // Update price display
+        function updatePriceDisplay(data) {
+            document.getElementById('currentSymbol').textContent = data.symbol;
+            document.getElementById('currentPrice').textContent = data.price.toFixed(2);
+            document.getElementById('priceChange').textContent = 
+                (data.change >= 0 ? '+' : '') + data.change.toFixed(2);
+            document.getElementById('priceChangePercent').textContent = 
+                (data.changePercent >= 0 ? '+' : '') + data.changePercent.toFixed(2) + '%';
+            
+            const priceDisplay = document.getElementById('priceDisplay');
+            if (data.change >= 0) {
+                priceDisplay.className = 'alert alert-success';
+            } else {
+                priceDisplay.className = 'alert alert-danger';
+            }
+        }
+        
+        // Update chart
+        function updateChart(historicalData) {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            
+            if (priceChart) {
+                priceChart.destroy();
+            }
+            
+            const dates = historicalData.map(d => d.date);
+            const prices = historicalData.map(d => d.close);
+            const volumes = historicalData.map(d => d.volume);
+            
+            priceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: 'Price',
+                        data: prices,
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        yAxisID: 'y'
+                    }, {
+                        label: 'Volume',
+                        data: volumes,
+                        type: 'bar',
+                        backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                parser: 'YYYY-MM-DD HH:mm:ss',
+                                tooltipFormat: 'MMM dd, yyyy',
+                                displayFormats: {
+                                    day: 'MMM dd'
+                                }
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Price ($)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Volume'
+                            },
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Toggle tracking
+        function toggleTracking() {
+            const btn = document.getElementById('trackBtn');
+            
+            if (!isTracking) {
+                // Start tracking
+                isTracking = true;
+                btn.classList.add('tracking');
+                btn.innerHTML = '<i class="fas fa-stop"></i> Stop Tracking';
+                
+                // Initial load
+                loadTechnicalData();
+                
+                // Set up interval for updates every 10 seconds
+                trackingInterval = setInterval(() => {
+                    loadTechnicalData();
+                }, 10000);
+                
+                // Optional: Set up WebSocket for real-time updates
+                // setupWebSocket();
+                
+            } else {
+                // Stop tracking
+                isTracking = false;
+                btn.classList.remove('tracking');
+                btn.innerHTML = '<i class="fas fa-play"></i> Start Tracking';
+                
+                if (trackingInterval) {
+                    clearInterval(trackingInterval);
+                    trackingInterval = null;
+                }
+                
+                if (ws) {
+                    ws.close();
+                    ws = null;
+                }
+            }
+        }
+        
+        // Optional: WebSocket for real-time updates
+        function setupWebSocket() {
+            if (ws) ws.close();
+            
+            ws = new WebSocket(`ws://localhost:8002/ws/${currentSymbol}`);
+            
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                // Update price in real-time
+                document.getElementById('currentPrice').textContent = data.price.toFixed(2);
+            };
+            
+            ws.onerror = (error) => {
+                console.error('WebSocket error:', error);
+            };
+            
+            ws.onclose = () => {
+                console.log('WebSocket closed');
+            };
+        }
+        
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkConnection();
+            setInterval(checkConnection, 10000);
+            
+            // Load initial data
+            loadTechnicalData();
+            
+            // Enter key support
+            document.getElementById('symbolInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    loadTechnicalData();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

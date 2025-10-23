@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Historical Data Manager - Speed Up Backtesting</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+            transition: transform 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .symbol-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            margin: 0.25rem;
+            background: #f8f9fa;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        .progress-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 1rem;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+            display: none;
+            z-index: 1000;
+        }
+
+        .btn-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 25px;
+            transition: all 0.3s;
+        }
+
+        .btn-gradient:hover {
+            transform: scale(1.05);
+            color: white;
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .status-online {
+            color: #28a745;
+        }
+
+        .status-offline {
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1><i class="fas fa-database"></i> Historical Data Manager</h1>
+                    <p class="lead mb-0">Speed up backtesting with local data storage</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <button class="btn btn-gradient me-2" onclick="checkConnection()">
+                        <i class="fas fa-plug"></i> Check Connection
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="location.href='../index.html'">
+                        <i class="fas fa-home"></i> Home
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row" id="statsRow">
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalRecords">0</div>
+                    <div class="stat-label">Total Records</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value" id="uniqueSymbols">0</div>
+                    <div class="stat-label">Unique Symbols</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value" id="dbSize">0 MB</div>
+                    <div class="stat-label">Database Size</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="stat-card">
+                    <div class="stat-value" id="totalBacktests">0</div>
+                    <div class="stat-label">Backtests Stored</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Controls -->
+        <div class="card">
+            <div class="card-body">
+                <h3><i class="fas fa-download"></i> Download Historical Data</h3>
+                <p>Download and store data locally to eliminate API calls during backtesting</p>
+                
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <h5>Quick Download Sets</h5>
+                        <button class="btn btn-primary w-100 mb-2" onclick="downloadCommonSymbols()">
+                            <i class="fas fa-star"></i> Download Common Symbols (ASX, US, Indices)
+                        </button>
+                        <button class="btn btn-success w-100 mb-2" onclick="downloadSymbol('CBA.AX')">
+                            <i class="fas fa-building"></i> Download CBA.AX (All Intervals)
+                        </button>
+                        <button class="btn btn-info w-100 mb-2" onclick="downloadIndices()">
+                            <i class="fas fa-chart-line"></i> Download Global Indices
+                        </button>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <h5>Custom Download</h5>
+                        <div class="mb-3">
+                            <label class="form-label">Symbols (comma separated)</label>
+                            <input type="text" class="form-control" id="customSymbols" 
+                                   placeholder="CBA.AX, AAPL, ^GSPC" value="CBA.AX">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Period</label>
+                            <select class="form-select" id="period">
+                                <option value="1mo">1 Month</option>
+                                <option value="3mo">3 Months</option>
+                                <option value="6mo">6 Months</option>
+                                <option value="1y" selected>1 Year</option>
+                                <option value="2y">2 Years</option>
+                                <option value="5y">5 Years</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Intervals</label>
+                            <div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="int1m" value="1m">
+                                    <label class="form-check-label" for="int1m">1m</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="int5m" value="5m" checked>
+                                    <label class="form-check-label" for="int5m">5m</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="int15m" value="15m">
+                                    <label class="form-check-label" for="int15m">15m</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="int30m" value="30m" checked>
+                                    <label class="form-check-label" for="int30m">30m</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="int1h" value="1h" checked>
+                                    <label class="form-check-label" for="int1h">1h</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="int1d" value="1d" checked>
+                                    <label class="form-check-label" for="int1d">1d</label>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="btn btn-gradient w-100" onclick="downloadCustom()">
+                            <i class="fas fa-cloud-download-alt"></i> Download Custom
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Downloaded Symbols -->
+        <div class="card">
+            <div class="card-body">
+                <h3><i class="fas fa-list"></i> Downloaded Symbols</h3>
+                <div id="symbolsList" class="mt-3">
+                    <p class="text-muted">No symbols downloaded yet</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Best Models -->
+        <div class="card">
+            <div class="card-body">
+                <h3><i class="fas fa-trophy"></i> Best Performing Models</h3>
+                <div class="row mt-3">
+                    <div class="col-md-6">
+                        <input type="text" class="form-control" id="modelSymbol" placeholder="Enter symbol (e.g., CBA.AX)">
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="modelMetric">
+                            <option value="accuracy">Accuracy</option>
+                            <option value="sharpe_ratio">Sharpe Ratio</option>
+                            <option value="total_return">Total Return</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button class="btn btn-primary w-100" onclick="getBestModels()">
+                            <i class="fas fa-search"></i> Get Best Models
+                        </button>
+                    </div>
+                </div>
+                <div id="modelsTable" class="table-container" style="display: none;">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Model</th>
+                                <th>Avg Metric</th>
+                                <th>Test Count</th>
+                                <th>Last Test</th>
+                            </tr>
+                        </thead>
+                        <tbody id="modelsTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Indicator -->
+    <div class="progress-indicator" id="progressIndicator">
+        <div class="spinner-border text-primary me-2" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <span id="progressText">Processing...</span>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const API_BASE = 'http://localhost:8002';
+        
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStatistics();
+        });
+        
+        function showProgress(text) {
+            const indicator = document.getElementById('progressIndicator');
+            document.getElementById('progressText').textContent = text;
+            indicator.style.display = 'block';
+        }
+        
+        function hideProgress() {
+            document.getElementById('progressIndicator').style.display = 'none';
+        }
+        
+        async function checkConnection() {
+            try {
+                const response = await fetch(`${API_BASE}/api/historical/statistics`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Connected to Historical Data Manager');
+                } else {
+                    alert('⚠️ Historical Data Manager not available on backend');
+                }
+            } catch (error) {
+                alert('❌ Cannot connect to backend at ' + API_BASE);
+            }
+        }
+        
+        async function loadStatistics() {
+            try {
+                const response = await fetch(`${API_BASE}/api/historical/statistics`);
+                const data = await response.json();
+                
+                if (data.success && data.statistics) {
+                    const stats = data.statistics;
+                    document.getElementById('totalRecords').textContent = 
+                        (stats.total_price_records || 0).toLocaleString();
+                    document.getElementById('uniqueSymbols').textContent = 
+                        stats.unique_symbols || 0;
+                    document.getElementById('dbSize').textContent = 
+                        (stats.database_size_mb || 0).toFixed(2) + ' MB';
+                    document.getElementById('totalBacktests').textContent = 
+                        stats.total_backtests || 0;
+                }
+            } catch (error) {
+                console.error('Error loading statistics:', error);
+            }
+        }
+        
+        async function downloadCommonSymbols() {
+            showProgress('Downloading common symbols...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/historical/batch-download`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`✅ Downloaded ${data.symbols.length} symbols successfully!`);
+                    loadStatistics();
+                    displaySymbols(data.symbols);
+                }
+            } catch (error) {
+                alert('❌ Error downloading symbols: ' + error.message);
+            } finally {
+                hideProgress();
+            }
+        }
+        
+        async function downloadSymbol(symbol) {
+            showProgress(`Downloading ${symbol}...`);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/historical/download`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        symbols: [symbol],
+                        period: '2y',
+                        intervals: ['1m', '5m', '15m', '30m', '1h', '1d']
+                    })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`✅ Downloaded ${symbol} successfully!`);
+                    loadStatistics();
+                }
+            } catch (error) {
+                alert('❌ Error downloading: ' + error.message);
+            } finally {
+                hideProgress();
+            }
+        }
+        
+        async function downloadIndices() {
+            const indices = ['^AORD', '^GSPC', '^FTSE', '^DJI', '^IXIC', '^N225', '^HSI'];
+            showProgress('Downloading global indices...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/historical/download`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        symbols: indices,
+                        period: '1y',
+                        intervals: ['30m', '1h', '1d']
+                    })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`✅ Downloaded ${data.symbols_processed.length} indices!`);
+                    loadStatistics();
+                    displaySymbols(data.symbols_processed);
+                }
+            } catch (error) {
+                alert('❌ Error downloading indices: ' + error.message);
+            } finally {
+                hideProgress();
+            }
+        }
+        
+        async function downloadCustom() {
+            const symbolsInput = document.getElementById('customSymbols').value;
+            const period = document.getElementById('period').value;
+            
+            // Get selected intervals
+            const intervals = [];
+            ['1m', '5m', '15m', '30m', '1h', '1d'].forEach(interval => {
+                const checkbox = document.getElementById('int' + interval);
+                if (checkbox && checkbox.checked) {
+                    intervals.push(interval);
+                }
+            });
+            
+            if (!symbolsInput.trim()) {
+                alert('Please enter at least one symbol');
+                return;
+            }
+            
+            if (intervals.length === 0) {
+                alert('Please select at least one interval');
+                return;
+            }
+            
+            const symbols = symbolsInput.split(',').map(s => s.trim());
+            showProgress(`Downloading ${symbols.length} symbols...`);
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/historical/download`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        symbols: symbols,
+                        period: period,
+                        intervals: intervals
+                    })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`✅ Downloaded ${data.symbols_processed.length} symbols!`);
+                    loadStatistics();
+                    displaySymbols(data.symbols_processed);
+                }
+            } catch (error) {
+                alert('❌ Error downloading: ' + error.message);
+            } finally {
+                hideProgress();
+            }
+        }
+        
+        function displaySymbols(symbols) {
+            const container = document.getElementById('symbolsList');
+            if (symbols && symbols.length > 0) {
+                container.innerHTML = symbols.map(symbol => 
+                    `<span class="symbol-badge">${symbol}</span>`
+                ).join('');
+            }
+        }
+        
+        async function getBestModels() {
+            const symbol = document.getElementById('modelSymbol').value;
+            const metric = document.getElementById('modelMetric').value;
+            
+            if (!symbol) {
+                alert('Please enter a symbol');
+                return;
+            }
+            
+            try {
+                const response = await fetch(
+                    `${API_BASE}/api/historical/best-models/${symbol}?metric=${metric}`
+                );
+                const data = await response.json();
+                
+                if (data.success && data.models.length > 0) {
+                    displayModels(data.models);
+                } else {
+                    alert('No model history found for ' + symbol);
+                }
+            } catch (error) {
+                alert('Error getting models: ' + error.message);
+            }
+        }
+        
+        function displayModels(models) {
+            const table = document.getElementById('modelsTable');
+            const tbody = document.getElementById('modelsTableBody');
+            
+            tbody.innerHTML = models.map(model => `
+                <tr>
+                    <td><strong>${model.model_name}</strong></td>
+                    <td>${(model.avg_metric || 0).toFixed(4)}</td>
+                    <td>${model.test_count || 0}</td>
+                    <td>${new Date(model.last_test).toLocaleDateString()}</td>
+                </tr>
+            `).join('');
+            
+            table.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

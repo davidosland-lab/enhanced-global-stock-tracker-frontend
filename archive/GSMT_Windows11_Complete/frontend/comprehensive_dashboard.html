@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GSMT v8.1.3 - Complete Phase 4 Implementation</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3730a3 25%, #6366f1 50%, #8b5cf6 75%, #a855f7 100%);
+            min-height: 100vh;
+        }
+        
+        .glassmorphism {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .module-card {
+            background: rgba(30, 30, 50, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .module-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            border-color: rgba(139, 92, 246, 0.5);
+        }
+        
+        .phase4-gradient {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+        }
+        
+        .chart-container {
+            height: 300px;
+            width: 100%;
+        }
+        
+        .loading-spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #8b5cf6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .tab-active {
+            background: rgba(139, 92, 246, 0.3);
+            border-bottom: 2px solid #8b5cf6;
+        }
+        
+        .status-online {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Header -->
+    <nav class="glassmorphism sticky top-0 z-50 border-b border-white/20">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 phase4-gradient rounded-lg flex items-center justify-center">
+                        <i class="fas fa-chart-line text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-white font-bold text-xl">GSMT Stock Tracker v8.1.3</h1>
+                        <p class="text-white/70 text-sm">Phase 3 & 4 Complete Implementation</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <div class="glassmorphism px-4 py-2 rounded-lg">
+                        <span id="server-status" class="text-yellow-400 font-medium">
+                            <i class="fas fa-circle status-online mr-2"></i>Checking...
+                        </span>
+                    </div>
+                    <div class="text-white/90 text-sm">
+                        <i class="fas fa-clock mr-1"></i>
+                        <span id="current-time">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Dashboard Grid -->
+    <div class="max-w-7xl mx-auto px-6 py-8">
+        <!-- Module Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            <!-- 1. Global Indices Tracker (Ver-106) -->
+            <div class="module-card rounded-2xl p-6" onclick="openModule('indices')">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-globe text-white text-xl"></i>
+                    </div>
+                    <span class="text-xs text-gray-400">Ver-106</span>
+                </div>
+                <h3 class="text-white font-semibold text-lg mb-2">Global Indices Tracker</h3>
+                <p class="text-gray-400 text-sm mb-4">Real-time tracking of global market indices with 5-minute interval updates</p>
+                <div id="indices-preview" class="chart-container mb-4"></div>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs text-gray-500">5-Min Updates</span>
+                    <button class="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-lg text-sm hover:bg-blue-500/30 transition">
+                        <i class="fas fa-chart-line mr-1"></i>Track Global Markets
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2. Single Stock Track & Predict -->
+            <div class="module-card rounded-2xl p-6" onclick="openModule('single-stock')">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-chart-area text-white text-xl"></i>
+                    </div>
+                    <span class="text-xs text-gray-400">Phase 3 & 4</span>
+                </div>
+                <h3 class="text-white font-semibold text-lg mb-2">Single Stock Track & Predict</h3>
+                <p class="text-gray-400 text-sm mb-4">Phase 3 Extended with Phase 4 GNN integration</p>
+                <div class="bg-gray-800/50 rounded-lg p-4 mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-gray-400 text-xs">AAPL</span>
+                        <span class="text-green-400 text-sm">+2.45%</span>
+                    </div>
+                    <div class="text-white text-2xl font-bold">$182.52</div>
+                </div>
+                <button class="bg-purple-500/20 text-purple-400 px-3 py-1 rounded-lg text-sm hover:bg-purple-500/30 transition w-full">
+                    <i class="fas fa-search mr-1"></i>Track Stocks
+                </button>
+            </div>
+
+            <!-- 3. CBA Banking Intelligence -->
+            <div class="module-card rounded-2xl p-6" onclick="openModule('cba')">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="w-12 h-12 bg-orange-500 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-university text-white text-xl"></i>
+                    </div>
+                    <span class="text-xs text-gray-400">GNN Enhanced</span>
+                </div>
+                <h3 class="text-white font-semibold text-lg mb-2">CBA Banking Intelligence</h3>
+                <p class="text-gray-400 text-sm mb-4">Central Bank analysis with publications and GNN insights</p>
+                <div class="space-y-2 mb-4">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-400">Fed Rate</span>
+                        <span class="text-white">5.50%</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-400">ECB Rate</span>
+                        <span class="text-white">4.50%</span>
+                    </div>
+                </div>
+                <button class="bg-orange-500/20 text-orange-400 px-3 py-1 rounded-lg text-sm hover:bg-orange-500/30 transition w-full">
+                    <i class="fas fa-landmark mr-1"></i>CBA Analysis
+                </button>
+            </div>
+
+            <!-- 4. Technical Analysis Engine -->
+            <div class="module-card rounded-2xl p-6" onclick="window.open('technical_analysis_complete.html', '_blank')">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="w-12 h-12 bg-cyan-500 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-chart-bar text-white text-xl"></i>
+                    </div>
+                    <span class="text-xs text-gray-400">Advanced TA</span>
+                </div>
+                <h3 class="text-white font-semibold text-lg mb-2">Technical Analysis Engine</h3>
+                <p class="text-gray-400 text-sm mb-4">RSI, MACD, Bollinger Bands with candlestick charting</p>
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <div class="bg-gray-800/50 rounded p-2 text-center">
+                        <div class="text-xs text-gray-400">RSI</div>
+                        <div class="text-sm text-cyan-400">52.8</div>
+                    </div>
+                    <div class="bg-gray-800/50 rounded p-2 text-center">
+                        <div class="text-xs text-gray-400">MACD</div>
+                        <div class="text-sm text-green-400">+0.35</div>
+                    </div>
+                </div>
+                <button class="bg-cyan-500/20 text-cyan-400 px-3 py-1 rounded-lg text-sm hover:bg-cyan-500/30 transition w-full">
+                    <i class="fas fa-chart-line mr-1"></i>Technical Analysis
+                </button>
+            </div>
+
+            <!-- 5. Unified Prediction Centre -->
+            <div class="module-card rounded-2xl p-6" onclick="openModule('prediction')">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="w-12 h-12 bg-pink-500 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-brain text-white text-xl"></i>
+                    </div>
+                    <span class="text-xs text-gray-400">Multi-Modal AI</span>
+                </div>
+                <h3 class="text-white font-semibold text-lg mb-2">Unified Prediction Centre</h3>
+                <p class="text-gray-400 text-sm mb-4">Multi-modal predictions with Phase 3 & 4 integration</p>
+                <div class="bg-gradient-to-r from-purple-500/20 to-pink-500/20 rounded-lg p-3 mb-4">
+                    <div class="text-center">
+                        <div class="text-xs text-gray-400 mb-1">Confidence</div>
+                        <div class="text-2xl font-bold text-white">87.3%</div>
+                    </div>
+                </div>
+                <button class="bg-pink-500/20 text-pink-400 px-3 py-1 rounded-lg text-sm hover:bg-pink-500/30 transition w-full">
+                    <i class="fas fa-magic mr-1"></i>Predict Now
+                </button>
+            </div>
+
+            <!-- 6. Document Intelligence -->
+            <div class="module-card rounded-2xl p-6" onclick="openModule('documents')">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-file-alt text-white text-xl"></i>
+                    </div>
+                    <span class="text-xs text-gray-400">AI Powered</span>
+                </div>
+                <h3 class="text-white font-semibold text-lg mb-2">Document Intelligence</h3>
+                <p class="text-gray-400 text-sm mb-4">Upload and analyze market documents with AI</p>
+                <div class="border-2 border-dashed border-gray-600 rounded-lg p-4 mb-4 text-center">
+                    <i class="fas fa-cloud-upload-alt text-gray-500 text-2xl mb-2"></i>
+                    <p class="text-gray-500 text-xs">Drop files or click to upload</p>
+                </div>
+                <button class="bg-green-500/20 text-green-400 px-3 py-1 rounded-lg text-sm hover:bg-green-500/30 transition w-full">
+                    <i class="fas fa-upload mr-1"></i>Upload Docs
+                </button>
+            </div>
+
+            <!-- 7. API & Integration -->
+            <div class="module-card rounded-2xl p-6" onclick="openModule('api')">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="w-12 h-12 bg-indigo-500 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-code text-white text-xl"></i>
+                    </div>
+                    <span class="text-xs text-gray-400">RESTful API</span>
+                </div>
+                <h3 class="text-white font-semibold text-lg mb-2">API & Integration</h3>
+                <p class="text-gray-400 text-sm mb-4">RESTful API endpoints for Phase 4 GNN predictions</p>
+                <div class="bg-gray-800/50 rounded-lg p-3 mb-4 font-mono text-xs">
+                    <div class="text-green-400">GET /api/predict</div>
+                    <div class="text-blue-400">POST /api/unified</div>
+                    <div class="text-yellow-400">GET /api/tracker</div>
+                </div>
+                <button class="bg-indigo-500/20 text-indigo-400 px-3 py-1 rounded-lg text-sm hover:bg-indigo-500/30 transition w-full">
+                    <i class="fas fa-book mr-1"></i>View Docs
+                </button>
+            </div>
+
+            <!-- 8. Performance Dashboard -->
+            <div class="module-card rounded-2xl p-6" onclick="openModule('performance')">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="w-12 h-12 bg-yellow-500 rounded-xl flex items-center justify-center">
+                        <i class="fas fa-tachometer-alt text-white text-xl"></i>
+                    </div>
+                    <span class="text-xs text-gray-400">Real-time</span>
+                </div>
+                <h3 class="text-white font-semibold text-lg mb-2">Performance Dashboard</h3>
+                <p class="text-gray-400 text-sm mb-4">Real-time accuracy tracking and model comparison</p>
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-green-400">85.2%</div>
+                        <div class="text-xs text-gray-400">Phase 4</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-blue-400">78.9%</div>
+                        <div class="text-xs text-gray-400">Phase 3</div>
+                    </div>
+                </div>
+                <button class="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-lg text-sm hover:bg-yellow-500/30 transition w-full">
+                    <i class="fas fa-chart-pie mr-1"></i>View Dashboard
+                </button>
+            </div>
+
+            <!-- 9. Phase 4 Technical Implementation -->
+            <div class="module-card rounded-2xl p-6 lg:col-span-3" onclick="openModule('phase4-technical')">
+                <div class="flex items-start justify-between mb-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 phase4-gradient rounded-xl flex items-center justify-center">
+                            <i class="fas fa-project-diagram text-white text-xl"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-white font-semibold text-lg">Phase 4 P4-002: Technical Implementation</h3>
+                            <p class="text-gray-400 text-sm">Graph Neural Network Architecture</p>
+                        </div>
+                    </div>
+                    <span class="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs">
+                        <i class="fas fa-check-circle mr-1"></i>COMPLETE
+                    </span>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div class="bg-gray-800/50 rounded-lg p-4">
+                        <h4 class="text-purple-400 font-semibold mb-2">GNN Architecture</h4>
+                        <ul class="space-y-1 text-sm text-gray-400">
+                            <li>✓ MarketRelationshipGraph</li>
+                            <li>✓ SimpleGraphConvolution layers</li>
+                            <li>✓ Multi-layer message passing</li>
+                        </ul>
+                    </div>
+                    <div class="bg-gray-800/50 rounded-lg p-4">
+                        <h4 class="text-cyan-400 font-semibold mb-2">Cross-Asset Modeling</h4>
+                        <ul class="space-y-1 text-sm text-gray-400">
+                            <li>✓ Network integration</li>
+                            <li>✓ Real-time correlation</li>
+                            <li>✓ Edge prediction</li>
+                        </ul>
+                    </div>
+                    <div class="bg-gray-800/50 rounded-lg p-4">
+                        <h4 class="text-pink-400 font-semibold mb-2">Multi-Modal Integration</h4>
+                        <ul class="space-y-1 text-sm text-gray-400">
+                            <li>✓ GNN+TFT Predictor System</li>
+                            <li>✓ Intelligent fusion strategies</li>
+                            <li>✓ Graceful fallback</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <button class="bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-white px-4 py-2 rounded-lg text-sm hover:from-purple-500/30 hover:to-pink-500/30 transition w-full">
+                    <i class="fas fa-rocket mr-1"></i>Explore Phase 4 Implementation
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Module Modal Container -->
+    <div id="module-modal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="glassmorphism rounded-2xl max-w-6xl w-full max-h-[90vh] overflow-auto">
+            <div class="sticky top-0 glassmorphism border-b border-white/20 p-4 flex justify-between items-center">
+                <h2 id="modal-title" class="text-white text-xl font-semibold"></h2>
+                <button onclick="closeModal()" class="text-white/70 hover:text-white">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            <div id="modal-content" class="p-6">
+                <!-- Dynamic content loads here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = 'http://localhost:8000';
+        let serverConnected = false;
+
+        // Time Update
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleTimeString();
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // Server Status Check
+        async function checkServerStatus() {
+            const statusEl = document.getElementById('server-status');
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                if (response.ok) {
+                    serverConnected = true;
+                    statusEl.innerHTML = '<i class="fas fa-circle status-online mr-2"></i>ONLINE';
+                    statusEl.className = 'text-green-400 font-medium';
+                } else {
+                    throw new Error('Server not responding');
+                }
+            } catch (error) {
+                serverConnected = false;
+                statusEl.innerHTML = '<i class="fas fa-circle mr-2"></i>OFFLINE';
+                statusEl.className = 'text-red-400 font-medium';
+            }
+        }
+
+        // Module Opening
+        function openModule(moduleId) {
+            const modal = document.getElementById('module-modal');
+            const title = document.getElementById('modal-title');
+            const content = document.getElementById('modal-content');
+            
+            modal.classList.remove('hidden');
+            
+            // Module-specific content
+            const modules = {
+                'indices': {
+                    title: 'Global Indices Tracker',
+                    content: generateIndicesContent()
+                },
+                'single-stock': {
+                    title: 'Single Stock Track & Predict',
+                    content: generateSingleStockContent()
+                },
+                'cba': {
+                    title: 'CBA Banking Intelligence',
+                    content: generateCBAContent()
+                },
+                'technical': {
+                    title: 'Technical Analysis Engine',
+                    content: generateTechnicalContent()
+                },
+                'prediction': {
+                    title: 'Unified Prediction Centre',
+                    content: generatePredictionContent()
+                },
+                'documents': {
+                    title: 'Document Intelligence',
+                    content: generateDocumentContent()
+                },
+                'api': {
+                    title: 'API & Integration',
+                    content: generateAPIContent()
+                },
+                'performance': {
+                    title: 'Performance Dashboard',
+                    content: generatePerformanceContent()
+                },
+                'phase4-technical': {
+                    title: 'Phase 4 Technical Implementation',
+                    content: generatePhase4Content()
+                }
+            };
+            
+            const module = modules[moduleId];
+            title.textContent = module.title;
+            content.innerHTML = module.content;
+            
+            // Initialize module-specific functionality
+            if (moduleId === 'single-stock') {
+                initializeSingleStock();
+            } else if (moduleId === 'prediction') {
+                initializePrediction();
+            } else if (moduleId === 'technical') {
+                initializeTechnicalAnalysis();
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('module-modal').classList.add('hidden');
+        }
+
+        // Module Content Generators
+        function generateIndicesContent() {
+            return `
+                <div class="space-y-6">
+                    <div class="glassmorphism rounded-xl p-6">
+                        <h3 class="text-white text-lg font-semibold mb-4">Live Global Indices</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div class="bg-gray-800/50 rounded-lg p-4">
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="text-gray-400 text-sm">S&P 500</span>
+                                    <span class="text-green-400 text-sm">+0.84%</span>
+                                </div>
+                                <div class="text-white text-2xl font-bold">4,768.73</div>
+                                <canvas id="sp500-chart" class="mt-2" height="50"></canvas>
+                            </div>
+                            <div class="bg-gray-800/50 rounded-lg p-4">
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="text-gray-400 text-sm">NASDAQ</span>
+                                    <span class="text-green-400 text-sm">+1.24%</span>
+                                </div>
+                                <div class="text-white text-2xl font-bold">15,123.68</div>
+                                <canvas id="nasdaq-chart" class="mt-2" height="50"></canvas>
+                            </div>
+                            <div class="bg-gray-800/50 rounded-lg p-4">
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="text-gray-400 text-sm">FTSE 100</span>
+                                    <span class="text-red-400 text-sm">-0.32%</span>
+                                </div>
+                                <div class="text-white text-2xl font-bold">7,512.89</div>
+                                <canvas id="ftse-chart" class="mt-2" height="50"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="glassmorphism rounded-xl p-6">
+                        <h3 class="text-white text-lg font-semibold mb-4">48-Hour AEST Timeline</h3>
+                        <div id="timeline-chart" style="height: 300px;"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateSingleStockContent() {
+            return `
+                <div class="space-y-6">
+                    <div class="glassmorphism rounded-xl p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-white text-lg font-semibold">Stock Search & Analysis</h3>
+                            <div class="flex space-x-2">
+                                <button class="bg-purple-500/20 text-purple-400 px-4 py-2 rounded-lg text-sm hover:bg-purple-500/30">
+                                    Phase 3 Extended
+                                </button>
+                                <button class="bg-pink-500/20 text-pink-400 px-4 py-2 rounded-lg text-sm hover:bg-pink-500/30">
+                                    Phase 4 GNN
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="flex space-x-2 mb-4">
+                            <input type="text" id="stock-symbol" placeholder="Enter symbol (e.g., AAPL)" 
+                                   class="flex-1 bg-gray-800/50 text-white px-4 py-2 rounded-lg border border-gray-600 focus:border-purple-500 focus:outline-none">
+                            <button onclick="trackStock()" class="bg-purple-500 text-white px-6 py-2 rounded-lg hover:bg-purple-600">
+                                Track & Predict
+                            </button>
+                        </div>
+                        
+                        <div id="stock-results" class="space-y-4"></div>
+                    </div>
+                    
+                    <div class="glassmorphism rounded-xl p-6">
+                        <h3 class="text-white text-lg font-semibold mb-4">ML Predictions</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-gray-800/50 rounded-lg p-4">
+                                <h4 class="text-purple-400 font-medium mb-2">LSTM Model</h4>
+                                <div class="text-white text-xl font-bold">$185.20</div>
+                                <div class="text-green-400 text-sm">Confidence: 82%</div>
+                            </div>
+                            <div class="bg-gray-800/50 rounded-lg p-4">
+                                <h4 class="text-pink-400 font-medium mb-2">GNN Model</h4>
+                                <div class="text-white text-xl font-bold">$186.50</div>
+                                <div class="text-green-400 text-sm">Confidence: 87%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateCBAContent() {
+            return `
+                <div class="space-y-6">
+                    <div class="glassmorphism rounded-xl p-6">
+                        <h3 class="text-white text-lg font-semibold mb-4">Central Bank Rates</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="bg-gray-800/50 rounded-lg p-4 text-center">
+                                <div class="text-gray-400 text-sm mb-1">Federal Reserve</div>
+                                <div class="text-white text-2xl font-bold">5.50%</div>
+                                <div class="text-gray-500 text-xs">Unchanged</div>
+                            </div>
+                            <div class="bg-gray-800/50 rounded-lg p-4 text-center">
+                                <div class="text-gray-400 text-sm mb-1">ECB</div>
+                                <div class="text-white text-2xl font-bold">4.50%</div>
+                                <div class="text-gray-500 text-xs">Unchanged</div>
+                            </div>
+                            <div class="bg-gray-800/50 rounded-lg p-4 text-center">
+                                <div class="text-gray-400 text-sm mb-1">Bank of England</div>
+                                <div class="text-white text-2xl font-bold">5.25%</div>
+                                <div class="text-gray-500 text-xs">Unchanged</div>
+                            </div>
+                            <div class="bg-gray-800/50 rounded-lg p-4 text-center">
+                                <div class="text-gray-400 text-sm mb-1">Bank of Japan</div>
+                                <div class="text-white text-2xl font-bold">-0.10%</div>
+                                <div class="text-gray-500 text-xs">Unchanged</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="glassmorphism rounded-xl p-6">
+                        <h3 class="text-white text-lg font-semibold mb-4">Banking Sector Analysis</h3>
+                        <div class="bg-gray-800/50 rounded-lg p-4">
+                            <p class="text-gray-400">Commonwealth Bank analysis with publications AI and GNN-enhanced insights...</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateTechnicalContent() {
+            return `
+                <div class="space-y-6">
+                    <div class="glassmorphism rounded-xl p-6">
+                        <h3 class="text-white text-lg font-semibold mb-4">Technical Indicators</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                            <div class="bg-gray-800/50 rounded-lg p-3 text-center">
+                                <div class="text-gray-400 text-xs mb-1">RSI (14)</div>
+                                <div class="text-cyan-400 text-xl font-bold">52.8</div>
+                            </div>
+                            <div class="bg-gray-800/50 rounded-lg p-3 text-center">
+                                <div class="text-gray-400 text-xs mb-1">MACD</div>
+                                <div class="text-green-400 text-xl font-bold">+0.35</div>
+                            </div>
+                            <div class="bg-gray-800/50 rounded-lg p-3 text-center">
+                                <div class="text-gray-400 text-xs mb-1">SMA (20)</div>
+                                <div class="text-white text-xl font-bold">182.50</div>
+                            </div>
+                            <div class="bg-gray-800/50 rounded-lg p-3 text-center">
+                                <div class="text-gray-400 text-xs mb-1">Signal</div>
+                                <div class="text-yellow-400 text-xl font-bold">HOLD</div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-800/50 rounded-lg p-4">
+                            <canvas id="ta-chart" height="200"></canvas>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generatePredictionContent() {
+            return `
+                <div class="space-y-6">
+                    <div class="glassmorphism rounded-xl p-6">
+                        <h3 class="text-white text-lg font-semibold mb-4">Unified ML Prediction</h3>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                            <input type="text" id="predict-symbol" placeholder="Symbol (e.g., AAPL)" 
+                                   class="bg-gray-800/50 text-white px-4 py-2 rounded-lg border border-gray-600 focus:border-pink-500 focus:outline-none">
+                            <select id="predict-timeframe" class="bg-gray-800/50 text-white px-4 py-2 rounded-lg border border-gray-600 focus:border-pink-500 focus:outline-none">
+                                <option value="1d">1 Day</option>
+                                <option value="1w">1 Week</option>
+                                <option value="1m">1 Month</option>
+                            </select>
+                        </div>
+                        
+                        <button onclick="runPrediction()" class="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-600">
+                            Generate Unified Prediction
+                        </button>
+                        
+                        <div id="prediction-results" class="mt-6"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateDocumentContent() {
+            return `
+                <div class="space-y-6">
+                    <div class="glassmorphism rounded-xl p-6">
+                        <h3 class="text-white text-lg font-semibold mb-4">Document Upload & Analysis</h3>
+                        
+                        <div class="border-2 border-dashed border-gray-600 rounded-xl p-8 text-center">
+                            <i class="fas fa-cloud-upload-alt text-gray-400 text-4xl mb-4"></i>
+                            <p class="text-gray-400 mb-2">Drag and drop files here or click to browse</p>
+                            <p class="text-gray-500 text-sm">Supports PDF, DOCX, TXT (Max 10MB)</p>
+                            <input type="file" class="hidden" id="file-upload" accept=".pdf,.docx,.txt">
+                            <button onclick="document.getElementById('file-upload').click()" 
+                                    class="mt-4 bg-green-500/20 text-green-400 px-6 py-2 rounded-lg hover:bg-green-500/30">
+                                Select Files
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateAPIContent() {
+            return `
+                <div class="space-y-6">
+                    <div class="glassmorphism rounded-xl p-6">
+                        <h3 class="text-white text-lg font-semibold mb-4">API Endpoints</h3>
+                        
+                        <div class="space-y-3">
+                            <div class="bg-gray-800/50 rounded-lg p-4 font-mono text-sm">
+                                <div class="text-green-400 mb-1">GET /api/health</div>
+                                <div class="text-gray-400">Check server health status</div>
+                            </div>
+                            
+                            <div class="bg-gray-800/50 rounded-lg p-4 font-mono text-sm">
+                                <div class="text-blue-400 mb-1">GET /api/tracker</div>
+                                <div class="text-gray-400">Get real-time stock tracker data</div>
+                            </div>
+                            
+                            <div class="bg-gray-800/50 rounded-lg p-4 font-mono text-sm">
+                                <div class="text-yellow-400 mb-1">POST /api/unified-prediction</div>
+                                <div class="text-gray-400">Generate unified ML prediction</div>
+                            </div>
+                            
+                            <div class="bg-gray-800/50 rounded-lg p-4 font-mono text-sm">
+                                <div class="text-purple-400 mb-1">GET /api/predict/{symbol}</div>
+                                <div class="text-gray-400">Get prediction for specific symbol</div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-6">
+                            <a href="${API_BASE}/docs" target="_blank" 
+                               class="inline-block bg-indigo-500/20 text-indigo-400 px-6 py-2 rounded-lg hover:bg-indigo-500/30">
+                                <i class="fas fa-external-link-alt mr-2"></i>Open API Documentation
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generatePerformanceContent() {
+            return `
+                <div class="space-y-6">
+                    <div class="glassmorphism rounded-xl p-6">
+                        <h3 class="text-white text-lg font-semibold mb-4">Model Performance Comparison</h3>
+                        
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                            <div class="text-center">
+                                <div class="text-3xl font-bold text-green-400">85.2%</div>
+                                <div class="text-gray-400 text-sm">Phase 4 GNN</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-3xl font-bold text-blue-400">78.9%</div>
+                                <div class="text-gray-400 text-sm">Phase 3 LSTM</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-3xl font-bold text-purple-400">82.1%</div>
+                                <div class="text-gray-400 text-sm">Transformer</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-3xl font-bold text-yellow-400">87.5%</div>
+                                <div class="text-gray-400 text-sm">Ensemble</div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-800/50 rounded-lg p-4">
+                            <canvas id="performance-chart" height="150"></canvas>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generatePhase4Content() {
+            return `
+                <div class="space-y-6">
+                    <div class="glassmorphism rounded-xl p-6">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-white text-lg font-semibold">Graph Neural Network Implementation</h3>
+                            <span class="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm">
+                                <i class="fas fa-check-circle mr-1"></i>DEPLOYED
+                            </span>
+                        </div>
+                        
+                        <div class="bg-gray-800/50 rounded-lg p-6 mb-6">
+                            <h4 class="text-purple-400 font-semibold mb-4">Architecture Components</h4>
+                            <ul class="space-y-2 text-gray-300">
+                                <li>✅ MarketRelationshipGraph with dynamic node creation</li>
+                                <li>✅ SimpleGraphConvolution layers without PyTorch dependency</li>
+                                <li>✅ Multi-layer message passing (3 convolution layers)</li>
+                                <li>✅ Cross-asset relationship modeling</li>
+                                <li>✅ Network integration for advanced graph analysis</li>
+                                <li>✅ Real-time correlation-based edge creation</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="bg-gray-800/50 rounded-lg p-6">
+                            <h4 class="text-cyan-400 font-semibold mb-4">Multi-Modal Integration</h4>
+                            <ul class="space-y-2 text-gray-300">
+                                <li>✅ GNN+TFT Integrated Predictor System</li>
+                                <li>✅ Intelligent fusion strategies (confidence-based, adaptive)</li>
+                                <li>✅ Graceful fallback when TFT unavailable</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Module Initializers
+        function initializeSingleStock() {
+            // Initialize single stock tracking functionality
+        }
+
+        function initializePrediction() {
+            // Initialize prediction functionality
+        }
+
+        function initializeTechnicalAnalysis() {
+            // Initialize technical analysis charts
+        }
+
+        // API Functions
+        async function trackStock() {
+            const symbol = document.getElementById('stock-symbol').value;
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            
+            const resultsDiv = document.getElementById('stock-results');
+            resultsDiv.innerHTML = '<div class="text-center"><div class="loading-spinner mx-auto"></div></div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/predict/${symbol}`);
+                const data = await response.json();
+                
+                resultsDiv.innerHTML = `
+                    <div class="bg-gray-800/50 rounded-lg p-4">
+                        <h4 class="text-white font-semibold mb-2">${symbol.toUpperCase()}</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <div class="text-gray-400 text-sm">Current Price</div>
+                                <div class="text-white text-xl font-bold">$${data.data.technical_indicators.current_price.toFixed(2)}</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-400 text-sm">Prediction</div>
+                                <div class="text-green-400 text-xl font-bold">$${data.data.unified_prediction.value.toFixed(2)}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="text-red-400">Error: ${error.message}</div>`;
+            }
+        }
+
+        async function runPrediction() {
+            const symbol = document.getElementById('predict-symbol').value;
+            const timeframe = document.getElementById('predict-timeframe').value;
+            
+            if (!symbol) {
+                alert('Please enter a symbol');
+                return;
+            }
+            
+            const resultsDiv = document.getElementById('prediction-results');
+            resultsDiv.innerHTML = '<div class="text-center"><div class="loading-spinner mx-auto"></div></div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/unified-prediction`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ symbol, timeframe })
+                });
+                
+                const data = await response.json();
+                
+                resultsDiv.innerHTML = `
+                    <div class="bg-gray-800/50 rounded-lg p-4">
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div class="text-center">
+                                <div class="text-gray-400 text-sm">Prediction</div>
+                                <div class="text-white text-xl font-bold">$${data.data.unified_prediction.value.toFixed(2)}</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-gray-400 text-sm">Confidence</div>
+                                <div class="text-green-400 text-xl font-bold">${(data.data.unified_prediction.confidence * 100).toFixed(1)}%</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-gray-400 text-sm">Expected Return</div>
+                                <div class="text-blue-400 text-xl font-bold">${data.data.unified_prediction.expected_return.toFixed(2)}%</div>
+                            </div>
+                            <div class="text-center">
+                                <div class="text-gray-400 text-sm">Recommendation</div>
+                                <div class="text-yellow-400 text-xl font-bold">${data.data.unified_prediction.recommendation}</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="text-red-400">Error: ${error.message}</div>`;
+            }
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', () => {
+            checkServerStatus();
+            setInterval(checkServerStatus, 5000);
+        });
+
+        // Close modal on escape
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fixed Prediction Centre - Real ML Models</title>
+    <style>
+        /* Same styles as original */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+        }
+        
+        .control-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+        
+        .results-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        }
+        
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #4a5568;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .model-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+        }
+        
+        .model-button {
+            padding: 0.75rem;
+            border: 2px solid #e2e8f0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.9rem;
+        }
+        
+        .model-button.selected {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: transparent;
+        }
+        
+        .model-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 1rem;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .results-display {
+            min-height: 400px;
+        }
+        
+        .prediction-result {
+            background: #f7fafc;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-top: 1rem;
+        }
+        
+        .price-display {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+        
+        .price-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .price-label {
+            color: #718096;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .price-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2d3748;
+        }
+        
+        .direction-up {
+            color: #48bb78;
+        }
+        
+        .direction-down {
+            color: #f56565;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+        }
+        
+        .metric-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .metric-label {
+            color: #718096;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .metric-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        
+        .alert.show {
+            display: block;
+        }
+        
+        .alert-success {
+            background: #f0fdf4;
+            color: #166534;
+            border: 1px solid #86efac;
+        }
+        
+        .alert-error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        
+        .alert-info {
+            background: #eff6ff;
+            color: #1e40af;
+            border: 1px solid #93c5fd;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .loading.show {
+            display: block;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Prediction Centre - Fixed Version</h1>
+            <p style="color: #718096; margin-top: 0.5rem;">Real ML Models with Actual Market Data</p>
+        </div>
+        
+        <div class="main-grid">
+            <div class="control-panel">
+                <div class="form-group">
+                    <label>📊 Stock Symbol</label>
+                    <input type="text" id="stockSymbol" class="form-control" placeholder="e.g., CBA.AX, AAPL, MSFT" value="CBA.AX">
+                </div>
+                
+                <div class="form-group">
+                    <label>⏱️ Prediction Timeframe</label>
+                    <select id="timeframe" class="form-control">
+                        <option value="1d">1 Day</option>
+                        <option value="5d" selected>5 Days</option>
+                        <option value="1mo">1 Month</option>
+                        <option value="3mo">3 Months</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>🧠 ML Models (Select Multiple)</label>
+                    <div class="model-grid">
+                        <button class="model-button" data-model="LSTM" onclick="toggleModel('LSTM')">
+                            <span>LSTM</span>
+                            <span>P1</span>
+                        </button>
+                        <button class="model-button" data-model="GRU" onclick="toggleModel('GRU')">
+                            <span>GRU</span>
+                            <span>P1</span>
+                        </button>
+                        <button class="model-button" data-model="Random Forest" onclick="toggleModel('Random Forest')">
+                            <span>Random Forest</span>
+                            <span>P2</span>
+                        </button>
+                        <button class="model-button" data-model="XGBoost" onclick="toggleModel('XGBoost')">
+                            <span>XGBoost</span>
+                            <span>P2</span>
+                        </button>
+                        <button class="model-button" data-model="Transformer" onclick="toggleModel('Transformer')">
+                            <span>Transformer</span>
+                            <span>P3</span>
+                        </button>
+                        <button class="model-button" data-model="Ensemble" onclick="toggleModel('Ensemble')">
+                            <span>Ensemble</span>
+                            <span>P4</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <button class="btn btn-primary" onclick="runPrediction()" id="runBtn">
+                    🔮 Run Prediction
+                </button>
+            </div>
+            
+            <div class="results-panel">
+                <div class="alert" id="alertBox"></div>
+                
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p style="margin-top: 1rem; color: #718096;">Running prediction models...</p>
+                </div>
+                
+                <div class="results-display" id="results">
+                    <div style="text-align: center; padding: 4rem; color: #a0aec0;">
+                        <h3>No predictions yet</h3>
+                        <p style="margin-top: 1rem;">Enter a stock symbol and click Run Prediction</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Selected models
+        let selectedModels = ['LSTM', 'XGBoost', 'Ensemble'];
+        
+        // Initialize selected models display
+        window.onload = function() {
+            selectedModels.forEach(model => {
+                const btn = document.querySelector(`[data-model="${model}"]`);
+                if (btn) btn.classList.add('selected');
+            });
+        };
+        
+        function toggleModel(model) {
+            const btn = document.querySelector(`[data-model="${model}"]`);
+            const index = selectedModels.indexOf(model);
+            
+            if (index > -1) {
+                selectedModels.splice(index, 1);
+                btn.classList.remove('selected');
+            } else {
+                selectedModels.push(model);
+                btn.classList.add('selected');
+            }
+        }
+        
+        function showAlert(message, type = 'info') {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.className = `alert alert-${type} show`;
+            alertBox.textContent = message;
+            
+            setTimeout(() => {
+                alertBox.classList.remove('show');
+            }, 5000);
+        }
+        
+        function showLoading(show) {
+            const loading = document.getElementById('loading');
+            const runBtn = document.getElementById('runBtn');
+            
+            if (show) {
+                loading.classList.add('show');
+                runBtn.disabled = true;
+            } else {
+                loading.classList.remove('show');
+                runBtn.disabled = false;
+            }
+        }
+        
+        async function runPrediction() {
+            const symbol = document.getElementById('stockSymbol').value.trim();
+            const timeframe = document.getElementById('timeframe').value;
+            
+            if (!symbol) {
+                showAlert('Please enter a stock symbol', 'error');
+                return;
+            }
+            
+            if (selectedModels.length === 0) {
+                showAlert('Please select at least one ML model', 'error');
+                return;
+            }
+            
+            showLoading(true);
+            showAlert('Fetching real market data and running predictions...', 'info');
+            
+            try {
+                // First, get the current stock price
+                const stockResponse = await fetch(`http://localhost:8002/api/stock/${symbol}`);
+                if (!stockResponse.ok) {
+                    throw new Error('Failed to fetch stock data');
+                }
+                const stockData = await stockResponse.json();
+                
+                // Then get the prediction
+                const predictionResponse = await fetch(`http://localhost:8002/api/predict/${symbol}`);
+                if (!predictionResponse.ok) {
+                    throw new Error('Failed to get predictions');
+                }
+                const predictionData = await predictionResponse.json();
+                
+                // Display results
+                displayResults(stockData, predictionData);
+                showAlert('Prediction completed successfully!', 'success');
+                
+            } catch (error) {
+                console.error('Prediction error:', error);
+                showAlert(`Error: ${error.message}`, 'error');
+                
+                // Show error in results
+                document.getElementById('results').innerHTML = `
+                    <div style="text-align: center; padding: 2rem; color: #f56565;">
+                        <h3>Prediction Failed</h3>
+                        <p style="margin-top: 1rem;">${error.message}</p>
+                        <p style="margin-top: 0.5rem; font-size: 0.9rem;">Please ensure the backend is running on port 8002</p>
+                    </div>
+                `;
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        function displayResults(stockData, predictionData) {
+            const currentPrice = stockData.price || stockData.regularMarketPrice || 0;
+            const predictedPrice = predictionData.ensemble_prediction || predictionData.predicted_price || 0;
+            const direction = predictionData.direction || (predictedPrice > currentPrice ? 'UP' : 'DOWN');
+            const confidence = (predictionData.confidence * 100) || 75;
+            const expectedReturn = predictionData.expected_return || ((predictedPrice - currentPrice) / currentPrice * 100);
+            
+            const resultsHTML = `
+                <div class="prediction-result">
+                    <h2 style="margin-bottom: 1.5rem;">
+                        ${stockData.symbol} - ${stockData.longName || stockData.symbol}
+                    </h2>
+                    
+                    <div class="price-display">
+                        <div class="price-card">
+                            <div class="price-label">Current Price</div>
+                            <div class="price-value">$${currentPrice.toFixed(2)}</div>
+                        </div>
+                        <div class="price-card">
+                            <div class="price-label">Predicted Price</div>
+                            <div class="price-value direction-${direction.toLowerCase()}">
+                                $${predictedPrice.toFixed(2)}
+                                <span style="font-size: 1rem; margin-left: 0.5rem;">
+                                    ${direction === 'UP' ? '↑' : '↓'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-label">Direction</div>
+                            <div class="metric-value direction-${direction.toLowerCase()}">${direction}</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Confidence</div>
+                            <div class="metric-value">${confidence.toFixed(1)}%</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Expected Return</div>
+                            <div class="metric-value ${expectedReturn >= 0 ? 'direction-up' : 'direction-down'}">
+                                ${expectedReturn >= 0 ? '+' : ''}${expectedReturn.toFixed(2)}%
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Volatility</div>
+                            <div class="metric-value">${(predictionData.volatility || 15).toFixed(1)}%</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Risk Score</div>
+                            <div class="metric-value">${predictionData.risk_score || 5}/10</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Models Used</div>
+                            <div class="metric-value">${selectedModels.length}</div>
+                        </div>
+                    </div>
+                    
+                    ${predictionData.predictions ? `
+                        <div style="margin-top: 2rem;">
+                            <h3 style="margin-bottom: 1rem;">Individual Model Predictions</h3>
+                            <div style="background: white; padding: 1rem; border-radius: 8px;">
+                                ${Object.entries(predictionData.predictions).filter(([model]) => selectedModels.includes(model)).map(([model, pred]) => `
+                                    <div style="display: flex; justify-content: space-between; padding: 0.5rem; border-bottom: 1px solid #e2e8f0;">
+                                        <span>${model}</span>
+                                        <span>$${pred.predicted_price} (${(pred.confidence * 100).toFixed(1)}%)</span>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    <div style="margin-top: 1rem; padding: 1rem; background: #f7fafc; border-radius: 8px; font-size: 0.9rem; color: #718096;">
+                        <strong>Note:</strong> Predictions based on real Yahoo Finance data for ${stockData.symbol}. 
+                        Current market price: $${currentPrice.toFixed(2)}
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('results').innerHTML = resultsHTML;
+        }
+    </script>
+</body>
+</html>

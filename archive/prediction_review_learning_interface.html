@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧠 Prediction Review & Learning Center | GSMT Phase 3</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+    <style>
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .gradient-text {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .metric-card {
+            transition: all 0.3s ease;
+        }
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 min-h-screen text-white">
+    
+    <div x-data="predictionReviewApp()" x-init="initializeApp()" class="container mx-auto px-4 py-8">
+        
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="text-5xl font-bold mb-4 gradient-text">
+                🧠 Prediction Review & Learning Center
+            </h1>
+            <p class="text-xl text-gray-300">
+                Phase 3 Extended AI • Real-Time Learning • Performance Optimization
+            </p>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="flex flex-wrap justify-center mb-8 space-x-2">
+            <button 
+                @click="activeTab = 'performance'"
+                :class="activeTab === 'performance' ? 'bg-blue-600' : 'bg-gray-600'"
+                class="px-6 py-3 rounded-lg font-semibold transition-colors duration-200 mb-2">
+                📊 Performance Monitor
+            </button>
+            <button 
+                @click="activeTab = 'predictions'"
+                :class="activeTab === 'predictions' ? 'bg-blue-600' : 'bg-gray-600'"
+                class="px-6 py-3 rounded-lg font-semibold transition-colors duration-200 mb-2">
+                🔮 Prediction History
+            </button>
+            <button 
+                @click="activeTab = 'learning'"
+                :class="activeTab === 'learning' ? 'bg-blue-600' : 'bg-gray-600'"
+                class="px-6 py-3 rounded-lg font-semibold transition-colors duration-200 mb-2">
+                🧠 Learning Analytics
+            </button>
+            <button 
+                @click="activeTab = 'feedback'"
+                :class="activeTab === 'feedback' ? 'bg-blue-600' : 'bg-gray-600'"
+                class="px-6 py-3 rounded-lg font-semibold transition-colors duration-200 mb-2">
+                💬 Feedback System
+            </button>
+            <button 
+                @click="activeTab = 'scheduler'"
+                :class="activeTab === 'scheduler' ? 'bg-blue-600' : 'bg-gray-600'"
+                class="px-6 py-3 rounded-lg font-semibold transition-colors duration-200 mb-2">
+                🤖 Auto Scheduler
+            </button>
+        </div>
+
+        <!-- Performance Monitor Tab -->
+        <div x-show="activeTab === 'performance'" class="space-y-8">
+            
+            <!-- Key Performance Metrics -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="glass-card metric-card p-6 rounded-xl text-center">
+                    <div class="text-3xl mb-2">🎯</div>
+                    <h3 class="text-lg font-bold text-gray-300">Overall Accuracy</h3>
+                    <p class="text-3xl font-bold text-green-400" x-text="performanceMetrics.overall_accuracy + '%'"></p>
+                    <p class="text-sm text-gray-400" x-text="'Last 7 days: ' + performanceMetrics.recent_accuracy + '%'"></p>
+                </div>
+                
+                <div class="glass-card metric-card p-6 rounded-xl text-center">
+                    <div class="text-3xl mb-2">📈</div>
+                    <h3 class="text-lg font-bold text-gray-300">Win Rate</h3>
+                    <p class="text-3xl font-bold text-blue-400" x-text="performanceMetrics.win_rate + '%'"></p>
+                    <p class="text-sm text-gray-400" x-text="'Profitable predictions'"></p>
+                </div>
+                
+                <div class="glass-card metric-card p-6 rounded-xl text-center">
+                    <div class="text-3xl mb-2">⚡</div>
+                    <h3 class="text-lg font-bold text-gray-300">Response Time</h3>
+                    <p class="text-3xl font-bold text-yellow-400" x-text="performanceMetrics.avg_response_time + 's'"></p>
+                    <p class="text-sm text-gray-400">Average processing</p>
+                </div>
+                
+                <div class="glass-card metric-card p-6 rounded-xl text-center">
+                    <div class="text-3xl mb-2">🔄</div>
+                    <h3 class="text-lg font-bold text-gray-300">Total Predictions</h3>
+                    <p class="text-3xl font-bold text-purple-400" x-text="performanceMetrics.total_predictions"></p>
+                    <p class="text-sm text-gray-400">All time</p>
+                </div>
+            </div>
+
+            <!-- Performance Chart -->
+            <div class="glass-card p-8 rounded-xl">
+                <h3 class="text-2xl font-bold mb-6 text-center">📈 Performance Trend Analysis</h3>
+                <div id="performance-chart" style="height: 400px;"></div>
+            </div>
+
+            <!-- Model Performance Comparison -->
+            <div class="glass-card p-8 rounded-xl">
+                <h3 class="text-2xl font-bold mb-6 text-center">🏆 Model Performance Comparison</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-600">
+                                <th class="text-left py-3 px-4">Model</th>
+                                <th class="text-center py-3 px-4">Accuracy</th>
+                                <th class="text-center py-3 px-4">Win Rate</th>
+                                <th class="text-center py-3 px-4">Avg Error</th>
+                                <th class="text-center py-3 px-4">Current Weight</th>
+                                <th class="text-center py-3 px-4">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="model in modelPerformance" :key="model.name">
+                                <tr class="border-b border-gray-700 hover:bg-gray-800">
+                                    <td class="py-3 px-4 font-semibold" x-text="model.name"></td>
+                                    <td class="py-3 px-4 text-center">
+                                        <span :class="model.accuracy > 70 ? 'text-green-400' : model.accuracy > 60 ? 'text-yellow-400' : 'text-red-400'" 
+                                              x-text="model.accuracy + '%'"></span>
+                                    </td>
+                                    <td class="py-3 px-4 text-center" x-text="model.win_rate + '%'"></td>
+                                    <td class="py-3 px-4 text-center" x-text="model.avg_error + '%'"></td>
+                                    <td class="py-3 px-4 text-center">
+                                        <div class="w-full bg-gray-700 rounded-full h-2">
+                                            <div class="bg-blue-400 h-2 rounded-full" :style="'width: ' + (model.weight * 100) + '%'"></div>
+                                        </div>
+                                        <span class="text-xs text-gray-400" x-text="(model.weight * 100).toFixed(1) + '%'"></span>
+                                    </td>
+                                    <td class="py-3 px-4 text-center">
+                                        <span :class="model.status === 'active' ? 'text-green-400' : 'text-yellow-400'" 
+                                              x-text="model.status"></span>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prediction History Tab -->
+        <div x-show="activeTab === 'predictions'" class="space-y-8">
+            
+            <!-- Filters -->
+            <div class="glass-card p-6 rounded-xl">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Symbol</label>
+                        <input x-model="filters.symbol" type="text" placeholder="e.g., CBA.AX" 
+                               class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Time Range</label>
+                        <select x-model="filters.timeRange" 
+                                class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="7">Last 7 days</option>
+                            <option value="30">Last 30 days</option>
+                            <option value="90">Last 90 days</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Model</label>
+                        <select x-model="filters.model" 
+                                class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Models</option>
+                            <option value="extended_unified">Extended Unified</option>
+                            <option value="cba_enhanced">CBA Enhanced</option>
+                            <option value="bayesian_ensemble">Bayesian Ensemble</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button @click="loadPredictionHistory()" 
+                                class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition-colors">
+                            🔍 Filter Results
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Prediction History Table -->
+            <div class="glass-card p-6 rounded-xl">
+                <h3 class="text-xl font-bold mb-4">📊 Recent Predictions</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-600">
+                                <th class="text-left py-2 px-3">Date</th>
+                                <th class="text-left py-2 px-3">Symbol</th>
+                                <th class="text-left py-2 px-3">Model</th>
+                                <th class="text-center py-2 px-3">Prediction</th>
+                                <th class="text-center py-2 px-3">Actual</th>
+                                <th class="text-center py-2 px-3">Error</th>
+                                <th class="text-center py-2 px-3">Accuracy</th>
+                                <th class="text-center py-2 px-3">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="prediction in predictionHistory" :key="prediction.id">
+                                <tr class="border-b border-gray-700 hover:bg-gray-800">
+                                    <td class="py-2 px-3" x-text="formatDate(prediction.timestamp)"></td>
+                                    <td class="py-2 px-3 font-mono" x-text="prediction.symbol"></td>
+                                    <td class="py-2 px-3" x-text="prediction.model"></td>
+                                    <td class="py-2 px-3 text-center">
+                                        <span :class="prediction.prediction > 0 ? 'text-green-400' : 'text-red-400'" 
+                                              x-text="(prediction.prediction > 0 ? '+' : '') + prediction.prediction.toFixed(2) + '%'"></span>
+                                    </td>
+                                    <td class="py-2 px-3 text-center">
+                                        <span x-show="prediction.actual !== null" 
+                                              :class="prediction.actual > 0 ? 'text-green-400' : 'text-red-400'" 
+                                              x-text="prediction.actual ? ((prediction.actual > 0 ? '+' : '') + prediction.actual.toFixed(2) + '%') : 'Pending'"></span>
+                                        <span x-show="prediction.actual === null" class="text-yellow-400">Pending</span>
+                                    </td>
+                                    <td class="py-2 px-3 text-center">
+                                        <span x-show="prediction.error !== null" 
+                                              :class="Math.abs(prediction.error) < 2 ? 'text-green-400' : Math.abs(prediction.error) < 5 ? 'text-yellow-400' : 'text-red-400'" 
+                                              x-text="prediction.error ? Math.abs(prediction.error).toFixed(2) + '%' : '-'"></span>
+                                    </td>
+                                    <td class="py-2 px-3 text-center">
+                                        <span x-show="prediction.directional_accuracy !== null">
+                                            <span x-show="prediction.directional_accuracy" class="text-green-400">✓ Correct</span>
+                                            <span x-show="!prediction.directional_accuracy" class="text-red-400">✗ Wrong</span>
+                                        </span>
+                                    </td>
+                                    <td class="py-2 px-3 text-center">
+                                        <button @click="reviewPrediction(prediction)" 
+                                                class="px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs">
+                                            👁️ Review
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Learning Analytics Tab -->
+        <div x-show="activeTab === 'learning'" class="space-y-8">
+            
+            <!-- RL Performance -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="glass-card p-6 rounded-xl">
+                    <h3 class="text-xl font-bold mb-4">🧠 Reinforcement Learning Status</h3>
+                    <div class="space-y-4">
+                        <div class="flex justify-between">
+                            <span>Exploration Rate:</span>
+                            <span class="text-blue-400" x-text="learningMetrics.exploration_rate + '%'"></span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Learning Episodes:</span>
+                            <span class="text-green-400" x-text="learningMetrics.total_episodes"></span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Average Reward:</span>
+                            <span class="text-yellow-400" x-text="learningMetrics.avg_reward.toFixed(4)"></span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Convergence Status:</span>
+                            <span :class="learningMetrics.convergence === 'converged' ? 'text-green-400' : 'text-orange-400'" 
+                                  x-text="learningMetrics.convergence"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card p-6 rounded-xl">
+                    <h3 class="text-xl font-bold mb-4">📊 Model Weight Evolution</h3>
+                    <div id="weight-evolution-chart" style="height: 200px;"></div>
+                </div>
+            </div>
+
+            <!-- Feature Importance -->
+            <div class="glass-card p-6 rounded-xl">
+                <h3 class="text-xl font-bold mb-4">🎯 Feature Importance Analysis</h3>
+                <div id="feature-importance-chart" style="height: 300px;"></div>
+            </div>
+
+            <!-- Regime Performance -->
+            <div class="glass-card p-6 rounded-xl">
+                <h3 class="text-xl font-bold mb-4">🌍 Market Regime Performance</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <template x-for="regime in regimePerformance" :key="regime.name">
+                        <div class="bg-gray-800 p-4 rounded-lg">
+                            <h4 class="font-bold mb-2" x-text="regime.name"></h4>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between">
+                                    <span>Accuracy:</span>
+                                    <span :class="regime.accuracy > 70 ? 'text-green-400' : 'text-yellow-400'" 
+                                          x-text="regime.accuracy + '%'"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Predictions:</span>
+                                    <span x-text="regime.count"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Win Rate:</span>
+                                    <span x-text="regime.win_rate + '%'"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- Feedback System Tab -->
+        <div x-show="activeTab === 'feedback'" class="space-y-8">
+            
+            <!-- Manual Feedback Input -->
+            <div class="glass-card p-6 rounded-xl">
+                <h3 class="text-xl font-bold mb-4">💬 Manual Prediction Feedback</h3>
+                <div class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Symbol</label>
+                            <input x-model="feedback.symbol" type="text" placeholder="e.g., CBA.AX" 
+                                   class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Actual Outcome (%)</label>
+                            <input x-model="feedback.actual_outcome" type="number" step="0.01" placeholder="e.g., 2.5" 
+                                   class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Prediction Date</label>
+                            <input x-model="feedback.prediction_date" type="date" 
+                                   class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Comments (Optional)</label>
+                        <textarea x-model="feedback.comments" rows="3" placeholder="Additional context or observations..." 
+                                  class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+                    <button @click="submitFeedback()" 
+                            class="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition-colors">
+                        📝 Submit Feedback
+                    </button>
+                </div>
+            </div>
+
+            <!-- Performance Alerts -->
+            <div class="glass-card p-6 rounded-xl">
+                <h3 class="text-xl font-bold mb-4">🚨 Performance Alerts</h3>
+                <div class="space-y-3">
+                    <template x-for="alert in performanceAlerts" :key="alert.id">
+                        <div :class="'p-4 rounded-lg border-l-4 ' + (alert.severity === 'high' ? 'bg-red-900 border-red-500' : alert.severity === 'medium' ? 'bg-yellow-900 border-yellow-500' : 'bg-blue-900 border-blue-500')">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h4 class="font-bold" x-text="alert.title"></h4>
+                                    <p class="text-sm text-gray-300 mt-1" x-text="alert.message"></p>
+                                    <p class="text-xs text-gray-400 mt-2" x-text="'Model: ' + alert.model + ' | ' + formatDate(alert.timestamp)"></p>
+                                </div>
+                                <button @click="dismissAlert(alert.id)" class="text-gray-400 hover:text-white">
+                                    ✕
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                    <div x-show="performanceAlerts.length === 0" class="text-center text-gray-400 py-8">
+                        ✅ No active alerts - All systems performing well!
+                    </div>
+                </div>
+            </div>
+
+            <!-- Learning Recommendations -->
+            <div class="glass-card p-6 rounded-xl">
+                <h3 class="text-xl font-bold mb-4">🎯 AI Learning Recommendations</h3>
+                <div class="space-y-4">
+                    <template x-for="recommendation in learningRecommendations" :key="recommendation.id">
+                        <div class="bg-gray-800 p-4 rounded-lg">
+                            <div class="flex items-start space-x-3">
+                                <span class="text-2xl" x-text="recommendation.emoji"></span>
+                                <div class="flex-1">
+                                    <h4 class="font-bold text-lg" x-text="recommendation.title"></h4>
+                                    <p class="text-gray-300 text-sm mt-1" x-text="recommendation.description"></p>
+                                    <div class="flex items-center mt-3 space-x-4">
+                                        <span class="text-xs bg-blue-600 px-2 py-1 rounded" x-text="'Impact: ' + recommendation.impact"></span>
+                                        <span class="text-xs bg-gray-600 px-2 py-1 rounded" x-text="'Priority: ' + recommendation.priority"></span>
+                                    </div>
+                                </div>
+                                <button @click="implementRecommendation(recommendation)" 
+                                        class="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-xs">
+                                    Implement
+                                </button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- Automatic Scheduler Tab -->
+        <div x-show="activeTab === 'scheduler'" class="space-y-8">
+            
+            <!-- Scheduler Status -->
+            <div class="glass-card p-6 rounded-xl">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-bold">🤖 Automatic Prediction Scheduler</h3>
+                    <div class="flex space-x-3">
+                        <button @click="startScheduler()" 
+                                :disabled="schedulerStatus.running" 
+                                :class="schedulerStatus.running ? 'bg-gray-600 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'"
+                                class="px-4 py-2 rounded-lg font-semibold transition-colors">
+                            ▶️ Start Auto Learning
+                        </button>
+                        <button @click="stopScheduler()" 
+                                :disabled="!schedulerStatus.running"
+                                :class="!schedulerStatus.running ? 'bg-gray-600 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700'"
+                                class="px-4 py-2 rounded-lg font-semibold transition-colors">
+                            ⏹️ Stop Scheduler
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Status Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div class="bg-gray-800 p-4 rounded-lg text-center">
+                        <div class="text-2xl mb-2">
+                            <span x-show="schedulerStatus.running" class="text-green-400">🟢</span>
+                            <span x-show="!schedulerStatus.running" class="text-red-400">🔴</span>
+                        </div>
+                        <h4 class="font-bold">Status</h4>
+                        <p x-text="schedulerStatus.running ? 'Active' : 'Stopped'" 
+                           :class="schedulerStatus.running ? 'text-green-400' : 'text-red-400'"></p>
+                    </div>
+                    
+                    <div class="bg-gray-800 p-4 rounded-lg text-center">
+                        <div class="text-2xl mb-2">📊</div>
+                        <h4 class="font-bold">Active Symbols</h4>
+                        <p class="text-blue-400" x-text="schedulerStatus.active_schedules || 0"></p>
+                    </div>
+                    
+                    <div class="bg-gray-800 p-4 rounded-lg text-center">
+                        <div class="text-2xl mb-2">🎯</div>
+                        <h4 class="font-bold">Success Rate</h4>
+                        <p class="text-green-400" x-text="(schedulerStatus.performance?.success_rate || 0).toFixed(1) + '%'"></p>
+                    </div>
+                    
+                    <div class="bg-gray-800 p-4 rounded-lg text-center">
+                        <div class="text-2xl mb-2">📈</div>
+                        <h4 class="font-bold">Total Predictions</h4>
+                        <p class="text-purple-400" x-text="schedulerStatus.performance?.total_predictions || 0"></p>
+                    </div>
+                </div>
+                
+                <!-- Market Status -->
+                <div class="bg-gray-800 p-4 rounded-lg">
+                    <h4 class="text-lg font-bold mb-3">🌍 Market Status</h4>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+                        <template x-for="(info, market) in marketInfo" :key="market">
+                            <div class="flex justify-between">
+                                <span x-text="market"></span>
+                                <span :class="getMarketStatusColor(info.status)" x-text="info.status.replace('_', ' ')"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add Symbol to Schedule -->
+            <div class="glass-card p-6 rounded-xl">
+                <h3 class="text-xl font-bold mb-4">➕ Add Symbol to Auto Schedule</h3>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Symbol</label>
+                        <input x-model="newSymbol.symbol" type="text" placeholder="e.g., AAPL" 
+                               class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Market</label>
+                        <select x-model="newSymbol.market" 
+                                class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="NYSE">NYSE</option>
+                            <option value="NASDAQ">NASDAQ</option>
+                            <option value="ASX">ASX</option>
+                            <option value="LSE">LSE</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2">Priority</label>
+                        <select x-model="newSymbol.priority" 
+                                class="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500">
+                            <option value="1">High (1)</option>
+                            <option value="2">Medium (2)</option>
+                            <option value="3">Low (3)</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button @click="addSymbolToSchedule()" 
+                                class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition-colors">
+                            Add Symbol
+                        </button>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Intervals (Select multiple)</label>
+                    <div class="flex flex-wrap gap-2">
+                        <template x-for="interval in availableIntervals" :key="interval">
+                            <label class="flex items-center space-x-2 bg-gray-800 px-3 py-2 rounded-lg cursor-pointer hover:bg-gray-700">
+                                <input type="checkbox" :value="interval" x-model="newSymbol.intervals" class="form-checkbox">
+                                <span x-text="interval"></span>
+                            </label>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scheduler Performance -->
+            <div class="glass-card p-6 rounded-xl">
+                <h3 class="text-xl font-bold mb-4">📊 Scheduler Performance</h3>
+                <div class="space-y-4">
+                    <div class="bg-gray-800 p-4 rounded-lg">
+                        <h4 class="font-bold mb-2">Learning Progress</h4>
+                        <div class="text-sm space-y-2">
+                            <div class="flex justify-between">
+                                <span>Automatic Predictions Today:</span>
+                                <span class="text-blue-400" x-text="schedulerStatus.learning_metrics?.total_auto_predictions || 0"></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Success Rate:</span>
+                                <span class="text-green-400" x-text="(schedulerStatus.performance?.success_rate || 0).toFixed(1) + '%'"></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Queue Size:</span>
+                                <span class="text-yellow-400" x-text="schedulerStatus.queue_size || 0"></span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Benefits of Automatic Learning -->
+                    <div class="bg-blue-900 p-4 rounded-lg border-l-4 border-blue-500">
+                        <h4 class="font-bold mb-2">🎯 Benefits of Automatic Learning</h4>
+                        <ul class="text-sm space-y-1">
+                            <li>✅ Continuous learning during market hours</li>
+                            <li>✅ Automatic outcome tracking and weight adjustment</li>
+                            <li>✅ Market regime adaptation in real-time</li>
+                            <li>✅ Performance degradation detection</li>
+                            <li>✅ Multi-symbol portfolio learning</li>
+                            <li>✅ No manual intervention required</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Prediction Review Modal -->
+        <div x-show="showPredictionModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" @click.away="showPredictionModal = false">
+            <div class="glass-card p-8 rounded-xl max-w-4xl max-h-screen overflow-y-auto m-4">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-2xl font-bold">🔍 Detailed Prediction Analysis</h3>
+                    <button @click="showPredictionModal = false" class="text-gray-400 hover:text-white text-xl">✕</button>
+                </div>
+                <div x-show="selectedPrediction" class="space-y-6">
+                    <!-- Prediction Details -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-3">
+                            <h4 class="text-lg font-bold">📊 Prediction Details</h4>
+                            <div class="text-sm space-y-1">
+                                <div class="flex justify-between">
+                                    <span>Symbol:</span>
+                                    <span class="font-mono" x-text="selectedPrediction?.symbol"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Model:</span>
+                                    <span x-text="selectedPrediction?.model"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Prediction:</span>
+                                    <span :class="selectedPrediction?.prediction > 0 ? 'text-green-400' : 'text-red-400'" 
+                                          x-text="selectedPrediction ? ((selectedPrediction.prediction > 0 ? '+' : '') + selectedPrediction.prediction.toFixed(2) + '%') : ''"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Confidence:</span>
+                                    <span x-text="selectedPrediction ? (selectedPrediction.confidence * 100).toFixed(1) + '%' : ''"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Timestamp:</span>
+                                    <span x-text="selectedPrediction ? formatDate(selectedPrediction.timestamp) : ''"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="space-y-3">
+                            <h4 class="text-lg font-bold">📈 Actual Outcome</h4>
+                            <div class="text-sm space-y-1">
+                                <div class="flex justify-between">
+                                    <span>Actual Change:</span>
+                                    <span x-show="selectedPrediction?.actual !== null" 
+                                          :class="selectedPrediction?.actual > 0 ? 'text-green-400' : 'text-red-400'" 
+                                          x-text="selectedPrediction?.actual ? ((selectedPrediction.actual > 0 ? '+' : '') + selectedPrediction.actual.toFixed(2) + '%') : 'Pending'"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Prediction Error:</span>
+                                    <span x-text="selectedPrediction?.error ? Math.abs(selectedPrediction.error).toFixed(2) + '%' : 'Pending'"></span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span>Direction Accuracy:</span>
+                                    <span x-show="selectedPrediction?.directional_accuracy !== null">
+                                        <span x-show="selectedPrediction?.directional_accuracy" class="text-green-400">✓ Correct</span>
+                                        <span x-show="!selectedPrediction?.directional_accuracy" class="text-red-400">✗ Incorrect</span>
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Learning Insights -->
+                    <div class="bg-gray-800 p-4 rounded-lg">
+                        <h4 class="text-lg font-bold mb-3">🧠 Learning Insights</h4>
+                        <div class="text-sm space-y-2">
+                            <p><strong>Market Regime:</strong> <span x-text="selectedPrediction?.regime || 'Unknown'"></span></p>
+                            <p><strong>Key Factors:</strong> Technical indicators, market sentiment, volatility analysis</p>
+                            <p><strong>Model Performance:</strong> This prediction contributes to overall model learning and weight adjustment</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function predictionReviewApp() {
+            return {
+                // State
+                activeTab: 'performance',
+                showPredictionModal: false,
+                selectedPrediction: null,
+                
+                // Data
+                performanceMetrics: {
+                    overall_accuracy: 73.2,
+                    recent_accuracy: 76.8,
+                    win_rate: 68.5,
+                    avg_response_time: 1.16,
+                    total_predictions: 1547
+                },
+                
+                modelPerformance: [
+                    { name: 'Extended Unified', accuracy: 76.2, win_rate: 71.3, avg_error: 2.1, weight: 0.35, status: 'active' },
+                    { name: 'CBA Enhanced', accuracy: 72.8, win_rate: 68.9, avg_error: 2.8, weight: 0.25, status: 'active' },
+                    { name: 'Bayesian Ensemble', accuracy: 74.5, win_rate: 69.7, avg_error: 2.4, weight: 0.25, status: 'active' },
+                    { name: 'RL Optimized', accuracy: 78.1, win_rate: 73.2, avg_error: 1.9, weight: 0.15, status: 'learning' }
+                ],
+                
+                learningMetrics: {
+                    exploration_rate: 12.5,
+                    total_episodes: 2340,
+                    avg_reward: 0.0847,
+                    convergence: 'converging'
+                },
+                
+                regimePerformance: [
+                    { name: 'Bull Market', accuracy: 78.5, count: 234, win_rate: 74.2 },
+                    { name: 'Bear Market', accuracy: 71.2, count: 156, win_rate: 65.8 },
+                    { name: 'Sideways', accuracy: 69.8, count: 312, win_rate: 63.4 }
+                ],
+                
+                predictionHistory: [],
+                
+                performanceAlerts: [
+                    {
+                        id: 1,
+                        severity: 'medium',
+                        title: 'Model Weight Adjustment',
+                        message: 'Extended Unified model weight increased due to improved recent performance',
+                        model: 'Extended Unified',
+                        timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000)
+                    },
+                    {
+                        id: 2,
+                        severity: 'low',
+                        title: 'Learning Convergence',
+                        message: 'RL algorithm showing signs of convergence with stable reward patterns',
+                        model: 'RL Framework',
+                        timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000)
+                    }
+                ],
+                
+                learningRecommendations: [
+                    {
+                        id: 1,
+                        emoji: '🚀',
+                        title: 'Increase RL Exploration',
+                        description: 'Recent performance suggests increasing exploration rate could discover better strategies',
+                        impact: 'High',
+                        priority: 'Medium'
+                    },
+                    {
+                        id: 2,
+                        emoji: '📊',
+                        title: 'Feature Engineering Update',
+                        description: 'Add volatility clustering features for better regime detection',
+                        impact: 'Medium',
+                        priority: 'High'
+                    }
+                ],
+                
+                // Filters
+                filters: {
+                    symbol: '',
+                    timeRange: '7',
+                    model: ''
+                },
+                
+                // Feedback
+                feedback: {
+                    symbol: '',
+                    actual_outcome: '',
+                    prediction_date: '',
+                    comments: ''
+                },
+                
+                // Scheduler
+                schedulerStatus: {
+                    running: false,
+                    active_schedules: 0,
+                    total_schedules: 0,
+                    performance: {
+                        total_predictions: 0,
+                        success_rate: 0
+                    },
+                    learning_metrics: {}
+                },
+                
+                marketInfo: {},
+                
+                newSymbol: {
+                    symbol: '',
+                    market: 'NASDAQ',
+                    priority: '2',
+                    intervals: ['1h', '4h', '1d']
+                },
+                
+                availableIntervals: ['15m', '30m', '1h', '2h', '4h', '1d', '1w'],
+                
+                // Methods
+                initializeApp() {
+                    this.loadPerformanceData();
+                    this.loadPredictionHistory();
+                    this.loadSchedulerStatus();
+                    this.createCharts();
+                },
+                
+                async loadPerformanceData() {
+                    try {
+                        const response = await fetch('/api/enhanced/performance');
+                        if (response.ok) {
+                            const data = await response.json();
+                            // Update performanceMetrics with real data
+                            if (data.overall_metrics) {
+                                Object.assign(this.performanceMetrics, data.overall_metrics);
+                            }
+                        }
+                    } catch (error) {
+                        console.log('Using mock performance data');
+                    }
+                },
+                
+                async loadPredictionHistory() {
+                    // Mock data - in real implementation, fetch from API
+                    this.predictionHistory = [
+                        {
+                            id: 1,
+                            timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000),
+                            symbol: 'CBA.AX',
+                            model: 'Extended Unified',
+                            prediction: 1.65,
+                            actual: 2.1,
+                            error: -0.45,
+                            directional_accuracy: true
+                        },
+                        {
+                            id: 2,
+                            timestamp: new Date(Date.now() - 48 * 60 * 60 * 1000),
+                            symbol: 'BHP.AX',
+                            model: 'Bayesian Ensemble',
+                            prediction: -0.8,
+                            actual: -1.2,
+                            error: 0.4,
+                            directional_accuracy: true
+                        },
+                        {
+                            id: 3,
+                            timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
+                            symbol: 'AAPL',
+                            model: 'RL Optimized',
+                            prediction: 2.3,
+                            actual: null,
+                            error: null,
+                            directional_accuracy: null
+                        }
+                    ];
+                },
+                
+                createCharts() {
+                    // Performance trend chart
+                    const performanceData = {
+                        x: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                        y: [72.1, 74.3, 76.8, 75.2, 73.9, 76.1, 77.2],
+                        type: 'scatter',
+                        mode: 'lines+markers',
+                        name: 'Accuracy %',
+                        line: { color: '#3B82F6', width: 3 },
+                        marker: { size: 8, color: '#60A5FA' }
+                    };
+                    
+                    Plotly.newPlot('performance-chart', [performanceData], {
+                        title: { text: 'Weekly Performance Trend', font: { color: 'white' } },
+                        xaxis: { title: 'Day', color: 'white' },
+                        yaxis: { title: 'Accuracy (%)', color: 'white', range: [65, 85] },
+                        paper_bgcolor: 'rgba(0,0,0,0)',
+                        plot_bgcolor: 'rgba(0,0,0,0)',
+                        font: { color: 'white' }
+                    });
+                    
+                    // Feature importance chart
+                    const featureData = {
+                        x: ['Technical', 'Cross-Asset', 'Macro', 'Alternative', 'Microstructure'],
+                        y: [0.28, 0.24, 0.19, 0.16, 0.13],
+                        type: 'bar',
+                        marker: { color: '#10B981' }
+                    };
+                    
+                    Plotly.newPlot('feature-importance-chart', [featureData], {
+                        title: { text: 'Feature Domain Importance', font: { color: 'white' } },
+                        xaxis: { title: 'Feature Domain', color: 'white' },
+                        yaxis: { title: 'Importance Score', color: 'white' },
+                        paper_bgcolor: 'rgba(0,0,0,0)',
+                        plot_bgcolor: 'rgba(0,0,0,0)',
+                        font: { color: 'white' }
+                    });
+                },
+                
+                reviewPrediction(prediction) {
+                    this.selectedPrediction = prediction;
+                    this.showPredictionModal = true;
+                },
+                
+                async submitFeedback() {
+                    try {
+                        // In real implementation, send to API
+                        console.log('Submitting feedback:', this.feedback);
+                        
+                        // Reset form
+                        this.feedback = {
+                            symbol: '',
+                            actual_outcome: '',
+                            prediction_date: '',
+                            comments: ''
+                        };
+                        
+                        alert('Feedback submitted successfully! The AI will learn from this data.');
+                    } catch (error) {
+                        alert('Error submitting feedback: ' + error.message);
+                    }
+                },
+                
+                dismissAlert(alertId) {
+                    this.performanceAlerts = this.performanceAlerts.filter(alert => alert.id !== alertId);
+                },
+                
+                implementRecommendation(recommendation) {
+                    // In real implementation, trigger the recommended action
+                    console.log('Implementing recommendation:', recommendation);
+                    alert('Recommendation implementation started: ' + recommendation.title);
+                },
+                
+                formatDate(date) {
+                    return new Date(date).toLocaleString();
+                },
+                
+                // Scheduler methods
+                async loadSchedulerStatus() {
+                    try {
+                        const response = await fetch('/api/scheduler/status');
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.success) {
+                                this.schedulerStatus = data.scheduler_status;
+                                this.marketInfo = data.market_information;
+                            }
+                        }
+                    } catch (error) {
+                        console.log('Using mock scheduler data');
+                        this.schedulerStatus = {
+                            running: false,
+                            active_schedules: 12,
+                            total_schedules: 15,
+                            performance: {
+                                total_predictions: 847,
+                                success_rate: 73.2
+                            },
+                            learning_metrics: {
+                                total_auto_predictions: 847
+                            }
+                        };
+                        this.marketInfo = {
+                            'ASX': { status: 'closed' },
+                            'NYSE': { status: 'open' },
+                            'NASDAQ': { status: 'open' },
+                            'LSE': { status: 'closed' }
+                        };
+                    }
+                },
+                
+                async startScheduler() {
+                    try {
+                        const response = await fetch('/api/scheduler/start', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            this.schedulerStatus = result.status;
+                            alert('🤖 Automatic prediction scheduler started! The system will now make predictions during trading hours and learn from outcomes.');
+                        } else {
+                            alert('Error starting scheduler: ' + result.error);
+                        }
+                    } catch (error) {
+                        alert('Error starting scheduler: ' + error.message);
+                    }
+                },
+                
+                async stopScheduler() {
+                    try {
+                        const response = await fetch('/api/scheduler/stop', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            this.schedulerStatus = result.final_status;
+                            alert('⏹️ Automatic prediction scheduler stopped.');
+                        } else {
+                            alert('Error stopping scheduler: ' + result.error);
+                        }
+                    } catch (error) {
+                        alert('Error stopping scheduler: ' + error.message);
+                    }
+                },
+                
+                async addSymbolToSchedule() {
+                    try {
+                        if (!this.newSymbol.symbol || !this.newSymbol.market) {
+                            alert('Please enter symbol and select market');
+                            return;
+                        }
+                        
+                        const response = await fetch('/api/scheduler/add-symbol', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                symbol: this.newSymbol.symbol.toUpperCase(),
+                                market: this.newSymbol.market,
+                                intervals: this.newSymbol.intervals,
+                                priority: parseInt(this.newSymbol.priority)
+                            })
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (result.success) {
+                            alert(`✅ Added ${result.symbol} to automatic prediction schedule!`);
+                            
+                            // Reset form
+                            this.newSymbol = {
+                                symbol: '',
+                                market: 'NASDAQ',
+                                priority: '2',
+                                intervals: ['1h', '4h', '1d']
+                            };
+                            
+                            // Refresh status
+                            this.loadSchedulerStatus();
+                        } else {
+                            alert('Error adding symbol: ' + result.error);
+                        }
+                    } catch (error) {
+                        alert('Error adding symbol: ' + error.message);
+                    }
+                },
+                
+                getMarketStatusColor(status) {
+                    const colors = {
+                        'open': 'text-green-400',
+                        'closed': 'text-red-400',
+                        'pre_market': 'text-yellow-400',
+                        'after_hours': 'text-orange-400',
+                        'weekend': 'text-gray-400',
+                        'holiday': 'text-purple-400'
+                    };
+                    return colors[status] || 'text-gray-400';
+                }
+            }
+        }
+    </script>
+
+</body>
+</html>

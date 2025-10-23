@@ -1,0 +1,1183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced ML Stock Prediction System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .version-badge {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .feature-badges {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .badge {
+            background: #f0f0f0;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            color: #555;
+        }
+
+        .badge.active {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            background: white;
+            padding: 10px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .tab {
+            padding: 12px 24px;
+            border: none;
+            background: transparent;
+            color: #666;
+            cursor: pointer;
+            border-radius: 10px;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .tab:hover {
+            background: #f5f5f5;
+        }
+
+        .tab.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            min-height: 500px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .results {
+            margin-top: 30px;
+        }
+
+        .result-card {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .metric-value.positive {
+            color: #4CAF50;
+        }
+
+        .metric-value.negative {
+            color: #f44336;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 20px;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 15px;
+            width: 0%;
+            transition: width 0.5s;
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            color: white;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .chart-container {
+            margin-top: 30px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .feature-importance {
+            margin-top: 20px;
+        }
+
+        .feature-bar {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .feature-name {
+            width: 150px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .feature-bar-fill {
+            flex: 1;
+            height: 20px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 10px;
+            margin-left: 10px;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .alert-info {
+            background: #e3f2fd;
+            border-left: 4px solid #2196F3;
+            color: #1565C0;
+        }
+
+        .alert-success {
+            background: #e8f5e9;
+            border-left: 4px solid #4CAF50;
+            color: #2E7D32;
+        }
+
+        .alert-warning {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            color: #E65100;
+        }
+
+        .model-comparison {
+            margin-top: 30px;
+        }
+
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .comparison-table th {
+            background: #f5f5f5;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .comparison-table tr:hover {
+            background: #f9f9f9;
+        }
+
+        .advanced-options {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .switch {
+            position: relative;
+            width: 50px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #667eea;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .cache-status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .cache-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                📈 Enhanced ML Stock Prediction System
+                <span class="version-badge">v2.0</span>
+            </h1>
+            <p class="subtitle">Based on ScienceDirect ML Stock Forecasting Research</p>
+            <div class="feature-badges">
+                <span class="badge active">🧠 Neural Networks</span>
+                <span class="badge active">📊 SVM Models</span>
+                <span class="badge active">🔄 Ensemble Learning</span>
+                <span class="badge active">💾 SQLite Cache (50x faster)</span>
+                <span class="badge active">📰 Real FinBERT</span>
+                <span class="badge active">📈 50+ Indicators</span>
+                <span class="badge active">🎯 Market Regime Detection</span>
+                <span class="badge active">💰 $100K Backtesting</span>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('training')">🎓 Training</button>
+            <button class="tab" onclick="switchTab('prediction')">🔮 Prediction</button>
+            <button class="tab" onclick="switchTab('backtesting')">⚡ Backtesting</button>
+            <button class="tab" onclick="switchTab('comparison')">📊 Model Comparison</button>
+            <button class="tab" onclick="switchTab('history')">📜 History</button>
+            <button class="tab" onclick="switchTab('settings')">⚙️ Settings</button>
+        </div>
+
+        <div class="content">
+            <!-- Training Tab -->
+            <div id="training" class="tab-content active">
+                <h2>Train Enhanced ML Model</h2>
+                <div class="alert alert-info">
+                    Training uses real historical data with 50+ technical indicators and takes 10-60 seconds for realistic results.
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Stock Symbol</label>
+                        <input type="text" id="train-symbol" placeholder="e.g., AAPL" value="AAPL">
+                    </div>
+                    <div class="form-group">
+                        <label>Model Type</label>
+                        <select id="model-type">
+                            <option value="ensemble">Ensemble (Best Performance)</option>
+                            <option value="stacking">Stacking Ensemble</option>
+                            <option value="RandomForest">Random Forest</option>
+                            <option value="SVM">Support Vector Machine</option>
+                            <option value="NeuralNetwork">Neural Network</option>
+                            <option value="XGBoost">XGBoost</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Training Period (days)</label>
+                        <input type="number" id="train-days" value="365" min="100" max="730">
+                    </div>
+                    <div class="form-group">
+                        <label>Max Features</label>
+                        <input type="number" id="max-features" value="50" min="10" max="100">
+                    </div>
+                </div>
+
+                <div class="advanced-options">
+                    <h3>Advanced Options</h3>
+                    <div class="toggle-switch">
+                        <label class="switch">
+                            <input type="checkbox" id="use-advanced-features" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <label for="use-advanced-features">Use 50+ Technical Indicators</label>
+                    </div>
+                    <div class="toggle-switch">
+                        <label class="switch">
+                            <input type="checkbox" id="use-regime-detection" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <label for="use-regime-detection">Market Regime Adaptive</label>
+                    </div>
+                    <div class="toggle-switch">
+                        <label class="switch">
+                            <input type="checkbox" id="use-macro-features" checked>
+                            <span class="slider"></span>
+                        </label>
+                        <label for="use-macro-features">Include Macroeconomic Indicators</label>
+                    </div>
+                </div>
+
+                <button class="btn" onclick="trainModel()">🚀 Start Training</button>
+
+                <div id="training-progress" style="display:none;">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill">Training...</div>
+                    </div>
+                </div>
+
+                <div id="training-results" class="results"></div>
+            </div>
+
+            <!-- Prediction Tab -->
+            <div id="prediction" class="tab-content">
+                <h2>Make Price Predictions</h2>
+                <div class="alert alert-info">
+                    Predictions use ensemble models with real-time sentiment analysis from FinBERT.
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Stock Symbol</label>
+                        <input type="text" id="predict-symbol" placeholder="e.g., AAPL" value="AAPL">
+                    </div>
+                    <div class="form-group">
+                        <label>Model Type</label>
+                        <select id="predict-model-type">
+                            <option value="ensemble">Ensemble</option>
+                            <option value="stacking">Stacking</option>
+                            <option value="RandomForest">Random Forest</option>
+                            <option value="SVM">SVM</option>
+                            <option value="NeuralNetwork">Neural Network</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Days Ahead</label>
+                        <input type="number" id="days-ahead" value="1" min="1" max="30">
+                    </div>
+                    <div class="form-group">
+                        <label>News Sentiment (Optional)</label>
+                        <textarea id="news-text" rows="3" placeholder="Enter news text for sentiment analysis..."></textarea>
+                    </div>
+                </div>
+
+                <div class="toggle-switch">
+                    <label class="switch">
+                        <input type="checkbox" id="use-sentiment" checked>
+                        <span class="slider"></span>
+                    </label>
+                    <label for="use-sentiment">Use FinBERT Sentiment Analysis</label>
+                </div>
+
+                <button class="btn" onclick="makePrediction()">🔮 Predict Price</button>
+
+                <div id="prediction-results" class="results"></div>
+            </div>
+
+            <!-- Backtesting Tab -->
+            <div id="backtesting" class="tab-content">
+                <h2>Backtest Strategy</h2>
+                <div class="alert alert-warning">
+                    Backtesting with $100,000 starting capital using real historical data and ML predictions.
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Stock Symbol</label>
+                        <input type="text" id="backtest-symbol" placeholder="e.g., AAPL" value="AAPL">
+                    </div>
+                    <div class="form-group">
+                        <label>Strategy</label>
+                        <select id="backtest-strategy">
+                            <option value="ml_ensemble">ML Ensemble</option>
+                            <option value="ml_based">ML Based</option>
+                            <option value="ma_crossover">MA Crossover</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Start Date</label>
+                        <input type="date" id="start-date">
+                    </div>
+                    <div class="form-group">
+                        <label>End Date</label>
+                        <input type="date" id="end-date">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Initial Capital ($)</label>
+                        <input type="number" id="initial-capital" value="100000" min="1000">
+                    </div>
+                    <div class="form-group">
+                        <label>Commission (%)</label>
+                        <input type="number" id="commission" value="0.1" step="0.01" min="0">
+                    </div>
+                </div>
+
+                <button class="btn" onclick="runBacktest()">⚡ Run Backtest</button>
+
+                <div id="backtest-results" class="results"></div>
+            </div>
+
+            <!-- Model Comparison Tab -->
+            <div id="comparison" class="tab-content">
+                <h2>Model Comparison</h2>
+                <div class="form-group">
+                    <label>Stock Symbol</label>
+                    <input type="text" id="compare-symbol" placeholder="e.g., AAPL" value="AAPL">
+                </div>
+                <button class="btn" onclick="compareModels()">📊 Compare All Models</button>
+                <div id="comparison-results" class="results"></div>
+            </div>
+
+            <!-- History Tab -->
+            <div id="history" class="tab-content">
+                <h2>Prediction History</h2>
+                <div class="form-group">
+                    <label>Stock Symbol</label>
+                    <input type="text" id="history-symbol" placeholder="e.g., AAPL" value="AAPL">
+                </div>
+                <button class="btn" onclick="loadHistory()">📜 Load History</button>
+                <div id="history-results" class="results"></div>
+            </div>
+
+            <!-- Settings Tab -->
+            <div id="settings" class="tab-content">
+                <h2>System Settings</h2>
+                <div class="alert alert-info">
+                    Manage cache and system performance settings.
+                </div>
+                
+                <h3>Cache Management</h3>
+                <p>SQLite cache provides 50x faster data retrieval after first fetch.</p>
+                <button class="btn btn-secondary" onclick="clearCache()">🗑️ Clear Cache</button>
+                
+                <div id="cache-results" class="results"></div>
+                
+                <h3>API Configuration</h3>
+                <div class="form-group">
+                    <label>API Endpoint</label>
+                    <input type="text" id="api-endpoint" value="http://localhost:8000" readonly>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="cache-status">
+        <div class="cache-indicator"></div>
+        <span>Cache Active (50x Speed)</span>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+        
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        async function trainModel() {
+            const symbol = document.getElementById('train-symbol').value;
+            const modelType = document.getElementById('model-type').value;
+            const days = document.getElementById('train-days').value;
+            const useAdvanced = document.getElementById('use-advanced-features').checked;
+            const useRegime = document.getElementById('use-regime-detection').checked;
+            
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            
+            const progressDiv = document.getElementById('training-progress');
+            const progressFill = document.getElementById('progress-fill');
+            const resultsDiv = document.getElementById('training-results');
+            
+            progressDiv.style.display = 'block';
+            resultsDiv.innerHTML = '';
+            
+            // Simulate progress
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += 2;
+                progressFill.style.width = progress + '%';
+                progressFill.textContent = `Training... ${progress}%`;
+                
+                if (progress >= 90) {
+                    clearInterval(progressInterval);
+                }
+            }, 200);
+            
+            try {
+                const response = await fetch(`${API_URL}/train`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        symbol: symbol.toUpperCase(),
+                        model_type: modelType,
+                        days: parseInt(days),
+                        use_advanced_features: useAdvanced,
+                        use_regime_detection: useRegime
+                    })
+                });
+                
+                const result = await response.json();
+                
+                clearInterval(progressInterval);
+                progressFill.style.width = '100%';
+                progressFill.textContent = 'Complete!';
+                
+                setTimeout(() => {
+                    progressDiv.style.display = 'none';
+                }, 2000);
+                
+                if (result.status === 'success') {
+                    resultsDiv.innerHTML = `
+                        <div class="result-card">
+                            <h3>✅ Training Complete</h3>
+                            <p><strong>Model:</strong> ${result.model_type}</p>
+                            <p><strong>Symbol:</strong> ${result.symbol}</p>
+                            <p><strong>Training Time:</strong> ${result.training_time}s</p>
+                            <p><strong>Samples:</strong> ${result.training_samples}</p>
+                            <p><strong>Features:</strong> ${result.features_used}</p>
+                            
+                            <div class="metrics-grid">
+                                <div class="metric-card">
+                                    <div class="metric-label">Train R²</div>
+                                    <div class="metric-value">${result.metrics.train_r2}</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-label">Test R²</div>
+                                    <div class="metric-value">${result.metrics.test_r2}</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-label">Train MAE</div>
+                                    <div class="metric-value">${result.metrics.train_mae}</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-label">Test MAE</div>
+                                    <div class="metric-value">${result.metrics.test_mae}</div>
+                                </div>
+                            </div>
+                            
+                            ${result.feature_importance ? `
+                                <div class="feature-importance">
+                                    <h4>Top Feature Importance</h4>
+                                    ${Object.entries(result.feature_importance).slice(0, 5).map(([name, value]) => `
+                                        <div class="feature-bar">
+                                            <span class="feature-name">${name}</span>
+                                            <div class="feature-bar-fill" style="width: ${value * 100}%"></div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="alert alert-warning">
+                            <strong>Error:</strong> ${result.detail || 'Training failed'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                clearInterval(progressInterval);
+                progressDiv.style.display = 'none';
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-warning">
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function makePrediction() {
+            const symbol = document.getElementById('predict-symbol').value;
+            const modelType = document.getElementById('predict-model-type').value;
+            const daysAhead = document.getElementById('days-ahead').value;
+            const useSentiment = document.getElementById('use-sentiment').checked;
+            const resultsDiv = document.getElementById('prediction-results');
+            
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<div class="loader"></div>';
+            
+            try {
+                const response = await fetch(`${API_URL}/predict`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        symbol: symbol.toUpperCase(),
+                        model_type: modelType,
+                        days_ahead: parseInt(daysAhead),
+                        use_sentiment: useSentiment
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    const changeClass = result.change > 0 ? 'positive' : 'negative';
+                    const arrow = result.change > 0 ? '↑' : '↓';
+                    
+                    resultsDiv.innerHTML = `
+                        <div class="result-card">
+                            <h3>🔮 Prediction Results</h3>
+                            <p><strong>Symbol:</strong> ${result.symbol}</p>
+                            <p><strong>Model:</strong> ${result.model_type}</p>
+                            <p><strong>Market Regime:</strong> ${result.market_regime || 'neutral'}</p>
+                            
+                            <div class="metrics-grid">
+                                <div class="metric-card">
+                                    <div class="metric-label">Current Price</div>
+                                    <div class="metric-value">$${result.current_price}</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-label">Predicted Price</div>
+                                    <div class="metric-value ${changeClass}">$${result.predicted_price}</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-label">Change</div>
+                                    <div class="metric-value ${changeClass}">${arrow} $${Math.abs(result.change)}</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-label">Change %</div>
+                                    <div class="metric-value ${changeClass}">${arrow} ${Math.abs(result.change_percent)}%</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-label">Confidence</div>
+                                    <div class="metric-value">${(result.confidence * 100).toFixed(2)}%</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-label">Sentiment</div>
+                                    <div class="metric-value">${result.sentiment_score.toFixed(4)}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="alert alert-warning">
+                            <strong>Error:</strong> ${result.detail || 'Prediction failed'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-warning">
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function runBacktest() {
+            const symbol = document.getElementById('backtest-symbol').value;
+            const strategy = document.getElementById('backtest-strategy').value;
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            const initialCapital = document.getElementById('initial-capital').value;
+            const commission = document.getElementById('commission').value;
+            const resultsDiv = document.getElementById('backtest-results');
+            
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<div class="loader"></div>';
+            
+            try {
+                const response = await fetch(`${API_URL}/backtest`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        symbol: symbol.toUpperCase(),
+                        strategy: strategy,
+                        start_date: startDate || null,
+                        end_date: endDate || null,
+                        initial_capital: parseFloat(initialCapital),
+                        commission: parseFloat(commission) / 100
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    const returnClass = result.total_return > 0 ? 'positive' : 'negative';
+                    
+                    resultsDiv.innerHTML = `
+                        <div class="result-card">
+                            <h3>⚡ Backtest Results</h3>
+                            <p><strong>Symbol:</strong> ${result.symbol}</p>
+                            <p><strong>Strategy:</strong> ${result.strategy}</p>
+                            <p><strong>Period:</strong> ${result.date_range.start} to ${result.date_range.end}</p>
+                            
+                            <div class="metrics-grid">
+                                <div class="metric-card">
+                                    <div class="metric-label">Initial Capital</div>
+                                    <div class="metric-value">$${result.initial_capital.toLocaleString()}</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-label">Final Value</div>
+                                    <div class="metric-value ${returnClass}">$${result.final_value.toLocaleString()}</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-label">Total Return</div>
+                                    <div class="metric-value ${returnClass}">${result.total_return}%</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-label">Sharpe Ratio</div>
+                                    <div class="metric-value">${result.metrics.sharpe_ratio}</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-label">Max Drawdown</div>
+                                    <div class="metric-value negative">${result.metrics.max_drawdown}%</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-label">Win Rate</div>
+                                    <div class="metric-value">${result.metrics.win_rate}%</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-label">Total Trades</div>
+                                    <div class="metric-value">${result.metrics.total_trades}</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-label">Profit Factor</div>
+                                    <div class="metric-value">${result.metrics.profit_factor}</div>
+                                </div>
+                                <div class="metric-card">
+                                    <div class="metric-label">Calmar Ratio</div>
+                                    <div class="metric-value">${result.metrics.calmar_ratio}</div>
+                                </div>
+                            </div>
+                            
+                            ${result.trades && result.trades.length > 0 ? `
+                                <h4>Recent Trades</h4>
+                                <table class="comparison-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Type</th>
+                                            <th>Price</th>
+                                            <th>Shares</th>
+                                            <th>Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${result.trades.slice(0, 10).map(trade => `
+                                            <tr>
+                                                <td>${new Date(trade.date).toLocaleDateString()}</td>
+                                                <td>${trade.type}</td>
+                                                <td>$${trade.price.toFixed(2)}</td>
+                                                <td>${trade.shares.toFixed(2)}</td>
+                                                <td>$${trade.value.toFixed(2)}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            ` : ''}
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="alert alert-warning">
+                            <strong>Error:</strong> ${result.detail || 'Backtest failed'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-warning">
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function compareModels() {
+            const symbol = document.getElementById('compare-symbol').value;
+            const resultsDiv = document.getElementById('comparison-results');
+            
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<div class="loader"></div>';
+            
+            try {
+                const response = await fetch(`${API_URL}/models/${symbol.toUpperCase()}`);
+                const result = await response.json();
+                
+                if (result.models && result.models.length > 0) {
+                    resultsDiv.innerHTML = `
+                        <div class="result-card">
+                            <h3>Model Comparison for ${result.symbol}</h3>
+                            <table class="comparison-table">
+                                <thead>
+                                    <tr>
+                                        <th>Model Type</th>
+                                        <th>Train R²</th>
+                                        <th>Test R²</th>
+                                        <th>Train MAE</th>
+                                        <th>Test MAE</th>
+                                        <th>Training Time</th>
+                                        <th>Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${result.models.map(model => `
+                                        <tr>
+                                            <td>${model.model_type}</td>
+                                            <td>${model.metrics.train_r2.toFixed(4)}</td>
+                                            <td>${model.metrics.test_r2.toFixed(4)}</td>
+                                            <td>${model.metrics.train_mae.toFixed(4)}</td>
+                                            <td>${model.metrics.test_mae.toFixed(4)}</td>
+                                            <td>${model.training_time}s</td>
+                                            <td>${new Date(model.training_date).toLocaleDateString()}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="alert alert-info">
+                            No models found for ${symbol}. Train a model first.
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-warning">
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function loadHistory() {
+            const symbol = document.getElementById('history-symbol').value;
+            const resultsDiv = document.getElementById('history-results');
+            
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<div class="loader"></div>';
+            
+            try {
+                const response = await fetch(`${API_URL}/predictions/${symbol.toUpperCase()}?limit=20`);
+                const result = await response.json();
+                
+                if (result.predictions && result.predictions.length > 0) {
+                    resultsDiv.innerHTML = `
+                        <div class="result-card">
+                            <h3>Prediction History for ${result.symbol}</h3>
+                            <table class="comparison-table">
+                                <thead>
+                                    <tr>
+                                        <th>Prediction Date</th>
+                                        <th>Target Date</th>
+                                        <th>Predicted</th>
+                                        <th>Actual</th>
+                                        <th>Error</th>
+                                        <th>Confidence</th>
+                                        <th>Model</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${result.predictions.map(pred => {
+                                        const error = pred.actual_price ? 
+                                            ((pred.predicted_price - pred.actual_price) / pred.actual_price * 100).toFixed(2) : 
+                                            'N/A';
+                                        return `
+                                            <tr>
+                                                <td>${new Date(pred.prediction_date).toLocaleDateString()}</td>
+                                                <td>${new Date(pred.target_date).toLocaleDateString()}</td>
+                                                <td>$${pred.predicted_price.toFixed(2)}</td>
+                                                <td>${pred.actual_price ? '$' + pred.actual_price.toFixed(2) : 'Pending'}</td>
+                                                <td>${error}${error !== 'N/A' ? '%' : ''}</td>
+                                                <td>${(pred.confidence * 100).toFixed(2)}%</td>
+                                                <td>${pred.model_type}</td>
+                                            </tr>
+                                        `;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="alert alert-info">
+                            No prediction history found for ${symbol}.
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-warning">
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        async function clearCache() {
+            const resultsDiv = document.getElementById('cache-results');
+            resultsDiv.innerHTML = '<div class="loader"></div>';
+            
+            try {
+                const response = await fetch(`${API_URL}/cache/clear`);
+                const result = await response.json();
+                
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-success">
+                        Cache cleared successfully! Removed ${result.deleted_entries} entries.
+                    </div>
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="alert alert-warning">
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        // Set default dates for backtesting
+        window.onload = function() {
+            const today = new Date();
+            const oneYearAgo = new Date(today);
+            oneYearAgo.setFullYear(today.getFullYear() - 1);
+            
+            document.getElementById('end-date').value = today.toISOString().split('T')[0];
+            document.getElementById('start-date').value = oneYearAgo.toISOString().split('T')[0];
+        };
+    </script>
+</body>
+</html>

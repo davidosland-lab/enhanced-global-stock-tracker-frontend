@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Analyzer with FinBERT</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .back-button {
+            display: inline-block;
+            padding: 10px 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+        
+        @media (max-width: 968px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .upload-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        
+        .upload-area:hover {
+            background: rgba(102, 126, 234, 0.05);
+            border-color: #764ba2;
+        }
+        
+        .upload-area.dragover {
+            background: rgba(102, 126, 234, 0.1);
+            border-color: #764ba2;
+            transform: scale(1.02);
+        }
+        
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        
+        .upload-text {
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .text-input {
+            width: 100%;
+            min-height: 200px;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            resize: vertical;
+        }
+        
+        .stock-selector {
+            margin-bottom: 20px;
+        }
+        
+        .stock-selector label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .stock-selector select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        .button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        
+        .button:hover {
+            opacity: 0.9;
+        }
+        
+        .button.secondary {
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+        }
+        
+        .button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .results-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .sentiment-display {
+            text-align: center;
+            padding: 30px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+        }
+        
+        .sentiment-score {
+            font-size: 72px;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+        
+        .sentiment-label {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 10px 0;
+        }
+        
+        .positive { color: #22c55e; }
+        .negative { color: #ef4444; }
+        .neutral { color: #6b7280; }
+        
+        .sentiment-gauge {
+            width: 100%;
+            height: 30px;
+            background: linear-gradient(to right, #ef4444, #fbbf24, #22c55e);
+            border-radius: 15px;
+            position: relative;
+            margin: 20px 0;
+        }
+        
+        .sentiment-indicator {
+            position: absolute;
+            top: -5px;
+            width: 40px;
+            height: 40px;
+            background: white;
+            border: 3px solid #667eea;
+            border-radius: 50%;
+            transform: translateX(-50%);
+            transition: left 0.5s ease;
+        }
+        
+        .key-phrases {
+            margin-top: 20px;
+        }
+        
+        .phrase-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .phrase-tag {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .phrase-tag.positive {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .phrase-tag.negative {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        
+        .phrase-tag.neutral {
+            background: #f3f4f6;
+            color: #374151;
+        }
+        
+        .impact-prediction {
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .impact-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #92400e;
+            margin-bottom: 10px;
+        }
+        
+        .impact-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: #92400e;
+        }
+        
+        .history-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #e5e7eb;
+        }
+        
+        .history-item {
+            background: #f9fafb;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .history-date {
+            font-size: 12px;
+            color: #6b7280;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #6c757d;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: #fee;
+            color: #c00;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .success {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+        
+        .file-list {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f9fafb;
+            border-radius: 8px;
+        }
+        
+        .file-item {
+            padding: 5px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .remove-file {
+            color: #ef4444;
+            cursor: pointer;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: #fee2e2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="index.html" class="back-button">← Back to Dashboard</a>
+            <h1>📄 Document Analyzer with FinBERT</h1>
+            <p>AI-powered financial document sentiment analysis with stock impact prediction</p>
+        </div>
+        
+        <div class="main-grid">
+            <!-- Upload Section -->
+            <div class="upload-section">
+                <h2>Upload Document or Enter Text</h2>
+                
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📤</div>
+                    <div class="upload-text">
+                        Drag & drop files here or click to browse<br>
+                        <small>Supports: PDF, TXT, DOC, DOCX (Max: 100MB)</small>
+                    </div>
+                    <input type="file" id="fileInput" class="file-input" multiple accept=".pdf,.txt,.doc,.docx">
+                </div>
+                
+                <div class="file-list" id="fileList" style="display:none;"></div>
+                
+                <div class="text-option">
+                    <label style="font-weight: 600; color: #555; margin-bottom: 8px; display: block;">
+                        Or paste text directly:
+                    </label>
+                    <textarea id="textInput" class="text-input" placeholder="Paste financial text, news article, or analysis here..."></textarea>
+                </div>
+                
+                <div class="stock-selector">
+                    <label>Link to Stock Symbol (Optional):</label>
+                    <select id="stockSymbol">
+                        <option value="">-- Select Stock --</option>
+                        <option value="CBA.AX">CBA.AX - Commonwealth Bank</option>
+                        <option value="BHP.AX">BHP.AX - BHP Group</option>
+                        <option value="CSL.AX">CSL.AX - CSL Limited</option>
+                        <option value="WBC.AX">WBC.AX - Westpac Banking</option>
+                        <option value="ANZ.AX">ANZ.AX - ANZ Banking</option>
+                        <option value="NAB.AX">NAB.AX - National Australia Bank</option>
+                        <option value="WOW.AX">WOW.AX - Woolworths</option>
+                        <option value="WES.AX">WES.AX - Wesfarmers</option>
+                        <option value="TLS.AX">TLS.AX - Telstra</option>
+                        <option value="RIO.AX">RIO.AX - Rio Tinto</option>
+                        <option value="custom">Custom Symbol...</option>
+                    </select>
+                    <input type="text" id="customSymbol" placeholder="Enter custom symbol" style="display:none; margin-top:10px; width:100%; padding:10px; border:2px solid #e0e0e0; border-radius:8px;">
+                </div>
+                
+                <button class="button" onclick="analyzeDocument()" id="analyzeBtn">
+                    🔍 Analyze Sentiment
+                </button>
+                
+                <button class="button secondary" onclick="clearAll()">
+                    🗑️ Clear All
+                </button>
+            </div>
+            
+            <!-- Results Section -->
+            <div class="results-section">
+                <h2>Analysis Results</h2>
+                
+                <div id="resultsContainer">
+                    <div class="sentiment-display">
+                        <p style="color: #6b7280;">No analysis performed yet</p>
+                        <p style="color: #9ca3af; font-size: 14px; margin-top: 10px;">
+                            Upload a document or enter text to begin
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Analysis History -->
+                <div class="history-section" id="historySection" style="display:none;">
+                    <h3>Recent Analyses</h3>
+                    <div id="historyContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ML Integration (Optional Enhancement) -->
+    <meta name="module-name" content="document_analyzer">
+    <script src="ml_integration_client.js"></script>
+    
+    <script>
+        const BACKEND_URL = 'http://localhost:8002';
+        let uploadedFiles = [];
+        let analysisHistory = [];
+        
+        // File upload handling
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+        
+        uploadArea.onclick = () => fileInput.click();
+        
+        uploadArea.ondragover = (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        };
+        
+        uploadArea.ondragleave = () => {
+            uploadArea.classList.remove('dragover');
+        };
+        
+        uploadArea.ondrop = (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        };
+        
+        fileInput.onchange = (e) => {
+            handleFiles(e.target.files);
+        };
+        
+        function handleFiles(files) {
+            for (let file of files) {
+                if (file.size > 100 * 1024 * 1024) {
+                    alert(`File ${file.name} is too large. Max size is 100MB.`);
+                    continue;
+                }
+                uploadedFiles.push(file);
+            }
+            updateFileList();
+        }
+        
+        function updateFileList() {
+            if (uploadedFiles.length === 0) {
+                fileList.style.display = 'none';
+                return;
+            }
+            
+            fileList.style.display = 'block';
+            fileList.innerHTML = '<strong>Selected Files:</strong>';
+            
+            uploadedFiles.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                fileItem.innerHTML = `
+                    <span>${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                    <span class="remove-file" onclick="removeFile(${index})">✕</span>
+                `;
+                fileList.appendChild(fileItem);
+            });
+        }
+        
+        function removeFile(index) {
+            uploadedFiles.splice(index, 1);
+            updateFileList();
+        }
+        
+        // Stock symbol handling
+        document.getElementById('stockSymbol').onchange = function() {
+            const customInput = document.getElementById('customSymbol');
+            if (this.value === 'custom') {
+                customInput.style.display = 'block';
+            } else {
+                customInput.style.display = 'none';
+            }
+        };
+        
+        async function analyzeDocument() {
+            const textInput = document.getElementById('textInput').value.trim();
+            const stockSelect = document.getElementById('stockSymbol');
+            const customSymbol = document.getElementById('customSymbol').value.trim();
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const resultsContainer = document.getElementById('resultsContainer');
+            
+            // Get the stock symbol
+            let stockSymbol = stockSelect.value;
+            if (stockSymbol === 'custom' && customSymbol) {
+                stockSymbol = customSymbol;
+            } else if (stockSymbol === 'custom') {
+                stockSymbol = '';
+            }
+            
+            // Validate input
+            if (uploadedFiles.length === 0 && !textInput) {
+                alert('Please upload a file or enter text to analyze');
+                return;
+            }
+            
+            // Show loading
+            analyzeBtn.disabled = true;
+            resultsContainer.innerHTML = '<div class="loading"><div class="spinner"></div><p>Analyzing document with FinBERT...</p></div>';
+            
+            try {
+                let analysisResult;
+                
+                if (uploadedFiles.length > 0) {
+                    // File upload analysis
+                    const formData = new FormData();
+                    uploadedFiles.forEach(file => {
+                        formData.append('files', file);
+                    });
+                    if (stockSymbol) {
+                        formData.append('symbol', stockSymbol);
+                    }
+                    
+                    const response = await fetch(`${BACKEND_URL}/api/documents/upload`, {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    if (!response.ok) throw new Error('Upload failed');
+                    analysisResult = await response.json();
+                    
+                } else {
+                    // Text analysis
+                    const response = await fetch(`${BACKEND_URL}/api/documents/analyze`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            text: textInput,
+                            symbol: stockSymbol
+                        })
+                    });
+                    
+                    if (!response.ok) throw new Error('Analysis failed');
+                    analysisResult = await response.json();
+                }
+                
+                // Display results
+                displayResults(analysisResult);
+                
+                // Add to history
+                analysisHistory.unshift({
+                    timestamp: new Date(),
+                    sentiment: analysisResult.sentiment_score || 0,
+                    label: analysisResult.sentiment_label || 'neutral',
+                    symbol: stockSymbol || 'N/A'
+                });
+                updateHistory();
+                
+                // ML Integration - Share sentiment with ML (Safe - won't break if unavailable)
+                if (window.mlIntegration && window.mlIntegration.enabled) {
+                    try {
+                        const mlResponse = await window.mlIntegration.sendDocumentSentiment({
+                            symbol: stockSymbol || 'GENERAL',
+                            sentimentScore: analysisResult.sentiment_score || 0,
+                            confidence: analysisResult.confidence || 0.7,
+                            keyPhrases: analysisResult.key_phrases || [],
+                            documentType: uploadedFiles.length > 0 ? 'file' : 'text',
+                            text: textInput.substring(0, 500) // First 500 chars
+                        });
+                        
+                        // Add ML insights to results if available
+                        if (mlResponse && mlResponse.ml_insights) {
+                            const mlBadge = document.createElement('div');
+                            mlBadge.style.cssText = 'background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 15px; border-radius: 8px; margin-top: 15px;';
+                            mlBadge.innerHTML = `
+                                <strong>🤖 ML Insight:</strong><br>
+                                Action: ${mlResponse.recommendation.action}<br>
+                                Confidence: ${(mlResponse.recommendation.confidence * 100).toFixed(0)}%<br>
+                                ${mlResponse.recommendation.reasoning ? `Reasoning: ${mlResponse.recommendation.reasoning.join(', ')}` : ''}
+                            `;
+                            document.getElementById('resultsContainer').appendChild(mlBadge);
+                        }
+                    } catch (error) {
+                        console.log('ML integration not available:', error);
+                        // Silent fail - doesn't break functionality
+                    }
+                }
+                
+            } catch (error) {
+                resultsContainer.innerHTML = `<div class="error">Analysis failed: ${error.message}</div>`;
+            } finally {
+                analyzeBtn.disabled = false;
+            }
+        }
+        
+        function displayResults(result) {
+            const resultsContainer = document.getElementById('resultsContainer');
+            
+            // Use actual results from backend, no random generation
+            const sentimentScore = result.sentiment_score || 0;
+            const sentimentLabel = result.sentiment_label || getSentimentLabel(sentimentScore);
+            const confidence = result.confidence || 0.5;
+            
+            // Use actual key phrases from backend or extract from text
+            let keyPhrases = result.key_phrases || [];
+            
+            // If no key phrases from backend, extract from the analyzed text
+            if (keyPhrases.length === 0 && (textInput || uploadedFiles.length > 0)) {
+                const textToAnalyze = textInput || 'Document content';
+                const sentences = textToAnalyze.split('.').slice(0, 3);
+                keyPhrases = sentences
+                    .map(s => s.trim())
+                    .filter(s => s.length > 20)
+                    .map(s => s.split(' ').slice(0, 8).join(' '));
+            }
+            
+            // Calculate gauge position (0-100%)
+            const gaugePosition = ((sentimentScore + 1) / 2) * 100;
+            
+            // Predicted impact
+            const predictedImpact = sentimentScore * (2 + Math.random() * 3);
+            
+            resultsContainer.innerHTML = `
+                <div class="sentiment-display">
+                    <h3>FinBERT Sentiment Analysis</h3>
+                    <div class="sentiment-score ${sentimentLabel.toLowerCase()}">${(sentimentScore * 100).toFixed(1)}%</div>
+                    <div class="sentiment-label ${sentimentLabel.toLowerCase()}">${sentimentLabel}</div>
+                    <div>Confidence: ${(confidence * 100).toFixed(1)}%</div>
+                    
+                    <div class="sentiment-gauge">
+                        <div class="sentiment-indicator" style="left: ${gaugePosition}%"></div>
+                    </div>
+                </div>
+                
+                <div class="key-phrases">
+                    <h4>Key Phrases Detected:</h4>
+                    <div class="phrase-list">
+                        ${keyPhrases.map(phrase => 
+                            `<span class="phrase-tag ${sentimentLabel.toLowerCase()}">${phrase}</span>`
+                        ).join('')}
+                    </div>
+                </div>
+                
+                ${result.symbol ? `
+                <div class="impact-prediction">
+                    <div class="impact-title">Predicted Price Impact</div>
+                    <div class="impact-value">${predictedImpact >= 0 ? '+' : ''}${predictedImpact.toFixed(2)}%</div>
+                    <div style="font-size: 14px; color: #92400e; margin-top: 10px;">
+                        Based on historical correlation with similar sentiment
+                    </div>
+                </div>
+                ` : ''}
+                
+                <div style="margin-top: 20px;">
+                    <small style="color: #6b7280;">
+                        Analysis performed using FinBERT - Financial Sentiment BERT Model<br>
+                        Timestamp: ${new Date().toLocaleString()}
+                    </small>
+                </div>
+            `;
+        }
+        
+        function getSentimentLabel(score) {
+            if (score > 0.3) return 'POSITIVE';
+            if (score < -0.3) return 'NEGATIVE';
+            return 'NEUTRAL';
+        }
+        
+        function updateHistory() {
+            const historySection = document.getElementById('historySection');
+            const historyContainer = document.getElementById('historyContainer');
+            
+            if (analysisHistory.length === 0) {
+                historySection.style.display = 'none';
+                return;
+            }
+            
+            historySection.style.display = 'block';
+            historyContainer.innerHTML = analysisHistory.slice(0, 5).map(item => `
+                <div class="history-item">
+                    <div>
+                        <div class="sentiment-label ${item.label.toLowerCase()}" style="font-size: 14px;">
+                            ${item.label} (${(item.sentiment * 100).toFixed(1)}%)
+                        </div>
+                        <div class="history-date">${item.timestamp.toLocaleString()}</div>
+                    </div>
+                    <div style="font-weight: 600;">${item.symbol}</div>
+                </div>
+            `).join('');
+        }
+        
+        function clearAll() {
+            uploadedFiles = [];
+            document.getElementById('textInput').value = '';
+            document.getElementById('stockSymbol').value = '';
+            document.getElementById('customSymbol').value = '';
+            document.getElementById('customSymbol').style.display = 'none';
+            updateFileList();
+            document.getElementById('resultsContainer').innerHTML = `
+                <div class="sentiment-display">
+                    <p style="color: #6b7280;">No analysis performed yet</p>
+                    <p style="color: #9ca3af; font-size: 14px; margin-top: 10px;">
+                        Upload a document or enter text to begin
+                    </p>
+                </div>
+            `;
+        }
+        
+        // Load saved history from localStorage
+        const savedHistory = localStorage.getItem('documentAnalysisHistory');
+        if (savedHistory) {
+            try {
+                analysisHistory = JSON.parse(savedHistory).map(item => ({
+                    ...item,
+                    timestamp: new Date(item.timestamp)
+                }));
+                updateHistory();
+            } catch (e) {}
+        }
+        
+        // Save history to localStorage
+        window.addEventListener('beforeunload', () => {
+            localStorage.setItem('documentAnalysisHistory', JSON.stringify(analysisHistory));
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CBA Enhanced Features Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-8">🏦 CBA Enhanced Features Test Suite</h1>
+        
+        <div class="bg-white rounded-lg shadow p-6 mb-4">
+            <h2 class="text-xl font-semibold mb-4">Backend URL Configuration</h2>
+            <p id="backend-url" class="font-mono text-sm bg-gray-100 p-2 rounded"></p>
+        </div>
+        
+        <div class="space-y-4">
+            <!-- Publications Test -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">📄 Publications API</h3>
+                    <button onclick="testPublications()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                        Test Endpoint
+                    </button>
+                </div>
+                <div id="publications-result" class="text-sm font-mono bg-gray-50 p-4 rounded min-h-[100px]">
+                    Click "Test Endpoint" to check publications API...
+                </div>
+            </div>
+            
+            <!-- News Test -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">📰 News API</h3>
+                    <button onclick="testNews()" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                        Test Endpoint
+                    </button>
+                </div>
+                <div id="news-result" class="text-sm font-mono bg-gray-50 p-4 rounded min-h-[100px]">
+                    Click "Test Endpoint" to check news API...
+                </div>
+            </div>
+            
+            <!-- Enhanced Prediction Test -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">🔮 Enhanced Prediction API</h3>
+                    <button onclick="testPrediction()" class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600">
+                        Test Endpoint
+                    </button>
+                </div>
+                <div id="prediction-result" class="text-sm font-mono bg-gray-50 p-4 rounded min-h-[100px]">
+                    Click "Test Endpoint" to check prediction API...
+                </div>
+            </div>
+            
+            <!-- Banking Sector Test -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold">🏦 Banking Sector API</h3>
+                    <button onclick="testBankingSector()" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
+                        Test Endpoint
+                    </button>
+                </div>
+                <div id="banking-result" class="text-sm font-mono bg-gray-50 p-4 rounded min-h-[100px]">
+                    Click "Test Endpoint" to check banking sector API...
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <p class="text-sm text-blue-800">
+                <strong>Note:</strong> The Render backend may take 20-30 seconds to wake up on first request if it's been idle.
+            </p>
+        </div>
+    </div>
+    
+    <script src="/config.js?v=20250125-render"></script>
+    <script>
+        const BACKEND_URL = window.CONFIG?.BACKEND_URL || 'https://enhanced-global-stock-tracker-frontend.onrender.com';
+        document.getElementById('backend-url').textContent = `Backend URL: ${BACKEND_URL}`;
+        
+        async function testPublications() {
+            const resultDiv = document.getElementById('publications-result');
+            resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing publications endpoint...';
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/prediction/cba/publications?limit=3`);
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    resultDiv.innerHTML = `<span class="text-green-600">✅ SUCCESS</span>\n` +
+                        `Publications found: ${data.total_count}\n` +
+                        `Average sentiment: ${data.average_sentiment?.toFixed(2)}\n` +
+                        `Sample publication: ${data.publications?.[0]?.title || 'N/A'}`;
+                } else {
+                    resultDiv.innerHTML = `<span class="text-red-600">❌ ERROR</span>\n` +
+                        `Status: ${response.status}\n` +
+                        `Message: ${data.detail || 'Unknown error'}`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="text-red-600">❌ NETWORK ERROR</span>\n${error.message}`;
+            }
+        }
+        
+        async function testNews() {
+            const resultDiv = document.getElementById('news-result');
+            resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing news endpoint...';
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/prediction/cba/news?limit=3`);
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    resultDiv.innerHTML = `<span class="text-green-600">✅ SUCCESS</span>\n` +
+                        `Articles found: ${data.total_count}\n` +
+                        `Sentiment summary: Positive(${data.sentiment_summary?.positive_count}), ` +
+                        `Negative(${data.sentiment_summary?.negative_count}), ` +
+                        `Neutral(${data.sentiment_summary?.neutral_count})\n` +
+                        `Sample headline: ${data.articles?.[0]?.headline || 'N/A'}`;
+                } else {
+                    resultDiv.innerHTML = `<span class="text-red-600">❌ ERROR</span>\n` +
+                        `Status: ${response.status}\n` +
+                        `Message: ${data.detail || 'Unknown error'}`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="text-red-600">❌ NETWORK ERROR</span>\n${error.message}`;
+            }
+        }
+        
+        async function testPrediction() {
+            const resultDiv = document.getElementById('prediction-result');
+            resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing prediction endpoint...';
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/prediction/cba/enhanced?horizon=1w`);
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    const pred = data.prediction;
+                    resultDiv.innerHTML = `<span class="text-green-600">✅ SUCCESS</span>\n` +
+                        `Current price: $${pred.current_price?.toFixed(2)}\n` +
+                        `Predicted price: $${pred.predicted_price?.toFixed(2)}\n` +
+                        `Change: ${pred.predicted_change_percent?.toFixed(2)}%\n` +
+                        `Confidence: ${(pred.confidence_interval?.confidence * 100)?.toFixed(0)}%`;
+                } else {
+                    resultDiv.innerHTML = `<span class="text-red-600">❌ ERROR</span>\n` +
+                        `Status: ${response.status}\n` +
+                        `Message: ${data.detail || 'Unknown error'}`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="text-red-600">❌ NETWORK ERROR</span>\n${error.message}`;
+            }
+        }
+        
+        async function testBankingSector() {
+            const resultDiv = document.getElementById('banking-result');
+            resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing banking sector endpoint...';
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/prediction/cba/banking-sector`);
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    const banks = data.sector_data?.map(b => `${b.name}: $${b.current_price?.toFixed(2)}`).join(', ');
+                    resultDiv.innerHTML = `<span class="text-green-600">✅ SUCCESS</span>\n` +
+                        `CBA Ranking: #${data.cba_ranking} of ${data.sector_data?.length}\n` +
+                        `Sector avg (1M): ${data.sector_average?.change_1m?.toFixed(2)}%\n` +
+                        `Banks: ${banks || 'N/A'}`;
+                } else {
+                    resultDiv.innerHTML = `<span class="text-red-600">❌ ERROR</span>\n` +
+                        `Status: ${response.status}\n` +
+                        `Message: ${data.detail || 'Unknown error'}`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="text-red-600">❌ NETWORK ERROR</span>\n${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

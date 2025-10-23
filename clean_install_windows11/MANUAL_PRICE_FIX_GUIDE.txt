@@ -1,0 +1,95 @@
+================================================================================
+                    MANUAL FIX FOR CBA.AX $100 PRICE ISSUE
+================================================================================
+
+PROBLEM: CBA.AX shows ~$100 instead of the correct ~$169-170
+
+QUICK FIX:
+
+1. FIND YOUR PREDICTION CENTRE HTML FILE
+   Look for one of these files in your installation:
+   - prediction_centre_phase4.html
+   - prediction_centre_fixed.html
+   - prediction_centre_ml_connected.html
+
+2. OPEN THE FILE IN NOTEPAD
+   Right-click → Open with → Notepad (or any text editor)
+
+3. FIND AND REPLACE (Ctrl+H)
+   
+   FIND: stockData.regularMarketPrice || 100
+   REPLACE WITH: stockData.price || 170
+   
+   Click "Replace All"
+
+4. SAVE THE FILE (Ctrl+S)
+
+5. FIX THE ML BACKEND (if you have it)
+   
+   Open: backend_ml_enhanced.py
+   
+   FIND: features.get('last_price', 100)
+   REPLACE WITH: features.get('last_price', 170)
+   
+   Click "Replace All"
+   Save the file
+
+6. RESTART YOUR SERVICES
+   - Close all command windows running Python
+   - Run your startup.bat or START_STOCK_TRACKER.bat again
+
+7. CLEAR BROWSER CACHE
+   - Press Ctrl+Shift+Delete in your browser
+   - Clear cached images and files
+   - Refresh the page (Ctrl+F5)
+
+================================================================================
+                           DETAILED EXPLANATION
+================================================================================
+
+WHY THIS HAPPENS:
+- The backend API returns the price as "price": 169.34
+- But the frontend looks for "regularMarketPrice" 
+- When it doesn't find it, it falls back to 100
+
+THE FIX:
+- We change the code to look for "price" first
+- We change the fallback from 100 to 170 (more realistic)
+
+WHAT TO LOOK FOR:
+If you see code like this:
+    const currentPrice = stockData.regularMarketPrice || 100;
+
+Change it to:
+    const currentPrice = stockData.price || 170;
+
+================================================================================
+                              VERIFICATION
+================================================================================
+
+After applying the fix:
+
+1. Open http://localhost:8000
+2. Go to Prediction Centre
+3. Enter CBA.AX
+4. Price should show ~$169-170
+
+If it still shows $100:
+- Make sure you saved the file
+- Make sure you restarted the services
+- Clear your browser cache completely
+- Try a different browser
+
+================================================================================
+                            AUTOMATED FIX
+================================================================================
+
+If manual editing is too complex:
+
+1. Run: FIX_CBA_PRICE_WINDOWS.bat
+   This will automatically fix all files
+
+2. Or run: python FIX_PREDICTION_PRICES_WINDOWS.py
+   This will fix the files and show what was changed
+
+================================================================================

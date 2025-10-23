@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Tracker Pro v8.0</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.98);
+            padding: 1.5rem 2rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        h1 {
+            font-size: 2rem;
+            color: #2d3748;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .version {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+        
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            border-radius: 8px;
+            color: #166534;
+            font-weight: 500;
+        }
+        
+        .pulse {
+            width: 10px;
+            height: 10px;
+            background: #22c55e;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+        
+        .quick-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-label {
+            color: #718096;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2d3748;
+        }
+        
+        .stat-change {
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+        
+        .positive {
+            color: #22c55e;
+        }
+        
+        .negative {
+            color: #ef4444;
+        }
+        
+        .modules-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        
+        .module-card {
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 1.5rem;
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .module-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+        
+        .module-card:hover {
+            border-color: #667eea;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.2);
+        }
+        
+        .module-icon {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+        
+        .module-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 0.5rem;
+        }
+        
+        .module-description {
+            color: #718096;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+        
+        .module-button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .module-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .search-section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            margin-bottom: 2rem;
+        }
+        
+        .search-box {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .search-input {
+            flex: 1;
+            padding: 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .search-button {
+            padding: 1rem 2rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .search-button:hover {
+            transform: scale(1.05);
+        }
+        
+        #searchResult {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            background: #f7fafc;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #718096;
+        }
+        
+        .footer {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            text-align: center;
+            color: #718096;
+            margin-top: 3rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>
+                📈 Stock Tracker Pro
+                <span class="version">v8.0</span>
+            </h1>
+            <div class="status">
+                <div class="pulse"></div>
+                <span>System Online</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="container">
+        <!-- Quick Stats -->
+        <div class="quick-stats" id="quickStats">
+            <div class="stat-card">
+                <div class="stat-label">S&P 500</div>
+                <div class="stat-value">Loading...</div>
+                <div class="stat-change">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">NASDAQ</div>
+                <div class="stat-value">Loading...</div>
+                <div class="stat-change">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">DOW JONES</div>
+                <div class="stat-value">Loading...</div>
+                <div class="stat-change">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">ASX All Ord</div>
+                <div class="stat-value">Loading...</div>
+                <div class="stat-change">-</div>
+            </div>
+        </div>
+        
+        <!-- Quick Stock Search -->
+        <div class="search-section">
+            <h2>🔍 Quick Stock Search</h2>
+            <div class="search-box">
+                <input type="text" id="stockSearch" class="search-input" placeholder="Enter stock symbol (e.g., CBA.AX, AAPL, MSFT)">
+                <button class="search-button" onclick="searchStock()">Search</button>
+            </div>
+            <div id="searchResult"></div>
+        </div>
+        
+        <!-- Modules -->
+        <div class="modules-section">
+            <h2>📊 Analysis Modules</h2>
+            <div class="modules-grid">
+                <div class="module-card" onclick="openModule('cba')" style="background: linear-gradient(135deg, rgba(255, 215, 0, 0.05), rgba(255, 183, 71, 0.05)); border-color: #ffd700;">
+                    <div class="module-icon">🏦</div>
+                    <div class="module-title">CBA Enhanced</div>
+                    <div class="module-description">Commonwealth Bank specialist analysis with news & reports</div>
+                    <button class="module-button">Open Module</button>
+                </div>
+                
+                <div class="module-card" onclick="openModule('technical')">
+                    <div class="module-icon">📈</div>
+                    <div class="module-title">Technical Analysis</div>
+                    <div class="module-description">Advanced charting with candlesticks, indicators, and patterns</div>
+                    <button class="module-button">Open Module</button>
+                </div>
+                
+                <div class="module-card" onclick="openModule('prediction')">
+                    <div class="module-icon">🤖</div>
+                    <div class="module-title">ML Predictions</div>
+                    <div class="module-description">AI predictions with integrated backtesting & training</div>
+                    <button class="module-button">Open Module</button>
+                </div>
+                
+                <div class="module-card" onclick="openModule('market')">
+                    <div class="module-icon">🌍</div>
+                    <div class="module-title">Market Tracker</div>
+                    <div class="module-description">Real-time ASX 20 stocks and market overview</div>
+                    <button class="module-button">Open Module</button>
+                </div>
+                
+                <div class="module-card" onclick="openModule('portfolio')">
+                    <div class="module-icon">💼</div>
+                    <div class="module-title">Portfolio Analysis</div>
+                    <div class="module-description">Track and analyze your investment portfolio</div>
+                    <button class="module-button">Open Module</button>
+                </div>
+                
+                <div class="module-card" onclick="openModule('scanner')">
+                    <div class="module-icon">🔍</div>
+                    <div class="module-title">Stock Scanner</div>
+                    <div class="module-description">Find trading opportunities with custom filters</div>
+                    <button class="module-button">Open Module</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>Stock Tracker Pro v8.0 - Real-time market data powered by Yahoo Finance</p>
+        <p style="margin-top: 0.5rem; font-size: 0.9rem;">© 2024 - Windows 11 Clean Install Edition</p>
+    </div>
+    
+    <script>
+        // Load market indices on startup
+        async function loadIndices() {
+            try {
+                const response = await fetch('/api/indices');
+                const data = await response.json();
+                
+                const cards = document.querySelectorAll('.stat-card');
+                const indexMap = {
+                    '^GSPC': 0,  // S&P 500
+                    '^IXIC': 1,  // NASDAQ
+                    '^DJI': 2,    // DOW
+                    '^AORD': 3   // ASX
+                };
+                
+                data.indices.forEach(index => {
+                    const cardIndex = indexMap[index.symbol];
+                    if (cardIndex !== undefined && cards[cardIndex]) {
+                        const card = cards[cardIndex];
+                        card.querySelector('.stat-value').textContent = index.value.toLocaleString();
+                        const changeEl = card.querySelector('.stat-change');
+                        const changeClass = index.change >= 0 ? 'positive' : 'negative';
+                        changeEl.className = `stat-change ${changeClass}`;
+                        changeEl.textContent = `${index.change >= 0 ? '+' : ''}${index.changePercent.toFixed(2)}%`;
+                    }
+                });
+            } catch (error) {
+                console.error('Failed to load indices:', error);
+            }
+        }
+        
+        // Search stock function
+        async function searchStock() {
+            const symbol = document.getElementById('stockSearch').value.trim();
+            if (!symbol) return;
+            
+            const resultDiv = document.getElementById('searchResult');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = '<div class="loading">Searching...</div>';
+            
+            try {
+                const response = await fetch(`/api/stock/${symbol}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    resultDiv.innerHTML = `<div style="color: #ef4444;">Error: ${data.error}</div>`;
+                } else {
+                    const changeClass = data.change >= 0 ? 'positive' : 'negative';
+                    resultDiv.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h3>${data.longName || data.symbol}</h3>
+                                <p style="color: #718096; margin-top: 0.5rem;">Symbol: ${data.symbol}</p>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 2rem; font-weight: bold;">$${data.price}</div>
+                                <div class="${changeClass}" style="font-size: 1rem;">
+                                    ${data.change >= 0 ? '+' : ''}${data.change} (${data.changePercent.toFixed(2)}%)
+                                </div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 1rem; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                            <div>
+                                <span style="color: #718096;">Day High:</span> $${data.dayHigh || 'N/A'}
+                            </div>
+                            <div>
+                                <span style="color: #718096;">Day Low:</span> $${data.dayLow || 'N/A'}
+                            </div>
+                            <div>
+                                <span style="color: #718096;">Volume:</span> ${data.volume ? data.volume.toLocaleString() : 'N/A'}
+                            </div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div style="color: #ef4444;">Failed to fetch stock data. Please ensure the backend is running.</div>`;
+            }
+        }
+        
+        // Open module function
+        function openModule(module) {
+            const modules = {
+                'cba': '/modules/cba_complete.html',
+                'technical': '/modules/technical_analysis.html',
+                'prediction': '/modules/prediction_centre.html',
+                'market': '/modules/market_tracker.html',
+                'portfolio': '/modules/portfolio.html',
+                'scanner': '/modules/scanner.html'
+            };
+            
+            // All modules are now accessible
+            if (modules[module]) {
+                window.location.href = modules[module];
+            } else {
+                alert(`Module ${module} not found!`);
+            }
+        }
+        
+        // Load data on page load
+        window.addEventListener('load', () => {
+            loadIndices();
+            // Refresh every 60 seconds
+            setInterval(loadIndices, 60000);
+        });
+        
+        // Allow Enter key for search
+        document.getElementById('stockSearch').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchStock();
+        });
+    </script>
+</body>
+</html>

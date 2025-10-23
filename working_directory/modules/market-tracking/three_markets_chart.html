@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three Markets Performance - Real Data Only</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #f7f9fc;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        h1 {
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+        
+        .time-display {
+            color: #718096;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .btn:hover {
+            background: #f7fafc;
+        }
+        
+        .btn.active {
+            background: #4299e1;
+            color: white;
+            border-color: #4299e1;
+        }
+        
+        .refresh-btn {
+            background: #48bb78;
+            color: white;
+            border-color: #48bb78;
+            margin-left: auto;
+        }
+        
+        .refresh-btn:hover {
+            background: #38a169;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 500px;
+            margin-bottom: 20px;
+        }
+        
+        .legend {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 3px;
+            border-radius: 2px;
+        }
+        
+        .status-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f7fafc;
+            border-radius: 8px;
+        }
+        
+        .status-item {
+            padding: 8px 12px;
+            background: white;
+            border-radius: 6px;
+            font-size: 13px;
+            border-left: 3px solid;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .status-open {
+            border-left-color: #48bb78;
+            color: #22543d;
+        }
+        
+        .status-closed {
+            border-left-color: #cbd5e0;
+            color: #718096;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+        
+        .error {
+            background: #fed7e7;
+            color: #c53030;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .current-values {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .value-card {
+            padding: 15px;
+            border-radius: 8px;
+            background: #f7fafc;
+            border-left: 4px solid;
+        }
+        
+        .value-card.asx {
+            border-left-color: #ff0000;
+        }
+        
+        .value-card.ftse {
+            border-left-color: #0000ff;
+        }
+        
+        .value-card.sp500 {
+            border-left-color: #800080;
+        }
+        
+        .value-label {
+            font-size: 12px;
+            color: #718096;
+            margin-bottom: 5px;
+        }
+        
+        .value-price {
+            font-size: 20px;
+            font-weight: bold;
+            color: #2d3748;
+        }
+        
+        .value-change {
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        
+        .positive {
+            color: #22543d;
+        }
+        
+        .negative {
+            color: #c53030;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Global Markets Performance - Three Markets View</h1>
+        <div class="time-display" id="currentTime"></div>
+        
+        <div class="status-bar" id="statusBar"></div>
+        
+        <div class="current-values" id="currentValues">
+            <div class="value-card asx">
+                <div class="value-label">ASX All Ordinaries (^AORD)</div>
+                <div class="value-price" id="asxPrice">--</div>
+                <div class="value-change" id="asxChange">--</div>
+            </div>
+            <div class="value-card ftse">
+                <div class="value-label">FTSE 100 (^FTSE)</div>
+                <div class="value-price" id="ftsePrice">--</div>
+                <div class="value-change" id="ftseChange">--</div>
+            </div>
+            <div class="value-card sp500">
+                <div class="value-label">S&P 500 (^GSPC)</div>
+                <div class="value-price" id="sp500Price">--</div>
+                <div class="value-change" id="sp500Change">--</div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn active" data-period="1d">1 Day</button>
+            <button class="btn" data-period="5d">5 Days</button>
+            <button class="btn" data-period="1mo">1 Month</button>
+            <button class="btn" data-period="3mo">3 Months</button>
+            <button class="btn" data-period="6mo">6 Months</button>
+            <button class="btn" data-period="1y">1 Year</button>
+            <button class="btn refresh-btn" onclick="loadAllMarkets()">↻ Refresh</button>
+        </div>
+        
+        <div class="chart-container">
+            <canvas id="marketsChart"></canvas>
+        </div>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background: #ff0000;"></div>
+                <span>ASX All Ordinaries</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #0000ff;"></div>
+                <span>FTSE 100</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background: #800080;"></div>
+                <span>S&P 500</span>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Configuration - REAL DATA ONLY, NO SYNTHETIC DATA
+        const API_BASE = 'http://localhost:8002'; // Hardcoded for Windows localhost
+        
+        // Three markets exactly as drawn
+        const MARKETS = {
+            asx: { symbol: '^AORD', name: 'ASX All Ordinaries', color: '#ff0000' }, // Red
+            ftse: { symbol: '^FTSE', name: 'FTSE 100', color: '#0000ff' }, // Blue
+            sp500: { symbol: '^GSPC', name: 'S&P 500', color: '#800080' } // Purple
+        };
+        
+        // Market hours in AEST
+        const MARKET_HOURS = {
+            'ASX': { open: '10:00', close: '16:00', name: 'Sydney (ASX)' },
+            'London': { open: '18:00', close: '02:30', name: 'London (FTSE)' },
+            'NY': { open: '00:30', close: '07:00', name: 'New York (S&P)' }
+        };
+        
+        let currentPeriod = '1d';
+        let chart = null;
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            updateTime();
+            updateMarketStatus();
+            setupEventListeners();
+            loadAllMarkets();
+            
+            // Update time every second
+            setInterval(updateTime, 1000);
+            
+            // Update market status every minute
+            setInterval(updateMarketStatus, 60000);
+            
+            // Auto-refresh every 30 seconds
+            setInterval(loadAllMarkets, 30000);
+        });
+        
+        function updateTime() {
+            const now = new Date();
+            const aestTime = now.toLocaleString('en-AU', { 
+                timeZone: 'Australia/Sydney',
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            document.getElementById('currentTime').textContent = aestTime + ' AEST';
+        }
+        
+        function updateMarketStatus() {
+            const now = new Date();
+            const aestNow = new Date(now.toLocaleString('en-US', { timeZone: 'Australia/Sydney' }));
+            const hours = aestNow.getHours();
+            const minutes = aestNow.getMinutes();
+            const currentTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            
+            const statusBar = document.getElementById('statusBar');
+            statusBar.innerHTML = Object.entries(MARKET_HOURS).map(([key, market]) => {
+                const isOpen = isMarketOpen(market.open, market.close, currentTime);
+                return `
+                    <div class="status-item ${isOpen ? 'status-open' : 'status-closed'}">
+                        <span>${market.name}</span>
+                        <span>${isOpen ? 'OPEN' : 'CLOSED'}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function isMarketOpen(open, close, current) {
+            const openTime = timeToMinutes(open);
+            const closeTime = timeToMinutes(close);
+            const currentMinutes = timeToMinutes(current);
+            
+            if (closeTime < openTime) {
+                // Market spans midnight
+                return currentMinutes >= openTime || currentMinutes < closeTime;
+            }
+            return currentMinutes >= openTime && currentMinutes < closeTime;
+        }
+        
+        function timeToMinutes(time) {
+            const [hours, minutes] = time.split(':').map(Number);
+            return hours * 60 + minutes;
+        }
+        
+        function setupEventListeners() {
+            document.querySelectorAll('.btn[data-period]').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.btn[data-period]').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    currentPeriod = e.target.dataset.period;
+                    loadAllMarkets();
+                });
+            });
+        }
+        
+        async function loadAllMarkets() {
+            try {
+                // Fetch real data for all three markets - NO SYNTHETIC DATA
+                const [asxData, ftseData, sp500Data] = await Promise.all([
+                    fetchMarketData(MARKETS.asx, currentPeriod),
+                    fetchMarketData(MARKETS.ftse, currentPeriod),
+                    fetchMarketData(MARKETS.sp500, currentPeriod)
+                ]);
+                
+                // Update current values
+                updateCurrentValues(asxData, ftseData, sp500Data);
+                
+                // Update chart with all three markets overlapped
+                updateChart(asxData, ftseData, sp500Data);
+                
+            } catch (error) {
+                console.error('Error loading markets:', error);
+                document.querySelector('.chart-container').innerHTML = 
+                    '<div class="error">Failed to load real market data. Backend must be running on port 8002.</div>';
+            }
+        }
+        
+        async function fetchMarketData(market, period) {
+            try {
+                // Fetch historical data - REAL DATA ONLY
+                const histResponse = await fetch(`${API_BASE}/api/historical/${market.symbol}?period=${period}`);
+                if (!histResponse.ok) {
+                    throw new Error(`Failed to fetch ${market.name} data`);
+                }
+                
+                const histData = await histResponse.json();
+                
+                // Fetch current quote - using correct endpoint /api/stock/
+                const quoteResponse = await fetch(`${API_BASE}/api/stock/${market.symbol}`);
+                const quoteData = quoteResponse.ok ? await quoteResponse.json() : null;
+                
+                return {
+                    market: market,
+                    historical: histData.data || histData, // Handle nested response format
+                    quote: quoteData
+                };
+                
+            } catch (error) {
+                console.error(`Error fetching ${market.name}:`, error);
+                throw error;
+            }
+        }
+        
+        function updateCurrentValues(asxData, ftseData, sp500Data) {
+            // Update ASX values
+            if (asxData.quote) {
+                const asxPrice = asxData.quote.price || asxData.quote.regularMarketPrice || 0;
+                const asxChange = asxData.quote.changePercent || asxData.quote.regularMarketChangePercent || 0;
+                document.getElementById('asxPrice').textContent = formatPrice(asxPrice);
+                const asxChangeEl = document.getElementById('asxChange');
+                asxChangeEl.textContent = `${asxChange >= 0 ? '+' : ''}${asxChange.toFixed(2)}%`;
+                asxChangeEl.className = `value-change ${asxChange >= 0 ? 'positive' : 'negative'}`;
+            }
+            
+            // Update FTSE values
+            if (ftseData.quote) {
+                const ftsePrice = ftseData.quote.price || ftseData.quote.regularMarketPrice || 0;
+                const ftseChange = ftseData.quote.changePercent || ftseData.quote.regularMarketChangePercent || 0;
+                document.getElementById('ftsePrice').textContent = formatPrice(ftsePrice);
+                const ftseChangeEl = document.getElementById('ftseChange');
+                ftseChangeEl.textContent = `${ftseChange >= 0 ? '+' : ''}${ftseChange.toFixed(2)}%`;
+                ftseChangeEl.className = `value-change ${ftseChange >= 0 ? 'positive' : 'negative'}`;
+            }
+            
+            // Update S&P 500 values
+            if (sp500Data.quote) {
+                const sp500Price = sp500Data.quote.price || sp500Data.quote.regularMarketPrice || 0;
+                const sp500Change = sp500Data.quote.changePercent || sp500Data.quote.regularMarketChangePercent || 0;
+                document.getElementById('sp500Price').textContent = formatPrice(sp500Price);
+                const sp500ChangeEl = document.getElementById('sp500Change');
+                sp500ChangeEl.textContent = `${sp500Change >= 0 ? '+' : ''}${sp500Change.toFixed(2)}%`;
+                sp500ChangeEl.className = `value-change ${sp500Change >= 0 ? 'positive' : 'negative'}`;
+            }
+        }
+        
+        function updateChart(asxData, ftseData, sp500Data) {
+            const ctx = document.getElementById('marketsChart').getContext('2d');
+            
+            // Process data for chart - calculate percentage change from first value
+            const asxPercentages = calculatePercentageChange(asxData.historical);
+            const ftsePercentages = calculatePercentageChange(ftseData.historical);
+            const sp500Percentages = calculatePercentageChange(sp500Data.historical);
+            
+            // Get time labels (use ASX timestamps as reference, convert to AEST)
+            const labels = asxData.historical.map(point => {
+                const date = new Date(point.Datetime || point.Date);
+                // For intraday, show time in AEST
+                if (currentPeriod === '1d' || currentPeriod === '5d') {
+                    return date.toLocaleTimeString('en-AU', {
+                        timeZone: 'Australia/Sydney',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: false
+                    });
+                } else {
+                    // For longer periods, show date
+                    return date.toLocaleDateString('en-AU', {
+                        timeZone: 'Australia/Sydney',
+                        month: 'short',
+                        day: 'numeric'
+                    });
+                }
+            });
+            
+            // Create or update chart
+            if (chart) {
+                chart.destroy();
+            }
+            
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'ASX All Ordinaries',
+                            data: asxPercentages,
+                            borderColor: '#ff0000',
+                            backgroundColor: 'rgba(255, 0, 0, 0.1)',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.1,
+                            fill: false
+                        },
+                        {
+                            label: 'FTSE 100',
+                            data: ftsePercentages,
+                            borderColor: '#0000ff',
+                            backgroundColor: 'rgba(0, 0, 255, 0.1)',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.1,
+                            fill: false
+                        },
+                        {
+                            label: 'S&P 500',
+                            data: sp500Percentages,
+                            borderColor: '#800080',
+                            backgroundColor: 'rgba(128, 0, 128, 0.1)',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.1,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: false // We have custom legend
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + 
+                                           (context.parsed.y >= 0 ? '+' : '') + 
+                                           context.parsed.y.toFixed(2) + '%';
+                                }
+                            }
+                        },
+                        annotation: {
+                            annotations: getMarketZoneAnnotations()
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                maxTicksLimit: 10,
+                                autoSkip: true
+                            }
+                        },
+                        y: {
+                            display: true,
+                            position: 'left',
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return (value >= 0 ? '+' : '') + value.toFixed(1) + '%';
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Performance (%)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function calculatePercentageChange(data) {
+            if (!data || data.length === 0) return [];
+            
+            const firstClose = data[0].Close;
+            return data.map(point => {
+                const change = ((point.Close - firstClose) / firstClose) * 100;
+                return change;
+            });
+        }
+        
+        function getMarketZoneAnnotations() {
+            // Only show zones for intraday view
+            if (currentPeriod !== '1d' && currentPeriod !== '5d') {
+                return {};
+            }
+            
+            return {
+                asxZone: {
+                    type: 'box',
+                    xMin: '10:00',
+                    xMax: '16:00',
+                    backgroundColor: 'rgba(255, 0, 0, 0.05)',
+                    borderColor: 'rgba(255, 0, 0, 0.2)',
+                    borderWidth: 1,
+                    label: {
+                        content: 'ASX Hours',
+                        enabled: true,
+                        position: 'start'
+                    }
+                },
+                londonZone: {
+                    type: 'box',
+                    xMin: '18:00',
+                    xMax: '23:59',
+                    backgroundColor: 'rgba(0, 0, 255, 0.05)',
+                    borderColor: 'rgba(0, 0, 255, 0.2)',
+                    borderWidth: 1,
+                    label: {
+                        content: 'London Hours',
+                        enabled: true,
+                        position: 'start'
+                    }
+                },
+                nyZone: {
+                    type: 'box',
+                    xMin: '00:30',
+                    xMax: '07:00',
+                    backgroundColor: 'rgba(128, 0, 128, 0.05)',
+                    borderColor: 'rgba(128, 0, 128, 0.2)',
+                    borderWidth: 1,
+                    label: {
+                        content: 'NY Hours',
+                        enabled: true,
+                        position: 'start'
+                    }
+                }
+            };
+        }
+        
+        function formatPrice(price) {
+            if (price > 10000) {
+                return price.toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            } else if (price > 100) {
+                return price.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            } else {
+                return price.toFixed(2);
+            }
+        }
+    </script>
+</body>
+</html>

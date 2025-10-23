@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Complete Endpoint Tester</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #0f0;
+            padding: 20px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #0f0;
+            background: #000;
+        }
+        .success { color: #0f0; }
+        .fail { color: #f00; }
+        .warning { color: #ff0; }
+        button {
+            background: #0f0;
+            color: #000;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-weight: bold;
+        }
+        button:hover { background: #0a0; }
+    </style>
+</head>
+<body>
+    <h1>Stock Tracker Complete Endpoint Tester</h1>
+    
+    <div>
+        <button onclick="testBackendEndpoints()">Test Backend API (8002)</button>
+        <button onclick="testMLEndpoints()">Test ML Backend (8003)</button>
+        <button onclick="testHistoricalEndpoints()">Test Historical Data</button>
+        <button onclick="testPredictionEndpoints()">Test Predictions</button>
+        <button onclick="clearResults()">Clear Results</button>
+    </div>
+    
+    <div id="results"></div>
+
+    <script>
+        const BACKEND_API = 'http://localhost:8002';
+        const ML_API = 'http://localhost:8003';
+        
+        function log(message, type = 'info') {
+            const resultsDiv = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            resultsDiv.appendChild(div);
+        }
+        
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+        
+        async function testEndpoint(url, method = 'GET', body = null) {
+            try {
+                const options = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                };
+                
+                if (body) {
+                    options.body = JSON.stringify(body);
+                }
+                
+                const response = await fetch(url, options);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log(`✓ ${method} ${url} - Status: ${response.status}`, 'success');
+                    console.log('Response:', data);
+                    return { success: true, data };
+                } else {
+                    log(`✗ ${method} ${url} - Status: ${response.status} - ${JSON.stringify(data)}`, 'fail');
+                    return { success: false, error: data };
+                }
+            } catch (error) {
+                log(`✗ ${method} ${url} - Error: ${error.message}`, 'fail');
+                return { success: false, error: error.message };
+            }
+        }
+        
+        async function testBackendEndpoints() {
+            log('=== Testing Backend API (Port 8002) ===', 'warning');
+            
+            // Basic endpoints
+            await testEndpoint(`${BACKEND_API}/api/health`);
+            await testEndpoint(`${BACKEND_API}/api/market-summary`);
+            await testEndpoint(`${BACKEND_API}/api/stocks/CBA.AX`);
+            await testEndpoint(`${BACKEND_API}/api/stocks/AAPL`);
+            await testEndpoint(`${BACKEND_API}/api/search?q=CBA`);
+            
+            // Test prediction endpoint
+            await testEndpoint(`${BACKEND_API}/api/predict/CBA.AX`, 'POST', {
+                days: 7,
+                model_type: 'ensemble'
+            });
+        }
+        
+        async function testMLEndpoints() {
+            log('=== Testing ML Backend (Port 8003) ===', 'warning');
+            
+            await testEndpoint(`${ML_API}/health`);
+            await testEndpoint(`${ML_API}/api/ml/models`);
+            await testEndpoint(`${ML_API}/api/ml/predict`, 'POST', {
+                symbol: 'CBA.AX',
+                timeframe: '5d',
+                models: ['lstm', 'xgboost']
+            });
+            await testEndpoint(`${ML_API}/api/ml/backtest`, 'POST', {
+                symbol: 'CBA.AX',
+                period: '30d',
+                models: ['lstm']
+            });
+            await testEndpoint(`${ML_API}/api/ml/train`, 'POST', {
+                symbol: 'CBA.AX',
+                model_type: 'lstm',
+                epochs: 10
+            });
+        }
+        
+        async function testHistoricalEndpoints() {
+            log('=== Testing Historical Data Endpoints ===', 'warning');
+            
+            // Test all historical endpoints
+            await testEndpoint(`${BACKEND_API}/api/historical/statistics`);
+            await testEndpoint(`${BACKEND_API}/api/historical/CBA.AX`);
+            
+            // Test batch download
+            await testEndpoint(`${BACKEND_API}/api/historical/batch-download`, 'POST', {
+                symbols: ['CBA.AX', 'BHP.AX'],
+                period: '1mo',
+                interval: '1d'
+            });
+            
+            // Test single download
+            await testEndpoint(`${BACKEND_API}/api/historical/download`, 'POST', {
+                symbol: 'CBA.AX',
+                period: '1mo',
+                interval: '1d'
+            });
+            
+            // Test best models
+            await testEndpoint(`${BACKEND_API}/api/historical/best-models/CBA.AX`);
+        }
+        
+        async function testPredictionEndpoints() {
+            log('=== Testing Prediction Centre Endpoints ===', 'warning');
+            
+            // Test backend prediction
+            const backendPred = await testEndpoint(`${BACKEND_API}/api/predict/CBA.AX`, 'POST', {
+                days: 30,
+                model_type: 'ensemble'
+            });
+            
+            if (backendPred.success) {
+                log(`Backend prediction returned ${backendPred.data.predictions?.length || 0} predictions`, 'success');
+            }
+            
+            // Test ML backend prediction if available
+            const mlPred = await testEndpoint(`${ML_API}/api/ml/predict`, 'POST', {
+                symbol: 'CBA.AX',
+                timeframe: '30d',
+                models: ['lstm', 'xgboost', 'ensemble']
+            });
+            
+            if (mlPred.success) {
+                log(`ML prediction returned data for ${Object.keys(mlPred.data).length} models`, 'success');
+            }
+        }
+        
+        // Auto-test on load
+        window.addEventListener('load', async () => {
+            log('Page loaded. Click buttons to test specific endpoint groups.', 'warning');
+            log('Testing basic connectivity...', 'info');
+            
+            // Quick connectivity test
+            const backendHealth = await testEndpoint(`${BACKEND_API}/api/health`);
+            const mlHealth = await testEndpoint(`${ML_API}/health`);
+            
+            if (!backendHealth.success) {
+                log('⚠️ Backend API is not responding on port 8002!', 'fail');
+            }
+            
+            if (!mlHealth.success) {
+                log('⚠️ ML Backend is not responding on port 8003!', 'fail');
+                log('ML Training Centre will not work without ML Backend!', 'warning');
+            }
+        });
+    </script>
+</body>
+</html>

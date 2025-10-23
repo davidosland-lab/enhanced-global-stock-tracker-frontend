@@ -1,0 +1,50 @@
+============================================================
+BACKEND CHANGES THAT CAUSED THE ISSUES
+============================================================
+
+During the ML dropdown prediction fix commit, the backend.py file was 
+unintentionally modified in ways that broke multiple frontend modules.
+
+KEY CHANGES THAT BROKE THINGS:
+-------------------------------
+
+1. REMOVED DEFAULT VALUES FOR MARKET DATA
+   Before (WORKING):
+   - "volume": info.get('volume', 0),
+   - "marketCap": info.get('marketCap', 0),
+   - "dayHigh": info.get('dayHigh', 0),
+   
+   After (BROKEN):
+   - "volume": info.get('volume'),
+   - "marketCap": info.get('marketCap'),  
+   - "dayHigh": info.get('dayHigh'),
+   
+   Impact: When data was missing, backend returned null instead of 0,
+           causing frontend parsing errors and 404 responses.
+
+2. ADDED DUPLICATE HEALTH ENDPOINT
+   A new /api/health endpoint was added, though one might have already existed.
+
+3. ADDED NEW ENDPOINT
+   Added /api/historical/symbols endpoint (this was actually helpful)
+
+FILES THAT WERE ALSO ADDED DURING ML FIX:
+------------------------------------------
+- ml_backend_complete.py (new file)
+- ml_backend_true.py (new file) 
+- ml_backend_v2.py (new file)
+- Multiple test and fix scripts
+
+The main issue was that these new ML backend files may have had
+different configurations or dependencies than the original working
+ml_backend_working.py file.
+
+TO FIX:
+-------
+1. Run RESTORE_TO_WORKING_STATE.bat to revert backend.py
+2. This restores all the default values (0) for missing data
+3. Uses the original ml_backend_working.py if available
+
+The ML Training Centre dropdown fix itself (in ml_training_centre.html)
+is fine and doesn't need to be reverted - only the backend.py changes
+were problematic.

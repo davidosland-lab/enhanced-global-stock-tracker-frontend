@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Indices Tracker</title>
+    <script src="/config.js?v=20250125-render"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background: #d4edda; }
+        .error { background: #f8d7da; }
+        pre { background: #f5f5f5; padding: 10px; overflow: auto; }
+    </style>
+</head>
+<body>
+    <h1>Debug Indices Tracker</h1>
+    <button onclick="runTests()">Run Tests</button>
+    <div id="results"></div>
+    
+    <script>
+        async function runTests() {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '';
+            
+            // Test 1: Check CONFIG
+            addResult('Test 1: CONFIG Check', 
+                window.CONFIG ? 
+                `✅ CONFIG exists. BACKEND_URL: ${window.CONFIG.BACKEND_URL}` : 
+                '❌ CONFIG not found',
+                window.CONFIG ? 'success' : 'error'
+            );
+            
+            // Test 2: Direct fetch
+            try {
+                const BACKEND_URL = window.CONFIG?.BACKEND_URL || 'https://enhanced-global-stock-tracker-frontend.onrender.com';
+                addResult('Test 2: Using Backend URL', BACKEND_URL, 'info');
+                
+                const response = await fetch(`${BACKEND_URL}/api/stock/^FTSE?period=5d&interval=5m`);
+                addResult('Test 3: Fetch Response', 
+                    `Status: ${response.status}, OK: ${response.ok}`,
+                    response.ok ? 'success' : 'error'
+                );
+                
+                const result = await response.json();
+                addResult('Test 4: Response Structure', 
+                    `<pre>${JSON.stringify(Object.keys(result), null, 2)}</pre>`,
+                    'info'
+                );
+                
+                addResult('Test 5: Data Check', 
+                    `Has 'data' field: ${result.data !== undefined}\n` +
+                    `Is array: ${Array.isArray(result.data)}\n` +
+                    `Length: ${result.data ? result.data.length : 'N/A'}`,
+                    result.data && result.data.length > 0 ? 'success' : 'error'
+                );
+                
+                // Test the exact condition from indices_ver_105.html
+                if (result.data && result.data.length > 0) {
+                    addResult('Test 6: Condition Check', 
+                        '✅ Passes: if (result.data && result.data.length > 0)',
+                        'success'
+                    );
+                    addResult('Test 7: First Data Point', 
+                        `<pre>${JSON.stringify(result.data[0], null, 2)}</pre>`,
+                        'info'
+                    );
+                } else {
+                    addResult('Test 6: Condition Check', 
+                        '❌ FAILS: if (result.data && result.data.length > 0)',
+                        'error'
+                    );
+                    addResult('Debug Info', 
+                        `<pre>Full result:\n${JSON.stringify(result, null, 2).substring(0, 1000)}...</pre>`,
+                        'error'
+                    );
+                }
+                
+            } catch (error) {
+                addResult('Fetch Error', error.toString(), 'error');
+                console.error(error);
+            }
+        }
+        
+        function addResult(title, content, className) {
+            const resultsDiv = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `test ${className}`;
+            div.innerHTML = `<strong>${title}</strong><br>${content}`;
+            resultsDiv.appendChild(div);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GSMT v9.3 - Critical Fix Applied</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { 
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+        }
+        .card {
+            background: rgba(30, 41, 59, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+    </style>
+</head>
+<body class="text-gray-100 flex items-center justify-center min-h-screen p-4">
+    <div class="max-w-4xl w-full">
+        <div class="card rounded-xl p-8 mb-6">
+            <h1 class="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent mb-6">
+                Global Stock Market Tracker v9.3
+            </h1>
+            
+            <div class="bg-green-900/50 border border-green-500 rounded-lg p-4 mb-6">
+                <h2 class="text-xl font-semibold text-green-400 mb-2">✅ Critical Fix Applied</h2>
+                <p class="text-green-300">S&P 500 now correctly displays at 00:30-07:00 AEST (BEFORE ASX opens)</p>
+            </div>
+            
+            <div class="space-y-4 mb-6">
+                <h3 class="text-xl font-semibold text-blue-400">What's Fixed:</h3>
+                <ul class="list-disc list-inside space-y-2 text-gray-300">
+                    <li><strong>Market Timing:</strong> US markets show overnight (00:30-07:00) before ASX</li>
+                    <li><strong>All Ordinaries:</strong> ^AORD index included and working</li>
+                    <li><strong>Market Selection:</strong> Persistent selection that survives refresh</li>
+                    <li><strong>Module Links:</strong> All dashboard modules properly linked</li>
+                    <li><strong>AEST Timezone:</strong> Proper timezone handling throughout</li>
+                    <li><strong>Real Data:</strong> 100% Yahoo Finance data, no synthetic data</li>
+                </ul>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <a href="/dashboard_fixed.html" class="block bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg text-center transition-colors">
+                    📊 Open Dashboard
+                </a>
+                <a href="/indices_tracker_chronological.html" class="block bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg text-center transition-colors">
+                    📈 Direct to Tracker
+                </a>
+            </div>
+            
+            <div class="text-sm text-gray-400 text-center">
+                Choose Dashboard for all modules or go directly to the enhanced tracker
+            </div>
+        </div>
+        
+        <div class="card rounded-xl p-6">
+            <h3 class="text-lg font-semibold mb-3">Available Modules:</h3>
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
+                <div class="bg-slate-800 rounded p-3">
+                    <a href="/indices_tracker_chronological.html" class="text-blue-400 hover:text-blue-300">
+                        Global Indices Tracker
+                    </a>
+                </div>
+                <div class="bg-slate-800 rounded p-3">
+                    <a href="/cba_tracker.html" class="text-purple-400 hover:text-purple-300">
+                        CBA Analysis
+                    </a>
+                </div>
+                <div class="bg-slate-800 rounded p-3">
+                    <a href="/technical_analysis.html" class="text-green-400 hover:text-green-300">
+                        Technical Analysis
+                    </a>
+                </div>
+                <div class="bg-slate-800 rounded p-3">
+                    <a href="/prediction_performance.html" class="text-red-400 hover:text-red-300">
+                        ML Predictions
+                    </a>
+                </div>
+                <div class="bg-slate-800 rounded p-3">
+                    <a href="/document_center.html" class="text-yellow-400 hover:text-yellow-300">
+                        Document Center
+                    </a>
+                </div>
+                <div class="bg-slate-800 rounded p-3">
+                    <a href="/dashboard_fixed.html" class="text-indigo-400 hover:text-indigo-300">
+                        Main Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="mt-6 text-center text-gray-500 text-sm">
+            <p>Backend API: Port 8000 | Frontend: Port 3001 | Data: Yahoo Finance</p>
+            <p class="mt-2" id="time-display"></p>
+        </div>
+    </div>
+    
+    <script>
+        function updateTime() {
+            const now = new Date();
+            const aest = now.toLocaleString('en-AU', {
+                timeZone: 'Australia/Sydney',
+                weekday: 'short',
+                day: 'numeric',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            document.getElementById('time-display').textContent = `Current Time: ${aest} AEST`;
+        }
+        
+        updateTime();
+        setInterval(updateTime, 1000);
+        
+        // Check backend status
+        fetch('http://localhost:8000/')
+            .then(response => {
+                if (response.ok) {
+                    console.log('✅ Backend API is running');
+                }
+            })
+            .catch(error => {
+                console.warn('⚠️ Backend may not be running. Start with START_GSMT.bat');
+            });
+    </script>
+</body>
+</html>

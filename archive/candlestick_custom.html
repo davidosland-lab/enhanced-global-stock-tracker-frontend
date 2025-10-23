@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom Candlestick Implementation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .chart-container {
+            position: relative;
+            height: 500px;
+            width: 100%;
+            max-width: 1200px;
+            margin: 20px auto;
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        #status {
+            margin: 20px 0;
+            padding: 10px;
+            background: #333;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Custom Candlestick Chart (Without Plugin)</h1>
+    <div>
+        <button onclick="loadRealData()">Load AAPL Data</button>
+        <button onclick="loadTestData()">Load Test Data</button>
+    </div>
+    <div id="status">Status: Ready</div>
+    <div class="chart-container">
+        <canvas id="candlestickChart"></canvas>
+    </div>
+
+    <!-- Only Chart.js core -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+
+    <script>
+        let chart = null;
+        const API_BASE = 'https://8000-i2ch499gc6d7qpm0yvxy4-6532622b.e2b.dev';
+
+        function updateStatus(msg) {
+            document.getElementById('status').innerHTML = `Status: ${msg}`;
+            console.log(msg);
+        }
+
+        // Custom candlestick implementation using bar chart
+        function createCandlestickChart(data) {
+            if (chart) {
+                chart.destroy();
+                chart = null;
+            }
+
+            const ctx = document.getElementById('candlestickChart').getContext('2d');
+            
+            // Prepare data for custom candlestick visualization
+            const labels = [];
+            const bodies = [];  // For candlestick bodies (open-close)
+            const wicks = [];   // For candlestick wicks (high-low)
+            const colors = [];
+            const lineData = []; // Close prices as line
+            
+            data.forEach((candle, index) => {
+                const date = candle.timestamp ? new Date(candle.timestamp).toLocaleDateString() : `Day ${index + 1}`;
+                labels.push(date);
+                
+                // Body: difference between open and close
+                bodies.push([Math.min(candle.open, candle.close), Math.max(candle.open, candle.close)]);
+                
+                // Wick: from low to high
+                wicks.push([candle.low, candle.high]);
+                
+                // Color based on price movement
+                colors.push(candle.close >= candle.open ? 'rgba(16, 185, 129, 0.8)' : 'rgba(239, 68, 68, 0.8)');
+                
+                // Line data (close prices)
+                lineData.push(candle.close);
+            });
+
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Wick',
+                            data: wicks,
+                            backgroundColor: 'rgba(150, 150, 150, 0.3)',
+                            borderColor: 'rgba(150, 150, 150, 0.8)',
+                            borderWidth: 1,
+                            barThickness: 2,
+                            order: 2
+                        },
+                        {
+                            label: 'Body',
+                            data: bodies,
+                            backgroundColor: colors,
+                            borderColor: colors.map(c => c.replace('0.8', '1')),
+                            borderWidth: 1,
+                            barThickness: 15,
+                            order: 1
+                        },
+                        {
+                            label: 'Close Price',
+                            data: lineData,
+                            type: 'line',
+                            borderColor: 'rgba(59, 130, 246, 0.8)',
+                            borderWidth: 2,
+                            fill: false,
+                            pointRadius: 0,
+                            tension: 0.1,
+                            order: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                color: '#ccc',
+                                filter: function(item) {
+                                    return item.text === 'Close Price';
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                afterTitle: function(context) {
+                                    const index = context[0].dataIndex;
+                                    if (index < data.length) {
+                                        const candle = data[index];
+                                        return [
+                                            `Open: $${candle.open.toFixed(2)}`,
+                                            `High: $${candle.high.toFixed(2)}`,
+                                            `Low: $${candle.low.toFixed(2)}`,
+                                            `Close: $${candle.close.toFixed(2)}`,
+                                            candle.volume ? `Volume: ${(candle.volume/1000000).toFixed(2)}M` : ''
+                                        ].filter(Boolean);
+                                    }
+                                    return [];
+                                },
+                                label: function() {
+                                    return null; // Hide default label
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: '#ccc',
+                                maxRotation: 45,
+                                minRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 15
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        },
+                        y: {
+                            position: 'right',
+                            ticks: {
+                                color: '#ccc',
+                                callback: function(value) {
+                                    return '$' + value.toFixed(0);
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            updateStatus(`Chart created with ${data.length} candlesticks`);
+        }
+
+        function loadTestData() {
+            const testData = [
+                {timestamp: '2024-01-01', open: 100, high: 105, low: 98, close: 103, volume: 1000000},
+                {timestamp: '2024-01-02', open: 103, high: 108, low: 102, close: 107, volume: 1200000},
+                {timestamp: '2024-01-03', open: 107, high: 110, low: 105, close: 106, volume: 900000},
+                {timestamp: '2024-01-04', open: 106, high: 108, low: 104, close: 108, volume: 1100000},
+                {timestamp: '2024-01-05', open: 108, high: 112, low: 107, close: 111, volume: 1300000},
+                {timestamp: '2024-01-06', open: 111, high: 113, low: 109, close: 110, volume: 1000000},
+                {timestamp: '2024-01-07', open: 110, high: 111, low: 107, close: 108, volume: 1150000}
+            ];
+            
+            updateStatus('Loading test data...');
+            createCandlestickChart(testData);
+        }
+
+        async function loadRealData() {
+            updateStatus('Fetching real AAPL data...');
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/technical/candlestick-data/AAPL?period=1mo&interval=1d`);
+                const result = await response.json();
+                
+                if (!result.success || !result.data || result.data.length === 0) {
+                    throw new Error('No data received from API');
+                }
+                
+                updateStatus(`Received ${result.data.length} data points`);
+                createCandlestickChart(result.data);
+                
+            } catch (error) {
+                updateStatus('Error: ' + error.message);
+                console.error('Full error:', error);
+            }
+        }
+
+        // Load test data on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log('Chart.js version:', Chart.version);
+            loadTestData();
+        });
+    </script>
+</body>
+</html>

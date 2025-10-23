@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML Integration Examples - Safe Module Enhancement</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+        
+        .integration-card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .module-name {
+            font-size: 20px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .status-badge.safe {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status-badge.optional {
+            background: #cce5ff;
+            color: #004085;
+        }
+        
+        .note {
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+            padding: 12px;
+            border-radius: 6px;
+            margin: 15px 0;
+        }
+        
+        .button {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        .button:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🔗 ML Integration Examples</h1>
+        <p>Safe integration code that can be added to modules WITHOUT breaking existing functionality</p>
+    </div>
+    
+    <div class="integration-card">
+        <div class="module-name">
+            📄 Document Analyzer Integration
+            <span class="status-badge safe">SAFE</span>
+            <span class="status-badge optional">OPTIONAL</span>
+        </div>
+        <p>Add this to document_analyzer.html after line 425 (before the main script):</p>
+        <div class="code-block">
+&lt;!-- ML Integration (Optional) --&gt;
+&lt;meta name="module-name" content="document_analyzer"&gt;
+&lt;script src="ml_integration_client.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+// Safe integration - won't break if ML bridge is unavailable
+document.addEventListener('DOMContentLoaded', function() {
+    // Original analyzeDocument function continues to work
+    const originalAnalyze = window.analyzeDocument;
+    
+    window.analyzeDocument = async function() {
+        // Call original function
+        const result = await originalAnalyze.apply(this, arguments);
+        
+        // Try to enhance with ML if available
+        if (window.mlIntegration && window.mlIntegration.enabled) {
+            try {
+                const sentimentData = {
+                    symbol: document.getElementById('stockSymbol').value,
+                    sentimentScore: result?.sentiment?.score || 0,
+                    confidence: result?.sentiment?.confidence || 0.5,
+                    keyPhrases: result?.keyPhrases || [],
+                    text: document.getElementById('textInput').value
+                };
+                
+                const mlResponse = await window.mlIntegration.sendDocumentSentiment(sentimentData);
+                
+                // Add ML insights to UI if available
+                if (mlResponse && mlResponse.ml_insights) {
+                    const mlBadge = document.createElement('div');
+                    mlBadge.className = 'ml-insight';
+                    mlBadge.innerHTML = `
+                        &lt;div style="background: linear-gradient(135deg, #667eea, #764ba2); 
+                                    color: white; padding: 10px; border-radius: 6px; 
+                                    margin-top: 10px;"&gt;
+                            🤖 ML Insight: ${mlResponse.recommendation.action} 
+                            (Confidence: ${(mlResponse.recommendation.confidence * 100).toFixed(0)}%)
+                        &lt;/div&gt;
+                    `;
+                    document.getElementById('resultsContainer').appendChild(mlBadge);
+                }
+            } catch (error) {
+                console.log('ML enhancement not available:', error);
+                // Silent fail - doesn't break functionality
+            }
+        }
+        
+        return result;
+    };
+});
+&lt;/script&gt;</div>
+    </div>
+    
+    <div class="integration-card">
+        <div class="module-name">
+            📊 Historical Data Analysis Integration
+            <span class="status-badge safe">SAFE</span>
+            <span class="status-badge optional">OPTIONAL</span>
+        </div>
+        <p>Add this to historical_data_analysis.html to share discovered patterns:</p>
+        <div class="code-block">
+&lt;!-- ML Integration (Optional) --&gt;
+&lt;meta name="module-name" content="historical_analysis"&gt;
+&lt;script src="ml_integration_client.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+// Enhance pattern detection with ML
+function enhancePatternDetection(patterns) {
+    if (!window.mlIntegration || !window.mlIntegration.enabled) {
+        return patterns; // Return unmodified if ML not available
+    }
+    
+    patterns.forEach(async (pattern) => {
+        try {
+            const mlResponse = await window.mlIntegration.sendHistoricalPattern({
+                symbol: pattern.symbol,
+                patternType: pattern.type,
+                patternData: pattern.data,
+                timePeriod: pattern.period,
+                confidence: pattern.confidence
+            });
+            
+            if (mlResponse && mlResponse.enhanced_pattern) {
+                // Add ML validation badge
+                pattern.mlValidated = true;
+                pattern.mlConfidence = mlResponse.ml_validation?.confidence || 0;
+            }
+        } catch (error) {
+            // Silent fail - pattern still works without ML
+        }
+    });
+    
+    return patterns;
+}
+&lt;/script&gt;</div>
+    </div>
+    
+    <div class="integration-card">
+        <div class="module-name">
+            📈 Market Movers Integration
+            <span class="status-badge safe">SAFE</span>
+            <span class="status-badge optional">OPTIONAL</span>
+        </div>
+        <p>Add this to market_movers.html to share significant movements:</p>
+        <div class="code-block">
+&lt;!-- ML Integration (Optional) --&gt;
+&lt;meta name="module-name" content="market_movers"&gt;
+&lt;script src="ml_integration_client.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+// Share significant movements with ML
+async function shareMarketMovement(mover) {
+    if (!window.mlIntegration || !window.mlIntegration.enabled) return;
+    
+    try {
+        const mlResponse = await window.mlIntegration.sendMarketMovement({
+            symbol: mover.symbol,
+            changePercent: mover.changePercent,
+            volumeSpike: mover.volume / mover.avgVolume,
+            sector: mover.sector
+        });
+        
+        if (mlResponse && mlResponse.ml_prediction) {
+            // Add prediction indicator to mover card
+            const card = document.querySelector(`[data-symbol="${mover.symbol}"]`);
+            if (card && !card.querySelector('.ml-prediction')) {
+                const pred = document.createElement('span');
+                pred.className = 'ml-prediction';
+                pred.style.cssText = 'float: right; font-size: 12px; color: #667eea;';
+                pred.textContent = `ML: ${mlResponse.suggested_action.action}`;
+                card.appendChild(pred);
+            }
+        }
+    } catch (error) {
+        // Silent fail - market movers still display
+    }
+}
+&lt;/script&gt;</div>
+    </div>
+    
+    <div class="integration-card">
+        <div class="module-name">
+            📉 Technical Analysis Integration
+            <span class="status-badge safe">SAFE</span>
+            <span class="status-badge optional">OPTIONAL</span>
+        </div>
+        <p>Add this to technical analysis modules to share indicators:</p>
+        <div class="code-block">
+&lt;!-- ML Integration (Optional) --&gt;
+&lt;meta name="module-name" content="technical_analysis"&gt;
+&lt;script src="ml_integration_client.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+// Share technical signals with ML
+async function shareTechnicalSignals(data) {
+    if (!window.mlIntegration || !window.mlIntegration.enabled) return;
+    
+    try {
+        const mlResponse = await window.mlIntegration.sendTechnicalIndicators({
+            symbol: data.symbol,
+            indicators: {
+                rsi: data.rsi,
+                macd: data.macd,
+                bb_upper: data.bollingerUpper,
+                bb_lower: data.bollingerLower,
+                ema20: data.ema20,
+                ema50: data.ema50
+            },
+            signals: data.signals || [],
+            trend: data.trend
+        });
+        
+        if (mlResponse && mlResponse.combined_signal) {
+            // Display combined signal
+            console.log('ML Enhanced Signal:', mlResponse.combined_signal);
+            // Add to UI without breaking existing display
+        }
+    } catch (error) {
+        // Silent fail
+    }
+}
+&lt;/script&gt;</div>
+    </div>
+    
+    <div class="note">
+        <strong>⚠️ Important Notes:</strong>
+        <ul>
+            <li>All integrations are OPTIONAL - modules work normally without them</li>
+            <li>ML Integration Bridge must be running on port 8004 for enhanced features</li>
+            <li>If bridge is unavailable, modules fall back to standard functionality</li>
+            <li>No existing code is modified - only additions</li>
+            <li>Silent failures ensure no breaking of existing features</li>
+        </ul>
+    </div>
+    
+    <div class="integration-card">
+        <div class="module-name">
+            🚀 Starting the Integration Bridge
+        </div>
+        <p>To enable ML integration features, start the bridge service:</p>
+        <div class="code-block">
+# Start the integration bridge (port 8004)
+python integration_bridge.py
+
+# The bridge will:
+# - Listen for events from modules
+# - Forward learning to ML backend (8003)
+# - Store patterns in shared database
+# - Provide ML insights back to modules</div>
+        
+        <button class="button" onclick="checkBridgeStatus()">Check Bridge Status</button>
+        <button class="button" onclick="testIntegration()">Test Integration</button>
+        
+        <div id="statusDisplay"></div>
+    </div>
+    
+    <script>
+        async function checkBridgeStatus() {
+            const display = document.getElementById('statusDisplay');
+            try {
+                const response = await fetch('http://localhost:8004/api/bridge/status');
+                if (response.ok) {
+                    const status = await response.json();
+                    display.innerHTML = `
+                        <div style="background: #d4edda; padding: 15px; border-radius: 6px; margin-top: 15px;">
+                            <strong>✅ Bridge Active</strong><br>
+                            Events Pending: ${status.events_pending}<br>
+                            Patterns Discovered: ${status.patterns_discovered}<br>
+                            Modules Connected: ${status.modules_connected.join(', ') || 'None yet'}
+                        </div>
+                    `;
+                } else {
+                    throw new Error('Bridge not responding');
+                }
+            } catch (error) {
+                display.innerHTML = `
+                    <div style="background: #f8d7da; padding: 15px; border-radius: 6px; margin-top: 15px;">
+                        <strong>❌ Bridge Not Available</strong><br>
+                        Start the bridge with: python integration_bridge.py
+                    </div>
+                `;
+            }
+        }
+        
+        async function testIntegration() {
+            const display = document.getElementById('statusDisplay');
+            try {
+                // Create test ML client
+                const testClient = new MLIntegrationClient('test_module');
+                
+                // Test sending data
+                const result = await testClient.sendDocumentSentiment({
+                    symbol: 'TEST',
+                    sentimentScore: 0.75,
+                    confidence: 0.8,
+                    keyPhrases: ['positive', 'growth', 'strong'],
+                    text: 'Test sentiment analysis'
+                });
+                
+                display.innerHTML = `
+                    <div style="background: #d1ecf1; padding: 15px; border-radius: 6px; margin-top: 15px;">
+                        <strong>✅ Integration Test Successful</strong><br>
+                        Response: ${JSON.stringify(result, null, 2)}
+                    </div>
+                `;
+            } catch (error) {
+                display.innerHTML = `
+                    <div style="background: #f8d7da; padding: 15px; border-radius: 6px; margin-top: 15px;">
+                        <strong>❌ Integration Test Failed</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+        
+        // Include ML Integration Client
+        const script = document.createElement('script');
+        script.src = 'ml_integration_client.js';
+        document.head.appendChild(script);
+    </script>
+</body>
+</html>

@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML Prediction Center - Enhanced with Global Sentiment</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .main-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+        
+        .status-badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .status-online { background: #d4edda; color: #155724; }
+        .status-training { background: #fff3cd; color: #856404; }
+        .status-offline { background: #f8d7da; color: #721c24; }
+        
+        .service-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        
+        .service-online { background: #48bb78; }
+        .service-offline { background: #f56565; }
+        
+        .prediction-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 15px 0;
+            transition: transform 0.3s;
+        }
+        
+        .prediction-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .price-display {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+        
+        .change-positive { color: #48bb78; }
+        .change-negative { color: #f56565; }
+        
+        .sentiment-bar {
+            height: 30px;
+            background: linear-gradient(to right, 
+                #f56565 0%, 
+                #f56565 var(--negative-pct),
+                #cbd5e0 var(--negative-pct),
+                #cbd5e0 var(--neutral-end),
+                #48bb78 var(--neutral-end),
+                #48bb78 100%
+            );
+            border-radius: 15px;
+            position: relative;
+            margin: 10px 0;
+        }
+        
+        .risk-indicator {
+            padding: 10px;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+        
+        .risk-low { background: #c6f6d5; color: #22543d; }
+        .risk-medium { background: #fed7d7; color: #742a2a; }
+        .risk-high { background: #feb2b2; color: #742a2a; }
+        .risk-critical { background: #fc8181; color: #fff; }
+        
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .loading-spinner.active {
+            display: block;
+        }
+        
+        .feature-badge {
+            background: #e9ecef;
+            padding: 3px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            margin: 2px;
+            display: inline-block;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin: 20px 0;
+        }
+        
+        .confidence-meter {
+            width: 100%;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #f56565 0%, #fbd38d 50%, #48bb78 100%);
+            transition: width 0.5s ease;
+        }
+        
+        .model-selector {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Main Prediction Card -->
+        <div class="main-card">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-brain"></i> ML Prediction Center with Global Sentiment</h2>
+                <div>
+                    <span class="service-indicator service-online" id="mlIndicator"></span>
+                    <span id="mlStatus" class="status-badge status-online">All Systems Online</span>
+                </div>
+            </div>
+            
+            <!-- Service Status Row -->
+            <div class="row mb-4">
+                <div class="col">
+                    <small class="text-muted">Services Status:</small>
+                    <div id="servicesStatus" class="mt-2">
+                        <span class="badge bg-success me-2">ML: Online</span>
+                        <span class="badge bg-success me-2">Sentiment: Online</span>
+                        <span class="badge bg-success me-2">Historical: Online</span>
+                        <span class="badge bg-success me-2">Backtesting: Online</span>
+                        <span class="badge bg-success me-2">Scraper: Online</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Input Section -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <label class="form-label">Stock Symbol</label>
+                    <input type="text" class="form-control" id="symbolInput" placeholder="e.g., AAPL" value="AAPL">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Model Type</label>
+                    <select class="form-select" id="modelSelect">
+                        <option value="random_forest">RandomForest</option>
+                        <option value="gradient_boost">GradientBoost</option>
+                        <option value="xgboost">XGBoost</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Days</label>
+                    <input type="number" class="form-control" id="daysInput" value="7" min="1" max="30">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Actions</label>
+                    <div>
+                        <button class="btn btn-primary" onclick="trainModel()">
+                            <i class="fas fa-graduation-cap"></i> Train
+                        </button>
+                        <button class="btn btn-success" onclick="makePrediction()">
+                            <i class="fas fa-chart-line"></i> Predict
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Options -->
+            <div class="row mb-4">
+                <div class="col">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" id="useSentiment" checked>
+                        <label class="form-check-label" for="useSentiment">
+                            Use Global Sentiment (Politics, Wars, Economics)
+                        </label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" id="useFinbert" checked>
+                        <label class="form-check-label" for="useFinbert">
+                            Use FinBERT Analysis
+                        </label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="checkbox" id="useCache" checked>
+                        <label class="form-check-label" for="useCache">
+                            Use SQLite Cache (50x faster)
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Loading Spinner -->
+            <div class="loading-spinner" id="loadingSpinner">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Processing with real ML models...</p>
+                <small class="text-muted">Training typically takes 10-60 seconds</small>
+            </div>
+            
+            <!-- Results Section -->
+            <div id="resultsSection" style="display: none;">
+                <!-- Prediction Results -->
+                <div class="prediction-card">
+                    <h4>Prediction Results</h4>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <small class="text-muted">Current Price</small>
+                                <div class="price-display" id="currentPrice">-</div>
+                            </div>
+                            <div class="mb-3">
+                                <small class="text-muted">Predicted Change</small>
+                                <div class="h3" id="predictedChange">-</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <small class="text-muted">Confidence</small>
+                                <div class="confidence-meter">
+                                    <div class="confidence-fill" id="confidenceFill" style="width: 0%"></div>
+                                </div>
+                                <small id="confidenceText">0%</small>
+                            </div>
+                            <div class="mb-3">
+                                <small class="text-muted">Recommendation</small>
+                                <div class="h5" id="recommendation">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Global Sentiment Analysis -->
+                <div class="prediction-card">
+                    <h4>Global Sentiment Analysis</h4>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="sentiment-bar" id="sentimentBar"></div>
+                            <div class="d-flex justify-content-between mt-2">
+                                <small>Negative: <span id="negativePercent">0%</span></small>
+                                <small>Neutral: <span id="neutralPercent">0%</span></small>
+                                <small>Positive: <span id="positivePercent">0%</span></small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="risk-indicator" id="riskIndicator">
+                                <strong>Market Risk Level:</strong> <span id="riskLevel">-</span>
+                            </div>
+                            <div id="riskFactors"></div>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col">
+                            <small class="text-muted">Sentiment Categories:</small>
+                            <div id="sentimentCategories" class="mt-2"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Prediction Chart -->
+                <div class="prediction-card">
+                    <h4>Price Prediction Chart</h4>
+                    <div class="chart-container">
+                        <canvas id="predictionChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Technical Indicators -->
+                <div class="prediction-card">
+                    <h4>Technical Analysis</h4>
+                    <div id="technicalIndicators" class="row"></div>
+                </div>
+                
+                <!-- Model Performance -->
+                <div class="prediction-card">
+                    <h4>Model Performance</h4>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <small class="text-muted">Accuracy</small>
+                            <div class="h4" id="modelAccuracy">-</div>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">R² Score</small>
+                            <div class="h4" id="modelR2">-</div>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Training Time</small>
+                            <div class="h4" id="trainingTime">-</div>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Sentiment Impact</small>
+                            <div class="h4" id="sentimentImpact">-</div>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <small class="text-muted">Top Features:</small>
+                        <div id="topFeatures" class="mt-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Backtesting Card -->
+        <div class="main-card">
+            <h4><i class="fas fa-history"></i> Backtesting Results</h4>
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <select class="form-select" id="strategySelect">
+                        <option value="ml_sentiment">ML + Sentiment Strategy</option>
+                        <option value="momentum">Momentum Strategy</option>
+                        <option value="mean_reversion">Mean Reversion</option>
+                        <option value="buy_hold">Buy & Hold</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <input type="number" class="form-control" id="capitalInput" value="100000" placeholder="Initial Capital">
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-info" onclick="runBacktest()">
+                        <i class="fas fa-play"></i> Run Backtest
+                    </button>
+                </div>
+            </div>
+            <div id="backtestResults"></div>
+        </div>
+    </div>
+    
+    <script>
+        // API Configuration - CORRECT PORTS
+        const API_BASE = 'http://localhost:8000/api';  // Main backend
+        const ML_API = 'http://localhost:8002';        // ML backend
+        const SCRAPER_API = 'http://localhost:8006';   // Web scraper
+        const BACKTEST_API = 'http://localhost:8005';  // Backtesting
+        
+        let predictionChart = null;
+        let lastTrainingResult = null;
+        
+        // Check services on load
+        window.onload = async function() {
+            await checkServices();
+        };
+        
+        async function checkServices() {
+            try {
+                const response = await fetch(`${API_BASE}/services/status`);
+                const status = await response.json();
+                
+                const statusDiv = document.getElementById('servicesStatus');
+                statusDiv.innerHTML = '';
+                
+                let allOnline = true;
+                for (const [service, info] of Object.entries(status)) {
+                    const badge = document.createElement('span');
+                    badge.className = `badge me-2 ${info.status === 'online' ? 'bg-success' : 'bg-danger'}`;
+                    badge.textContent = `${service}: ${info.status}`;
+                    statusDiv.appendChild(badge);
+                    
+                    if (info.status !== 'online') allOnline = false;
+                }
+                
+                const mlStatus = document.getElementById('mlStatus');
+                const mlIndicator = document.getElementById('mlIndicator');
+                
+                if (allOnline) {
+                    mlStatus.textContent = 'All Systems Online';
+                    mlStatus.className = 'status-badge status-online';
+                    mlIndicator.className = 'service-indicator service-online';
+                } else {
+                    mlStatus.textContent = 'Some Services Offline';
+                    mlStatus.className = 'status-badge status-offline';
+                    mlIndicator.className = 'service-indicator service-offline';
+                }
+            } catch (error) {
+                console.error('Error checking services:', error);
+            }
+        }
+        
+        async function trainModel() {
+            const symbol = document.getElementById('symbolInput').value.toUpperCase();
+            const modelType = document.getElementById('modelSelect').value;
+            const useSentiment = document.getElementById('useSentiment').checked;
+            
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            
+            // Show loading
+            document.getElementById('loadingSpinner').classList.add('active');
+            document.getElementById('resultsSection').style.display = 'none';
+            
+            try {
+                const response = await fetch(`${ML_API}/train`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        model_type: modelType,
+                        use_sentiment: useSentiment,
+                        use_global_sentiment: true,
+                        cache_data: document.getElementById('useCache').checked
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Training failed');
+                
+                const result = await response.json();
+                lastTrainingResult = result;
+                
+                // Display training results
+                document.getElementById('modelAccuracy').textContent = `${(result.accuracy_score * 100).toFixed(1)}%`;
+                document.getElementById('modelR2').textContent = result.r2_score.toFixed(3);
+                document.getElementById('trainingTime').textContent = `${result.training_time.toFixed(1)}s`;
+                document.getElementById('sentimentImpact').textContent = `${(result.sentiment_impact * 100).toFixed(1)}%`;
+                
+                // Display top features
+                const featuresDiv = document.getElementById('topFeatures');
+                featuresDiv.innerHTML = '';
+                if (result.feature_importance) {
+                    for (const [feature, importance] of Object.entries(result.feature_importance)) {
+                        const badge = document.createElement('span');
+                        badge.className = 'feature-badge';
+                        badge.textContent = `${feature}: ${(importance * 100).toFixed(1)}%`;
+                        featuresDiv.appendChild(badge);
+                    }
+                }
+                
+                alert(`Model trained successfully!\nAccuracy: ${(result.accuracy_score * 100).toFixed(1)}%\nTraining time: ${result.training_time.toFixed(1)}s`);
+                
+            } catch (error) {
+                console.error('Training error:', error);
+                alert('Training failed: ' + error.message);
+            } finally {
+                document.getElementById('loadingSpinner').classList.remove('active');
+            }
+        }
+        
+        async function makePrediction() {
+            const symbol = document.getElementById('symbolInput').value.toUpperCase();
+            const days = parseInt(document.getElementById('daysInput').value);
+            const modelType = document.getElementById('modelSelect').value;
+            const useSentiment = document.getElementById('useSentiment').checked;
+            
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            
+            // Show loading
+            document.getElementById('loadingSpinner').classList.add('active');
+            document.getElementById('resultsSection').style.display = 'none';
+            
+            try {
+                // Make prediction
+                const predResponse = await fetch(`${ML_API}/predict`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        days: days,
+                        model_type: modelType,
+                        include_confidence: true,
+                        use_sentiment: useSentiment
+                    })
+                });
+                
+                if (!predResponse.ok) throw new Error('Prediction failed');
+                
+                const prediction = await predResponse.json();
+                
+                // Get sentiment data
+                const sentResponse = await fetch(`${API_BASE}/sentiment/${symbol}`);
+                const sentiment = await sentResponse.json();
+                
+                // Display results
+                displayPredictionResults(prediction, sentiment);
+                
+                // Get technical indicators
+                const techResponse = await fetch(`${API_BASE}/indicators/${symbol}`);
+                const technical = await techResponse.json();
+                displayTechnicalIndicators(technical);
+                
+                document.getElementById('resultsSection').style.display = 'block';
+                
+            } catch (error) {
+                console.error('Prediction error:', error);
+                alert('Prediction failed: ' + error.message);
+            } finally {
+                document.getElementById('loadingSpinner').classList.remove('active');
+            }
+        }
+        
+        function displayPredictionResults(prediction, sentiment) {
+            // Display basic prediction info
+            document.getElementById('currentPrice').textContent = `$${prediction.current_price.toFixed(2)}`;
+            
+            const changeElement = document.getElementById('predictedChange');
+            changeElement.textContent = `${prediction.predicted_change > 0 ? '+' : ''}${prediction.predicted_change.toFixed(2)}%`;
+            changeElement.className = prediction.predicted_change > 0 ? 'h3 change-positive' : 'h3 change-negative';
+            
+            // Confidence meter
+            const confidence = prediction.confidence || 50;
+            document.getElementById('confidenceFill').style.width = `${confidence}%`;
+            document.getElementById('confidenceText').textContent = `${confidence.toFixed(1)}%`;
+            
+            // Recommendation
+            document.getElementById('recommendation').textContent = prediction.recommendation;
+            
+            // Sentiment analysis
+            if (sentiment && sentiment.global_sentiment) {
+                const gs = sentiment.global_sentiment;
+                
+                // Sentiment bar
+                const negPct = gs.negative_ratio * 100;
+                const posPct = gs.positive_ratio * 100;
+                const neuPct = gs.neutral_ratio * 100;
+                
+                document.getElementById('negativePercent').textContent = `${negPct.toFixed(1)}%`;
+                document.getElementById('neutralPercent').textContent = `${neuPct.toFixed(1)}%`;
+                document.getElementById('positivePercent').textContent = `${posPct.toFixed(1)}%`;
+                
+                const sentimentBar = document.getElementById('sentimentBar');
+                sentimentBar.style.setProperty('--negative-pct', `${negPct}%`);
+                sentimentBar.style.setProperty('--neutral-end', `${negPct + neuPct}%`);
+                
+                // Risk level
+                const riskLevel = gs.market_risk_level || 'unknown';
+                document.getElementById('riskLevel').textContent = riskLevel.toUpperCase();
+                
+                const riskIndicator = document.getElementById('riskIndicator');
+                riskIndicator.className = `risk-indicator risk-${riskLevel}`;
+                
+                // Risk factors from market risk endpoint
+                if (sentiment.market_risk) {
+                    const factorsDiv = document.getElementById('riskFactors');
+                    factorsDiv.innerHTML = '<small>Risk Factors:</small><ul class="small">';
+                    sentiment.market_risk.risk_factors.forEach(factor => {
+                        factorsDiv.innerHTML += `<li>${factor}</li>`;
+                    });
+                    factorsDiv.innerHTML += '</ul>';
+                }
+                
+                // Category breakdown
+                if (gs.category_breakdown) {
+                    const catDiv = document.getElementById('sentimentCategories');
+                    catDiv.innerHTML = '';
+                    
+                    for (const [category, data] of Object.entries(gs.category_breakdown)) {
+                        const badge = document.createElement('span');
+                        badge.className = 'badge bg-secondary me-2 mb-2';
+                        badge.textContent = `${category}: ${data.positive}+ / ${data.negative}- / ${data.neutral}=`;
+                        catDiv.appendChild(badge);
+                    }
+                }
+            }
+            
+            // Draw prediction chart
+            drawPredictionChart(prediction.predictions);
+        }
+        
+        function drawPredictionChart(predictions) {
+            const ctx = document.getElementById('predictionChart').getContext('2d');
+            
+            if (predictionChart) {
+                predictionChart.destroy();
+            }
+            
+            const labels = predictions.map(p => p.date);
+            const prices = predictions.map(p => p.price);
+            const returns = predictions.map(p => p.cumulative_return);
+            
+            predictionChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Predicted Price',
+                        data: prices,
+                        borderColor: 'rgb(102, 126, 234)',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        yAxisID: 'y',
+                        tension: 0.4
+                    }, {
+                        label: 'Cumulative Return %',
+                        data: returns,
+                        borderColor: 'rgb(118, 75, 162)',
+                        backgroundColor: 'rgba(118, 75, 162, 0.1)',
+                        yAxisID: 'y1',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Price ($)'
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Return (%)'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function displayTechnicalIndicators(technical) {
+            const indicatorsDiv = document.getElementById('technicalIndicators');
+            indicatorsDiv.innerHTML = '';
+            
+            if (technical && technical.indicators) {
+                const indicators = technical.indicators;
+                
+                // Create indicator cards
+                const indicatorData = [
+                    { name: 'RSI', value: indicators.rsi, suffix: '' },
+                    { name: 'MACD', value: indicators.macd, suffix: '' },
+                    { name: 'SMA 20', value: indicators.sma_20, suffix: '$' },
+                    { name: 'SMA 50', value: indicators.sma_50, suffix: '$' }
+                ];
+                
+                indicatorData.forEach(ind => {
+                    if (ind.value !== null && ind.value !== undefined) {
+                        const col = document.createElement('div');
+                        col.className = 'col-md-3 mb-2';
+                        col.innerHTML = `
+                            <div class="text-center">
+                                <small class="text-muted">${ind.name}</small>
+                                <div class="h5">${ind.suffix}${ind.value.toFixed(2)}</div>
+                            </div>
+                        `;
+                        indicatorsDiv.appendChild(col);
+                    }
+                });
+                
+                // Add interpretation
+                if (technical.interpretation && technical.interpretation.length > 0) {
+                    const intDiv = document.createElement('div');
+                    intDiv.className = 'col-12 mt-3';
+                    intDiv.innerHTML = '<small class="text-muted">Analysis:</small><ul class="small">';
+                    technical.interpretation.forEach(int => {
+                        intDiv.innerHTML += `<li>${int}</li>`;
+                    });
+                    intDiv.innerHTML += '</ul>';
+                    indicatorsDiv.appendChild(intDiv);
+                }
+            }
+        }
+        
+        async function runBacktest() {
+            const symbol = document.getElementById('symbolInput').value.toUpperCase();
+            const strategy = document.getElementById('strategySelect').value;
+            const capital = parseFloat(document.getElementById('capitalInput').value);
+            
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            
+            const resultsDiv = document.getElementById('backtestResults');
+            resultsDiv.innerHTML = '<div class="text-center"><div class="spinner-border"></div><p>Running backtest...</p></div>';
+            
+            try {
+                const response = await fetch(`${BACKTEST_API}/backtest`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        strategy: strategy,
+                        initial_capital: capital,
+                        use_ml_predictions: true,
+                        use_sentiment: true
+                    })
+                });
+                
+                if (!response.ok) throw new Error('Backtest failed');
+                
+                const result = await response.json();
+                
+                // Display backtest results
+                resultsDiv.innerHTML = `
+                    <div class="row mt-3">
+                        <div class="col-md-3">
+                            <small class="text-muted">Total Return</small>
+                            <div class="h4 ${result.total_return > 0 ? 'change-positive' : 'change-negative'}">
+                                ${result.total_return.toFixed(2)}%
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Final Value</small>
+                            <div class="h4">$${result.final_value.toFixed(2)}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Sharpe Ratio</small>
+                            <div class="h4">${result.sharpe_ratio.toFixed(2)}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Win Rate</small>
+                            <div class="h4">${result.win_rate.toFixed(1)}%</div>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-3">
+                            <small class="text-muted">Max Drawdown</small>
+                            <div class="h5 change-negative">${result.max_drawdown.toFixed(2)}%</div>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Total Trades</small>
+                            <div class="h5">${result.total_trades}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Profit Factor</small>
+                            <div class="h5">${result.profit_factor.toFixed(2)}</div>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="text-muted">Annual Return</small>
+                            <div class="h5">${result.annualized_return.toFixed(2)}%</div>
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Backtest error:', error);
+                resultsDiv.innerHTML = `<div class="alert alert-danger">Backtest failed: ${error.message}</div>`;
+            }
+        }
+        
+        // Auto-refresh services status every 30 seconds
+        setInterval(checkServices, 30000);
+    </script>
+</body>
+</html>

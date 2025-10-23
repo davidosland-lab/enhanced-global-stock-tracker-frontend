@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GSMT v9 - Global Stock Market Tracker Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .title {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: bold;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-top: 0.5rem;
+        }
+
+        .status-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: rgba(0, 255, 0, 0.1);
+            border-radius: 20px;
+            border: 1px solid rgba(0, 255, 0, 0.3);
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            background: #00ff00;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+            flex: 1;
+        }
+
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .module-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .module-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 50px rgba(0, 0, 0, 0.2);
+        }
+
+        .module-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .module-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .module-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .module-description {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 1.5rem;
+        }
+
+        .module-features {
+            list-style: none;
+            margin-bottom: 1.5rem;
+        }
+
+        .module-features li {
+            padding: 0.3rem 0;
+            color: #555;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .module-features li::before {
+            content: '✓';
+            color: #4ade80;
+            font-weight: bold;
+        }
+
+        .launch-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .launch-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .server-status {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .server-status h2 {
+            margin-bottom: 1rem;
+            color: #333;
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem;
+            background: rgba(0, 0, 0, 0.03);
+            border-radius: 8px;
+        }
+
+        .status-icon {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .status-online { background: #4ade80; }
+        .status-offline { background: #f87171; }
+        .status-checking { background: #fbbf24; }
+
+        .footer {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            text-align: center;
+            margin-top: auto;
+        }
+
+        .error-message {
+            display: none;
+            background: rgba(248, 113, 113, 0.1);
+            border: 1px solid rgba(248, 113, 113, 0.3);
+            color: #dc2626;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+    </div>
+
+    <header class="header">
+        <div class="header-content">
+            <div>
+                <h1 class="title">GSMT v9 Dashboard</h1>
+                <p class="subtitle">Global Stock Market Tracker - Live Data Edition</p>
+            </div>
+            <div class="status-container">
+                <div class="status-indicator">
+                    <span class="status-dot"></span>
+                    <span id="mainStatus">System Active</span>
+                </div>
+                <div id="currentTime">--:--:-- AEST</div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div id="errorMessage" class="error-message"></div>
+
+        <div class="server-status">
+            <h2>System Status</h2>
+            <div class="status-grid">
+                <div class="status-item">
+                    <span id="backendStatus" class="status-icon status-checking"></span>
+                    <span>Backend Server (Port 8000)</span>
+                </div>
+                <div class="status-item">
+                    <span id="dataStatus" class="status-icon status-checking"></span>
+                    <span>Live Data Feed</span>
+                </div>
+                <div class="status-item">
+                    <span id="cacheStatus" class="status-icon status-checking"></span>
+                    <span>Cache System</span>
+                </div>
+                <div class="status-item">
+                    <span id="apiStatus" class="status-icon status-checking"></span>
+                    <span>Yahoo Finance API</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="modules-grid">
+            <div class="module-card" onclick="launchModule('indices_tracker_fixed_v9.html')">
+                <div class="module-icon">🌍</div>
+                <h3 class="module-title">Global Indices Tracker</h3>
+                <p class="module-description">Monitor major stock market indices from Asia, Europe, and Americas in real-time.</p>
+                <ul class="module-features">
+                    <li>5-minute interval data</li>
+                    <li>Multi-region support</li>
+                    <li>Dynamic Y-axis scaling</li>
+                    <li>24-hour timeline (AEST)</li>
+                </ul>
+                <button class="launch-btn">Launch Indices Tracker</button>
+            </div>
+
+            <div class="module-card" onclick="launchModule('single_stock_tracker_fixed.html')">
+                <div class="module-icon">📈</div>
+                <h3 class="module-title">Single Stock Tracker</h3>
+                <p class="module-description">Track and analyze individual stocks with technical indicators and predictions.</p>
+                <ul class="module-features">
+                    <li>Real-time price data</li>
+                    <li>Technical indicators</li>
+                    <li>ML predictions</li>
+                    <li>Historical analysis</li>
+                </ul>
+                <button class="launch-btn">Launch Stock Tracker</button>
+            </div>
+
+            <div class="module-card" onclick="launchModule('cba_tracker_fixed_v9.html')">
+                <div class="module-icon">🏦</div>
+                <h3 class="module-title">CBA Market Tracker</h3>
+                <p class="module-description">Specialized tracker for Commonwealth Bank of Australia with banking sector insights.</p>
+                <ul class="module-features">
+                    <li>CBA-specific metrics</li>
+                    <li>Banking sector analysis</li>
+                    <li>Dividend tracking</li>
+                    <li>Market news</li>
+                </ul>
+                <button class="launch-btn">Launch CBA Tracker</button>
+            </div>
+
+            <div class="module-card" onclick="launchModule('technical_analysis_enhanced.html')">
+                <div class="module-icon">📊</div>
+                <h3 class="module-title">Technical Analysis</h3>
+                <p class="module-description">Advanced technical analysis with candlestick charts and multiple indicators.</p>
+                <ul class="module-features">
+                    <li>Candlestick patterns</li>
+                    <li>RSI, MACD, Bollinger</li>
+                    <li>Volume analysis</li>
+                    <li>Trend detection</li>
+                </ul>
+                <button class="launch-btn">Launch Technical Analysis</button>
+            </div>
+
+            <div class="module-card" onclick="launchModule('prediction_performance_dashboard.html')">
+                <div class="module-icon">🤖</div>
+                <h3 class="module-title">AI Predictions</h3>
+                <p class="module-description">Machine learning powered predictions with performance tracking.</p>
+                <ul class="module-features">
+                    <li>ML predictions</li>
+                    <li>Accuracy tracking</li>
+                    <li>Risk assessment</li>
+                    <li>Confidence metrics</li>
+                </ul>
+                <button class="launch-btn">Launch Predictions</button>
+            </div>
+
+            <div class="module-card" onclick="testBackend()">
+                <div class="module-icon">🔧</div>
+                <h3 class="module-title">System Diagnostics</h3>
+                <p class="module-description">Test backend connectivity and system health.</p>
+                <ul class="module-features">
+                    <li>API endpoint testing</li>
+                    <li>Response time check</li>
+                    <li>Cache performance</li>
+                    <li>Error diagnostics</li>
+                </ul>
+                <button class="launch-btn">Run Diagnostics</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>&copy; 2025 GSMT v9 - Global Stock Market Tracker | Powered by Yahoo Finance API</p>
+        <p>All data is fetched in real-time from live market sources</p>
+    </footer>
+
+    <script>
+        const API_BASE = 'http://localhost:8000';
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateTime();
+            setInterval(updateTime, 1000);
+            checkSystemStatus();
+            setInterval(checkSystemStatus, 30000); // Check every 30 seconds
+        });
+
+        // Update time display
+        function updateTime() {
+            const now = new Date();
+            const sydneyTime = new Date(now.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
+            const hours = sydneyTime.getHours().toString().padStart(2, '0');
+            const minutes = sydneyTime.getMinutes().toString().padStart(2, '0');
+            const seconds = sydneyTime.getSeconds().toString().padStart(2, '0');
+            
+            const month = sydneyTime.getMonth();
+            const timezone = (month >= 9 || month <= 3) ? 'AEDT' : 'AEST';
+            
+            document.getElementById('currentTime').textContent = `${hours}:${minutes}:${seconds} ${timezone}`;
+        }
+
+        // Check system status
+        async function checkSystemStatus() {
+            const statusElements = {
+                backend: document.getElementById('backendStatus'),
+                data: document.getElementById('dataStatus'),
+                cache: document.getElementById('cacheStatus'),
+                api: document.getElementById('apiStatus')
+            };
+
+            // Set all to checking
+            Object.values(statusElements).forEach(el => {
+                el.className = 'status-icon status-checking';
+            });
+
+            try {
+                // Check backend
+                const response = await fetch(`${API_BASE}/health`);
+                if (response.ok) {
+                    statusElements.backend.className = 'status-icon status-online';
+                    
+                    // Check data feed
+                    const indicesResponse = await fetch(`${API_BASE}/api/indices`);
+                    if (indicesResponse.ok) {
+                        const data = await indicesResponse.json();
+                        if (data.indices && Object.keys(data.indices).length > 0) {
+                            statusElements.data.className = 'status-icon status-online';
+                            statusElements.api.className = 'status-icon status-online';
+                        }
+                    }
+                    
+                    // Cache is online if backend is online
+                    statusElements.cache.className = 'status-icon status-online';
+                    
+                } else {
+                    throw new Error('Backend not responding');
+                }
+                
+            } catch (error) {
+                console.error('System status check failed:', error);
+                statusElements.backend.className = 'status-icon status-offline';
+                statusElements.data.className = 'status-icon status-offline';
+                
+                document.getElementById('errorMessage').style.display = 'block';
+                document.getElementById('errorMessage').textContent = 
+                    'Backend server not running. Please start it using START_GSMT_UNIFIED.cmd';
+            }
+        }
+
+        // Launch module
+        function launchModule(module) {
+            const loading = document.getElementById('loadingOverlay');
+            loading.style.display = 'flex';
+            
+            setTimeout(() => {
+                window.open(module, '_blank');
+                loading.style.display = 'none';
+            }, 500);
+        }
+
+        // Test backend
+        async function testBackend() {
+            const loading = document.getElementById('loadingOverlay');
+            loading.style.display = 'flex';
+            
+            try {
+                const tests = [
+                    { name: 'Root endpoint', url: `${API_BASE}/` },
+                    { name: 'Health check', url: `${API_BASE}/health` },
+                    { name: 'Indices data', url: `${API_BASE}/api/indices` },
+                    { name: 'CBA data', url: `${API_BASE}/api/cba/data` }
+                ];
+                
+                const results = [];
+                
+                for (const test of tests) {
+                    const start = Date.now();
+                    try {
+                        const response = await fetch(test.url);
+                        const time = Date.now() - start;
+                        results.push({
+                            name: test.name,
+                            status: response.ok ? 'OK' : 'FAILED',
+                            time: time,
+                            code: response.status
+                        });
+                    } catch (error) {
+                        results.push({
+                            name: test.name,
+                            status: 'ERROR',
+                            error: error.message
+                        });
+                    }
+                }
+                
+                // Display results
+                let message = 'Diagnostic Results:\n\n';
+                results.forEach(result => {
+                    if (result.status === 'OK') {
+                        message += `✓ ${result.name}: ${result.status} (${result.time}ms)\n`;
+                    } else {
+                        message += `✗ ${result.name}: ${result.status} ${result.error || ''}\n`;
+                    }
+                });
+                
+                alert(message);
+                
+            } catch (error) {
+                alert('Diagnostic failed: ' + error.message);
+            } finally {
+                loading.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

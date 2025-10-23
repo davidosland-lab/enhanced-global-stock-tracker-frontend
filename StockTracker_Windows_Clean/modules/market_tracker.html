@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Tracker - Stock Tracker v9.0</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+
+        .header {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            padding: 1rem 2rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            background: linear-gradient(45deg, #4facfe, #00f2fe);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .back-btn {
+            padding: 0.5rem 1rem;
+            background: rgba(79, 172, 254, 0.2);
+            border: 1px solid #4facfe;
+            color: #4facfe;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-decoration: none;
+        }
+
+        .back-btn:hover {
+            background: rgba(79, 172, 254, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+        }
+
+        .market-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-label {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+        }
+
+        .positive {
+            color: #00ff88;
+        }
+
+        .negative {
+            color: #ff4757;
+        }
+
+        .stocks-table {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .table-header {
+            padding: 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .table-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .refresh-btn {
+            padding: 0.5rem 1rem;
+            background: rgba(79, 172, 254, 0.2);
+            border: 1px solid #4facfe;
+            color: #4facfe;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+        }
+
+        .refresh-btn:hover {
+            background: rgba(79, 172, 254, 0.3);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        th {
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        tbody tr {
+            transition: background 0.2s;
+            cursor: pointer;
+        }
+
+        tbody tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .stock-symbol {
+            font-weight: 600;
+            color: #4facfe;
+        }
+
+        .stock-name {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+        }
+
+        .sector-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            background: rgba(79, 172, 254, 0.2);
+            border-radius: 4px;
+            font-size: 0.85rem;
+            color: #4facfe;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        @media (max-width: 768px) {
+            .stocks-table {
+                overflow-x: auto;
+            }
+            
+            table {
+                min-width: 600px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>🌍 Market Tracker - ASX 20</h1>
+        <a href="/" class="back-btn">← Back to Dashboard</a>
+    </header>
+
+    <div class="container">
+        <div class="market-stats">
+            <div class="stat-card">
+                <div class="stat-label">Total Market Cap</div>
+                <div class="stat-value" id="totalMarketCap">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Daily Volume</div>
+                <div class="stat-value" id="totalVolume">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Top Gainer</div>
+                <div class="stat-value positive" id="topGainer">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Top Loser</div>
+                <div class="stat-value negative" id="topLoser">-</div>
+            </div>
+        </div>
+
+        <div class="stocks-table">
+            <div class="table-header">
+                <h2 class="table-title">ASX 20 Stocks - Live Prices</h2>
+                <button class="refresh-btn" onclick="loadMarketData()">🔄 Refresh</button>
+            </div>
+            
+            <div id="tableContent">
+                <div class="loading">Loading market data...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8002';
+        let marketData = [];
+
+        // Load data on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadMarketData();
+            // Auto-refresh every 30 seconds
+            setInterval(loadMarketData, 30000);
+        });
+
+        async function loadMarketData() {
+            try {
+                const response = await fetch(`${API_BASE}/api/stocks/asx20`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch market data');
+                }
+                
+                marketData = await response.json();
+                updateMarketStats();
+                renderTable();
+            } catch (error) {
+                console.error('Error loading market data:', error);
+                document.getElementById('tableContent').innerHTML = `
+                    <div class="loading">Failed to load market data. Please try again.</div>
+                `;
+            }
+        }
+
+        function updateMarketStats() {
+            if (!marketData || marketData.length === 0) return;
+
+            // Calculate total volume
+            const totalVolume = marketData.reduce((sum, stock) => sum + stock.volume, 0);
+            document.getElementById('totalVolume').textContent = formatVolume(totalVolume);
+
+            // Calculate estimated market cap (simplified)
+            const totalMarketCap = marketData.reduce((sum, stock) => {
+                const estimatedShares = 1000000000; // Simplified estimation
+                return sum + (stock.price * estimatedShares);
+            }, 0);
+            document.getElementById('totalMarketCap').textContent = formatMarketCap(totalMarketCap);
+
+            // Find top gainer and loser
+            const sorted = [...marketData].sort((a, b) => b.changePercent - a.changePercent);
+            const topGainer = sorted[0];
+            const topLoser = sorted[sorted.length - 1];
+
+            if (topGainer) {
+                document.getElementById('topGainer').textContent = 
+                    `${topGainer.symbol} +${topGainer.changePercent.toFixed(2)}%`;
+            }
+
+            if (topLoser && topLoser.changePercent < 0) {
+                document.getElementById('topLoser').textContent = 
+                    `${topLoser.symbol} ${topLoser.changePercent.toFixed(2)}%`;
+            }
+        }
+
+        function renderTable() {
+            if (!marketData || marketData.length === 0) {
+                document.getElementById('tableContent').innerHTML = `
+                    <div class="loading">No data available</div>
+                `;
+                return;
+            }
+
+            const tableHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Name</th>
+                            <th>Sector</th>
+                            <th>Price</th>
+                            <th>Change</th>
+                            <th>Change %</th>
+                            <th>Volume</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${marketData.map(stock => `
+                            <tr onclick="openStock('${stock.symbol}')">
+                                <td class="stock-symbol">${stock.symbol}</td>
+                                <td class="stock-name">${stock.name}</td>
+                                <td><span class="sector-badge">${stock.sector}</span></td>
+                                <td>$${stock.price.toFixed(2)}</td>
+                                <td class="${stock.change >= 0 ? 'positive' : 'negative'}">
+                                    ${stock.change >= 0 ? '+' : ''}${stock.change.toFixed(2)}
+                                </td>
+                                <td class="${stock.changePercent >= 0 ? 'positive' : 'negative'}">
+                                    ${stock.changePercent >= 0 ? '+' : ''}${stock.changePercent.toFixed(2)}%
+                                </td>
+                                <td>${formatVolume(stock.volume)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+
+            document.getElementById('tableContent').innerHTML = tableHTML;
+        }
+
+        function openStock(symbol) {
+            window.location.href = `/modules/technical_analysis.html?symbol=${symbol}`;
+        }
+
+        function formatVolume(volume) {
+            if (volume >= 1000000000) {
+                return (volume / 1000000000).toFixed(2) + 'B';
+            } else if (volume >= 1000000) {
+                return (volume / 1000000).toFixed(2) + 'M';
+            } else if (volume >= 1000) {
+                return (volume / 1000).toFixed(2) + 'K';
+            }
+            return volume.toString();
+        }
+
+        function formatMarketCap(value) {
+            if (value >= 1000000000000) {
+                return '$' + (value / 1000000000000).toFixed(2) + 'T';
+            } else if (value >= 1000000000) {
+                return '$' + (value / 1000000000).toFixed(2) + 'B';
+            }
+            return '$' + (value / 1000000).toFixed(2) + 'M';
+        }
+    </script>
+</body>
+</html>

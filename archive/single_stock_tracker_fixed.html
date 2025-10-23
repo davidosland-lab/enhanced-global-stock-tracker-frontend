@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📈 Single Stock Track and Predict - ML Enhanced</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+        }
+        
+        .glassmorphism {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 20px;
+            padding: 25px;
+        }
+        
+        .model-card {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 12px;
+            padding: 15px;
+            transition: all 0.3s ease;
+        }
+        
+        .model-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+        }
+        
+        .status-active {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+        }
+        
+        .status-inactive {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="container mx-auto px-4 py-8">
+        <div class="glassmorphism mb-8 text-center">
+            <h1 class="text-4xl font-bold mb-4 bg-gradient-to-r from-blue-400 via-purple-500 to-cyan-500 bg-clip-text text-transparent">
+                Single Stock ML Tracker & Predictor
+            </h1>
+            <p class="text-gray-400">Advanced AI-Powered Stock Analysis with Phase 3 & 4 Models</p>
+        </div>
+        
+        <!-- Controls Section -->
+        <div class="glassmorphism mb-8">
+            <h2 class="text-xl font-bold mb-4">📊 Tracking Controls</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Stock Symbol</label>
+                    <input type="text" id="symbolInput" value="AAPL" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-blue-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Update Interval</label>
+                    <select id="intervalSelect" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-blue-500 focus:outline-none">
+                        <option value="5000">5 seconds</option>
+                        <option value="10000">10 seconds</option>
+                        <option value="30000">30 seconds</option>
+                        <option value="60000">1 minute</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Timeframe</label>
+                    <select id="timeframeSelect" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-blue-500 focus:outline-none">
+                        <option value="1d">1 Day</option>
+                        <option value="5d" selected>5 Days</option>
+                        <option value="30d">30 Days</option>
+                        <option value="90d">90 Days</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button id="trackBtn" class="w-full px-6 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-lg transition-all duration-200">
+                        <i class="fas fa-play mr-2"></i>Start Tracking
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Current Status Display -->
+        <div class="glassmorphism mb-8" id="statusDisplay" style="display: none;">
+            <div class="flex justify-between items-center flex-wrap gap-4">
+                <div>
+                    <h3 class="text-2xl font-bold" id="currentSymbol">--</h3>
+                    <span class="status-badge status-active">Tracking Active</span>
+                </div>
+                <div class="text-right">
+                    <div class="text-3xl font-bold" id="currentPrice">--</div>
+                    <div class="text-lg" id="priceChange">--</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Price Chart -->
+        <div class="glassmorphism mb-8">
+            <h2 class="text-xl font-bold mb-4">📈 Price Chart</h2>
+            <div class="relative" style="height: 400px;">
+                <canvas id="priceChart"></canvas>
+            </div>
+        </div>
+        
+        <!-- ML Predictions Section -->
+        <div class="glassmorphism mb-8">
+            <h2 class="text-xl font-bold mb-4">🤖 ML Model Predictions</h2>
+            <button id="predictBtn" class="mb-4 px-6 py-2 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white font-semibold rounded-lg transition-all duration-200">
+                <i class="fas fa-brain mr-2"></i>Generate Predictions
+            </button>
+            
+            <div id="predictionsContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Predictions will be added here -->
+            </div>
+        </div>
+        
+        <!-- Technical Indicators -->
+        <div class="glassmorphism mb-8">
+            <h2 class="text-xl font-bold mb-4">📊 Technical Indicators</h2>
+            <div id="indicatorsContainer" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <!-- Indicators will be displayed here -->
+            </div>
+        </div>
+        
+        <!-- Performance Metrics -->
+        <div class="glassmorphism">
+            <h2 class="text-xl font-bold mb-4">📈 Model Performance</h2>
+            <div id="performanceContainer" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Performance metrics will be displayed here -->
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Configuration
+        const API_BASE = window.location.hostname === 'localhost' 
+            ? 'http://localhost:8000' 
+            : 'https://enhanced-global-stock-tracker-frontend.onrender.com';
+        
+        // Global variables
+        let isTracking = false;
+        let trackingInterval = null;
+        let priceChart = null;
+        let priceData = [];
+        let currentSymbol = '';
+        
+        // Initialize chart
+        function initChart() {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            priceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Price',
+                        data: [],
+                        borderColor: 'rgb(59, 130, 246)',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: { color: '#e2e8f0' }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        y: {
+                            grid: { color: 'rgba(148, 163, 184, 0.1)' },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Fetch current stock data
+        async function fetchStockData(symbol) {
+            try {
+                const response = await fetch(`${API_BASE}/api/stock/${symbol}?period=1d&interval=1m`);
+                if (!response.ok) throw new Error('Failed to fetch stock data');
+                
+                const data = await response.json();
+                if (data.data && data.data.length > 0) {
+                    const latest = data.data[data.data.length - 1];
+                    return {
+                        price: latest.close,
+                        change: data.change || 0,
+                        changePercent: data.changePercent || 0,
+                        timestamp: new Date()
+                    };
+                }
+                return null;
+            } catch (error) {
+                console.error('Error fetching stock data:', error);
+                return null;
+            }
+        }
+        
+        // Update display with current data
+        function updateDisplay(data) {
+            if (!data) return;
+            
+            document.getElementById('currentPrice').textContent = `$${data.price.toFixed(2)}`;
+            
+            const changeElement = document.getElementById('priceChange');
+            const changePrefix = data.change >= 0 ? '+' : '';
+            changeElement.textContent = `${changePrefix}${data.change.toFixed(2)} (${changePrefix}${data.changePercent.toFixed(2)}%)`;
+            changeElement.className = data.change >= 0 ? 'text-lg text-green-400' : 'text-lg text-red-400';
+            
+            // Update chart
+            if (priceChart) {
+                priceChart.data.labels.push(data.timestamp.toLocaleTimeString());
+                priceChart.data.datasets[0].data.push(data.price);
+                
+                // Keep only last 50 points
+                if (priceChart.data.labels.length > 50) {
+                    priceChart.data.labels.shift();
+                    priceChart.data.datasets[0].data.shift();
+                }
+                
+                priceChart.update();
+            }
+        }
+        
+        // Start tracking
+        async function startTracking() {
+            const symbol = document.getElementById('symbolInput').value.toUpperCase();
+            const interval = parseInt(document.getElementById('intervalSelect').value);
+            
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            
+            currentSymbol = symbol;
+            isTracking = true;
+            
+            // Update UI
+            const trackBtn = document.getElementById('trackBtn');
+            trackBtn.innerHTML = '<i class="fas fa-stop mr-2"></i>Stop Tracking';
+            trackBtn.classList.add('bg-gradient-to-r', 'from-red-500', 'to-red-600');
+            trackBtn.classList.remove('from-blue-500', 'to-blue-600');
+            
+            document.getElementById('statusDisplay').style.display = 'block';
+            document.getElementById('currentSymbol').textContent = symbol;
+            
+            // Clear previous data
+            if (priceChart) {
+                priceChart.data.labels = [];
+                priceChart.data.datasets[0].data = [];
+                priceChart.update();
+            }
+            
+            // Fetch initial data
+            const data = await fetchStockData(symbol);
+            if (data) {
+                updateDisplay(data);
+            }
+            
+            // Set up interval
+            trackingInterval = setInterval(async () => {
+                const data = await fetchStockData(symbol);
+                if (data) {
+                    updateDisplay(data);
+                }
+            }, interval);
+        }
+        
+        // Stop tracking
+        function stopTracking() {
+            isTracking = false;
+            
+            if (trackingInterval) {
+                clearInterval(trackingInterval);
+                trackingInterval = null;
+            }
+            
+            // Update UI
+            const trackBtn = document.getElementById('trackBtn');
+            trackBtn.innerHTML = '<i class="fas fa-play mr-2"></i>Start Tracking';
+            trackBtn.classList.remove('bg-gradient-to-r', 'from-red-500', 'to-red-600');
+            trackBtn.classList.add('from-blue-500', 'to-blue-600');
+        }
+        
+        // Generate predictions
+        async function generatePredictions() {
+            const symbol = document.getElementById('symbolInput').value.toUpperCase();
+            const timeframe = document.getElementById('timeframeSelect').value;
+            
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            
+            const predictBtn = document.getElementById('predictBtn');
+            predictBtn.disabled = true;
+            predictBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/unified-prediction/${symbol}?timeframe=${timeframe}`);
+                if (!response.ok) throw new Error('Failed to generate predictions');
+                
+                const result = await response.json();
+                displayPredictions(result);
+                displayIndicators(result.technical_indicators);
+                
+            } catch (error) {
+                console.error('Error generating predictions:', error);
+                alert('Failed to generate predictions. Please try again.');
+            } finally {
+                predictBtn.disabled = false;
+                predictBtn.innerHTML = '<i class="fas fa-brain mr-2"></i>Generate Predictions';
+            }
+        }
+        
+        // Display predictions
+        function displayPredictions(result) {
+            const container = document.getElementById('predictionsContainer');
+            container.innerHTML = '';
+            
+            if (!result.predictions) return;
+            
+            // Main prediction card
+            const mainCard = document.createElement('div');
+            mainCard.className = 'model-card col-span-full';
+            mainCard.innerHTML = `
+                <h3 class="text-lg font-bold mb-2">🎯 Unified Prediction</h3>
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="text-2xl font-bold">$${result.final_prediction?.toFixed(2) || '--'}</p>
+                        <p class="text-sm text-gray-400">Target Price</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xl font-bold ${result.price_change_percent > 0 ? 'text-green-400' : 'text-red-400'}">
+                            ${result.price_change_percent > 0 ? '+' : ''}${result.price_change_percent?.toFixed(2) || 0}%
+                        </p>
+                        <p class="text-sm text-gray-400">${result.trend || 'NEUTRAL'}</p>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <div class="flex justify-between text-sm">
+                        <span>Confidence</span>
+                        <span>${(result.confidence * 100).toFixed(1)}%</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-2 mt-1">
+                        <div class="bg-gradient-to-r from-blue-500 to-purple-500 h-2 rounded-full" style="width: ${result.confidence * 100}%"></div>
+                    </div>
+                </div>
+            `;
+            container.appendChild(mainCard);
+            
+            // Individual model cards
+            const models = ['lstm', 'gnn', 'ensemble'];
+            models.forEach(modelName => {
+                const model = result.predictions[modelName];
+                if (!model) return;
+                
+                const card = document.createElement('div');
+                card.className = 'model-card';
+                
+                const modelIcons = {
+                    'lstm': '🧠',
+                    'gnn': '🕸️',
+                    'ensemble': '🎭'
+                };
+                
+                card.innerHTML = `
+                    <h3 class="text-lg font-bold mb-2">${modelIcons[modelName]} ${modelName.toUpperCase()}</h3>
+                    <p class="text-xl font-bold">$${model.predicted_price?.toFixed(2) || '--'}</p>
+                    <p class="text-sm text-gray-400 mt-1">Confidence: ${(model.confidence * 100).toFixed(1)}%</p>
+                    ${model.network_metrics ? `
+                        <div class="mt-2 text-xs text-gray-500">
+                            <p>Sector Corr: ${(model.network_metrics.sector_correlation * 100).toFixed(1)}%</p>
+                            <p>Market Corr: ${(model.network_metrics.market_correlation * 100).toFixed(1)}%</p>
+                        </div>
+                    ` : ''}
+                `;
+                
+                container.appendChild(card);
+            });
+            
+            // RL Signal card
+            const rlSignal = result.predictions.reinforcement_learning;
+            if (rlSignal) {
+                const card = document.createElement('div');
+                card.className = 'model-card';
+                
+                const signalColors = {
+                    'STRONG_BUY': 'text-green-400',
+                    'BUY': 'text-green-300',
+                    'HOLD': 'text-yellow-400',
+                    'SELL': 'text-red-300',
+                    'STRONG_SELL': 'text-red-400'
+                };
+                
+                card.innerHTML = `
+                    <h3 class="text-lg font-bold mb-2">🎮 RL Signal</h3>
+                    <p class="text-xl font-bold ${signalColors[rlSignal.signal] || 'text-gray-400'}">${rlSignal.signal}</p>
+                    <p class="text-sm text-gray-400 mt-1">Q-Value: ${rlSignal.q_value?.toFixed(2) || '--'}</p>
+                    <p class="text-sm text-gray-400">Confidence: ${(rlSignal.confidence * 100).toFixed(1)}%</p>
+                `;
+                
+                container.appendChild(card);
+            }
+        }
+        
+        // Display technical indicators
+        function displayIndicators(indicators) {
+            if (!indicators) return;
+            
+            const container = document.getElementById('indicatorsContainer');
+            container.innerHTML = '';
+            
+            const indicatorItems = [
+                { label: 'RSI', value: indicators.rsi?.toFixed(2), color: indicators.rsi > 70 ? 'text-red-400' : indicators.rsi < 30 ? 'text-green-400' : 'text-gray-300' },
+                { label: 'MACD', value: indicators.macd?.macd?.toFixed(2), color: indicators.macd?.histogram > 0 ? 'text-green-400' : 'text-red-400' },
+                { label: 'ATR', value: indicators.atr?.toFixed(2), color: 'text-gray-300' },
+                { label: 'Trend', value: `${indicators.trend_strength?.toFixed(0)}%`, color: 'text-blue-400' }
+            ];
+            
+            indicatorItems.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'text-center';
+                div.innerHTML = `
+                    <p class="text-sm text-gray-400">${item.label}</p>
+                    <p class="text-xl font-bold ${item.color}">${item.value || '--'}</p>
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        // Event listeners
+        document.getElementById('trackBtn').addEventListener('click', function() {
+            if (isTracking) {
+                stopTracking();
+            } else {
+                startTracking();
+            }
+        });
+        
+        document.getElementById('predictBtn').addEventListener('click', generatePredictions);
+        
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            initChart();
+        });
+    </script>
+</body>
+</html>

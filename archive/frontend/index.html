@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GSMT Trading System - Module Hub</title>
+    <script src="config.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            max-width: 1200px;
+            width: 100%;
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            color: #666;
+            text-align: center;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+        
+        .status-bar {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ccc;
+        }
+        
+        .status-dot.active {
+            background: #10b981;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-dot.error {
+            background: #ef4444;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+        
+        .modules-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .module-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border: 2px solid #e5e7eb;
+            cursor: pointer;
+        }
+        
+        .module-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
+            border-color: #667eea;
+        }
+        
+        .module-card h3 {
+            color: #333;
+            font-size: 1.3em;
+            margin-bottom: 10px;
+        }
+        
+        .module-card p {
+            color: #666;
+            font-size: 0.9em;
+            line-height: 1.5;
+        }
+        
+        .module-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .api-info {
+            background: #e8f4fd;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        
+        .error-message {
+            background: #fee;
+            color: #c00;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>GSMT Trading System</h1>
+        <p class="subtitle">Advanced ML & Neural Network Trading Platform</p>
+        
+        <div class="status-bar">
+            <div class="status-item">
+                <span class="status-dot" id="backend-status"></span>
+                <span>Backend API</span>
+            </div>
+            <div class="status-item">
+                <span class="status-dot" id="ml-status"></span>
+                <span>ML Models</span>
+            </div>
+            <div class="status-item">
+                <span id="api-url" style="font-family: monospace; font-size: 0.85em;"></span>
+            </div>
+        </div>
+        
+        <div class="modules-grid">
+            <a href="prediction_simple.html" class="module-card">
+                <div class="module-icon">🔮</div>
+                <h3>Prediction Center</h3>
+                <p>Get AI-powered stock predictions with multiple ML models</p>
+            </a>
+            
+            <a href="stock_tracker.html" class="module-card">
+                <div class="module-icon">📊</div>
+                <h3>Stock Tracker</h3>
+                <p>Real-time tracking with technical indicators</p>
+            </a>
+            
+            <a href="cba_system.html" class="module-card">
+                <div class="module-icon">🎯</div>
+                <h3>CBA System</h3>
+                <p>Cost-Benefit Analysis with enhanced predictions</p>
+            </a>
+            
+            <a href="test_prediction.html" class="module-card">
+                <div class="module-icon">🔧</div>
+                <h3>System Diagnostics</h3>
+                <p>Test API connections and troubleshoot issues</p>
+            </a>
+            
+            <a href="#" onclick="testAPI(); return false;" class="module-card">
+                <div class="module-icon">🧪</div>
+                <h3>Quick Test</h3>
+                <p>Click to test API connection instantly</p>
+            </a>
+            
+            <a href="#" onclick="showAPIInfo(); return false;" class="module-card">
+                <div class="module-icon">ℹ️</div>
+                <h3>API Info</h3>
+                <p>View current API configuration</p>
+            </a>
+        </div>
+        
+        <div id="api-info" class="api-info" style="display: none;"></div>
+        <div id="error-message" class="error-message"></div>
+    </div>
+    
+    <script>
+        // Use the global config
+        const API_URL = window.APP_CONFIG.API_BASE_URL;
+        
+        // Display API URL
+        document.getElementById('api-url').textContent = API_URL;
+        
+        async function checkBackendStatus() {
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                
+                if (data.status === 'healthy') {
+                    document.getElementById('backend-status').classList.add('active');
+                    document.getElementById('ml-status').classList.add('active');
+                } else {
+                    throw new Error('Backend not healthy');
+                }
+            } catch (error) {
+                console.error('Backend check failed:', error);
+                document.getElementById('backend-status').classList.add('error');
+                document.getElementById('ml-status').classList.add('error');
+                
+                // Show error message
+                const errorDiv = document.getElementById('error-message');
+                errorDiv.style.display = 'block';
+                errorDiv.innerHTML = `
+                    <strong>Connection Error:</strong> Cannot connect to backend API at ${API_URL}<br>
+                    <small>Error: ${error.message}</small>
+                `;
+            }
+        }
+        
+        async function testAPI() {
+            const errorDiv = document.getElementById('error-message');
+            errorDiv.style.display = 'none';
+            
+            try {
+                // Test health endpoint
+                const healthResponse = await fetch(`${API_URL}/health`);
+                const healthData = await healthResponse.json();
+                
+                // Test prediction endpoint
+                const predResponse = await fetch(`${API_URL}/api/unified-prediction/AAPL?timeframe=1d`);
+                const predData = await predResponse.json();
+                
+                alert(`✅ API Test Successful!\n\nHealth: ${healthData.status}\nPrediction Test: ${predData.status}\nSymbol: ${predData.symbol}`);
+            } catch (error) {
+                errorDiv.style.display = 'block';
+                errorDiv.innerHTML = `<strong>Test Failed:</strong> ${error.message}`;
+            }
+        }
+        
+        function showAPIInfo() {
+            const infoDiv = document.getElementById('api-info');
+            infoDiv.style.display = 'block';
+            infoDiv.innerHTML = `
+                <strong>API Configuration:</strong><br>
+                Base URL: ${API_URL}<br>
+                Environment: ${window.location.hostname.includes('e2b.dev') ? 'E2B Sandbox' : 'Local'}<br>
+                Health Endpoint: ${API_URL}/health<br>
+                Prediction Endpoint: ${API_URL}/api/unified-prediction/{symbol}<br>
+                API Documentation: <a href="${API_URL}/docs" target="_blank">${API_URL}/docs</a>
+            `;
+        }
+        
+        // Check status on load
+        checkBackendStatus();
+        
+        // Periodically check status
+        setInterval(checkBackendStatus, 30000);
+    </script>
+</body>
+</html>

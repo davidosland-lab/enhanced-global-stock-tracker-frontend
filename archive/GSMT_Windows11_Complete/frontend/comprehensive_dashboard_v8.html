@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GSMT v8.0 - Global Stock Market Tracker Dashboard</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #3730a3 25%, #6366f1 50%, #8b5cf6 75%, #a855f7 100%);
+            min-height: 100vh;
+        }
+        
+        .glassmorphism {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .module-card {
+            background: rgba(30, 30, 50, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .module-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            border-color: rgba(139, 92, 246, 0.5);
+        }
+        
+        .phase-gradient {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+        }
+        
+        .cba-gradient {
+            background: linear-gradient(135deg, #ffd700 0%, #ffb347 50%, #ff8c42 100%);
+        }
+        
+        .status-online {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            width: 90%;
+            max-width: 1200px;
+            height: 80vh;
+            border-radius: 20px;
+            position: relative;
+        }
+        
+        .close {
+            color: #fff;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .close:hover {
+            color: #f87171;
+        }
+        
+        iframe {
+            width: 100%;
+            height: calc(100% - 40px);
+            border: none;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Header -->
+    <nav class="glassmorphism sticky top-0 z-50 border-b border-white/20">
+        <div class="max-w-7xl mx-auto px-6 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 phase-gradient rounded-lg flex items-center justify-center">
+                        <i class="fas fa-chart-line text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-white font-bold text-xl">GSMT v8.0</h1>
+                        <p class="text-white/70 text-sm">Global Stock Market Tracker - Complete Suite</p>
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-4">
+                    <div class="glassmorphism px-4 py-2 rounded-lg">
+                        <span id="server-status" class="text-green-400 font-medium">
+                            <i class="fas fa-circle status-online mr-2"></i>Live Data Active
+                        </span>
+                    </div>
+                    <div class="text-white/90 text-sm">
+                        <span id="current-time"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-6 py-8">
+        <!-- Quick Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            <div class="glassmorphism p-4 rounded-xl">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-white/70 text-sm">S&P 500</p>
+                        <p class="text-white text-2xl font-bold">6,643.70</p>
+                        <p class="text-green-400 text-sm">+0.36%</p>
+                    </div>
+                    <i class="fas fa-chart-line text-green-400 text-2xl"></i>
+                </div>
+            </div>
+            
+            <div class="glassmorphism p-4 rounded-xl">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-white/70 text-sm">ASX 200</p>
+                        <p class="text-white text-2xl font-bold">8,862.80</p>
+                        <p class="text-green-400 text-sm">+0.85%</p>
+                    </div>
+                    <i class="fas fa-chart-line text-green-400 text-2xl"></i>
+                </div>
+            </div>
+            
+            <div class="glassmorphism p-4 rounded-xl">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-white/70 text-sm">FTSE 100</p>
+                        <p class="text-white text-2xl font-bold">8,290.86</p>
+                        <p class="text-green-400 text-sm">+0.16%</p>
+                    </div>
+                    <i class="fas fa-chart-line text-green-400 text-2xl"></i>
+                </div>
+            </div>
+            
+            <div class="glassmorphism p-4 rounded-xl">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-white/70 text-sm">Active Modules</p>
+                        <p class="text-white text-2xl font-bold">8</p>
+                        <p class="text-green-400 text-sm">All Online</p>
+                    </div>
+                    <i class="fas fa-server text-green-400 text-2xl"></i>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Core Modules -->
+        <h2 class="text-white text-2xl font-bold mb-6">Core Trading Modules</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <!-- Global Indices Tracker -->
+            <div class="module-card rounded-xl p-6" onclick="openModule('indices_tracker_market_hours.html')">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 phase-gradient rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-globe text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-bold text-lg">Global Indices Tracker</h3>
+                        <p class="text-white/60 text-sm">Market Hours Display</p>
+                    </div>
+                </div>
+                <p class="text-white/80 mb-4">Track global markets with proper trading hours display. Shows ASX, FTSE, S&P 500 and more with 5-minute interval data.</p>
+                <div class="flex items-center justify-between">
+                    <span class="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs">Live Data</span>
+                    <span class="text-white/60 text-sm">Yahoo Finance API</span>
+                </div>
+            </div>
+            
+            <!-- Single Stock Tracker -->
+            <div class="module-card rounded-xl p-6" onclick="openModule('single_stock_tracker_fixed.html')">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 phase-gradient rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-chart-area text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-bold text-lg">Single Stock Track & Predict</h3>
+                        <p class="text-white/60 text-sm">AI-Powered Analysis</p>
+                    </div>
+                </div>
+                <p class="text-white/80 mb-4">Advanced stock analysis with technical indicators, LSTM predictions, and GNN models for accurate forecasting.</p>
+                <div class="flex items-center justify-between">
+                    <span class="bg-purple-500/20 text-purple-400 px-3 py-1 rounded-full text-xs">Phase 3 & 4</span>
+                    <span class="text-white/60 text-sm">ML Models</span>
+                </div>
+            </div>
+            
+            <!-- CBA Banking Intelligence -->
+            <div class="module-card rounded-xl p-6" onclick="openModule('cba_market_tracker.html')">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 cba-gradient rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-university text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-bold text-lg">CBA Banking Intelligence</h3>
+                        <p class="text-white/60 text-sm">Commonwealth Bank Analysis</p>
+                    </div>
+                </div>
+                <p class="text-white/80 mb-4">Specialized analysis of Commonwealth Bank of Australia with historical data, media sentiment, and predictions.</p>
+                <div class="flex items-center justify-between">
+                    <span class="bg-yellow-500/20 text-yellow-400 px-3 py-1 rounded-full text-xs">Bank Focus</span>
+                    <span class="text-white/60 text-sm">CBA.AX</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Advanced Analysis Modules -->
+        <h2 class="text-white text-2xl font-bold mb-6">Advanced Analysis</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <!-- Technical Analysis -->
+            <div class="module-card rounded-xl p-6" onclick="openModule('technical_analysis_enhanced.html')">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 phase-gradient rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-chart-bar text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-bold text-lg">Technical Analysis</h3>
+                        <p class="text-white/60 text-sm">Advanced Indicators</p>
+                    </div>
+                </div>
+                <p class="text-white/80 mb-4">Comprehensive technical analysis with RSI, MACD, Bollinger Bands, and more advanced indicators.</p>
+                <div class="flex items-center justify-between">
+                    <span class="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-xs">Enhanced</span>
+                    <span class="text-white/60 text-sm">20+ Indicators</span>
+                </div>
+            </div>
+            
+            <!-- Prediction Performance -->
+            <div class="module-card rounded-xl p-6" onclick="openModule('prediction_performance_dashboard.html')">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 phase-gradient rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-brain text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-bold text-lg">Prediction Performance</h3>
+                        <p class="text-white/60 text-sm">ML Model Analytics</p>
+                    </div>
+                </div>
+                <p class="text-white/80 mb-4">Track and analyze the performance of all ML models with accuracy metrics and backtesting results.</p>
+                <div class="flex items-center justify-between">
+                    <span class="bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-xs">Analytics</span>
+                    <span class="text-white/60 text-sm">Model Metrics</span>
+                </div>
+            </div>
+            
+            <!-- Market Dashboard -->
+            <div class="module-card rounded-xl p-6" onclick="openModule('dashboard.html')">
+                <div class="flex items-center mb-4">
+                    <div class="w-12 h-12 phase-gradient rounded-lg flex items-center justify-center mr-4">
+                        <i class="fas fa-th-large text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-white font-bold text-lg">Market Overview</h3>
+                        <p class="text-white/60 text-sm">Complete Dashboard</p>
+                    </div>
+                </div>
+                <p class="text-white/80 mb-4">Comprehensive market overview with all major indices, sectors, and real-time data feeds.</p>
+                <div class="flex items-center justify-between">
+                    <span class="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs">Full View</span>
+                    <span class="text-white/60 text-sm">All Markets</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- System Status -->
+        <h2 class="text-white text-2xl font-bold mb-6">System Status</h2>
+        <div class="glassmorphism rounded-xl p-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <h4 class="text-white/70 text-sm mb-2">Backend Servers</h4>
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-white">Live Market Server</span>
+                            <span class="text-green-400"><i class="fas fa-circle text-xs mr-1"></i>Port 8000</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-white">Enhanced ML Backend</span>
+                            <span class="text-green-400"><i class="fas fa-circle text-xs mr-1"></i>Port 8001</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-white">CBA Specialist Server</span>
+                            <span class="text-green-400"><i class="fas fa-circle text-xs mr-1"></i>Port 8002</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="text-white/70 text-sm mb-2">Data Sources</h4>
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-white">Yahoo Finance API</span>
+                            <span class="text-green-400"><i class="fas fa-check-circle text-xs mr-1"></i>Connected</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-white">Real-time Feed</span>
+                            <span class="text-green-400"><i class="fas fa-check-circle text-xs mr-1"></i>Active</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-white">Historical Data</span>
+                            <span class="text-green-400"><i class="fas fa-check-circle text-xs mr-1"></i>Available</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="text-white/70 text-sm mb-2">System Info</h4>
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-white">Version</span>
+                            <span class="text-white/80">v8.0</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-white">Last Update</span>
+                            <span class="text-white/80">2025-09-30</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span class="text-white">Data Mode</span>
+                            <span class="text-green-400">Live Only</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Module Modal -->
+    <div id="moduleModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <iframe id="moduleFrame" src=""></iframe>
+        </div>
+    </div>
+    
+    <script>
+        // Update time
+        function updateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleString('en-AU', {
+                timeZone: 'Australia/Sydney',
+                hour12: false,
+                weekday: 'short',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            document.getElementById('current-time').textContent = timeString + ' AEST';
+        }
+        
+        setInterval(updateTime, 1000);
+        updateTime();
+        
+        // Module opening
+        function openModule(modulePath) {
+            const modal = document.getElementById('moduleModal');
+            const frame = document.getElementById('moduleFrame');
+            frame.src = modulePath;
+            modal.style.display = 'block';
+        }
+        
+        function closeModal() {
+            const modal = document.getElementById('moduleModal');
+            const frame = document.getElementById('moduleFrame');
+            frame.src = '';
+            modal.style.display = 'none';
+        }
+        
+        // Close modal on outside click
+        window.onclick = function(event) {
+            const modal = document.getElementById('moduleModal');
+            if (event.target == modal) {
+                closeModal();
+            }
+        }
+        
+        // Check server status
+        async function checkServerStatus() {
+            try {
+                const response = await fetch('http://localhost:8000/health');
+                if (response.ok) {
+                    document.getElementById('server-status').innerHTML = 
+                        '<i class="fas fa-circle status-online mr-2"></i>Live Data Active';
+                    document.getElementById('server-status').className = 'text-green-400 font-medium';
+                } else {
+                    throw new Error('Server not responding');
+                }
+            } catch (error) {
+                document.getElementById('server-status').innerHTML = 
+                    '<i class="fas fa-circle mr-2"></i>Backend Offline';
+                document.getElementById('server-status').className = 'text-yellow-400 font-medium';
+            }
+        }
+        
+        // Check status every 30 seconds
+        setInterval(checkServerStatus, 30000);
+        checkServerStatus();
+    </script>
+</body>
+</html>

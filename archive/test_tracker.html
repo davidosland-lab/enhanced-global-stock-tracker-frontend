@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Stock Tracker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #1a1a1a;
+            color: white;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        #status {
+            margin-top: 20px;
+            padding: 20px;
+            background: #2a2a2a;
+            border-radius: 5px;
+            min-height: 100px;
+        }
+        .error {
+            color: #ff6b6b;
+        }
+        .success {
+            color: #51cf66;
+        }
+        input {
+            padding: 10px;
+            margin: 10px;
+            background: #2a2a2a;
+            color: white;
+            border: 1px solid #444;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Stock Tracker - Debug Mode</h1>
+    
+    <div>
+        <input type="text" id="symbolInput" placeholder="Enter symbol (e.g., AAPL)" value="AAPL">
+        <button onclick="testBackend()">Test Backend Connection</button>
+        <button onclick="fetchData()">Fetch Stock Data</button>
+        <button onclick="testTracking()">Test Tracking Function</button>
+    </div>
+    
+    <div id="status">
+        <h3>Status:</h3>
+        <div id="output">Ready to test...</div>
+    </div>
+
+    <script>
+        // Determine API URL
+        let API_BASE_URL;
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            API_BASE_URL = 'http://localhost:8000';
+        } else if (window.location.hostname.includes('e2b.dev')) {
+            // E2B sandbox environment - use the backend service URL
+            API_BASE_URL = 'https://8000-i2ch499gc6d7qpm0yvxy4-6532622b.e2b.dev';
+        } else {
+            API_BASE_URL = 'https://enhanced-global-stock-tracker-frontend.onrender.com';
+        }
+        
+        const output = document.getElementById('output');
+        
+        function log(message, isError = false) {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = isError ? 'error' : 'success';
+            output.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            console.log(message);
+        }
+        
+        async function testBackend() {
+            output.innerHTML = '';
+            log(`Testing backend at: ${API_BASE_URL}`);
+            
+            try {
+                // Test health endpoint
+                const healthResponse = await fetch(`${API_BASE_URL}/health`);
+                if (healthResponse.ok) {
+                    const health = await healthResponse.json();
+                    log(`✅ Health check passed: ${JSON.stringify(health)}`);
+                } else {
+                    log(`❌ Health check failed: ${healthResponse.status} ${healthResponse.statusText}`, true);
+                }
+                
+                // Test API docs
+                const docsResponse = await fetch(`${API_BASE_URL}/api/docs`);
+                log(`📚 API docs available: ${docsResponse.ok ? 'Yes' : 'No'}`);
+                
+            } catch (error) {
+                log(`❌ Backend connection failed: ${error.message}`, true);
+                log('Make sure the backend is running on port 8000', true);
+            }
+        }
+        
+        async function fetchData() {
+            const symbol = document.getElementById('symbolInput').value;
+            if (!symbol) {
+                log('Please enter a symbol', true);
+                return;
+            }
+            
+            output.innerHTML = '';
+            log(`Fetching data for ${symbol}...`);
+            
+            try {
+                const url = `${API_BASE_URL}/api/stock/${symbol}?period=1d&interval=1h`;
+                log(`Request URL: ${url}`);
+                
+                const response = await fetch(url);
+                log(`Response status: ${response.status}`);
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    log(`❌ Failed to fetch data: ${errorText}`, true);
+                    return;
+                }
+                
+                const data = await response.json();
+                log(`✅ Data received: ${data.data ? data.data.length : 0} data points`);
+                
+                if (data.data && data.data.length > 0) {
+                    const latest = data.data[data.data.length - 1];
+                    log(`Latest price: $${latest.close.toFixed(2)}`);
+                    log(`Timestamp: ${new Date(latest.timestamp).toLocaleString()}`);
+                }
+                
+            } catch (error) {
+                log(`❌ Error fetching data: ${error.message}`, true);
+            }
+        }
+        
+        async function testTracking() {
+            const symbol = document.getElementById('symbolInput').value;
+            if (!symbol) {
+                log('Please enter a symbol', true);
+                return;
+            }
+            
+            output.innerHTML = '';
+            log('Testing tracking functionality...');
+            
+            // Simulate what the startTracking function does
+            try {
+                log(`Starting tracking for ${symbol}...`);
+                
+                // Test initial fetch
+                await fetchData();
+                
+                log('✅ Tracking test complete. In real app, this would update every 30 seconds.');
+                
+            } catch (error) {
+                log(`❌ Tracking test failed: ${error.message}`, true);
+            }
+        }
+        
+        // Auto-test on load
+        window.addEventListener('load', () => {
+            log(`API Base URL: ${API_BASE_URL}`);
+            log(`Current location: ${window.location.hostname}`);
+        });
+    </script>
+</body>
+</html>

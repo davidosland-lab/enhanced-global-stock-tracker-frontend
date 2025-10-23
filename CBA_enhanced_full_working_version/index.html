@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CBA Enhanced Full Working Version - Windows 11 Optimized</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        .golden-border {
+            border: 3px solid;
+            border-image: linear-gradient(45deg, #FFD700, #FFA500, #FFD700) 1;
+            box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+        }
+        .cba-gradient {
+            background: linear-gradient(135deg, #ffd700 0%, #ffb347 25%, #ff8c42 50%, #ff6b42 75%, #ffd700 100%);
+        }
+        body {
+            background: linear-gradient(135deg, #1a365d 0%, #2d5aa0 100%);
+            min-height: 100vh;
+        }
+    </style>
+</head>
+<body class="font-sans">
+    <!-- Main Container -->
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="cba-gradient rounded-lg shadow-lg mb-8 p-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="text-4xl">🏦</div>
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-800">CBA Enhanced Full Working Version</h1>
+                        <p class="text-gray-700">Windows 11 Optimized - Hardcoded localhost:8002</p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <button onclick="startBackend()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition">
+                        <i class="fas fa-server mr-2"></i>Start Backend
+                    </button>
+                    <button onclick="loadCBAModule()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                        <i class="fas fa-chart-line mr-2"></i>Load CBA Module
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Status Section -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-xl font-bold mb-4">System Status</h2>
+            <div class="grid grid-cols-3 gap-4">
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <p class="text-sm text-gray-600">Backend Status</p>
+                    <p id="backendStatus" class="text-lg font-bold text-red-600">Not Running</p>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <p class="text-sm text-gray-600">API Endpoint</p>
+                    <p class="text-lg font-bold">http://localhost:8002</p>
+                </div>
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <p class="text-sm text-gray-600">Module Status</p>
+                    <p id="moduleStatus" class="text-lg font-bold text-gray-600">Ready to Load</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Module Container -->
+        <div id="moduleContainer" class="golden-border rounded-lg bg-white shadow-2xl overflow-hidden" style="display: none;">
+            <iframe id="cbaModule" src="" style="width: 100%; height: 900px; border: none;"></iframe>
+        </div>
+
+        <!-- Instructions -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mt-8">
+            <h2 class="text-xl font-bold mb-4">Quick Start Instructions</h2>
+            <ol class="list-decimal list-inside space-y-2 text-gray-700">
+                <li>Click "Start Backend" to launch the Flask server on port 8002</li>
+                <li>Wait for the backend status to show "Running"</li>
+                <li>Click "Load CBA Module" to display the enhanced CBA tracker</li>
+                <li>The module will automatically connect to http://localhost:8002</li>
+                <li>All data is fetched in real-time from Yahoo Finance API</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        // Check backend status
+        async function checkBackendStatus() {
+            try {
+                const response = await fetch('http://localhost:8002/api/status');
+                if (response.ok) {
+                    document.getElementById('backendStatus').textContent = 'Running';
+                    document.getElementById('backendStatus').className = 'text-lg font-bold text-green-600';
+                    return true;
+                }
+            } catch (error) {
+                document.getElementById('backendStatus').textContent = 'Not Running';
+                document.getElementById('backendStatus').className = 'text-lg font-bold text-red-600';
+                return false;
+            }
+        }
+
+        // Start backend
+        function startBackend() {
+            alert('Please run the backend server:\n\nOpen a terminal and execute:\ncd CBA_enhanced_full_working_version\npython backend.py\n\nThe server will start on http://localhost:8002');
+            setTimeout(checkBackendStatus, 2000);
+        }
+
+        // Load CBA module
+        async function loadCBAModule() {
+            const isRunning = await checkBackendStatus();
+            if (!isRunning) {
+                alert('Backend server is not running! Please start it first.');
+                return;
+            }
+            
+            document.getElementById('moduleContainer').style.display = 'block';
+            document.getElementById('cbaModule').src = 'cba_enhanced.html';
+            document.getElementById('moduleStatus').textContent = 'Module Loaded';
+            document.getElementById('moduleStatus').className = 'text-lg font-bold text-green-600';
+        }
+
+        // Check backend status on page load
+        window.addEventListener('load', () => {
+            checkBackendStatus();
+            // Check every 5 seconds
+            setInterval(checkBackendStatus, 5000);
+        });
+    </script>
+</body>
+</html>

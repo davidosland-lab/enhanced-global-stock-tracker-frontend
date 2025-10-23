@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Stock Tracker ML System - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        }
+        
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .model-card {
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .model-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .trend-up {
+            color: #10b981;
+        }
+        
+        .trend-down {
+            color: #ef4444;
+        }
+        
+        .trend-neutral {
+            color: #f59e0b;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="glass rounded-2xl p-8 mb-8 text-center text-white">
+            <h1 class="text-5xl font-bold mb-4">
+                <i class="fas fa-chart-line mr-3"></i>Enhanced Stock Tracker
+            </h1>
+            <p class="text-xl">Advanced ML Predictions with Phase 3 & 4 Models</p>
+            <div class="mt-4 flex justify-center gap-4">
+                <span class="px-4 py-2 bg-green-500/20 rounded-full">
+                    <i class="fas fa-check-circle text-green-400"></i> System Online
+                </span>
+                <span class="px-4 py-2 bg-blue-500/20 rounded-full">
+                    <i class="fas fa-brain text-blue-400"></i> 9 ML Models Active
+                </span>
+            </div>
+        </div>
+        
+        <!-- Main Controls -->
+        <div class="glass rounded-2xl p-6 mb-8 text-white">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Stock Symbol</label>
+                    <input 
+                        type="text" 
+                        id="symbolInput" 
+                        value="AAPL" 
+                        class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-blue-400"
+                        placeholder="Enter symbol..."
+                    >
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-2">Timeframe</label>
+                    <select id="timeframeSelect" class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:border-blue-400">
+                        <option value="1d">1 Day</option>
+                        <option value="5d" selected>5 Days</option>
+                        <option value="30d">30 Days</option>
+                        <option value="90d">90 Days</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button onclick="getPrediction()" class="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105">
+                        <i class="fas fa-chart-line mr-2"></i>Get Prediction
+                    </button>
+                </div>
+                <div class="flex items-end">
+                    <button onclick="refreshDashboard()" class="w-full px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 rounded-lg font-semibold transition-all duration-200 transform hover:scale-105">
+                        <i class="fas fa-sync mr-2"></i>Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Results Section -->
+        <div id="resultsSection" style="display: none;">
+            <!-- Main Prediction Card -->
+            <div class="glass rounded-2xl p-6 mb-8 text-white">
+                <h2 class="text-2xl font-bold mb-4">Ensemble Prediction</h2>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div>
+                        <p class="text-sm text-gray-300">Current Price</p>
+                        <p id="currentPrice" class="text-3xl font-bold">-</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-300">Predicted Price</p>
+                        <p id="predictedPrice" class="text-3xl font-bold">-</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-300">Expected Change</p>
+                        <p id="expectedChange" class="text-3xl font-bold">-</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-300">Trend / Confidence</p>
+                        <p id="trendConfidence" class="text-2xl font-bold">-</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- ML Models Grid -->
+            <div class="glass rounded-2xl p-6 mb-8 text-white">
+                <h2 class="text-2xl font-bold mb-4">Individual Model Predictions</h2>
+                <div id="modelsGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+            
+            <!-- Technical Indicators -->
+            <div class="glass rounded-2xl p-6 mb-8 text-white">
+                <h2 class="text-2xl font-bold mb-4">Technical Indicators</h2>
+                <div id="indicatorsGrid" class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+            
+            <!-- Performance Metrics -->
+            <div class="glass rounded-2xl p-6 text-white">
+                <h2 class="text-2xl font-bold mb-4">Model Performance</h2>
+                <div id="performanceGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Dynamically populated -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50" style="display: none;">
+            <div class="glass rounded-2xl p-8 text-white text-center">
+                <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
+                <p class="text-xl">Analyzing with ML Models...</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // API Base URL (local server)
+        const API_BASE = 'http://localhost:8000';
+        
+        async function getPrediction() {
+            const symbol = document.getElementById('symbolInput').value.toUpperCase();
+            const timeframe = document.getElementById('timeframeSelect').value;
+            
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            
+            // Show loading
+            document.getElementById('loadingIndicator').style.display = 'flex';
+            document.getElementById('resultsSection').style.display = 'none';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/predict/${symbol}?timeframe=${timeframe}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    displayResults(data);
+                    await fetchPerformance();
+                } else {
+                    throw new Error(data.detail || 'Prediction failed');
+                }
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            } finally {
+                document.getElementById('loadingIndicator').style.display = 'none';
+            }
+        }
+        
+        function displayResults(data) {
+            // Show results section
+            document.getElementById('resultsSection').style.display = 'block';
+            
+            // Update main prediction
+            document.getElementById('currentPrice').textContent = `$${data.current_price?.toFixed(2) || '-'}`;
+            document.getElementById('predictedPrice').textContent = `$${data.ensemble_prediction?.toFixed(2) || '-'}`;
+            
+            const changeElement = document.getElementById('expectedChange');
+            const changePercent = data.change_percent || 0;
+            changeElement.textContent = `${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%`;
+            changeElement.className = `text-3xl font-bold ${changePercent >= 0 ? 'trend-up' : 'trend-down'}`;
+            
+            const trendElement = document.getElementById('trendConfidence');
+            const trend = data.trend || 'NEUTRAL';
+            const confidence = (data.confidence * 100).toFixed(0);
+            trendElement.innerHTML = `
+                <span class="${trend === 'BULLISH' ? 'trend-up' : trend === 'BEARISH' ? 'trend-down' : 'trend-neutral'}">
+                    ${trend}
+                </span>
+                <span class="text-lg ml-2">(${confidence}%)</span>
+            `;
+            
+            // Display individual models
+            const modelsGrid = document.getElementById('modelsGrid');
+            modelsGrid.innerHTML = '';
+            
+            if (data.predictions) {
+                Object.entries(data.predictions).forEach(([model, pred]) => {
+                    if (!pred.error) {
+                        const card = document.createElement('div');
+                        card.className = 'model-card rounded-lg p-4';
+                        
+                        if (pred.prediction) {
+                            const modelChange = ((pred.prediction - data.current_price) / data.current_price * 100);
+                            card.innerHTML = `
+                                <h3 class="font-bold text-lg mb-2">${model.toUpperCase()}</h3>
+                                <p class="text-2xl font-bold mb-1">$${pred.prediction.toFixed(2)}</p>
+                                <p class="${modelChange >= 0 ? 'trend-up' : 'trend-down'}">
+                                    ${modelChange >= 0 ? '+' : ''}${modelChange.toFixed(2)}%
+                                </p>
+                                <p class="text-sm text-gray-300 mt-1">
+                                    Confidence: ${(pred.confidence * 100).toFixed(0)}%
+                                </p>
+                            `;
+                        } else if (pred.signal) {
+                            card.innerHTML = `
+                                <h3 class="font-bold text-lg mb-2">${model.toUpperCase()}</h3>
+                                <p class="text-2xl font-bold mb-1">${pred.signal}</p>
+                                <p class="text-sm text-gray-300 mt-1">
+                                    Q-Value: ${pred.q_value?.toFixed(2) || '-'}
+                                </p>
+                                <p class="text-sm text-gray-300">
+                                    Confidence: ${(pred.confidence * 100).toFixed(0)}%
+                                </p>
+                            `;
+                        }
+                        
+                        modelsGrid.appendChild(card);
+                    }
+                });
+            }
+            
+            // Display indicators
+            const indicatorsGrid = document.getElementById('indicatorsGrid');
+            indicatorsGrid.innerHTML = '';
+            
+            if (data.indicators) {
+                const indicators = [
+                    { name: 'RSI', value: data.indicators.rsi?.toFixed(2) },
+                    { name: 'MACD', value: data.indicators.macd?.toFixed(3) },
+                    { name: 'MA 20', value: `$${data.indicators.ma_20?.toFixed(2)}` },
+                    { name: 'ATR', value: data.indicators.atr?.toFixed(2) },
+                    { name: 'Volume', value: (data.indicators.volume / 1e6)?.toFixed(2) + 'M' }
+                ];
+                
+                indicators.forEach(ind => {
+                    const div = document.createElement('div');
+                    div.className = 'bg-white/5 rounded-lg p-3';
+                    div.innerHTML = `
+                        <p class="text-sm text-gray-300">${ind.name}</p>
+                        <p class="text-xl font-bold">${ind.value || '-'}</p>
+                    `;
+                    indicatorsGrid.appendChild(div);
+                });
+            }
+        }
+        
+        async function fetchPerformance() {
+            try {
+                const response = await fetch(`${API_BASE}/api/performance`);
+                const data = await response.json();
+                
+                const performanceGrid = document.getElementById('performanceGrid');
+                performanceGrid.innerHTML = '';
+                
+                // Model accuracies
+                const accCard = document.createElement('div');
+                accCard.className = 'bg-white/5 rounded-lg p-4';
+                accCard.innerHTML = '<h3 class="font-bold mb-3">Model Accuracies</h3>';
+                
+                if (data.model_accuracies) {
+                    Object.entries(data.model_accuracies).forEach(([model, acc]) => {
+                        accCard.innerHTML += `
+                            <div class="flex justify-between mb-2">
+                                <span>${model.toUpperCase()}:</span>
+                                <span class="font-bold">${(acc * 100).toFixed(1)}%</span>
+                            </div>
+                        `;
+                    });
+                }
+                performanceGrid.appendChild(accCard);
+                
+                // System metrics
+                const sysCard = document.createElement('div');
+                sysCard.className = 'bg-white/5 rounded-lg p-4';
+                sysCard.innerHTML = `
+                    <h3 class="font-bold mb-3">System Metrics</h3>
+                    <p>Status: <span class="text-green-400 font-bold">Operational</span></p>
+                    <p>Predictions Today: <span class="font-bold">${data.predictions_today || 0}</span></p>
+                    <p>Avg Latency: <span class="font-bold">${data.average_latency_ms?.toFixed(0) || 0}ms</span></p>
+                `;
+                performanceGrid.appendChild(sysCard);
+                
+            } catch (error) {
+                console.error('Error fetching performance:', error);
+            }
+        }
+        
+        function refreshDashboard() {
+            getPrediction();
+        }
+        
+        // Enter key support
+        document.getElementById('symbolInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                getPrediction();
+            }
+        });
+    </script>
+</body>
+</html>

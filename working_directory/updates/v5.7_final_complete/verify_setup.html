@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Verification Tool</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            padding: 20px;
+            margin: 0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #4CAF50;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .test-section {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .test-item {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            background: #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .status {
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .success { background: #4CAF50; color: white; }
+        .error { background: #f44336; color: white; }
+        .pending { background: #FF9800; color: white; }
+        .info { background: #2196F3; color: white; }
+        .module-link {
+            display: inline-block;
+            margin: 5px;
+            padding: 10px 20px;
+            background: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+        .module-link:hover {
+            background: #45a049;
+        }
+        code {
+            background: #444;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Setup Verification Tool</h1>
+        
+        <div class="test-section">
+            <h2>Backend Connection Tests</h2>
+            <div id="backend-tests"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Module File Verification</h2>
+            <div id="module-tests"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Quick Access Links</h2>
+            <div id="quick-links">
+                <a href="index.html" class="module-link">📊 Main Dashboard</a>
+                <a href="modules/technical_analysis_enhanced_v5.3.html" class="module-link">📈 Technical Analysis v5.3</a>
+                <a href="modules/technical_analysis_desktop_fixed.html" class="module-link">🖥️ Desktop Charts</a>
+                <a href="modules/market-tracking/market_tracker_final.html" class="module-link">🌍 Market Tracker</a>
+                <a href="modules/analysis/cba_analysis_enhanced_fixed.html" class="module-link">🏦 CBA Analysis</a>
+                <a href="diagnostic_tool.html" class="module-link">🔍 Diagnostic Tool</a>
+            </div>
+        </div>
+
+        <div class="test-section">
+            <h2>Live Data Test</h2>
+            <div id="live-data"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Troubleshooting Guide</h2>
+            <div id="troubleshooting">
+                <p><strong>If modules show "Failed to fetch":</strong></p>
+                <ol>
+                    <li>Clear browser cache: Press <code>Ctrl+Shift+Delete</code>, select "Cached images and files", click Clear</li>
+                    <li>Hard refresh: Press <code>Ctrl+F5</code> on the module page</li>
+                    <li>Check backend is running: Look for Python window with "Uvicorn running"</li>
+                    <li>Try different browser: Edge, Chrome, or Firefox</li>
+                    <li>Disable browser extensions temporarily</li>
+                </ol>
+                
+                <p><strong>If backend tests fail:</strong></p>
+                <ol>
+                    <li>Run <code>start_backend.bat</code> as Administrator</li>
+                    <li>Check Windows Firewall isn't blocking port 8002</li>
+                    <li>Verify Python is installed: Open CMD and type <code>python --version</code></li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BACKEND_URL = 'http://localhost:8002';
+        
+        async function testBackend() {
+            const tests = [
+                { name: 'Backend Root', url: `${BACKEND_URL}/` },
+                { name: 'Stock API (AAPL)', url: `${BACKEND_URL}/api/stock/AAPL` },
+                { name: 'Historical API', url: `${BACKEND_URL}/api/historical/AAPL?period=1d&interval=1m` },
+                { name: 'ASX Stock (CBA.AX)', url: `${BACKEND_URL}/api/stock/CBA.AX` }
+            ];
+            
+            const container = document.getElementById('backend-tests');
+            
+            for (const test of tests) {
+                const div = document.createElement('div');
+                div.className = 'test-item';
+                div.innerHTML = `
+                    <span>${test.name}: <code>${test.url}</code></span>
+                    <span class="status pending">Testing...</span>
+                `;
+                container.appendChild(div);
+                
+                try {
+                    const response = await fetch(test.url);
+                    const status = div.querySelector('.status');
+                    if (response.ok) {
+                        const data = await response.json();
+                        status.className = 'status success';
+                        status.textContent = '✓ Success';
+                    } else {
+                        status.className = 'status error';
+                        status.textContent = `✗ HTTP ${response.status}`;
+                    }
+                } catch (error) {
+                    const status = div.querySelector('.status');
+                    status.className = 'status error';
+                    status.textContent = `✗ ${error.message}`;
+                }
+            }
+        }
+        
+        function checkModuleFiles() {
+            const modules = [
+                { name: 'Landing Page', path: 'index.html' },
+                { name: 'Technical Analysis v5.3', path: 'modules/technical_analysis_enhanced_v5.3.html' },
+                { name: 'Desktop Charts Fixed', path: 'modules/technical_analysis_desktop_fixed.html' },
+                { name: 'Market Tracker Final', path: 'modules/market-tracking/market_tracker_final.html' },
+                { name: 'CBA Analysis Fixed', path: 'modules/analysis/cba_analysis_enhanced_fixed.html' }
+            ];
+            
+            const container = document.getElementById('module-tests');
+            
+            modules.forEach(module => {
+                const div = document.createElement('div');
+                div.className = 'test-item';
+                div.innerHTML = `
+                    <span>${module.name}: <code>${module.path}</code></span>
+                    <span class="status info">File should exist</span>
+                `;
+                container.appendChild(div);
+            });
+        }
+        
+        async function testLiveData() {
+            const container = document.getElementById('live-data');
+            container.innerHTML = '<div class="test-item"><span>Fetching live AAPL data...</span><span class="status pending">Loading...</span></div>';
+            
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/stock/AAPL`);
+                if (response.ok) {
+                    const data = await response.json();
+                    container.innerHTML = `
+                        <div class="test-item">
+                            <span>AAPL Current Price:</span>
+                            <span class="status success">$${data.currentPrice?.toFixed(2) || 'N/A'}</span>
+                        </div>
+                        <div class="test-item">
+                            <span>Day Change:</span>
+                            <span class="status ${data.dayChange > 0 ? 'success' : 'error'}">
+                                ${data.dayChange > 0 ? '+' : ''}${data.dayChange?.toFixed(2) || '0'} 
+                                (${data.dayChangePercent?.toFixed(2) || '0'}%)
+                            </span>
+                        </div>
+                        <div class="test-item">
+                            <span>Market State:</span>
+                            <span class="status info">${data.marketState || 'N/A'}</span>
+                        </div>
+                    `;
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                container.innerHTML = `
+                    <div class="test-item">
+                        <span>Live Data Test:</span>
+                        <span class="status error">Failed: ${error.message}</span>
+                    </div>
+                `;
+            }
+        }
+        
+        // Run all tests on load
+        window.addEventListener('load', () => {
+            testBackend();
+            checkModuleFiles();
+            testLiveData();
+        });
+        
+        // Auto-refresh every 10 seconds
+        setInterval(() => {
+            testLiveData();
+        }, 10000);
+    </script>
+</body>
+</html>

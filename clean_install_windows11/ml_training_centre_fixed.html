@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML Training Centre - Stock Tracker</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .header h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #fff, #e0e0e0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .status-bar {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .status-card {
+            flex: 1;
+            min-width: 200px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            text-align: center;
+        }
+        
+        .status-card h3 {
+            font-size: 0.9em;
+            color: #a8a8b3;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        
+        .status-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #fff;
+        }
+        
+        .status-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ff4444;
+            margin-left: 10px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 968px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .card h2 {
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #e0e0e0;
+            font-weight: 500;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+            font-size: 1em;
+        }
+        
+        input::placeholder, textarea::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        select option {
+            background: #764ba2;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 10px;
+            margin-top: 10px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(45deg, #00ff88, #00cc66);
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #000;
+            font-weight: bold;
+        }
+        
+        .model-item {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .model-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateX(5px);
+        }
+        
+        .model-item.selected {
+            background: rgba(102, 126, 234, 0.3);
+            border-color: #667eea;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .metric {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .metric-label {
+            color: #a8a8b3;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+        
+        .metric-value {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 10px 20px;
+            border-radius: 10px;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+        }
+        
+        .back-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateX(-5px);
+        }
+        
+        .predictions-output {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .prediction-result {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .training-log {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            opacity: 0.8;
+        }
+        
+        .log-entry.error {
+            color: #ff6b6b;
+        }
+        
+        .log-entry.success {
+            color: #00ff88;
+        }
+        
+        .log-entry.info {
+            color: #a8a8b3;
+        }
+    </style>
+</head>
+<body>
+    <a href="../index.html" class="back-button">← Back to Dashboard</a>
+    
+    <div class="container">
+        <div class="header">
+            <h1>🤖 ML Training Centre</h1>
+            <p>Train and deploy machine learning models for stock prediction</p>
+        </div>
+        
+        <div class="status-bar">
+            <div class="status-card">
+                <h3>Active Models</h3>
+                <div class="status-value" id="activeModels">0</div>
+            </div>
+            <div class="status-card">
+                <h3>Training Sessions</h3>
+                <div class="status-value" id="trainingSessions">0</div>
+            </div>
+            <div class="status-card">
+                <h3>Accuracy Rate</h3>
+                <div class="status-value" id="accuracyRate">0%</div>
+            </div>
+            <div class="status-card">
+                <h3>ML Backend Status</h3>
+                <div class="status-value">
+                    <span id="backendStatus">Checking...</span>
+                    <span class="status-dot"></span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="card">
+                <h2>🎯 Train New Model</h2>
+                
+                <div class="form-group">
+                    <label for="symbol">Stock Symbol</label>
+                    <input type="text" id="symbol" placeholder="e.g., CBA.AX" value="CBA.AX">
+                </div>
+                
+                <div class="form-group">
+                    <label for="modelType">Model Type</label>
+                    <select id="modelType">
+                        <option value="lstm">LSTM (Long Short-Term Memory)</option>
+                        <option value="gru">GRU (Gated Recurrent Unit)</option>
+                        <option value="random_forest">Random Forest</option>
+                        <option value="xgboost">XGBoost</option>
+                        <option value="transformer">Transformer</option>
+                        <option value="ensemble">Ensemble (Combined)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="epochs">Training Epochs</label>
+                    <input type="number" id="epochs" min="10" max="1000" value="50">
+                </div>
+                
+                <div class="form-group">
+                    <label for="batchSize">Batch Size</label>
+                    <input type="number" id="batchSize" min="8" max="512" value="32">
+                </div>
+                
+                <button id="startTraining" onclick="startTraining()">
+                    Start Training
+                </button>
+                <button id="stopTraining" onclick="stopTraining()" disabled>
+                    Stop Training
+                </button>
+                
+                <div class="progress-bar" id="trainingProgress" style="display: none;">
+                    <div class="progress-fill" id="progressFill" style="width: 0%">0%</div>
+                </div>
+                
+                <div class="training-log" id="trainingLog" style="display: none;">
+                    <div class="log-entry info">Training log will appear here...</div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>📊 Trained Models</h2>
+                
+                <button onclick="loadTrainedModels()">Load Models</button>
+                <button onclick="clearModels()">Clear List</button>
+                
+                <div id="modelsList" style="margin-top: 20px;">
+                    <p style="color: #a8a8b3; text-align: center;">Click 'Load Models' to see available models</p>
+                </div>
+                
+                <div class="metrics-grid">
+                    <div class="metric">
+                        <div class="metric-label">Best Model</div>
+                        <div class="metric-value" id="bestModel">-</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Avg Accuracy</div>
+                        <div class="metric-value" id="avgAccuracy">-</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Total Trained</div>
+                        <div class="metric-value" id="totalTrained">0</div>
+                    </div>
+                    <div class="metric">
+                        <div class="metric-label">Last Updated</div>
+                        <div class="metric-value" id="lastUpdated">-</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h2>🔮 Model Predictions</h2>
+            
+            <div class="form-group">
+                <label for="predSymbol">Symbol for Prediction</label>
+                <input type="text" id="predSymbol" placeholder="e.g., CBA.AX" value="CBA.AX">
+            </div>
+            
+            <div class="form-group">
+                <label for="selectedModel">Select Model</label>
+                <select id="selectedModel">
+                    <option value="">-- Load models first --</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="timeframe">Prediction Timeframe</label>
+                <select id="timeframe">
+                    <option value="1d">1 Day</option>
+                    <option value="5d" selected>5 Days</option>
+                    <option value="1mo">1 Month</option>
+                    <option value="3mo">3 Months</option>
+                </select>
+            </div>
+            
+            <button id="predictBtn" onclick="makePrediction()" disabled>
+                Generate Prediction
+            </button>
+            
+            <div class="predictions-output" id="predictionsOutput" style="display: none;">
+                <p style="color: #a8a8b3;">Predictions will appear here...</p>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Configuration
+        const BACKEND_URL = 'http://localhost:8002';
+        const ML_BACKEND_URL = 'http://localhost:8003';
+        
+        let currentTrainingId = null;
+        let trainingInterval = null;
+        let statusCheckInterval = null;
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkBackendStatus();
+            setInterval(checkBackendStatus, 30000); // Check every 30 seconds
+        });
+        
+        // Check backend status
+        async function checkBackendStatus() {
+            try {
+                const response = await fetch(`${ML_BACKEND_URL}/health`);
+                if (response.ok) {
+                    document.getElementById('backendStatus').textContent = 'Connected';
+                    document.getElementById('backendStatus').style.color = '#00ff88';
+                    document.querySelector('.status-dot').style.background = '#00ff88';
+                } else {
+                    throw new Error('Backend not responding');
+                }
+            } catch (error) {
+                document.getElementById('backendStatus').textContent = 'Disconnected';
+                document.getElementById('backendStatus').style.color = '#ff4444';
+                document.querySelector('.status-dot').style.background = '#ff4444';
+                console.error('Backend connection error:', error);
+            }
+        }
+        
+        // Start training
+        async function startTraining() {
+            const symbol = document.getElementById('symbol').value;
+            const modelType = document.getElementById('modelType').value;
+            const epochs = parseInt(document.getElementById('epochs').value);
+            const batchSize = parseInt(document.getElementById('batchSize').value);
+            
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${ML_BACKEND_URL}/api/ml/train`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        model_type: modelType,
+                        epochs: epochs,
+                        batch_size: batchSize
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to start training');
+                }
+                
+                const data = await response.json();
+                currentTrainingId = data.training_id;
+                
+                // Update UI
+                document.getElementById('startTraining').disabled = true;
+                document.getElementById('stopTraining').disabled = false;
+                document.getElementById('trainingProgress').style.display = 'block';
+                document.getElementById('trainingLog').style.display = 'block';
+                
+                // Add log entry
+                addLogEntry(`Training started: ${modelType} model for ${symbol}`, 'success');
+                addLogEntry(`Training ID: ${currentTrainingId}`, 'info');
+                
+                // Start checking training status
+                if (statusCheckInterval) {
+                    clearInterval(statusCheckInterval);
+                }
+                statusCheckInterval = setInterval(() => checkTrainingStatus(), 2000);
+                
+                // Update training sessions count
+                const sessions = parseInt(document.getElementById('trainingSessions').textContent);
+                document.getElementById('trainingSessions').textContent = sessions + 1;
+                
+            } catch (error) {
+                console.error('Error starting training:', error);
+                alert('Failed to start training. Please check the ML Backend is running.');
+                addLogEntry(`Error: ${error.message}`, 'error');
+            }
+        }
+        
+        // Stop training
+        async function stopTraining() {
+            if (!currentTrainingId) return;
+            
+            try {
+                const response = await fetch(`${ML_BACKEND_URL}/api/ml/stop/${currentTrainingId}`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    addLogEntry('Training stopped by user', 'info');
+                    resetTrainingUI();
+                }
+            } catch (error) {
+                console.error('Error stopping training:', error);
+                addLogEntry(`Error stopping: ${error.message}`, 'error');
+            }
+        }
+        
+        // Check training status
+        async function checkTrainingStatus() {
+            if (!currentTrainingId) {
+                // No active training, stop checking
+                if (statusCheckInterval) {
+                    clearInterval(statusCheckInterval);
+                    statusCheckInterval = null;
+                }
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${ML_BACKEND_URL}/api/ml/status/${currentTrainingId}`);
+                if (!response.ok) {
+                    throw new Error('Failed to get training status');
+                }
+                
+                const status = await response.json();
+                
+                // Update progress bar
+                const progress = status.progress || 0;
+                document.getElementById('progressFill').style.width = `${progress}%`;
+                document.getElementById('progressFill').textContent = `${progress}%`;
+                
+                // Check if completed
+                if (status.status === 'completed') {
+                    addLogEntry('Training completed successfully!', 'success');
+                    if (status.accuracy) {
+                        addLogEntry(`Model accuracy: ${(status.accuracy * 100).toFixed(2)}%`, 'success');
+                    }
+                    resetTrainingUI();
+                    loadTrainedModels(); // Refresh models list
+                }
+                
+            } catch (error) {
+                console.error('Error checking training status:', error);
+                // Only clear the interval if there's a persistent error
+                if (statusCheckInterval) {
+                    clearInterval(statusCheckInterval);
+                    statusCheckInterval = null;
+                }
+            }
+        }
+        
+        // Reset training UI
+        function resetTrainingUI() {
+            currentTrainingId = null;
+            if (statusCheckInterval) {
+                clearInterval(statusCheckInterval);
+                statusCheckInterval = null;
+            }
+            document.getElementById('startTraining').disabled = false;
+            document.getElementById('stopTraining').disabled = true;
+            document.getElementById('progressFill').style.width = '0%';
+            document.getElementById('progressFill').textContent = '0%';
+        }
+        
+        // Load trained models
+        async function loadTrainedModels() {
+            try {
+                const response = await fetch(`${ML_BACKEND_URL}/api/ml/models`);
+                if (!response.ok) {
+                    throw new Error('Failed to load models');
+                }
+                
+                const data = await response.json();
+                const models = data.models || data;  // Handle both response formats
+                
+                // Update models count
+                document.getElementById('activeModels').textContent = models.length;
+                document.getElementById('totalTrained').textContent = models.length;
+                
+                // Update models list
+                const modelsList = document.getElementById('modelsList');
+                const modelSelect = document.getElementById('selectedModel');
+                
+                if (models.length === 0) {
+                    modelsList.innerHTML = '<p style="color: #a8a8b3; text-align: center;">No trained models yet. Start training to see models here.</p>';
+                    modelSelect.innerHTML = '<option value="">-- No models available --</option>';
+                    document.getElementById('predictBtn').disabled = true;
+                } else {
+                    modelsList.innerHTML = '';
+                    modelSelect.innerHTML = '';
+                    
+                    let totalAccuracy = 0;
+                    let bestModel = null;
+                    let bestAccuracy = 0;
+                    
+                    models.forEach(model => {
+                        // Add to list
+                        const modelItem = document.createElement('div');
+                        modelItem.className = 'model-item';
+                        
+                        const modelName = model.name || model.model_type || 'Unknown Model';
+                        const modelSymbol = model.symbol || 'N/A';
+                        const modelStatus = model.status || 'ready';
+                        const modelAccuracy = model.accuracy || 0;
+                        
+                        modelItem.innerHTML = `
+                            <strong>${modelSymbol} - ${modelName}</strong><br>
+                            <small>Status: ${modelStatus}</small><br>
+                            <small>Accuracy: ${modelAccuracy ? (modelAccuracy * 100).toFixed(2) + '%' : 'N/A'}</small>
+                        `;
+                        
+                        if (model.progress !== undefined && modelStatus === 'training') {
+                            modelItem.innerHTML += `<br><small>Progress: ${model.progress}%</small>`;
+                        }
+                        
+                        modelsList.appendChild(modelItem);
+                        
+                        // Add to select if ready
+                        if (modelStatus === 'ready') {
+                            const option = document.createElement('option');
+                            option.value = model.id || model.model_id;
+                            option.textContent = `${modelSymbol} - ${modelName}`;
+                            modelSelect.appendChild(option);
+                            
+                            // Track accuracy
+                            if (modelAccuracy) {
+                                totalAccuracy += modelAccuracy;
+                                if (modelAccuracy > bestAccuracy) {
+                                    bestAccuracy = modelAccuracy;
+                                    bestModel = modelName;
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Update metrics
+                    const readyModels = models.filter(m => m.status === 'ready');
+                    if (readyModels.length > 0) {
+                        const avgAcc = (totalAccuracy / readyModels.length * 100).toFixed(1);
+                        document.getElementById('avgAccuracy').textContent = `${avgAcc}%`;
+                        document.getElementById('predictBtn').disabled = false;
+                    }
+                    
+                    if (bestModel) {
+                        document.getElementById('bestModel').textContent = bestModel;
+                        document.getElementById('accuracyRate').textContent = `${(bestAccuracy * 100).toFixed(1)}%`;
+                    }
+                    
+                    document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString();
+                }
+                
+            } catch (error) {
+                console.error('Error loading models:', error);
+                document.getElementById('modelsList').innerHTML = '<p style="color: #ff6b6b;">Error loading models. Check ML Backend connection.</p>';
+            }
+        }
+        
+        // Clear models list
+        function clearModels() {
+            document.getElementById('modelsList').innerHTML = '<p style="color: #a8a8b3; text-align: center;">Click "Load Models" to see available models</p>';
+            document.getElementById('selectedModel').innerHTML = '<option value="">-- Load models first --</option>';
+            document.getElementById('predictBtn').disabled = true;
+        }
+        
+        // Make prediction
+        async function makePrediction() {
+            const symbol = document.getElementById('predSymbol').value;
+            const modelId = document.getElementById('selectedModel').value;
+            const timeframe = document.getElementById('timeframe').value;
+            
+            if (!symbol || !modelId) {
+                alert('Please enter a symbol and select a model');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${ML_BACKEND_URL}/api/ml/predict`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        model_id: modelId,
+                        timeframe: timeframe
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to generate prediction');
+                }
+                
+                const prediction = await response.json();
+                
+                // Display prediction
+                const output = document.getElementById('predictionsOutput');
+                output.style.display = 'block';
+                output.innerHTML = `
+                    <div class="prediction-result">
+                        <h3>Prediction for ${symbol}</h3>
+                        <p>Model: ${modelId}</p>
+                        <p>Timeframe: ${timeframe}</p>
+                        <div class="metrics-grid">
+                            <div class="metric">
+                                <div class="metric-label">Current Price</div>
+                                <div class="metric-value">$${prediction.current_price?.toFixed(2) || 'N/A'}</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Predicted Price</div>
+                                <div class="metric-value">$${prediction.predicted_price?.toFixed(2) || 'N/A'}</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Change</div>
+                                <div class="metric-value">${prediction.change_percent?.toFixed(2) || '0'}%</div>
+                            </div>
+                            <div class="metric">
+                                <div class="metric-label">Confidence</div>
+                                <div class="metric-value">${prediction.confidence?.toFixed(1) || 'N/A'}%</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Error making prediction:', error);
+                alert('Failed to generate prediction. Please try again.');
+            }
+        }
+        
+        // Add log entry
+        function addLogEntry(message, type = 'info') {
+            const log = document.getElementById('trainingLog');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mock API Service Worker</title>
+</head>
+<body>
+    <h1>Installing Mock API...</h1>
+    <script>
+        // This creates a mock API using Service Worker for testing
+        if ('serviceWorker' in navigator) {
+            // Create the service worker code
+            const swCode = `
+self.addEventListener('fetch', event => {
+    const url = new URL(event.request.url);
+    
+    // Only intercept API calls
+    if (!url.pathname.startsWith('/api/')) return;
+    
+    // Mock responses
+    let response;
+    
+    if (url.pathname === '/api/health') {
+        response = new Response(JSON.stringify({
+            status: 'healthy',
+            message: 'Mock API Active',
+            timestamp: new Date().toISOString()
+        }), {
+            headers: {'Content-Type': 'application/json'}
+        });
+    } else if (url.pathname.includes('/api/stock/')) {
+        const symbol = url.pathname.split('/').pop();
+        const mockData = [];
+        for (let i = 0; i < 100; i++) {
+            mockData.push({
+                timestamp: new Date(Date.now() - i * 300000).toISOString(),
+                open: 150 + Math.random() * 10,
+                high: 155 + Math.random() * 10,
+                low: 145 + Math.random() * 10,
+                close: 150 + Math.random() * 10,
+                volume: Math.floor(Math.random() * 1000000)
+            });
+        }
+        response = new Response(JSON.stringify({
+            symbol: symbol,
+            data: mockData,
+            metadata: {name: symbol + ' Inc.', exchange: 'MOCK'}
+        }), {
+            headers: {'Content-Type': 'application/json'}
+        });
+    } else if (url.pathname.includes('/api/technical/')) {
+        response = new Response(JSON.stringify({
+            success: true,
+            data: {
+                current_price: 150 + Math.random() * 10,
+                overall_signal: ['BUY', 'HOLD', 'SELL'][Math.floor(Math.random() * 3)],
+                confidence: Math.random(),
+                indicators: {
+                    rsi: {value: 30 + Math.random() * 40},
+                    macd: {histogram: Math.random() * 2 - 1}
+                }
+            }
+        }), {
+            headers: {'Content-Type': 'application/json'}
+        });
+    } else if (url.pathname.includes('/api/unified-prediction/')) {
+        response = new Response(JSON.stringify({
+            success: true,
+            prediction: {
+                direction: Math.random() > 0.5 ? 'UP' : 'DOWN',
+                expected_return: Math.random() * 0.2 - 0.1,
+                confidence: Math.random()
+            }
+        }), {
+            headers: {'Content-Type': 'application/json'}
+        });
+    } else if (url.pathname.includes('/api/dashboard/')) {
+        response = new Response(JSON.stringify({
+            summary: {
+                total_predictions: Math.floor(Math.random() * 5000),
+                overall_accuracy: Math.random(),
+                active_models: 6,
+                best_model: 'mock_model'
+            }
+        }), {
+            headers: {'Content-Type': 'application/json'}
+        });
+    } else {
+        response = new Response(JSON.stringify({
+            error: 'Mock endpoint not implemented'
+        }), {
+            status: 404,
+            headers: {'Content-Type': 'application/json'}
+        });
+    }
+    
+    event.respondWith(response);
+});
+`;
+            
+            // Create blob and register service worker
+            const blob = new Blob([swCode], {type: 'application/javascript'});
+            const swUrl = URL.createObjectURL(blob);
+            
+            navigator.serviceWorker.register(swUrl, {scope: '/'})
+                .then(reg => {
+                    console.log('Mock API Service Worker registered');
+                    document.body.innerHTML = `
+                        <h1>✅ Mock API Installed</h1>
+                        <p>The mock API is now active. You can test the modules.</p>
+                        <p>Note: This is for testing only. Deploy the real backend for production.</p>
+                        <a href="/">Go to Home</a>
+                    `;
+                })
+                .catch(err => {
+                    console.error('Service Worker registration failed:', err);
+                    document.body.innerHTML = `
+                        <h1>❌ Failed to install mock API</h1>
+                        <p>Error: ${err.message}</p>
+                    `;
+                });
+        } else {
+            document.body.innerHTML = '<h1>❌ Service Workers not supported</h1>';
+        }
+    </script>
+</body>
+</html>

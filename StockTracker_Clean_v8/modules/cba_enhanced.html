@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏦 CBA Enhanced Market Tracker - Commonwealth Bank Specialist</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        .cba-gradient { background: linear-gradient(135deg, #ffd700 0%, #ffb347 25%, #ff8c42 50%, #ff6b42 75%, #ffd700 100%); }
+        .banking-container { background: linear-gradient(135deg, #1a365d 0%, #2d5aa0 100%); }
+        .chart-container { height: 500px; background: white; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.1); }
+        .prediction-card { 
+            background: linear-gradient(135deg, rgba(255,215,0,0.1) 0%, rgba(255,165,0,0.05) 100%);
+            border: 2px solid rgba(255,215,0,0.3);
+            backdrop-filter: blur(10px);
+        }
+        .metric-card {
+            background: rgba(255,255,255,0.95);
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        .status-indicator {
+            width: 12px; height: 12px; border-radius: 50%; margin-right: 8px;
+        }
+        .online { background: #10b981; animation: pulse 2s infinite; }
+        .processing { background: #f59e0b; }
+        .error { background: #ef4444; }
+        
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        
+        .news-item {
+            background: rgba(255,255,255,0.9);
+            border-left: 4px solid #ffd700;
+            transition: all 0.3s ease;
+        }
+        .news-item:hover {
+            background: rgba(255,255,255,1);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            transform: translateY(-2px);
+        }
+        
+        .publication-item {
+            background: linear-gradient(135deg, rgba(45,90,160,0.05) 0%, rgba(255,215,0,0.05) 100%);
+            border: 1px solid rgba(255,215,0,0.2);
+        }
+        
+        .sentiment-positive { color: #10b981; }
+        .sentiment-negative { color: #ef4444; }
+        .sentiment-neutral { color: #6b7280; }
+    </style>
+</head>
+<body class="banking-container min-h-screen font-sans">
+    <!-- Header -->
+    <header class="cba-gradient shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 py-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <div class="text-4xl">🏦</div>
+                    <div>
+                        <h1 class="text-3xl font-bold text-gray-800">CBA Enhanced Analysis</h1>
+                        <p class="text-gray-700">Commonwealth Bank - Technical, News, Publications & ML Predictions</p>
+                    </div>
+                </div>
+                <a href="http://localhost:8002" class="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg font-medium hover:from-blue-600 hover:to-purple-700 transition-all duration-300">
+                    ← Back to Dashboard
+                </a>
+                <div class="flex items-center space-x-4">
+                    <div class="text-right">
+                        <div class="flex items-center">
+                            <span id="connectionStatus" class="status-indicator online"></span>
+                            <span class="text-sm font-medium text-gray-700">Live Data Active</span>
+                        </div>
+                        <div class="text-xs text-gray-600" id="lastUpdate">Last updated: --:--:--</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="max-w-7xl mx-auto px-4 py-8 space-y-8">
+        
+        <!-- Current Price and Key Metrics -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div class="metric-card p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Current Price</p>
+                        <p id="currentPrice" class="text-3xl font-bold text-gray-900">$--.-</p>
+                        <p id="priceChange" class="text-sm font-medium">+$-.-- (+-.-%)</p>
+                    </div>
+                    <div class="text-3xl">📈</div>
+                </div>
+            </div>
+            
+            <div class="metric-card p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Market Cap</p>
+                        <p id="marketCap" class="text-2xl font-bold text-gray-900">$--.-B</p>
+                        <p class="text-sm text-gray-500">AUD</p>
+                    </div>
+                    <div class="text-3xl">💰</div>
+                </div>
+            </div>
+            
+            <div class="metric-card p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Volume</p>
+                        <p id="volume" class="text-2xl font-bold text-gray-900">--.-M</p>
+                        <p class="text-sm text-gray-500">shares</p>
+                    </div>
+                    <div class="text-3xl">📊</div>
+                </div>
+            </div>
+            
+            <div class="metric-card p-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">P/E Ratio</p>
+                        <p id="peRatio" class="text-2xl font-bold text-gray-900">--.-</p>
+                        <p class="text-sm text-gray-500">banking sector</p>
+                    </div>
+                    <div class="text-3xl">📋</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Enhanced Prediction Section -->
+        <div class="prediction-card rounded-2xl p-8">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+                    <span class="mr-3">🔮</span>
+                    Enhanced AI Prediction
+                </h2>
+                <div class="flex space-x-3">
+                    <select id="predictionHorizon" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500">
+                        <option value="1d">1 Day</option>
+                        <option value="5d" selected>5 Days</option>
+                        <option value="15d">15 Days</option>
+                        <option value="30d">30 Days</option>
+                    </select>
+                    <button id="generatePrediction" class="px-6 py-2 bg-gradient-to-r from-yellow-500 to-orange-500 text-white rounded-lg font-medium hover:from-yellow-600 hover:to-orange-600 transition-all duration-300 shadow-lg hover:shadow-xl">
+                        <i class="fas fa-magic mr-2"></i>Generate Prediction
+                    </button>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-xl p-6 shadow-lg">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-4">Prediction Results</h3>
+                        <div id="predictionResults" class="space-y-4">
+                            <div class="text-center text-gray-500 py-8">
+                                <i class="fas fa-chart-line text-4xl mb-4"></i>
+                                <p>Click "Generate Prediction" to see AI analysis</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="space-y-4">
+                    <div class="bg-white rounded-xl p-6 shadow-lg">
+                        <h4 class="text-lg font-semibold text-gray-700 mb-3">Prediction Features</h4>
+                        <ul class="space-y-2 text-sm">
+                            <li class="flex items-center"><span class="w-2 h-2 bg-green-500 rounded-full mr-3"></span>Publications Analysis</li>
+                            <li class="flex items-center"><span class="w-2 h-2 bg-blue-500 rounded-full mr-3"></span>News Sentiment</li>
+                            <li class="flex items-center"><span class="w-2 h-2 bg-purple-500 rounded-full mr-3"></span>Banking Sector Analysis</li>
+                            <li class="flex items-center"><span class="w-2 h-2 bg-yellow-500 rounded-full mr-3"></span>Interest Rate Impact</li>
+                            <li class="flex items-center"><span class="w-2 h-2 bg-red-500 rounded-full mr-3"></span>Regulatory Environment</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="bg-white rounded-xl p-6 shadow-lg">
+                        <h4 class="text-lg font-semibold text-gray-700 mb-3">Confidence Level</h4>
+                        <div class="flex items-center">
+                            <div class="flex-1 bg-gray-200 rounded-full h-3 mr-3">
+                                <div id="confidenceBar" class="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full" style="width: 0%"></div>
+                            </div>
+                            <span id="confidenceValue" class="text-sm font-medium text-gray-700">--%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Price Chart -->
+        <div class="bg-white rounded-2xl p-6 shadow-lg">
+            <div class="flex items-center justify-between mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">📈 Price Chart</h2>
+                <div class="flex space-x-2">
+                    <button onclick="updateTimeframe('1d')" class="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">1D</button>
+                    <button onclick="updateTimeframe('5d')" class="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">5D</button>
+                    <button onclick="updateTimeframe('1mo')" class="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">1M</button>
+                    <button onclick="updateTimeframe('3mo')" class="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">3M</button>
+                    <button onclick="updateTimeframe('1y')" class="px-4 py-2 text-sm bg-yellow-500 text-white rounded-lg">1Y</button>
+                </div>
+            </div>
+            <div id="priceChart" class="chart-container"></div>
+        </div>
+
+        <!-- Publications and News Analysis -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- CBA Publications -->
+            <div class="bg-white rounded-2xl p-6 shadow-lg">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold text-gray-800">📄 CBA Publications</h2>
+                    <button id="refreshPublications" class="px-4 py-2 text-sm bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+                        <i class="fas fa-refresh mr-2"></i>Refresh
+                    </button>
+                </div>
+                <div id="publicationsContainer" class="space-y-4 max-h-96 overflow-y-auto">
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-file-alt text-4xl mb-4"></i>
+                        <p>Loading publications...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- News Analysis -->
+            <div class="bg-white rounded-2xl p-6 shadow-lg">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold text-gray-800">📰 News Analysis</h2>
+                    <button id="refreshNews" class="px-4 py-2 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors">
+                        <i class="fas fa-refresh mr-2"></i>Refresh
+                    </button>
+                </div>
+                <div id="newsContainer" class="space-y-4 max-h-96 overflow-y-auto">
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-newspaper text-4xl mb-4"></i>
+                        <p>Loading news analysis...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Banking Sector Comparison -->
+        <div class="bg-white rounded-2xl p-6 shadow-lg">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">🏦 Banking Sector Analysis</h2>
+            <div id="bankingSectorContainer">
+                <div class="text-center text-gray-500 py-8">
+                    <i class="fas fa-building text-4xl mb-4"></i>
+                    <p>Loading banking sector analysis...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = 'http://localhost:8002';
+        const SYMBOL = 'CBA.AX';
+        
+        // Initialize chart
+        let priceChart = null;
+        let currentTimeframe = '1y';
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeChart();
+            loadInitialData();
+            setupEventListeners();
+            
+            // Auto-refresh every 30 seconds
+            setInterval(updateMarketData, 30000);
+        });
+        
+        function initializeChart() {
+            const chartDom = document.getElementById('priceChart');
+            priceChart = echarts.init(chartDom);
+            
+            const option = {
+                title: {
+                    text: 'CBA.AX Price Chart',
+                    left: 'center'
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'cross'
+                    }
+                },
+                legend: {
+                    data: ['Price', 'Volume'],
+                    top: 30
+                },
+                grid: [
+                    { left: '10%', right: '10%', height: '60%' },
+                    { left: '10%', right: '10%', top: '75%', height: '20%' }
+                ],
+                xAxis: [
+                    { type: 'category', data: [], gridIndex: 0 },
+                    { type: 'category', data: [], gridIndex: 1 }
+                ],
+                yAxis: [
+                    { type: 'value', scale: true, gridIndex: 0 },
+                    { type: 'value', scale: true, gridIndex: 1 }
+                ],
+                series: [
+                    {
+                        name: 'Price',
+                        type: 'candlestick',
+                        data: [],
+                        xAxisIndex: 0,
+                        yAxisIndex: 0
+                    },
+                    {
+                        name: 'Volume',
+                        type: 'bar',
+                        data: [],
+                        xAxisIndex: 1,
+                        yAxisIndex: 1
+                    }
+                ]
+            };
+            
+            priceChart.setOption(option);
+        }
+        
+        function setupEventListeners() {
+            document.getElementById('generatePrediction').addEventListener('click', generatePrediction);
+            document.getElementById('refreshPublications').addEventListener('click', loadPublications);
+            document.getElementById('refreshNews').addEventListener('click', loadNews);
+        }
+        
+        async function loadInitialData() {
+            updateLastUpdateTime();
+            await Promise.all([
+                updateMarketData(),
+                loadPublications(),
+                loadNews(),
+                loadBankingSectorAnalysis()
+            ]);
+        }
+        
+        async function updateMarketData() {
+            try {
+                setConnectionStatus('processing');
+                
+                // Get current stock data
+                const response = await fetch(`${API_BASE}/api/stock/${SYMBOL}?period=1y&interval=1d`);
+                const data = await response.json();
+                
+                if (data.success && data.data && data.data.length > 0) {
+                    const latest = data.data[data.data.length - 1];
+                    
+                    // Update current price display
+                    document.getElementById('currentPrice').textContent = `$${latest.close?.toFixed(2) || '--'}`;
+                    
+                    if (data.data.length > 1) {
+                        const previous = data.data[data.data.length - 2];
+                        const change = latest.close - previous.close;
+                        const changePercent = (change / previous.close) * 100;
+                        
+                        const changeElement = document.getElementById('priceChange');
+                        changeElement.textContent = `${change >= 0 ? '+' : ''}$${change.toFixed(2)} (${change >= 0 ? '+' : ''}${changePercent.toFixed(2)}%)`;
+                        changeElement.className = `text-sm font-medium ${change >= 0 ? 'text-green-600' : 'text-red-600'}`;
+                    }
+                    
+                    // Update volume
+                    document.getElementById('volume').textContent = `${(latest.volume / 1000000).toFixed(1)}M`;
+                    
+                    // Update chart
+                    updateChart(data.data);
+                    
+                    setConnectionStatus('online');
+                    updateLastUpdateTime();
+                } else {
+                    throw new Error('Invalid data received');
+                }
+            } catch (error) {
+                console.error('Error updating market data:', error);
+                setConnectionStatus('error');
+            }
+        }
+        
+        function updateChart(data) {
+            const dates = data.map(d => new Date(d.timestamp).toLocaleDateString());
+            const candlestickData = data.map(d => [d.open, d.close, d.low, d.high]);
+            const volumeData = data.map(d => d.volume);
+            
+            priceChart.setOption({
+                xAxis: [
+                    { data: dates },
+                    { data: dates }
+                ],
+                series: [
+                    { data: candlestickData },
+                    { data: volumeData }
+                ]
+            });
+        }
+        
+        async function generatePrediction() {
+            const horizon = document.getElementById('predictionHorizon').value;
+            const button = document.getElementById('generatePrediction');
+            const resultsContainer = document.getElementById('predictionResults');
+            
+            // Show loading state
+            button.disabled = true;
+            button.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Generating...';
+            resultsContainer.innerHTML = `
+                <div class="text-center text-gray-500 py-8">
+                    <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
+                    <p>AI analyzing CBA data...</p>
+                </div>
+            `;
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/prediction/cba/enhanced?horizon=${horizon}&include_publications=true&include_news=true`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayPredictionResults(data);
+                    updateConfidenceLevel(data.prediction.confidence_interval);
+                } else {
+                    throw new Error(data.detail || 'Prediction failed');
+                }
+            } catch (error) {
+                console.error('Error generating prediction:', error);
+                resultsContainer.innerHTML = `
+                    <div class="text-center text-red-500 py-8">
+                        <i class="fas fa-exclamation-triangle text-4xl mb-4"></i>
+                        <p>Error generating prediction: ${error.message}</p>
+                    </div>
+                `;
+            } finally {
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-magic mr-2"></i>Generate Prediction';
+            }
+        }
+        
+        function displayPredictionResults(data) {
+            const prediction = data.prediction;
+            const change = prediction.predicted_change_percent;
+            const direction = change >= 0 ? 'UP' : 'DOWN';
+            const color = change >= 0 ? 'text-green-600' : 'text-red-600';
+            
+            document.getElementById('predictionResults').innerHTML = `
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="text-center p-4 bg-gray-50 rounded-lg">
+                        <p class="text-sm text-gray-600">Predicted Price</p>
+                        <p class="text-2xl font-bold text-gray-900">$${prediction.predicted_price.toFixed(2)}</p>
+                    </div>
+                    <div class="text-center p-4 bg-gray-50 rounded-lg">
+                        <p class="text-sm text-gray-600">Expected Change</p>
+                        <p class="text-2xl font-bold ${color}">${change >= 0 ? '+' : ''}${change.toFixed(2)}%</p>
+                    </div>
+                </div>
+                <div class="mt-4 p-4 bg-blue-50 rounded-lg">
+                    <p class="text-sm text-gray-600 mb-2">Analysis Summary:</p>
+                    <p class="text-sm text-gray-800">${data.analysis_summary || 'Based on comprehensive analysis of CBA publications, news sentiment, and banking sector trends.'}</p>
+                </div>
+            `;
+        }
+        
+        async function updateConfidenceLevel() {
+            try {
+                // Get real confidence from CBA enhanced prediction API
+                const response = await fetch(`${API_BASE}/api/prediction/cba/enhanced`);
+                const data = await response.json();
+                
+                if (data.success && data.prediction) {
+                    // Calculate confidence from probability and risk metrics
+                    const probUp = data.prediction.probability_up || 0.5;
+                    const probDown = data.prediction.probability_down || 0.5;
+                    const maxProb = Math.max(probUp, probDown);
+                    const confidence = (maxProb * 100).toFixed(0);
+                    
+                    document.getElementById('confidenceValue').textContent = `${confidence}%`;
+                    document.getElementById('confidenceBar').style.width = `${confidence}%`;
+                } else {
+                    // Fallback to loading state instead of fake data
+                    document.getElementById('confidenceValue').textContent = 'Loading...';
+                    document.getElementById('confidenceBar').style.width = '0%';
+                }
+            } catch (error) {
+                console.error('Error loading confidence level:', error);
+                document.getElementById('confidenceValue').textContent = 'N/A';
+                document.getElementById('confidenceBar').style.width = '0%';
+            }
+        }
+        
+        async function loadPublications() {
+            try {
+                const response = await fetch(`${API_BASE}/api/prediction/cba/publications?limit=5`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayPublications(data.publications);
+                } else {
+                    throw new Error(data.detail || 'Failed to load publications');
+                }
+            } catch (error) {
+                console.error('Error loading publications:', error);
+                document.getElementById('publicationsContainer').innerHTML = `
+                    <div class="text-center text-red-500 py-8">
+                        <i class="fas fa-exclamation-triangle text-4xl mb-4"></i>
+                        <p>Error loading publications</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function displayPublications(publications) {
+            const container = document.getElementById('publicationsContainer');
+            
+            if (!publications || publications.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-file-alt text-4xl mb-4"></i>
+                        <p>No recent publications found</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = publications.map(pub => `
+                <div class="publication-item p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-800 text-sm">${pub.title}</h4>
+                    <p class="text-xs text-gray-600 mt-1">${pub.publication_type} • ${new Date(pub.publication_date).toLocaleDateString()}</p>
+                    <p class="text-sm text-gray-700 mt-2">${pub.content_summary || 'Analysis available'}</p>
+                    <div class="flex items-center mt-2">
+                        <span class="text-xs px-2 py-1 rounded-full ${getSentimentClass(pub.sentiment_score)}">
+                            Sentiment: ${getSentimentLabel(pub.sentiment_score)}
+                        </span>
+                        <span class="text-xs text-gray-500 ml-2">Impact: ${pub.market_impact || 'Medium'}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        async function loadNews() {
+            try {
+                const response = await fetch(`${API_BASE}/api/prediction/cba/news?limit=5`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayNews(data.articles);
+                } else {
+                    throw new Error(data.detail || 'Failed to load news');
+                }
+            } catch (error) {
+                console.error('Error loading news:', error);
+                document.getElementById('newsContainer').innerHTML = `
+                    <div class="text-center text-red-500 py-8">
+                        <i class="fas fa-exclamation-triangle text-4xl mb-4"></i>
+                        <p>Error loading news analysis</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function displayNews(articles) {
+            const container = document.getElementById('newsContainer');
+            
+            if (!articles || articles.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-newspaper text-4xl mb-4"></i>
+                        <p>No recent news found</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = articles.map(article => `
+                <div class="news-item p-4 rounded-lg">
+                    <h4 class="font-semibold text-gray-800 text-sm">${article.title}</h4>
+                    <p class="text-xs text-gray-600 mt-1">${article.source} • ${new Date(article.published_date).toLocaleDateString()}</p>
+                    <p class="text-sm text-gray-700 mt-2">${article.content_summary || 'News analysis available'}</p>
+                    <div class="flex items-center mt-2">
+                        <span class="text-xs px-2 py-1 rounded-full ${getSentimentClass(article.sentiment_score)}">
+                            ${getSentimentLabel(article.sentiment_score)}
+                        </span>
+                        <span class="text-xs text-gray-500 ml-2">Relevance: ${article.relevance_score || 'High'}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        async function loadBankingSectorAnalysis() {
+            try {
+                const response = await fetch(`${API_BASE}/api/prediction/cba/banking-sector`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayBankingSectorAnalysis(data);
+                } else {
+                    throw new Error(data.detail || 'Failed to load banking sector analysis');
+                }
+            } catch (error) {
+                console.error('Error loading banking sector analysis:', error);
+                document.getElementById('bankingSectorContainer').innerHTML = `
+                    <div class="text-center text-red-500 py-8">
+                        <i class="fas fa-exclamation-triangle text-4xl mb-4"></i>
+                        <p>Error loading banking sector analysis</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function displayBankingSectorAnalysis(data) {
+            const container = document.getElementById('bankingSectorContainer');
+            
+            container.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-gray-800 mb-3">Market Position</h4>
+                        <p class="text-sm text-gray-700">${data.sector_analysis?.cba_market_position || 'Leading position in Australian banking sector'}</p>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-gray-800 mb-3">Peer Comparison</h4>
+                        <div class="space-y-2">
+                            ${data.banking_peers?.map(peer => `
+                                <div class="flex justify-between text-sm">
+                                    <span>${peer}</span>
+                                    <span class="text-gray-600">Correlation: High</span>
+                                </div>
+                            `).join('') || '<p class="text-sm text-gray-700">ANZ, WBC, NAB analysis available</p>'}
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-semibold text-gray-800 mb-3">Sector Sentiment</h4>
+                        <p class="text-sm text-gray-700">${data.sector_analysis?.sector_sentiment || 'Positive outlook for banking sector with stable regulatory environment'}</p>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Utility functions
+        function getSentimentClass(score) {
+            if (score > 0.1) return 'bg-green-100 text-green-800';
+            if (score < -0.1) return 'bg-red-100 text-red-800';
+            return 'bg-gray-100 text-gray-800';
+        }
+        
+        function getSentimentLabel(score) {
+            if (score > 0.1) return 'Positive';
+            if (score < -0.1) return 'Negative';
+            return 'Neutral';
+        }
+        
+        function setConnectionStatus(status) {
+            const indicator = document.getElementById('connectionStatus');
+            indicator.className = `status-indicator ${status}`;
+        }
+        
+        function updateLastUpdateTime() {
+            const now = new Date();
+            document.getElementById('lastUpdate').textContent = 
+                `Last updated: ${now.toLocaleTimeString()}`;
+        }
+        
+        function updateTimeframe(timeframe) {
+            currentTimeframe = timeframe;
+            updateMarketData();
+        }
+    </script>
+</body>
+</html>

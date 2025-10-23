@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intraday Market Tracker - Real Data Only</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #1a1a1a;
+            color: white;
+            padding: 10px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            padding: 15px;
+            background: #2a2a2a;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+        
+        h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #ffffff;
+        }
+        
+        .time-info {
+            font-size: 14px;
+            color: #999;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .btn {
+            padding: 8px 20px;
+            background: #3a3a3a;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+        
+        .btn:hover {
+            background: #4a4a4a;
+        }
+        
+        .btn.active {
+            background: #4299e1;
+            border-color: #4299e1;
+        }
+        
+        .market-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .market-card {
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid #3a3a3a;
+        }
+        
+        .market-name {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 5px;
+        }
+        
+        .market-price {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .market-change {
+            font-size: 14px;
+        }
+        
+        .market-change.positive { color: #48bb78; }
+        .market-change.negative { color: #f56565; }
+        
+        .market-status {
+            font-size: 11px;
+            color: #666;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #3a3a3a;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            margin-left: 5px;
+        }
+        
+        .status-badge.open {
+            background: #48bb78;
+            color: white;
+        }
+        
+        .status-badge.closed {
+            background: #666;
+            color: white;
+        }
+        
+        .chart-container {
+            background: #2a2a2a;
+            padding: 20px;
+            border-radius: 10px;
+            height: 500px;
+            position: relative;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #999;
+        }
+        
+        .error-message {
+            background: #c53030;
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+            text-align: center;
+        }
+        
+        .backend-status {
+            text-align: center;
+            padding: 8px;
+            background: #3a3a3a;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+        
+        .backend-status.connected {
+            background: #22543d;
+            color: #9ae6b4;
+        }
+        
+        .backend-status.error {
+            background: #742a2a;
+            color: #feb2b2;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Intraday Market Tracker</h1>
+            <div class="time-info">
+                <span id="currentTime">Loading...</span> AEST | 
+                <span id="marketStatus">Checking markets...</span>
+            </div>
+        </div>
+
+        <div class="backend-status" id="backendStatus">
+            Connecting to backend...
+        </div>
+
+        <div class="controls">
+            <button class="btn active" data-period="24h">24 Hours</button>
+            <button class="btn" data-period="48h">48 Hours</button>
+        </div>
+
+        <div class="market-cards">
+            <div class="market-card">
+                <div class="market-name">ASX/AORD</div>
+                <div class="market-price" id="asxPrice">-</div>
+                <div class="market-change" id="asxChange">-</div>
+                <div class="market-status">
+                    Trading: 10:00 - 16:00 AEST
+                    <span class="status-badge" id="asxStatus">-</span>
+                </div>
+            </div>
+            
+            <div class="market-card">
+                <div class="market-name">FTSE 100</div>
+                <div class="market-price" id="ftsePrice">-</div>
+                <div class="market-change" id="ftseChange">-</div>
+                <div class="market-status">
+                    Trading: 18:00 - 02:30 AEST
+                    <span class="status-badge" id="ftseStatus">-</span>
+                </div>
+            </div>
+            
+            <div class="market-card">
+                <div class="market-name">S&P 500</div>
+                <div class="market-price" id="spPrice">-</div>
+                <div class="market-change" id="spChange">-</div>
+                <div class="market-status">
+                    Trading: 00:30 - 07:00 AEST
+                    <span class="status-badge" id="spStatus">-</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="marketChart"></canvas>
+            <div class="loading" id="loadingIndicator">Loading market data...</div>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURATION - Using localhost for Windows
+        const API_BASE = window.location.hostname === 'localhost' 
+            ? 'http://localhost:8002'
+            : 'https://8002-' + window.location.hostname.split('-')[1] + '.e2b.dev';
+        
+        // Market definitions with AEST hours
+        const MARKETS = {
+            asx: {
+                symbol: '^AORD',
+                name: 'ASX/AORD',
+                color: '#ff0000',
+                openHour: 10,
+                closeHour: 16
+            },
+            ftse: {
+                symbol: '^FTSE',
+                name: 'FTSE 100',
+                color: '#0000ff',
+                openHour: 18,
+                closeHour: 2.5  // 02:30
+            },
+            sp500: {
+                symbol: '^GSPC',
+                name: 'S&P 500',
+                color: '#800080',
+                openHour: 0.5,  // 00:30
+                closeHour: 7
+            }
+        };
+        
+        let chart = null;
+        let currentPeriod = '24h';
+        let refreshInterval = null;
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            setupEventListeners();
+            updateTime();
+            checkBackend();
+            loadMarketData();
+            
+            // Update time every second
+            setInterval(updateTime, 1000);
+            
+            // Refresh data every 30 seconds
+            refreshInterval = setInterval(loadMarketData, 30000);
+        });
+        
+        function setupEventListeners() {
+            document.querySelectorAll('.btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    currentPeriod = e.target.dataset.period;
+                    loadMarketData();
+                });
+            });
+        }
+        
+        function updateTime() {
+            const now = new Date();
+            const aestTime = new Date(now.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
+            const hours = aestTime.getHours();
+            const minutes = aestTime.getMinutes();
+            const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+            
+            document.getElementById('currentTime').textContent = timeStr;
+            
+            // Update market status
+            const currentHour = hours + minutes / 60;
+            let openMarkets = [];
+            
+            if (currentHour >= 10 && currentHour < 16) {
+                openMarkets.push('ASX');
+                document.getElementById('asxStatus').textContent = 'OPEN';
+                document.getElementById('asxStatus').className = 'status-badge open';
+            } else {
+                document.getElementById('asxStatus').textContent = 'CLOSED';
+                document.getElementById('asxStatus').className = 'status-badge closed';
+            }
+            
+            if (currentHour >= 18 || currentHour < 2.5) {
+                openMarkets.push('FTSE');
+                document.getElementById('ftseStatus').textContent = 'OPEN';
+                document.getElementById('ftseStatus').className = 'status-badge open';
+            } else {
+                document.getElementById('ftseStatus').textContent = 'CLOSED';
+                document.getElementById('ftseStatus').className = 'status-badge closed';
+            }
+            
+            if (currentHour >= 0.5 && currentHour < 7) {
+                openMarkets.push('S&P');
+                document.getElementById('spStatus').textContent = 'OPEN';
+                document.getElementById('spStatus').className = 'status-badge open';
+            } else {
+                document.getElementById('spStatus').textContent = 'CLOSED';
+                document.getElementById('spStatus').className = 'status-badge closed';
+            }
+            
+            const statusText = openMarkets.length > 0 
+                ? `Markets open: ${openMarkets.join(', ')}` 
+                : 'All markets closed';
+            document.getElementById('marketStatus').textContent = statusText;
+        }
+        
+        async function checkBackend() {
+            try {
+                const response = await fetch(`${API_BASE}/`);
+                if (response.ok) {
+                    document.getElementById('backendStatus').textContent = `✓ Connected to backend at ${API_BASE}`;
+                    document.getElementById('backendStatus').className = 'backend-status connected';
+                } else {
+                    throw new Error('Backend not responding');
+                }
+            } catch (error) {
+                document.getElementById('backendStatus').textContent = `✗ Backend error: ${error.message}`;
+                document.getElementById('backendStatus').className = 'backend-status error';
+            }
+        }
+        
+        async function fetchMarketData(market) {
+            try {
+                // Determine period and interval based on selection
+                const period = currentPeriod === '24h' ? '1d' : '2d';
+                const interval = currentPeriod === '24h' ? '5m' : '15m';
+                
+                console.log(`Fetching ${market.name} with period=${period}, interval=${interval}`);
+                
+                // Fetch historical data
+                const histUrl = `${API_BASE}/api/historical/${market.symbol}?period=${period}&interval=${interval}`;
+                console.log(`Historical URL: ${histUrl}`);
+                const histResponse = await fetch(histUrl);
+                
+                if (!histResponse.ok) {
+                    console.error(`Historical fetch failed for ${market.name}: ${histResponse.status}`);
+                    throw new Error(`Failed to fetch ${market.name} historical data`);
+                }
+                
+                const histResult = await histResponse.json();
+                const histData = histResult.data || [];
+                
+                console.log(`${market.name} raw response:`, histResult);
+                console.log(`${market.name} data points:`, histData.length);
+                if (histData.length > 0) {
+                    console.log(`${market.name} first data point:`, histData[0]);
+                    console.log(`${market.name} last data point:`, histData[histData.length - 1]);
+                }
+                
+                // Fetch current quote
+                const quoteResponse = await fetch(`${API_BASE}/api/stock/${market.symbol}`);
+                const quoteData = quoteResponse.ok ? await quoteResponse.json() : null;
+                
+                if (quoteData) {
+                    console.log(`${market.name} quote data:`, quoteData);
+                }
+                
+                return {
+                    market: market,
+                    data: histData,
+                    quote: quoteData
+                };
+                
+            } catch (error) {
+                console.error(`Error fetching ${market.name}:`, error);
+                console.error(`Error stack:`, error.stack);
+                return {
+                    market: market,
+                    data: [],
+                    quote: null
+                };
+            }
+        }
+        
+        function generateTimeLabels() {
+            const labels = [];
+            
+            if (currentPeriod === '24h') {
+                // Start at 09:00 AEST today, 2-hour increments
+                const times = ['09:00', '11:00', '13:00', '15:00', '17:00', '19:00', '21:00', '23:00', 
+                              '01:00', '03:00', '05:00', '07:00', '09:00'];
+                labels.push(...times);
+            } else {
+                // 48 hours starting at 09:00 yesterday
+                for (let h = 9; h < 33; h += 2) {
+                    const hour = h % 24;
+                    const prefix = h < 24 ? 'Y ' : h < 33 ? 'T ' : 'T+1 ';
+                    labels.push(`${prefix}${hour.toString().padStart(2, '0')}:00`);
+                }
+            }
+            
+            return labels;
+        }
+        
+        function processMarketData(marketData) {
+            const labels = generateTimeLabels();
+            const dataPoints = new Array(labels.length).fill(null);
+            
+            if (!marketData.data || marketData.data.length === 0) {
+                return dataPoints;
+            }
+            
+            // Get the previous close for percentage calculation
+            let previousClose = null;
+            
+            if (marketData.quote) {
+                previousClose = marketData.quote.previousClose || marketData.quote.regularMarketPreviousClose;
+            }
+            
+            if (!previousClose && marketData.data.length > 0) {
+                // Use first data point as baseline
+                previousClose = marketData.data[0].close || marketData.data[0].Close;
+            }
+            
+            if (!previousClose) {
+                return dataPoints;
+            }
+            
+            // Special handling for single data point (e.g., FTSE just opened)
+            if (marketData.data.length === 1) {
+                const point = marketData.data[0];
+                const currentClose = point.close || point.Close;
+                const changePercent = ((currentClose - previousClose) / previousClose) * 100;
+                
+                // Place it at the current time position
+                const now = new Date();
+                const aestTime = new Date(now.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
+                const currentHour = aestTime.getHours();
+                
+                // Find the appropriate index for current time
+                if (currentPeriod === '24h') {
+                    // Map current hour to our 09:00 start timeline
+                    const hoursFromStart = (currentHour >= 9) ? currentHour - 9 : currentHour + 15;
+                    const index = Math.floor(hoursFromStart / 2); // 2-hour increments
+                    if (index >= 0 && index < dataPoints.length) {
+                        dataPoints[index] = changePercent;
+                    }
+                }
+                
+                console.log(`${marketData.market.name} single point at index ${index}: ${changePercent.toFixed(2)}%`);
+                return dataPoints;
+            }
+            
+            // Process multiple data points
+            const now = new Date();
+            const aestNow = new Date(now.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
+            
+            // For 24h view: show last 24 hours from current time
+            // For 48h view: show last 48 hours from current time
+            
+            marketData.data.forEach(point => {
+                const pointDate = new Date(point.date || point.Date || point.Datetime);
+                const closePrice = point.close || point.Close;
+                const changePercent = ((closePrice - previousClose) / previousClose) * 100;
+                
+                // Convert point date to AEST
+                const pointAEST = new Date(pointDate.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
+                const pointHour = pointAEST.getHours();
+                const pointMinutes = pointAEST.getMinutes();
+                
+                // Calculate which time slot this belongs to based on our fixed 09:00 start
+                let slotIndex = -1;
+                
+                if (currentPeriod === '24h') {
+                    // For 24h view, we show from 09:00 today to 09:00 tomorrow
+                    // Calculate hours from 09:00 AEST
+                    const todayStart = new Date(aestNow);
+                    todayStart.setHours(9, 0, 0, 0);
+                    
+                    // If current time is before 09:00, adjust start to yesterday 09:00
+                    if (aestNow.getHours() < 9) {
+                        todayStart.setDate(todayStart.getDate() - 1);
+                    }
+                    
+                    const msFromStart = pointAEST - todayStart;
+                    const hoursFromStart = msFromStart / (1000 * 60 * 60);
+                    
+                    // Only plot if within our 24-hour window
+                    if (hoursFromStart >= 0 && hoursFromStart < 24) {
+                        slotIndex = Math.floor(hoursFromStart / 2); // 2-hour increments
+                    }
+                } else {
+                    // 48-hour view
+                    const todayStart = new Date(aestNow);
+                    todayStart.setHours(9, 0, 0, 0);
+                    todayStart.setDate(todayStart.getDate() - 1); // Start from yesterday 09:00
+                    
+                    const msFromStart = pointAEST - todayStart;
+                    const hoursFromStart = msFromStart / (1000 * 60 * 60);
+                    
+                    if (hoursFromStart >= 0 && hoursFromStart < 48) {
+                        slotIndex = Math.floor(hoursFromStart / 2); // 2-hour increments
+                    }
+                }
+                
+                if (slotIndex >= 0 && slotIndex < dataPoints.length) {
+                    // Use the latest value for each slot
+                    if (dataPoints[slotIndex] === null || Math.abs(changePercent) > Math.abs(dataPoints[slotIndex])) {
+                        dataPoints[slotIndex] = changePercent;
+                    }
+                }
+            });
+            
+            // Interpolate gaps within market hours (optional - currently disabled for clarity)
+            // Uncomment below to enable interpolation between data points
+            /*
+            const market = marketData.market;
+            for (let i = 1; i < dataPoints.length - 1; i++) {
+                if (dataPoints[i] === null) {
+                    // Check if we're within market hours
+                    const hour = (9 + i * 2) % 24;
+                    if (isWithinMarketHours(hour, market)) {
+                        // Find previous and next valid points
+                        let prevIndex = i - 1;
+                        let nextIndex = i + 1;
+                        
+                        while (prevIndex >= 0 && dataPoints[prevIndex] === null) prevIndex--;
+                        while (nextIndex < dataPoints.length && dataPoints[nextIndex] === null) nextIndex++;
+                        
+                        if (prevIndex >= 0 && nextIndex < dataPoints.length && 
+                            dataPoints[prevIndex] !== null && dataPoints[nextIndex] !== null) {
+                            // Linear interpolation
+                            const range = nextIndex - prevIndex;
+                            const step = (dataPoints[nextIndex] - dataPoints[prevIndex]) / range;
+                            dataPoints[i] = dataPoints[prevIndex] + step * (i - prevIndex);
+                        }
+                    }
+                }
+            }
+            */
+            
+            return dataPoints;
+        }
+        
+        function isWithinMarketHours(hour, market) {
+            if (market.closeHour < market.openHour) {
+                // Market spans midnight
+                return hour >= market.openHour || hour < market.closeHour;
+            }
+            return hour >= market.openHour && hour < market.closeHour;
+        }
+        
+        function updateMarketCards(asxData, ftseData, sp500Data) {
+            console.log('Updating market cards with:', {asx: asxData.quote, ftse: ftseData.quote, sp: sp500Data.quote});
+            
+            // Update ASX
+            if (asxData.quote) {
+                const price = asxData.quote.regularMarketPrice || asxData.quote.price || 0;
+                const previousClose = asxData.quote.previousClose || asxData.quote.regularMarketPreviousClose || price;
+                const change = price - previousClose;
+                const changePercent = previousClose > 0 ? (change / previousClose) * 100 : 0;
+                
+                document.getElementById('asxPrice').textContent = price > 0 ? price.toFixed(2) : '-';
+                const asxChangeEl = document.getElementById('asxChange');
+                if (price > 0) {
+                    asxChangeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%)`;
+                    asxChangeEl.className = `market-change ${changePercent >= 0 ? 'positive' : 'negative'}`;
+                } else {
+                    asxChangeEl.textContent = '-';
+                    asxChangeEl.className = 'market-change';
+                }
+            } else {
+                console.log('No ASX quote data');
+                document.getElementById('asxPrice').textContent = '-';
+                document.getElementById('asxChange').textContent = '-';
+            }
+            
+            // Update FTSE
+            if (ftseData.quote) {
+                const price = ftseData.quote.regularMarketPrice || ftseData.quote.price || 0;
+                const previousClose = ftseData.quote.previousClose || ftseData.quote.regularMarketPreviousClose || price;
+                const change = price - previousClose;
+                const changePercent = previousClose > 0 ? (change / previousClose) * 100 : 0;
+                
+                document.getElementById('ftsePrice').textContent = price > 0 ? price.toFixed(2) : '-';
+                const ftseChangeEl = document.getElementById('ftseChange');
+                if (price > 0) {
+                    ftseChangeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%)`;
+                    ftseChangeEl.className = `market-change ${changePercent >= 0 ? 'positive' : 'negative'}`;
+                } else {
+                    ftseChangeEl.textContent = '-';
+                    ftseChangeEl.className = 'market-change';
+                }
+            } else {
+                console.log('No FTSE quote data');
+                document.getElementById('ftsePrice').textContent = '-';
+                document.getElementById('ftseChange').textContent = '-';
+            }
+            
+            // Update S&P 500
+            if (sp500Data.quote) {
+                const price = sp500Data.quote.regularMarketPrice || sp500Data.quote.price || 0;
+                const previousClose = sp500Data.quote.previousClose || sp500Data.quote.regularMarketPreviousClose || price;
+                const change = price - previousClose;
+                const changePercent = previousClose > 0 ? (change / previousClose) * 100 : 0;
+                
+                document.getElementById('spPrice').textContent = price > 0 ? price.toFixed(2) : '-';
+                const spChangeEl = document.getElementById('spChange');
+                if (price > 0) {
+                    spChangeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%)`;
+                    spChangeEl.className = `market-change ${changePercent >= 0 ? 'positive' : 'negative'}`;
+                } else {
+                    spChangeEl.textContent = '-';
+                    spChangeEl.className = 'market-change';
+                }
+            } else {
+                console.log('No S&P quote data');
+                document.getElementById('spPrice').textContent = '-';
+                document.getElementById('spChange').textContent = '-';
+            }
+        }
+        
+        async function loadMarketData() {
+            document.getElementById('loadingIndicator').style.display = 'block';
+            
+            try {
+                // Fetch all market data in parallel
+                const [asxData, ftseData, sp500Data] = await Promise.all([
+                    fetchMarketData(MARKETS.asx),
+                    fetchMarketData(MARKETS.ftse),
+                    fetchMarketData(MARKETS.sp500)
+                ]);
+                
+                console.log('Market data loaded:', {
+                    asx: asxData.data.length + ' points',
+                    ftse: ftseData.data.length + ' points',
+                    sp500: sp500Data.data.length + ' points'
+                });
+                
+                // Update market cards
+                updateMarketCards(asxData, ftseData, sp500Data);
+                
+                // Process data for chart
+                const labels = generateTimeLabels();
+                const asxPoints = processMarketData(asxData);
+                const ftsePoints = processMarketData(ftseData);
+                const sp500Points = processMarketData(sp500Data);
+                
+                console.log('Processed points:', {
+                    asx: asxPoints.filter(p => p !== null).length,
+                    ftse: ftsePoints.filter(p => p !== null).length,
+                    sp500: sp500Points.filter(p => p !== null).length
+                });
+                
+                // Update or create chart
+                updateChart(labels, asxPoints, ftsePoints, sp500Points);
+                
+                document.getElementById('loadingIndicator').style.display = 'none';
+                
+            } catch (error) {
+                console.error('Error loading market data:', error);
+                document.getElementById('loadingIndicator').textContent = 'Error loading data';
+            }
+        }
+        
+        function updateChart(labels, asxData, ftseData, sp500Data) {
+            const ctx = document.getElementById('marketChart').getContext('2d');
+            
+            const chartData = {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'ASX/AORD',
+                        data: asxData,
+                        borderColor: '#ff0000',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.3,
+                        spanGaps: false
+                    },
+                    {
+                        label: 'FTSE 100',
+                        data: ftseData,
+                        borderColor: '#0000ff',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.3,
+                        spanGaps: false
+                    },
+                    {
+                        label: 'S&P 500',
+                        data: sp500Data,
+                        borderColor: '#800080',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.3,
+                        spanGaps: false
+                    }
+                ]
+            };
+            
+            const options = {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        labels: {
+                            color: '#999',
+                            usePointStyle: true,
+                            padding: 15
+                        }
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        titleColor: '#fff',
+                        bodyColor: '#fff',
+                        borderColor: '#444',
+                        borderWidth: 1,
+                        filter: function(tooltipItem) {
+                            return tooltipItem.raw !== null;
+                        },
+                        callbacks: {
+                            label: function(context) {
+                                if (context.raw === null) return null;
+                                const value = context.parsed.y;
+                                const sign = value >= 0 ? '+' : '';
+                                return context.dataset.label + ': ' + sign + value.toFixed(3) + '%';
+                            }
+                        }
+                    },
+                    annotation: {
+                        annotations: {
+                            zeroLine: {
+                                type: 'line',
+                                yMin: 0,
+                                yMax: 0,
+                                borderColor: 'rgba(255, 255, 255, 0.3)',
+                                borderWidth: 1,
+                                borderDash: [5, 5]
+                            },
+                            asxZone: {
+                                type: 'box',
+                                xMin: 0.5,  // 10:00
+                                xMax: 3.5,  // 16:00
+                                backgroundColor: 'rgba(255, 0, 0, 0.05)',
+                                borderWidth: 0
+                            },
+                            ftseZone: {
+                                type: 'box',
+                                xMin: 4.5,  // 18:00
+                                xMax: 8.5,  // 02:00
+                                backgroundColor: 'rgba(0, 0, 255, 0.05)',
+                                borderWidth: 0
+                            },
+                            nyZone: {
+                                type: 'box',
+                                xMin: 7.5,  // 00:30
+                                xMax: 11,   // 07:00
+                                backgroundColor: 'rgba(128, 0, 128, 0.05)',
+                                borderWidth: 0
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        grid: {
+                            display: true,
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        },
+                        ticks: {
+                            color: '#999',
+                            font: {
+                                size: 11
+                            }
+                        }
+                    },
+                    y: {
+                        display: true,
+                        position: 'left',
+                        grid: {
+                            display: true,
+                            color: 'rgba(255, 255, 255, 0.05)'
+                        },
+                        ticks: {
+                            color: '#999',
+                            font: {
+                                size: 11
+                            },
+                            callback: function(value) {
+                                return value.toFixed(1) + '%';
+                            }
+                        },
+                        title: {
+                            display: true,
+                            text: 'Change %',
+                            color: '#999'
+                        }
+                    }
+                }
+            };
+            
+            if (chart) {
+                chart.data = chartData;
+                chart.update();
+            } else {
+                chart = new Chart(ctx, {
+                    type: 'line',
+                    data: chartData,
+                    options: options
+                });
+            }
+        }
+    </script>
+</body>
+</html>

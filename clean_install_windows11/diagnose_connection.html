@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backend Connection Diagnostics</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #0f0;
+        }
+        .test {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #0f0;
+            background: #000;
+        }
+        .success { color: #0f0; }
+        .error { color: #f00; }
+        .info { color: #ff0; }
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover {
+            background: #0a0;
+        }
+        pre {
+            background: #111;
+            padding: 10px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Backend Connection Diagnostics</h1>
+    <div id="output"></div>
+    
+    <div style="margin-top: 20px;">
+        <button onclick="runDiagnostics()">Run All Diagnostics</button>
+        <button onclick="clearCache()">Clear Browser Cache</button>
+        <button onclick="testDirect8002()">Test Port 8002 Direct</button>
+        <button onclick="testAllEndpoints()">Test All Endpoints</button>
+    </div>
+    
+    <script>
+        const output = document.getElementById('output');
+        
+        function log(msg, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test ${type}`;
+            div.innerHTML = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            output.appendChild(div);
+            console.log(msg);
+        }
+        
+        function clearCache() {
+            // Force reload without cache
+            log('Clearing cache and reloading...', 'info');
+            location.reload(true);
+        }
+        
+        async function runDiagnostics() {
+            output.innerHTML = '';
+            log('Starting diagnostics...', 'info');
+            
+            // Test 1: Check what URL we're using
+            const currentUrl = window.location.href;
+            log(`Current page URL: ${currentUrl}`, 'info');
+            
+            // Test 2: Try different backend URLs
+            const urls = [
+                'http://localhost:8002',
+                'http://127.0.0.1:8002',
+                window.location.origin.replace(':8000', ':8002')
+            ];
+            
+            for (const url of urls) {
+                log(`Testing backend at: ${url}`, 'info');
+                try {
+                    const response = await fetch(`${url}/`, { 
+                        method: 'GET',
+                        cache: 'no-cache',
+                        mode: 'cors'
+                    });
+                    const data = await response.json();
+                    if (data.status === 'active') {
+                        log(`✅ SUCCESS: Backend found at ${url}`, 'success');
+                        log(`Backend message: ${data.message}`, 'success');
+                        
+                        // Test specific endpoints
+                        await testEndpoint(url, '/api/historical/statistics', 'GET');
+                        await testEndpoint(url, '/api/historical/batch-download', 'POST', {});
+                    }
+                } catch (error) {
+                    log(`❌ Failed to connect to ${url}: ${error.message}`, 'error');
+                }
+            }
+        }
+        
+        async function testEndpoint(baseUrl, endpoint, method, body = null) {
+            try {
+                const options = {
+                    method: method,
+                    cache: 'no-cache',
+                    mode: 'cors',
+                    headers: {}
+                };
+                
+                if (body !== null) {
+                    options.headers['Content-Type'] = 'application/json';
+                    options.body = JSON.stringify(body);
+                }
+                
+                const response = await fetch(`${baseUrl}${endpoint}`, options);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log(`✅ ${method} ${endpoint}: Status ${response.status}`, 'success');
+                    if (data.success !== undefined) {
+                        log(`   Success: ${data.success}`, 'info');
+                    }
+                } else {
+                    log(`❌ ${method} ${endpoint}: Status ${response.status}`, 'error');
+                    log(`   Error: ${JSON.stringify(data)}`, 'error');
+                }
+            } catch (error) {
+                log(`❌ ${method} ${endpoint}: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testDirect8002() {
+            output.innerHTML = '';
+            log('Testing direct connection to port 8002...', 'info');
+            
+            const tests = [
+                { endpoint: '/', method: 'GET' },
+                { endpoint: '/api/historical/statistics', method: 'GET' },
+                { endpoint: '/api/historical/batch-download', method: 'POST', body: {} },
+                { endpoint: '/api/historical/download', method: 'POST', body: { symbols: ['AAPL'], period: '5d', intervals: ['1d'] } }
+            ];
+            
+            for (const test of tests) {
+                await testEndpoint('http://localhost:8002', test.endpoint, test.method, test.body);
+            }
+        }
+        
+        async function testAllEndpoints() {
+            output.innerHTML = '';
+            log('Testing all Historical Data Manager endpoints...', 'info');
+            
+            const baseUrl = 'http://localhost:8002';
+            
+            // Test each endpoint
+            log('1. Testing Statistics (GET)', 'info');
+            await testEndpoint(baseUrl, '/api/historical/statistics', 'GET');
+            
+            log('2. Testing Batch Download (POST with empty body)', 'info');
+            await testEndpoint(baseUrl, '/api/historical/batch-download', 'POST', {});
+            
+            log('3. Testing Batch Download (POST with symbols)', 'info');
+            await testEndpoint(baseUrl, '/api/historical/batch-download', 'POST', {
+                symbols: ['CBA.AX'],
+                period: '5d',
+                intervals: ['1d']
+            });
+            
+            log('4. Testing Custom Download (POST)', 'info');
+            await testEndpoint(baseUrl, '/api/historical/download', 'POST', {
+                symbols: ['MSFT'],
+                period: '5d',
+                intervals: ['1d']
+            });
+            
+            log('5. Testing Best Models (GET)', 'info');
+            await testEndpoint(baseUrl, '/api/historical/best-models/CBA.AX?metric=accuracy', 'GET');
+            
+            log('6. Testing Historical Data for Symbol (GET)', 'info');
+            await testEndpoint(baseUrl, '/api/historical/CBA.AX?period=5d&interval=1d', 'GET');
+            
+            log('✨ All tests completed!', 'success');
+        }
+        
+        // Auto-run diagnostics on load
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(runDiagnostics, 500);
+        });
+    </script>
+</body>
+</html>
