@@ -1255,17 +1255,34 @@ HTML_TEMPLATE = '''
         async function loadMarketSentiment() {
             try {
                 const response = await fetch('/api/sentiment');
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const sentiment = await response.json();
+                console.log('Sentiment data received:', sentiment);
                 updateSentimentDashboard(sentiment);
             } catch (error) {
                 console.error('Error loading sentiment:', error);
+                const overallElement = document.getElementById('overallSentiment');
+                if (overallElement) {
+                    overallElement.textContent = 'Failed to load sentiment';
+                    overallElement.className = 'sentiment-score neutral';
+                }
             }
         }
         
         function updateSentimentDashboard(sentiment) {
             // Update overall sentiment
             const overallElement = document.getElementById('overallSentiment');
-            overallElement.textContent = sentiment.sentiment + ' (' + (sentiment.score > 0 ? '+' : '') + sentiment.score.toFixed(2) + ')';
+            if (!sentiment || sentiment.error) {
+                overallElement.textContent = 'Error loading sentiment';
+                overallElement.className = 'sentiment-score neutral';
+                return;
+            }
+            
+            const score = sentiment.score || 0;
+            const sentimentText = sentiment.sentiment || 'Unknown';
+            overallElement.textContent = sentimentText + ' (' + (score > 0 ? '+' : '') + score.toFixed(2) + ')';
             
             // Update color based on sentiment
             overallElement.className = 'sentiment-score';
@@ -1282,26 +1299,27 @@ HTML_TEMPLATE = '''
             grid.innerHTML = '';
             
             // VIX Indicator
-            if (sentiment.components.vix) {
+            if (sentiment.components && sentiment.components.vix) {
                 const vix = sentiment.components.vix;
                 const vixClass = vix.score < -0.3 ? 'fear' : vix.score > 0.3 ? 'greed' : '';
                 grid.innerHTML += `
                     <div class="sentiment-indicator vix-gauge ${vixClass}">
                         <div class="indicator-label">VIX Fear Gauge</div>
                         <div class="indicator-value">${vix.value ? vix.value.toFixed(2) : 'N/A'}</div>
-                        <div class="indicator-change">${vix.sentiment}</div>
-                        <div class="indicator-description">${vix.description}</div>
+                        <div class="indicator-change">${vix.sentiment || ''}</div>
+                        <div class="indicator-description">${vix.description || ''}</div>
                     </div>
                 `;
             }
             
             // Market Breadth
-            if (sentiment.components.market_breadth) {
+            if (sentiment.components && sentiment.components.market_breadth) {
                 const breadth = sentiment.components.market_breadth;
+                const ratioPercent = breadth.ratio ? (breadth.ratio * 100).toFixed(0) : '0';
                 grid.innerHTML += `
                     <div class="sentiment-indicator">
                         <div class="indicator-label">Market Breadth</div>
-                        <div class="indicator-value">${(breadth.ratio * 100).toFixed(0)}%</div>
+                        <div class="indicator-value">${ratioPercent}%</div>
                         <div class="indicator-change ${breadth.score > 0 ? 'positive' : 'negative'}">${breadth.sentiment}</div>
                         <div class="indicator-description">${breadth.description}</div>
                     </div>
