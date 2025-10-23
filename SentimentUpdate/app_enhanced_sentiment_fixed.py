@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
 """
 Stock Analysis System with Enhanced Sentiment & Macro Indicators - Phase 1
-Adds VIX (fear gauge), market breadth, bond yields, and dollar strength
+Fixed version for Windows encoding issues
 """
+
+# Disable Flask dotenv to prevent encoding issues
+import os
+os.environ['FLASK_SKIP_DOTENV'] = '1'
 
 import yfinance as yf
 from flask import Flask, jsonify, request, render_template_string
@@ -18,7 +22,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import traceback
 import sys
-import os
 import threading
 import time
 from functools import lru_cache
@@ -690,8 +693,8 @@ class TechnicalAnalyzer:
 
 # Create global instances
 data_fetcher = UnifiedDataFetcher()
-ml_predictor = EnhancedMLPredictor()  # Using enhanced predictor
 tech_analyzer = TechnicalAnalyzer()
+ml_predictor = EnhancedMLPredictor()
 
 # API Routes
 @app.route('/api/stock/<symbol>')
@@ -1569,7 +1572,6 @@ if __name__ == '__main__':
     print("=" * 60)
     
     # Disable dotenv loading to avoid encoding issues
-    import os
-    os.environ['FLASK_SKIP_DOTENV'] = '1'
+
     
     app.run(host='0.0.0.0', port=5000, debug=False)

@@ -1568,8 +1568,4 @@ if __name__ == '__main__':
     print("Press Ctrl+C to stop")
     print("=" * 60)
     
-    # Disable dotenv loading to avoid encoding issues
-    import os
-    os.environ['FLASK_SKIP_DOTENV'] = '1'
-    
     app.run(host='0.0.0.0', port=5000, debug=False)
