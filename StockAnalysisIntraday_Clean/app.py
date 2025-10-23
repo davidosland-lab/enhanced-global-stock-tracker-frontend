@@ -579,6 +579,9 @@ HTML_TEMPLATE = '''
     <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
     <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <!-- ZOOM PLUGIN FOR INTERACTIVE ZOOMING -->
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -789,6 +792,8 @@ HTML_TEMPLATE = '''
         .chart-controls {
             display: flex;
             gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
         }
         
         .chart-type-btn {
@@ -812,11 +817,54 @@ HTML_TEMPLATE = '''
             color: white;
         }
         
+        .zoom-controls {
+            display: flex;
+            gap: 8px;
+            margin-left: 20px;
+            padding-left: 20px;
+            border-left: 1px solid #e0e0e0;
+        }
+        
+        .zoom-btn {
+            width: 36px;
+            height: 36px;
+            background: #f0f2f5;
+            color: #333;
+            border: none;
+            border-radius: 50%;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .zoom-btn:hover {
+            background: #667eea;
+            color: white;
+            transform: scale(1.1);
+        }
+        
+        .zoom-btn:active {
+            transform: scale(0.95);
+        }
+        
         .chart-info {
             display: flex;
             gap: 20px;
             font-size: 0.9em;
             color: #666;
+        }
+        
+        .zoom-instructions {
+            text-align: center;
+            padding: 8px;
+            background: rgba(102, 126, 234, 0.1);
+            border-radius: 4px;
+            margin-top: 10px;
+            color: #667eea;
+            font-size: 12px;
         }
         
         .chart-info span {
@@ -1045,6 +1093,11 @@ HTML_TEMPLATE = '''
                 <div class="chart-controls">
                     <button class="chart-type-btn active" onclick="switchChartType('candlestick')">Candlestick</button>
                     <button class="chart-type-btn" onclick="switchChartType('line')">Line</button>
+                    <div class="zoom-controls">
+                        <button class="zoom-btn" onclick="zoomIn()" title="Zoom In">🔍+</button>
+                        <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out">🔍-</button>
+                        <button class="zoom-btn" onclick="resetZoom()" title="Reset Zoom">↺</button>
+                    </div>
                 </div>
                 <div class="chart-info">
                     <span id="intervalInfo"></span>
@@ -1057,6 +1110,9 @@ HTML_TEMPLATE = '''
                 Loading chart data...
             </div>
             <canvas id="priceChart"></canvas>
+            <div class="zoom-instructions">
+                <small>📌 Zoom: Mouse wheel | Pan: Ctrl+Drag | Box Select: Click & drag to zoom area | Mobile: Pinch to zoom</small>
+            </div>
             <div class="data-source" id="dataSource"></div>
         </div>
         
@@ -1121,6 +1177,25 @@ HTML_TEMPLATE = '''
             // Redraw chart if data exists
             if (currentData) {
                 drawChart(currentData);
+            }
+        }
+        
+        // Zoom control functions
+        function zoomIn() {
+            if (chartInstance) {
+                chartInstance.zoom(1.1);
+            }
+        }
+        
+        function zoomOut() {
+            if (chartInstance) {
+                chartInstance.zoom(0.9);
+            }
+        }
+        
+        function resetZoom() {
+            if (chartInstance) {
+                chartInstance.resetZoom();
             }
         }
         
@@ -1401,6 +1476,31 @@ HTML_TEMPLATE = '''
                         legend: {
                             display: false
                         },
+                        zoom: {
+                            zoom: {
+                                wheel: {
+                                    enabled: true,
+                                    speed: 0.1
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'xy',
+                                drag: {
+                                    enabled: true,
+                                    backgroundColor: 'rgba(127,127,127,0.3)'
+                                }
+                            },
+                            pan: {
+                                enabled: true,
+                                mode: 'xy',
+                                modifierKey: 'ctrl'
+                            },
+                            limits: {
+                                x: {min: 'original', max: 'original'},
+                                y: {min: 'original', max: 'original'}
+                            }
+                        },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
@@ -1485,6 +1585,31 @@ HTML_TEMPLATE = '''
                         legend: {
                             display: true
                         },
+                        zoom: {
+                            zoom: {
+                                wheel: {
+                                    enabled: true,
+                                    speed: 0.1
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'xy',
+                                drag: {
+                                    enabled: true,
+                                    backgroundColor: 'rgba(127,127,127,0.3)'
+                                }
+                            },
+                            pan: {
+                                enabled: true,
+                                mode: 'xy',
+                                modifierKey: 'ctrl'
+                            },
+                            limits: {
+                                x: {min: 'original', max: 'original'},
+                                y: {min: 'original', max: 'original'}
+                            }
+                        },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
@@ -1546,6 +1671,32 @@ HTML_TEMPLATE = '''
         document.getElementById('symbolInput').addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
                 fetchStockData();
+            }
+        });
+        
+        // Keyboard shortcuts for zoom
+        document.addEventListener('keydown', (e) => {
+            if (!chartInstance) return;
+            
+            // Plus/Equals key for zoom in
+            if (e.key === '+' || e.key === '=') {
+                e.preventDefault();
+                zoomIn();
+            }
+            // Minus key for zoom out
+            else if (e.key === '-' || e.key === '_') {
+                e.preventDefault();
+                zoomOut();
+            }
+            // R key for reset zoom
+            else if (e.key === 'r' || e.key === 'R') {
+                e.preventDefault();
+                resetZoom();
+            }
+            // Escape key also resets zoom
+            else if (e.key === 'Escape') {
+                e.preventDefault();
+                resetZoom();
             }
         });
         

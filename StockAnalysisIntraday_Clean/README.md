@@ -21,6 +21,14 @@ python app.py
 - ✅ Chart type selector in UI
 - ✅ Both chart types working with all intervals
 
+## 🔍 NEW ZOOM FEATURES
+- ✅ Interactive zoom with mouse wheel/pinch
+- ✅ Pan charts with Ctrl+drag
+- ✅ Box selection zoom (click & drag area)
+- ✅ Keyboard shortcuts (+/-, R to reset)
+- ✅ Zoom control buttons in UI
+- ✅ Works on both candlestick and line charts
+
 ## ✨ Features
 
 ### Intraday Intervals
