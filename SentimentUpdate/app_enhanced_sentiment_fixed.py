@@ -427,7 +427,7 @@ class EnhancedMLPredictor:
     
     def train(self, df, include_sentiment=True):
         """Train the model with enhanced features"""
-        if len(df) < 100:
+        if len(df) < 20:  # Reduced to 20 for 1-month data compatibility
             return False
         
         try:
@@ -442,7 +442,7 @@ class EnhancedMLPredictor:
             X = X[valid_idx]
             y = y[valid_idx]
             
-            if len(X) < 50:
+            if len(X) < 15:  # Reduced to 15 for minimal viable training
                 return False
             
             # Scale features
@@ -508,7 +508,18 @@ class EnhancedMLPredictor:
                 
                 # Calculate price
                 pred_price = current_price * (1 + adjusted_return)
-                predictions.append(float(pred_price))
+                
+                # Create structured prediction
+                from datetime import datetime, timedelta
+                pred_date = datetime.now() + timedelta(days=i+1)
+                
+                predictions.append({
+                    'date': pred_date.strftime('%Y-%m-%d'),
+                    'predicted_price': round(float(pred_price), 2),
+                    'confidence': min(0.95, 0.7 + abs(sentiment['score']) * 0.1),
+                    'sentiment_impact': sentiment['score'],
+                    'trend': 'Bullish' if adjusted_return > 0 else 'Bearish'
+                })
                 
                 # Update current price for next prediction
                 current_price = pred_price
