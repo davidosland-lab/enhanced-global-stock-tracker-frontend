@@ -33,13 +33,13 @@ os.environ['FLASK_SKIP_DOTENV'] = '1'
 
 # Try to import transformer models for FinBERT
 try:
-    from transformers import AutoTokenizer, AutoModelForSequenceClassification
     import torch
+    from transformers import AutoTokenizer, AutoModelForSequenceClassification
     FINBERT_AVAILABLE = True
     device = "cuda" if torch.cuda.is_available() else "cpu"
-except ImportError:
+except ImportError as e:
     FINBERT_AVAILABLE = False
-    print("WARNING: transformers/torch not available. FinBERT disabled.")
+    print(f"WARNING: transformers/torch not available. FinBERT disabled. Error: {e}")
 
 print("=" * 80)
 print("RANDOM FOREST WITH FINBERT SENTIMENT ANALYSIS")
