@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ML Endpoint Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #00ff00;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            background: #333;
+            color: white;
+            border: 1px solid #00ff00;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #444;
+        }
+        #output {
+            background: black;
+            padding: 20px;
+            border: 1px solid #00ff00;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            min-height: 400px;
+            overflow-y: auto;
+            max-height: 600px;
+        }
+        input {
+            padding: 10px;
+            width: 200px;
+            background: #333;
+            color: white;
+            border: 1px solid #00ff00;
+        }
+        .error {
+            color: #ff0000;
+        }
+        .success {
+            color: #00ff00;
+        }
+        .info {
+            color: #ffff00;
+        }
+    </style>
+</head>
+<body>
+    <h1>ML Predictions Endpoint Debugger</h1>
+    
+    <div>
+        <input type="text" id="symbol" value="AAPL" placeholder="Enter symbol">
+        <button onclick="testHealth()">1. Test Health</button>
+        <button onclick="testStockData()">2. Test Stock Data</button>
+        <button onclick="testMLPredictions()">3. Test ML Predictions</button>
+        <button onclick="clearOutput()">Clear</button>
+    </div>
+    
+    <div id="output"></div>
+    
+    <script>
+        const output = document.getElementById('output');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type;
+            output.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            output.scrollTop = output.scrollHeight;
+        }
+        
+        function clearOutput() {
+            output.innerHTML = '';
+            log('Output cleared', 'info');
+        }
+        
+        async function testHealth() {
+            log('Testing /health endpoint...', 'info');
+            try {
+                const response = await fetch('/health');
+                const data = await response.json();
+                log('Health Response: ' + JSON.stringify(data, null, 2), 'success');
+                
+                if (data.ml_available === false) {
+                    log('⚠️ ML is NOT available - scikit-learn may not be installed', 'error');
+                } else {
+                    log('✓ ML is available', 'success');
+                }
+            } catch (error) {
+                log('Health check failed: ' + error.message, 'error');
+                log('Full error: ' + error.stack, 'error');
+            }
+        }
+        
+        async function testStockData() {
+            const symbol = document.getElementById('symbol').value;
+            log(`Testing /api/stock/${symbol} endpoint...`, 'info');
+            
+            try {
+                const response = await fetch(`/api/stock/${symbol}`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log(`✓ Stock data received for ${symbol}`, 'success');
+                    log(`  Source: ${data.source}`, 'info');
+                    log(`  Current Price: $${data.current_price?.toFixed(2)}`, 'info');
+                    log(`  Data Points: ${data.data?.length}`, 'info');
+                } else {
+                    log(`✗ Failed to get stock data: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                log('Stock data fetch failed: ' + error.message, 'error');
+                log('Full error: ' + error.stack, 'error');
+            }
+        }
+        
+        async function testMLPredictions() {
+            const symbol = document.getElementById('symbol').value;
+            log(`Testing /api/predict/${symbol} endpoint...`, 'info');
+            log('This may take a moment if training a new model...', 'info');
+            
+            try {
+                // First, log the request details
+                const url = `/api/predict/${symbol}`;
+                log(`Request URL: ${url}`, 'info');
+                log('Sending request...', 'info');
+                
+                const startTime = Date.now();
+                const response = await fetch(url);
+                const elapsed = Date.now() - startTime;
+                
+                log(`Response received in ${elapsed}ms`, 'info');
+                log(`Response status: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    log('Response data:', 'info');
+                    log(JSON.stringify(data, null, 2), 'success');
+                    
+                    if (data.available === false) {
+                        log('⚠️ ML predictions not available', 'error');
+                        log(`Reason: ${data.error}`, 'error');
+                    } else if (data.predictions) {
+                        log('✓ ML predictions generated successfully!', 'success');
+                        
+                        if (data.predictions.predictions) {
+                            log('\nPredictions:', 'info');
+                            data.predictions.predictions.forEach(pred => {
+                                const symbol = pred.return >= 0 ? '+' : '';
+                                log(`  ${pred.days} day: $${pred.price.toFixed(2)} (${symbol}${pred.return.toFixed(2)}%) - Confidence: ${pred.confidence}%`, 'info');
+                            });
+                        }
+                        
+                        if (data.model_info) {
+                            log('\nModel Info:', 'info');
+                            log(`  Symbol: ${data.model_info.symbol}`, 'info');
+                            log(`  Features: ${data.model_info.features_used}`, 'info');
+                            log(`  Trained: ${data.model_info.last_trained}`, 'info');
+                        }
+                    }
+                } else {
+                    log('✗ ML prediction failed', 'error');
+                    log(`Error: ${data.error || 'Unknown error'}`, 'error');
+                    
+                    if (data.available === false) {
+                        log('\nPossible solutions:', 'info');
+                        log('1. Install scikit-learn: pip install scikit-learn', 'info');
+                        log('2. Ensure you have enough historical data', 'info');
+                        log('3. Try a different symbol', 'info');
+                    }
+                }
+                
+            } catch (error) {
+                log('ML prediction request failed: ' + error.message, 'error');
+                log('Full error: ' + error.stack, 'error');
+                
+                // Check if it's a network error
+                if (error.message.includes('Failed to fetch')) {
+                    log('\n⚠️ Network error - the endpoint might not be responding', 'error');
+                    log('Check if the Flask server is running and accessible', 'info');
+                }
+            }
+        }
+        
+        // Auto-run health check on load
+        window.onload = () => {
+            log('ML Endpoint Debugger Ready', 'success');
+            log('Click buttons in order to test each endpoint\n', 'info');
+            testHealth();
+        };
+    </script>
+</body>
+</html>
