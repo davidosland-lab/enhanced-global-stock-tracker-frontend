@@ -79,18 +79,21 @@ echo Installing FinBERT components (this may take a while)...
 echo ================================================================
 echo.
 
-REM Try to install transformers and torch
-echo Installing transformers library...
-pip install transformers
+REM IMPORTANT: Install PyTorch FIRST (before transformers)
+echo Installing PyTorch (CPU version)...
+echo This is a ~2GB download, please be patient...
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+if %errorlevel% neq 0 (
+    echo Trying torch-only installation...
+    pip install torch --index-url https://download.pytorch.org/whl/cpu
+)
 
 echo.
-echo Checking for CUDA availability...
-python -c "import torch; print('CUDA Available:', torch.cuda.is_available())" 2>nul
-if %errorlevel% equ 0 (
-    echo PyTorch is already installed
-) else (
-    echo Installing PyTorch (CPU version)...
-    pip install torch --index-url https://download.pytorch.org/whl/cpu
+echo Installing transformers library (AFTER PyTorch)...
+pip install transformers
+if %errorlevel% neq 0 (
+    echo WARNING: Transformers installation had issues
+    echo The system will use fallback sentiment analysis
 )
 
 echo.
