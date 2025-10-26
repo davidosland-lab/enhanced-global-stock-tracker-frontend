@@ -844,6 +844,45 @@ class TradingModel:
             # Get current price
             current_price = float(df['Close'].iloc[-1])
             
+            # Calculate price target and timeframe
+            # Based on historical volatility and confidence
+            returns = df['Close'].pct_change().dropna()
+            volatility = returns.tail(20).std() if len(returns) >= 20 else returns.std()
+            
+            # Calculate ATR for better estimation
+            high_low = df['High'] - df['Low']
+            high_close = np.abs(df['High'] - df['Close'].shift())
+            low_close = np.abs(df['Low'] - df['Close'].shift())
+            ranges = pd.concat([high_low, high_close, low_close], axis=1)
+            true_range = ranges.max(axis=1)
+            atr = true_range.tail(14).mean() if len(true_range) >= 14 else true_range.mean()
+            atr_percent = (atr / current_price) * 100
+            
+            # Base price movement (combine volatility and ATR)
+            base_movement = (volatility * 2 + atr_percent / 100) / 2
+            confidence_multiplier = 0.5 + (float(max(probabilities)) * 0.5)
+            price_movement_percent = base_movement * confidence_multiplier * 100
+            
+            # Calculate estimated price
+            if prediction == 1:  # UP
+                estimated_price = current_price * (1 + price_movement_percent / 100)
+                price_range_low = current_price * (1 + price_movement_percent * 0.3 / 100)
+                price_range_high = current_price * (1 + price_movement_percent * 1.5 / 100)
+            else:  # DOWN
+                estimated_price = current_price * (1 - price_movement_percent / 100)
+                price_range_high = current_price * (1 - price_movement_percent * 0.3 / 100)
+                price_range_low = current_price * (1 - price_movement_percent * 1.5 / 100)
+            
+            # Determine timeframe based on volatility
+            if volatility > 0.03:  # High volatility
+                timeframe_text = "3-5 trading days"
+            elif volatility > 0.02:  # Medium volatility
+                timeframe_text = "1-2 weeks"
+            elif volatility > 0.01:  # Low volatility
+                timeframe_text = "2-4 weeks"
+            else:  # Very low volatility
+                timeframe_text = "1-2 months"
+            
             # Feature importance
             importance = dict(zip(feature_cols, model.feature_importances_))
             top_features = sorted(importance.items(), key=lambda x: x[1], reverse=True)[:5]
@@ -857,6 +896,14 @@ class TradingModel:
                     "down": float(probabilities[0]) if len(probabilities) > 0 else 0.5
                 },
                 "current_price": current_price,
+                "estimated_price": round(estimated_price, 2),
+                "price_range": {
+                    "low": round(price_range_low, 2),
+                    "high": round(price_range_high, 2)
+                },
+                "price_change_percent": round(price_movement_percent, 2),
+                "timeframe": timeframe_text,
+                "volatility_percent": round(volatility * 100, 2),
                 "data_points_used": len(df),
                 "top_features": top_features,
                 "timestamp": datetime.now().isoformat()
@@ -1411,8 +1458,32 @@ HTML_TEMPLATE = '''
                     html += (isUp ? '📈' : '📉') + ' ' + data.prediction;
                     html += '</div>';
                     
-                    // Current price
-                    html += '<p>Current Price: $' + data.current_price.toFixed(2) + '</p>';
+                    // Current price and estimated price
+                    html += '<p style="font-size: 18px; margin: 10px 0;">Current Price: <strong>$' + data.current_price.toFixed(2) + '</strong></p>';
+                    
+                    if (data.estimated_price) {
+                        html += '<div style="background: #f0f8ff; padding: 15px; border-radius: 8px; margin: 15px 0;">';
+                        html += '<p style="font-size: 20px; margin: 5px 0; color: ' + (isUp ? '#28a745' : '#dc3545') + '">';
+                        html += 'Target Price: <strong>$' + data.estimated_price.toFixed(2) + '</strong>';
+                        html += ' (' + (isUp ? '+' : '') + data.price_change_percent.toFixed(1) + '%)</p>';
+                        
+                        if (data.price_range) {
+                            html += '<p style="margin: 5px 0; color: #666;">Range: $' + 
+                                   data.price_range.low.toFixed(2) + ' - $' + 
+                                   data.price_range.high.toFixed(2) + '</p>';
+                        }
+                        
+                        if (data.timeframe) {
+                            html += '<p style="margin: 5px 0; color: #666;">⏱️ Timeframe: <strong>' + 
+                                   data.timeframe + '</strong></p>';
+                        }
+                        
+                        if (data.volatility_percent !== undefined) {
+                            html += '<p style="margin: 5px 0; color: #666; font-size: 12px;">Volatility: ' + 
+                                   data.volatility_percent.toFixed(1) + '%</p>';
+                        }
+                        html += '</div>';
+                    }
                     
                     // Confidence bar
                     const confidence = data.confidence * 100;
