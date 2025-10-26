@@ -849,6 +849,9 @@ class TradingModel:
             returns = df['Close'].pct_change().dropna()
             volatility = returns.tail(20).std() if len(returns) >= 20 else returns.std()
             
+            # Calculate daily volatility for next day prediction
+            daily_volatility = returns.tail(30).std() if len(returns) >= 30 else volatility
+            
             # Calculate ATR for better estimation
             high_low = df['High'] - df['Low']
             high_close = np.abs(df['High'] - df['Close'].shift())
@@ -858,12 +861,26 @@ class TradingModel:
             atr = true_range.tail(14).mean() if len(true_range) >= 14 else true_range.mean()
             atr_percent = (atr / current_price) * 100
             
-            # Base price movement (combine volatility and ATR)
+            # NEXT DAY PREDICTION (NEW!)
+            # Use shorter-term metrics for 1-day prediction
+            next_day_confidence_adjust = 0.3 + (float(max(probabilities)) * 0.4)  # More conservative for 1 day
+            next_day_movement = daily_volatility * next_day_confidence_adjust * 100
+            
+            if prediction == 1:  # UP
+                next_day_price = current_price * (1 + next_day_movement / 100)
+                next_day_low = current_price * (1 + next_day_movement * 0.2 / 100)
+                next_day_high = current_price * (1 + next_day_movement * 1.8 / 100)
+            else:  # DOWN
+                next_day_price = current_price * (1 - next_day_movement / 100)
+                next_day_high = current_price * (1 - next_day_movement * 0.2 / 100)
+                next_day_low = current_price * (1 - next_day_movement * 1.8 / 100)
+            
+            # LONGER TERM PREDICTION (existing)
             base_movement = (volatility * 2 + atr_percent / 100) / 2
             confidence_multiplier = 0.5 + (float(max(probabilities)) * 0.5)
             price_movement_percent = base_movement * confidence_multiplier * 100
             
-            # Calculate estimated price
+            # Calculate estimated price for longer term
             if prediction == 1:  # UP
                 estimated_price = current_price * (1 + price_movement_percent / 100)
                 price_range_low = current_price * (1 + price_movement_percent * 0.3 / 100)
@@ -896,6 +913,12 @@ class TradingModel:
                     "down": float(probabilities[0]) if len(probabilities) > 0 else 0.5
                 },
                 "current_price": current_price,
+                "next_day": {
+                    "price": round(next_day_price, 2),
+                    "low": round(next_day_low, 2),
+                    "high": round(next_day_high, 2),
+                    "change_percent": round(next_day_movement, 2)
+                },
                 "estimated_price": round(estimated_price, 2),
                 "price_range": {
                     "low": round(price_range_low, 2),
@@ -1461,8 +1484,23 @@ HTML_TEMPLATE = '''
                     // Current price and estimated price
                     html += '<p style="font-size: 18px; margin: 10px 0;">Current Price: <strong>$' + data.current_price.toFixed(2) + '</strong></p>';
                     
+                    // NEXT DAY PREDICTION (NEW!)
+                    if (data.next_day) {
+                        html += '<div style="background: #fff3cd; padding: 15px; border-radius: 8px; margin: 15px 0; border: 2px solid #ffc107;">';
+                        html += '<h4 style="margin: 0 0 10px 0; color: #856404;">📅 Next Trading Day</h4>';
+                        html += '<p style="font-size: 18px; margin: 5px 0; color: ' + (isUp ? '#28a745' : '#dc3545') + '">';
+                        html += 'Tomorrow Target: <strong>$' + data.next_day.price.toFixed(2) + '</strong>';
+                        html += ' (' + (isUp ? '+' : '') + data.next_day.change_percent.toFixed(2) + '%)</p>';
+                        html += '<p style="margin: 5px 0; color: #666;">Range: $' + 
+                               data.next_day.low.toFixed(2) + ' - $' + 
+                               data.next_day.high.toFixed(2) + '</p>';
+                        html += '</div>';
+                    }
+                    
+                    // LONGER TERM PREDICTION
                     if (data.estimated_price) {
                         html += '<div style="background: #f0f8ff; padding: 15px; border-radius: 8px; margin: 15px 0;">';
+                        html += '<h4 style="margin: 0 0 10px 0; color: #004085;">📈 ' + (data.timeframe || 'Medium Term') + '</h4>';
                         html += '<p style="font-size: 20px; margin: 5px 0; color: ' + (isUp ? '#28a745' : '#dc3545') + '">';
                         html += 'Target Price: <strong>$' + data.estimated_price.toFixed(2) + '</strong>';
                         html += ' (' + (isUp ? '+' : '') + data.price_change_percent.toFixed(1) + '%)</p>';
