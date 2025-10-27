@@ -26,6 +26,15 @@ from app_finbert_ultimate import (
     FINBERT_AVAILABLE
 )
 
+# Import Australian market indicators
+try:
+    from australian_market_indicators import AustralianMarketIndicators
+    aus_indicators = AustralianMarketIndicators()
+    AUSTRALIAN_INDICATORS_AVAILABLE = True
+except:
+    AUSTRALIAN_INDICATORS_AVAILABLE = False
+    aus_indicators = None
+
 from flask import Flask, jsonify, request, render_template_string
 from flask_cors import CORS
 import yfinance as yf
@@ -263,9 +272,18 @@ def get_prediction(symbol):
             target_5d = current_price * (1 + (avg_loss * 5 * 0.7))
             target_10d = current_price * (1 + (avg_loss * 10 * 0.5))
         
-        # Get REAL sentiment score from news
+        # Get REAL sentiment score from news (includes Australian indicators for ASX stocks)
         sentiment_score = get_real_sentiment(symbol)
         print(f"Sentiment score for {symbol}: {sentiment_score}")
+        
+        # Get additional Australian market data if ASX stock
+        australian_data = None
+        if (symbol.endswith('.AX') or symbol.endswith('.ASX')) and AUSTRALIAN_INDICATORS_AVAILABLE:
+            try:
+                australian_data = aus_indicators.get_all_indicators()
+                print(f"Australian indicators included for {symbol}")
+            except:
+                pass
         
         # Calculate confidence
         confidence = float(max(prediction_proba))
@@ -305,7 +323,8 @@ def get_prediction(symbol):
             'sentiment_score': float(sentiment_score),  # REAL sentiment
             'current_price': float(current_price),
             'model_accuracy': float(model_accuracy),
-            'model_accuracy_percent': float(model_accuracy * 100)  # Model accuracy %
+            'model_accuracy_percent': float(model_accuracy * 100),  # Model accuracy %
+            'australian_indicators': australian_data if australian_data else None  # Include Australian data for ASX stocks
         }
         
         print(f"✅ Prediction generated for {symbol} with sentiment: {sentiment_score}")
@@ -315,6 +334,31 @@ def get_prediction(symbol):
         print(f"❌ Error generating prediction: {str(e)}")
         traceback.print_exc()
         return jsonify({'error': f'Failed to generate prediction: {str(e)}'})
+
+# Get Australian market indicators - NEW ENDPOINT
+@app.route('/api/australian-indicators')
+def get_australian_indicators():
+    try:
+        print("\n=== Fetching Australian market indicators ===")
+        
+        if AUSTRALIAN_INDICATORS_AVAILABLE and aus_indicators:
+            indicators = aus_indicators.get_all_indicators()
+            print(f"✅ Australian indicators fetched successfully")
+            return jsonify(indicators)
+        else:
+            print("⚠️ Australian indicators module not available")
+            return jsonify({
+                'error': 'Australian indicators module not available',
+                'overall_sentiment': {
+                    'sentiment_score': 0.0,
+                    'sentiment_percentage': 50.0,
+                    'sentiment_label': 'neutral'
+                }
+            })
+            
+    except Exception as e:
+        print(f"❌ Error fetching Australian indicators: {str(e)}")
+        return jsonify({'error': str(e)})
 
 # Get economic indicators - FIXED
 @app.route('/api/economic')
@@ -707,8 +751,21 @@ def format_volume(volume):
         return str(volume)
 
 def get_real_sentiment(symbol):
-    """Get real sentiment score from news analysis"""
+    """Get real sentiment score from news analysis - Enhanced for Australian stocks"""
     try:
+        # Check if this is an Australian stock
+        is_australian = symbol.endswith('.AX') or symbol.endswith('.ASX')
+        
+        # Get Australian market sentiment if applicable
+        aus_sentiment_component = 0.0
+        if is_australian and AUSTRALIAN_INDICATORS_AVAILABLE and aus_indicators:
+            try:
+                aus_data = aus_indicators.get_all_indicators()
+                aus_sentiment_component = aus_data.get('overall_sentiment', {}).get('sentiment_score', 0.0)
+                print(f"Australian market sentiment for {symbol}: {aus_sentiment_component}")
+            except:
+                pass
+        
         # Try to get news and analyze sentiment
         ticker = yf.Ticker(symbol)
         news = ticker.news
@@ -721,8 +778,15 @@ def get_real_sentiment(symbol):
                 sentiments.append(sentiment)
             
             if sentiments:
-                avg_sentiment = np.mean(sentiments)
-                return float(avg_sentiment)
+                news_sentiment = np.mean(sentiments)
+                
+                # Combine with Australian market sentiment if applicable
+                if is_australian and aus_sentiment_component != 0.0:
+                    # 60% news sentiment, 40% Australian market sentiment
+                    combined_sentiment = (news_sentiment * 0.6) + (aus_sentiment_component * 0.4)
+                    return float(combined_sentiment)
+                else:
+                    return float(news_sentiment)
         
         # Fallback to trading model sentiment
         try:
@@ -730,11 +794,22 @@ def get_real_sentiment(symbol):
             if news_items:
                 sentiments = [item.get('sentiment', 0) for item in news_items[:5]]
                 if sentiments:
-                    return float(np.mean(sentiments))
+                    news_sentiment = np.mean(sentiments)
+                    
+                    # Combine with Australian market sentiment if applicable
+                    if is_australian and aus_sentiment_component != 0.0:
+                        combined_sentiment = (news_sentiment * 0.6) + (aus_sentiment_component * 0.4)
+                        return float(combined_sentiment)
+                    else:
+                        return float(news_sentiment)
         except:
             pass
         
-        return 0.0  # Neutral if no news
+        # Return Australian market sentiment if available, otherwise neutral
+        if is_australian and aus_sentiment_component != 0.0:
+            return float(aus_sentiment_component)
+        else:
+            return 0.0  # Neutral if no news
         
     except:
         return 0.0

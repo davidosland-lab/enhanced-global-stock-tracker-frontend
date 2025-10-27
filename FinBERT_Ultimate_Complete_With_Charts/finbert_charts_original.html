@@ -102,6 +102,18 @@
             border-color: #3b82f6;
         }
         
+        .prediction-marker {
+            position: absolute;
+            padding: 8px 12px;
+            background: rgba(139, 92, 246, 0.9);
+            color: white;
+            border-radius: 8px;
+            font-size: 0.85em;
+            font-weight: 600;
+            white-space: nowrap;
+            z-index: 10;
+        }
+        
         .sentiment-bar {
             height: 8px;
             border-radius: 4px;
@@ -156,31 +168,6 @@
             70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
             100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
         }
-        
-        .status-message {
-            padding: 12px 20px;
-            border-radius: 8px;
-            margin: 10px 0;
-            font-weight: 500;
-        }
-        
-        .status-error {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
-            color: #fca5a5;
-        }
-        
-        .status-warning {
-            background: rgba(245, 158, 11, 0.1);
-            border: 1px solid rgba(245, 158, 11, 0.3);
-            color: #fcd34d;
-        }
-        
-        .status-success {
-            background: rgba(16, 185, 129, 0.1);
-            border: 1px solid rgba(16, 185, 129, 0.3);
-            color: #86efac;
-        }
     </style>
 </head>
 <body>
@@ -203,9 +190,6 @@
                 </div>
             </div>
         </div>
-        
-        <!-- Status Message -->
-        <div id="statusMessage" style="display: none;"></div>
         
         <!-- Controls -->
         <div class="glass-panel p-6 mb-6">
@@ -415,75 +399,11 @@
             bb: false,
             volume: true
         };
-        let backendReady = false;
-        
-        // Show status message
-        function showStatus(message, type = 'info') {
-            const statusDiv = document.getElementById('statusMessage');
-            statusDiv.style.display = 'block';
-            statusDiv.className = 'status-message';
-            
-            if (type === 'error') {
-                statusDiv.className += ' status-error';
-            } else if (type === 'warning') {
-                statusDiv.className += ' status-warning';
-            } else if (type === 'success') {
-                statusDiv.className += ' status-success';
-            }
-            
-            statusDiv.innerHTML = message;
-            
-            if (type === 'success') {
-                setTimeout(() => {
-                    statusDiv.style.display = 'none';
-                }, 3000);
-            }
-        }
-        
-        // Check backend status
-        async function checkBackend() {
-            try {
-                const response = await fetch(`${API_BASE}/`, {
-                    method: 'GET',
-                    mode: 'cors',
-                    headers: {
-                        'Accept': 'application/json'
-                    }
-                });
-                
-                if (response.ok) {
-                    backendReady = true;
-                    showStatus('✓ Backend server connected successfully', 'success');
-                    return true;
-                } else {
-                    throw new Error('Backend not responding');
-                }
-            } catch (error) {
-                console.error('Backend check failed:', error);
-                showStatus('⚠️ Waiting for backend server to start... Please wait a moment and refresh the page.', 'warning');
-                backendReady = false;
-                return false;
-            }
-        }
         
         // Initialize on page load
-        document.addEventListener('DOMContentLoaded', async function() {
-            console.log('Page loaded, checking backend...');
-            
-            // Check backend first
-            const isReady = await checkBackend();
-            
-            if (isReady) {
-                // Only load data if backend is ready
-                console.log('Backend ready, loading initial data...');
-                await loadStockData();
-            } else {
-                console.log('Backend not ready, waiting for user to manually load data...');
-                showStatus('Click "Analyze" to load data when the server is ready', 'warning');
-            }
-            
-            // Update time periodically
-            setInterval(updateLastUpdateTime, 60000);
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStockData();
+            setInterval(updateLastUpdateTime, 60000); // Update every minute
         });
         
         // Quick period selection
@@ -518,75 +438,28 @@
             const period = document.getElementById('periodSelect').value;
             
             if (!symbol) {
-                showStatus('Please enter a stock symbol', 'error');
+                alert('Please enter a stock symbol');
                 return;
-            }
-            
-            // Check backend if not ready
-            if (!backendReady) {
-                const isReady = await checkBackend();
-                if (!isReady) {
-                    showStatus('Backend server is not ready. Please ensure the server is running and try again.', 'error');
-                    return;
-                }
             }
             
             // Show loading
             document.getElementById('chartLoading').style.display = 'flex';
-            showStatus(`Loading data for ${symbol}...`, 'info');
             
             try {
-                // Fetch stock data with timeout
-                const controller = new AbortController();
-                const timeout = setTimeout(() => controller.abort(), 10000); // 10 second timeout
-                
-                const response = await fetch(`${API_BASE}/api/stock/${symbol}`, {
-                    signal: controller.signal,
-                    mode: 'cors',
-                    headers: {
-                        'Accept': 'application/json'
-                    }
-                });
-                clearTimeout(timeout);
-                
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch stock data: ${response.status}`);
-                }
-                
+                // Fetch stock data
+                const response = await fetch(`${API_BASE}/api/stock/${symbol}`);
                 const data = await response.json();
                 
                 if (data.error) {
                     throw new Error(data.error);
                 }
                 
-                // Fetch prediction (don't fail if this errors)
-                let prediction = null;
-                try {
-                    const predResponse = await fetch(`${API_BASE}/api/predict/${symbol}`, {
-                        mode: 'cors',
-                        headers: {
-                            'Accept': 'application/json'
-                        }
-                    });
-                    if (predResponse.ok) {
-                        prediction = await predResponse.json();
-                    }
-                } catch (predError) {
-                    console.warn('Prediction fetch failed, continuing without predictions:', predError);
-                }
+                // Fetch prediction
+                const predResponse = await fetch(`${API_BASE}/api/predict/${symbol}`);
+                const prediction = await predResponse.json();
                 
                 // Fetch historical data for charts
-                const histResponse = await fetch(`${API_BASE}/api/historical/${symbol}?period=${period}`, {
-                    mode: 'cors',
-                    headers: {
-                        'Accept': 'application/json'
-                    }
-                });
-                
-                if (!histResponse.ok) {
-                    throw new Error('Failed to fetch historical data');
-                }
-                
+                const histResponse = await fetch(`${API_BASE}/api/historical/${symbol}?period=${period}`);
                 const historical = await histResponse.json();
                 
                 // Store current data
@@ -606,18 +479,9 @@
                 // Update last update time
                 updateLastUpdateTime();
                 
-                showStatus(`✓ Data loaded for ${symbol}`, 'success');
-                
             } catch (error) {
                 console.error('Error loading data:', error);
-                
-                if (error.name === 'AbortError') {
-                    showStatus('Request timed out. The server might be starting up. Please try again.', 'error');
-                } else if (error.message.includes('fetch')) {
-                    showStatus('Cannot connect to server. Please ensure the backend is running on port 5000.', 'error');
-                } else {
-                    showStatus(`Error: ${error.message}`, 'error');
-                }
+                alert('Error loading stock data: ' + error.message);
             } finally {
                 document.getElementById('chartLoading').style.display = 'none';
             }
@@ -625,418 +489,475 @@
         
         // Update price information
         function updatePriceInfo(data, prediction) {
-            try {
-                // Current price
-                const currentPrice = data.currentPrice || data.price || 0;
-                const previousClose = data.previousClose || currentPrice;
-                const change = currentPrice - previousClose;
-                const changePercent = previousClose > 0 ? (change / previousClose) * 100 : 0;
-                
-                document.getElementById('currentPrice').textContent = currentPrice > 0 ? `$${currentPrice.toFixed(2)}` : '--';
-                const priceChangeEl = document.getElementById('priceChange');
-                if (currentPrice > 0) {
-                    priceChangeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%)`;
-                    priceChangeEl.className = change >= 0 ? 'text-sm mt-1 positive' : 'text-sm mt-1 negative';
+            // Current price
+            const currentPrice = data.currentPrice || data.price || 0;
+            const previousClose = data.previousClose || currentPrice;
+            const change = currentPrice - previousClose;
+            const changePercent = previousClose > 0 ? (change / previousClose) * 100 : 0;
+            
+            document.getElementById('currentPrice').textContent = `$${currentPrice.toFixed(2)}`;
+            const priceChangeEl = document.getElementById('priceChange');
+            priceChangeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%)`;
+            priceChangeEl.className = change >= 0 ? 'text-sm mt-1 positive' : 'text-sm mt-1 negative';
+            
+            // Predictions
+            if (prediction && !prediction.error) {
+                // Next day prediction
+                if (prediction.next_day_prediction) {
+                    const nextDay = prediction.next_day_prediction;
+                    document.getElementById('nextDayPrediction').textContent = `$${nextDay.price.toFixed(2)}`;
+                    document.getElementById('nextDayConfidence').textContent = `${nextDay.change >= 0 ? '↑' : '↓'} ${Math.abs(nextDay.change).toFixed(2)}%`;
                 }
                 
-                // Predictions
-                if (prediction && !prediction.error) {
-                    // Next day prediction
-                    if (prediction.next_day_prediction) {
-                        const nextDay = prediction.next_day_prediction;
-                        document.getElementById('nextDayPrediction').textContent = `$${nextDay.price.toFixed(2)}`;
-                        document.getElementById('nextDayConfidence').textContent = `${nextDay.change >= 0 ? '↑' : '↓'} ${Math.abs(nextDay.change).toFixed(2)}%`;
-                    }
-                    
-                    // Target price
-                    if (prediction.target_prices && prediction.target_prices.length > 0) {
-                        const target = prediction.target_prices[0];
-                        document.getElementById('targetPrice').textContent = `$${target.price.toFixed(2)}`;
-                        document.getElementById('targetTimeframe').textContent = target.timeframe;
-                    }
-                    
-                    // Sentiment
-                    if (prediction.sentiment_score !== undefined) {
-                        const sentiment = prediction.sentiment_score;
-                        document.getElementById('sentimentScore').textContent = sentiment.toFixed(3);
-                        
-                        // Position sentiment indicator
-                        const position = 50 + (sentiment * 50); // Convert -1 to 1 range to 0-100%
-                        document.getElementById('sentimentIndicator').style.left = `${position}%`;
-                        
-                        // Color code sentiment score
-                        const scoreEl = document.getElementById('sentimentScore');
-                        if (sentiment > 0.1) {
-                            scoreEl.className = 'text-2xl font-bold positive';
-                        } else if (sentiment < -0.1) {
-                            scoreEl.className = 'text-2xl font-bold negative';
-                        } else {
-                            scoreEl.className = 'text-2xl font-bold neutral';
-                        }
-                    }
-                } else {
-                    // Clear prediction fields if no prediction available
-                    document.getElementById('nextDayPrediction').textContent = '--';
-                    document.getElementById('nextDayConfidence').textContent = 'Training model...';
-                    document.getElementById('targetPrice').textContent = '--';
-                    document.getElementById('targetTimeframe').textContent = '--';
+                // Target price
+                if (prediction.target_prices && prediction.target_prices.length > 0) {
+                    const target = prediction.target_prices[0];
+                    document.getElementById('targetPrice').textContent = `$${target.price.toFixed(2)}`;
+                    document.getElementById('targetTimeframe').textContent = target.timeframe;
                 }
-            } catch (error) {
-                console.error('Error updating price info:', error);
+                
+                // Sentiment
+                if (prediction.sentiment_score !== undefined) {
+                    const sentiment = prediction.sentiment_score;
+                    document.getElementById('sentimentScore').textContent = sentiment.toFixed(3);
+                    
+                    // Position sentiment indicator
+                    const position = 50 + (sentiment * 50); // Convert -1 to 1 range to 0-100%
+                    document.getElementById('sentimentIndicator').style.left = `${position}%`;
+                    
+                    // Color code sentiment score
+                    const scoreEl = document.getElementById('sentimentScore');
+                    if (sentiment > 0.1) {
+                        scoreEl.className = 'text-2xl font-bold positive';
+                    } else if (sentiment < -0.1) {
+                        scoreEl.className = 'text-2xl font-bold negative';
+                    } else {
+                        scoreEl.className = 'text-2xl font-bold neutral';
+                    }
+                }
             }
         }
         
         // Update charts
         function updateCharts(data) {
-            if (!data.historical || !data.historical.data) {
-                console.warn('No historical data available for charts');
-                return;
+            if (!data.historical || !data.historical.data) return;
+            
+            const chartType = document.getElementById('chartTypeSelect').value;
+            const historicalData = data.historical.data;
+            
+            // Prepare data for charts
+            const labels = historicalData.map(d => new Date(d.date || d.Date));
+            const prices = historicalData.map(d => d.close || d.Close);
+            const volumes = historicalData.map(d => d.volume || d.Volume || 0);
+            
+            // Create datasets
+            const datasets = [];
+            
+            // Main price data
+            if (chartType === 'candlestick') {
+                datasets.push({
+                    label: 'Price',
+                    type: 'candlestick',
+                    data: historicalData.map(d => ({
+                        x: new Date(d.date || d.Date),
+                        o: d.open || d.Open,
+                        h: d.high || d.High,
+                        l: d.low || d.Low,
+                        c: d.close || d.Close
+                    })),
+                    color: {
+                        up: '#10b981',
+                        down: '#ef4444',
+                        unchanged: '#94a3b8'
+                    }
+                });
+            } else if (chartType === 'ohlc') {
+                datasets.push({
+                    label: 'Price',
+                    type: 'ohlc',
+                    data: historicalData.map(d => ({
+                        x: new Date(d.date || d.Date),
+                        o: d.open || d.Open,
+                        h: d.high || d.High,
+                        l: d.low || d.Low,
+                        c: d.close || d.Close
+                    })),
+                    color: {
+                        up: '#10b981',
+                        down: '#ef4444',
+                        unchanged: '#94a3b8'
+                    }
+                });
+            } else {
+                datasets.push({
+                    label: 'Price',
+                    type: 'line',
+                    data: prices.map((p, i) => ({ x: labels[i], y: p })),
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.1,
+                    fill: true
+                });
             }
             
-            try {
-                const chartType = document.getElementById('chartTypeSelect').value;
-                const historicalData = data.historical.data;
-                
-                // Prepare data for charts
-                const labels = historicalData.map(d => new Date(d.date || d.Date));
-                const prices = historicalData.map(d => d.close || d.Close);
-                const volumes = historicalData.map(d => d.volume || d.Volume || 0);
-                
-                // Create datasets
-                const datasets = [];
-                
-                // Main price data
-                if (chartType === 'candlestick') {
-                    datasets.push({
-                        label: 'Price',
-                        type: 'candlestick',
-                        data: historicalData.map(d => ({
-                            x: new Date(d.date || d.Date),
-                            o: d.open || d.Open,
-                            h: d.high || d.High,
-                            l: d.low || d.Low,
-                            c: d.close || d.Close
-                        })),
-                        color: {
-                            up: '#10b981',
-                            down: '#ef4444',
-                            unchanged: '#94a3b8'
-                        }
-                    });
-                } else if (chartType === 'ohlc') {
-                    datasets.push({
-                        label: 'Price',
-                        type: 'ohlc',
-                        data: historicalData.map(d => ({
-                            x: new Date(d.date || d.Date),
-                            o: d.open || d.Open,
-                            h: d.high || d.High,
-                            l: d.low || d.Low,
-                            c: d.close || d.Close
-                        })),
-                        color: {
-                            up: '#10b981',
-                            down: '#ef4444',
-                            unchanged: '#94a3b8'
-                        }
-                    });
-                } else {
-                    datasets.push({
-                        label: 'Price',
-                        type: 'line',
-                        data: prices.map((p, i) => ({ x: labels[i], y: p })),
-                        borderColor: '#3b82f6',
-                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        tension: 0.1,
-                        fill: true
-                    });
-                }
-                
-                // Add SMA if enabled
-                if (indicators.sma && prices.length > 20) {
-                    const sma20 = calculateSMA(prices, 20);
-                    datasets.push({
-                        label: 'SMA 20',
-                        type: 'line',
-                        data: sma20.map((s, i) => ({ x: labels[i + 19], y: s })),
-                        borderColor: '#f59e0b',
-                        borderWidth: 1,
-                        pointRadius: 0,
-                        tension: 0,
-                        borderDash: [5, 5]
-                    });
-                }
-                
-                // Update main chart
-                const ctx = document.getElementById('priceChart').getContext('2d');
-                
-                if (priceChart) {
-                    priceChart.destroy();
-                }
-                
-                priceChart = new Chart(ctx, {
-                    type: chartType === 'line' ? 'line' : chartType,
-                    data: { datasets: datasets },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        interaction: {
-                            mode: 'index',
-                            intersect: false
-                        },
-                        plugins: {
-                            legend: {
-                                display: true,
-                                position: 'top',
-                                labels: {
-                                    color: '#94a3b8',
-                                    usePointStyle: true,
-                                    padding: 15
-                                }
-                            },
-                            tooltip: {
-                                mode: 'index',
-                                intersect: false,
-                                backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                                titleColor: '#fff',
-                                bodyColor: '#fff'
+            // Add SMA if enabled
+            if (indicators.sma && prices.length > 20) {
+                const sma20 = calculateSMA(prices, 20);
+                datasets.push({
+                    label: 'SMA 20',
+                    type: 'line',
+                    data: sma20.map((s, i) => ({ x: labels[i + 19], y: s })),
+                    borderColor: '#f59e0b',
+                    borderWidth: 1,
+                    pointRadius: 0,
+                    tension: 0,
+                    borderDash: [5, 5]
+                });
+            }
+            
+            // Add EMA if enabled
+            if (indicators.ema && prices.length > 20) {
+                const ema20 = calculateEMA(prices, 20);
+                datasets.push({
+                    label: 'EMA 20',
+                    type: 'line',
+                    data: ema20.map((e, i) => ({ x: labels[i + 19], y: e })),
+                    borderColor: '#10b981',
+                    borderWidth: 1,
+                    pointRadius: 0,
+                    tension: 0,
+                    borderDash: [3, 3]
+                });
+            }
+            
+            // Add Bollinger Bands if enabled
+            if (indicators.bb && prices.length > 20) {
+                const bb = calculateBollingerBands(prices, 20);
+                datasets.push({
+                    label: 'BB Upper',
+                    type: 'line',
+                    data: bb.upper.map((b, i) => ({ x: labels[i + 19], y: b })),
+                    borderColor: 'rgba(139, 92, 246, 0.5)',
+                    borderWidth: 1,
+                    pointRadius: 0,
+                    tension: 0
+                });
+                datasets.push({
+                    label: 'BB Lower',
+                    type: 'line',
+                    data: bb.lower.map((b, i) => ({ x: labels[i + 19], y: b })),
+                    borderColor: 'rgba(139, 92, 246, 0.5)',
+                    borderWidth: 1,
+                    pointRadius: 0,
+                    tension: 0
+                });
+            }
+            
+            // Update main chart
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            
+            if (priceChart) {
+                priceChart.destroy();
+            }
+            
+            priceChart = new Chart(ctx, {
+                type: chartType === 'line' ? 'line' : chartType,
+                data: { datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#94a3b8',
+                                usePointStyle: true,
+                                padding: 15
                             }
                         },
-                        scales: {
-                            x: {
-                                type: 'time',
-                                time: {
-                                    unit: 'day',
-                                    displayFormats: {
-                                        day: 'MMM dd'
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.raw && context.raw.c) {
+                                        return [
+                                            `O: ${context.raw.o.toFixed(2)}`,
+                                            `H: ${context.raw.h.toFixed(2)}`,
+                                            `L: ${context.raw.l.toFixed(2)}`,
+                                            `C: ${context.raw.c.toFixed(2)}`
+                                        ];
                                     }
+                                    return context.dataset.label + ': ' + (context.parsed.y || 0).toFixed(2);
+                                }
+                            }
+                        },
+                        zoom: {
+                            zoom: {
+                                wheel: {
+                                    enabled: true,
                                 },
-                                grid: {
-                                    display: true,
-                                    color: 'rgba(148, 163, 184, 0.1)'
+                                pinch: {
+                                    enabled: true
                                 },
-                                ticks: {
-                                    color: '#94a3b8'
+                                mode: 'x',
+                            },
+                            pan: {
+                                enabled: true,
+                                mode: 'x',
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day',
+                                displayFormats: {
+                                    day: 'MMM dd'
                                 }
                             },
-                            y: {
-                                position: 'right',
-                                grid: {
-                                    display: true,
-                                    color: 'rgba(148, 163, 184, 0.1)'
-                                },
-                                ticks: {
-                                    color: '#94a3b8',
-                                    callback: function(value) {
-                                        return '$' + value.toFixed(2);
-                                    }
+                            grid: {
+                                display: true,
+                                color: 'rgba(148, 163, 184, 0.1)'
+                            },
+                            ticks: {
+                                color: '#94a3b8'
+                            }
+                        },
+                        y: {
+                            position: 'right',
+                            grid: {
+                                display: true,
+                                color: 'rgba(148, 163, 184, 0.1)'
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                callback: function(value) {
+                                    return '$' + value.toFixed(2);
                                 }
                             }
                         }
                     }
-                });
-                
-                // Update RSI and MACD charts
-                updateRSIChart(prices, labels);
-                updateMACDChart(prices, labels);
-                
-            } catch (error) {
-                console.error('Error updating charts:', error);
-            }
+                }
+            });
+            
+            // Update RSI chart
+            updateRSIChart(prices, labels);
+            
+            // Update MACD chart
+            updateMACDChart(prices, labels);
         }
         
         // Update RSI chart
         function updateRSIChart(prices, labels) {
             if (prices.length < 14) return;
             
-            try {
-                const rsi = calculateRSI(prices, 14);
-                const ctx = document.getElementById('rsiChart').getContext('2d');
-                
-                if (rsiChart) {
-                    rsiChart.destroy();
-                }
-                
-                rsiChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels.slice(14),
-                        datasets: [{
-                            label: 'RSI',
-                            data: rsi,
-                            borderColor: '#3b82f6',
-                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            tension: 0.1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: false }
-                        },
-                        scales: {
-                            x: {
-                                display: false
-                            },
-                            y: {
-                                min: 0,
-                                max: 100,
-                                position: 'right',
-                                grid: {
-                                    display: true,
-                                    color: 'rgba(148, 163, 184, 0.1)'
+            const rsi = calculateRSI(prices, 14);
+            const ctx = document.getElementById('rsiChart').getContext('2d');
+            
+            if (rsiChart) {
+                rsiChart.destroy();
+            }
+            
+            rsiChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels.slice(14),
+                    datasets: [{
+                        label: 'RSI',
+                        data: rsi,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        annotation: {
+                            annotations: {
+                                overbought: {
+                                    type: 'line',
+                                    yMin: 70,
+                                    yMax: 70,
+                                    borderColor: 'rgba(239, 68, 68, 0.5)',
+                                    borderWidth: 1,
+                                    borderDash: [5, 5]
                                 },
-                                ticks: {
-                                    color: '#94a3b8'
+                                oversold: {
+                                    type: 'line',
+                                    yMin: 30,
+                                    yMax: 30,
+                                    borderColor: 'rgba(16, 185, 129, 0.5)',
+                                    borderWidth: 1,
+                                    borderDash: [5, 5]
                                 }
                             }
                         }
+                    },
+                    scales: {
+                        x: {
+                            display: false
+                        },
+                        y: {
+                            min: 0,
+                            max: 100,
+                            position: 'right',
+                            grid: {
+                                display: true,
+                                color: 'rgba(148, 163, 184, 0.1)'
+                            },
+                            ticks: {
+                                color: '#94a3b8'
+                            }
+                        }
                     }
-                });
-            } catch (error) {
-                console.error('Error updating RSI chart:', error);
-            }
+                }
+            });
         }
         
         // Update MACD chart
         function updateMACDChart(prices, labels) {
             if (prices.length < 26) return;
             
-            try {
-                const macd = calculateMACD(prices);
-                const ctx = document.getElementById('macdChart').getContext('2d');
-                
-                if (macdChart) {
-                    macdChart.destroy();
-                }
-                
-                macdChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels.slice(26),
-                        datasets: [
-                            {
-                                label: 'MACD',
-                                data: macd.line,
-                                borderColor: '#3b82f6',
-                                borderWidth: 2,
-                                pointRadius: 0,
-                                tension: 0.1
-                            },
-                            {
-                                label: 'Signal',
-                                data: macd.signal,
-                                borderColor: '#ef4444',
-                                borderWidth: 2,
-                                pointRadius: 0,
-                                tension: 0.1
-                            },
-                            {
-                                label: 'Histogram',
-                                type: 'bar',
-                                data: macd.histogram,
-                                backgroundColor: function(context) {
-                                    return context.parsed.y >= 0 ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.5)';
-                                }
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                display: true,
-                                position: 'top',
-                                labels: {
-                                    color: '#94a3b8',
-                                    usePointStyle: true,
-                                    padding: 10,
-                                    font: { size: 10 }
-                                }
-                            }
+            const macd = calculateMACD(prices);
+            const ctx = document.getElementById('macdChart').getContext('2d');
+            
+            if (macdChart) {
+                macdChart.destroy();
+            }
+            
+            macdChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels.slice(26),
+                    datasets: [
+                        {
+                            label: 'MACD',
+                            data: macd.line,
+                            borderColor: '#3b82f6',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.1
                         },
-                        scales: {
-                            x: {
-                                display: false
+                        {
+                            label: 'Signal',
+                            data: macd.signal,
+                            borderColor: '#ef4444',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.1
+                        },
+                        {
+                            label: 'Histogram',
+                            type: 'bar',
+                            data: macd.histogram,
+                            backgroundColor: function(context) {
+                                return context.parsed.y >= 0 ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.5)';
+                            }
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#94a3b8',
+                                usePointStyle: true,
+                                padding: 10,
+                                font: { size: 10 }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: false
+                        },
+                        y: {
+                            position: 'right',
+                            grid: {
+                                display: true,
+                                color: 'rgba(148, 163, 184, 0.1)'
                             },
-                            y: {
-                                position: 'right',
-                                grid: {
-                                    display: true,
-                                    color: 'rgba(148, 163, 184, 0.1)'
-                                },
-                                ticks: {
-                                    color: '#94a3b8'
-                                }
+                            ticks: {
+                                color: '#94a3b8'
                             }
                         }
                     }
-                });
-            } catch (error) {
-                console.error('Error updating MACD chart:', error);
-            }
+                }
+            });
         }
         
         // Update technical indicators
         function updateTechnicalIndicators(data) {
-            try {
-                // RSI
-                if (data.rsi_14 !== undefined) {
-                    const rsi = data.rsi_14;
-                    document.getElementById('rsiValue').textContent = rsi.toFixed(2);
-                    let signal = 'Neutral';
-                    if (rsi > 70) signal = 'Overbought';
-                    else if (rsi < 30) signal = 'Oversold';
-                    document.getElementById('rsiSignal').textContent = signal;
-                    document.getElementById('rsiSignal').className = 
-                        rsi > 70 ? 'text-xs negative' : 
-                        rsi < 30 ? 'text-xs positive' : 
-                        'text-xs neutral';
-                }
+            // RSI
+            if (data.rsi_14 !== undefined) {
+                const rsi = data.rsi_14;
+                document.getElementById('rsiValue').textContent = rsi.toFixed(2);
+                let signal = 'Neutral';
+                if (rsi > 70) signal = 'Overbought';
+                else if (rsi < 30) signal = 'Oversold';
+                document.getElementById('rsiSignal').textContent = signal;
+                document.getElementById('rsiSignal').className = 
+                    rsi > 70 ? 'text-xs negative' : 
+                    rsi < 30 ? 'text-xs positive' : 
+                    'text-xs neutral';
+            }
+            
+            // MACD
+            if (data.macd !== undefined) {
+                const macdValue = data.macd;
+                const macdSignal = data.macd_signal || 0;
+                const diff = macdValue - macdSignal;
                 
-                // MACD
-                if (data.macd !== undefined) {
-                    const macdValue = data.macd;
-                    const macdSignal = data.macd_signal || 0;
-                    const diff = macdValue - macdSignal;
-                    
-                    document.getElementById('macdValue').textContent = `MACD: ${macdValue.toFixed(4)}`;
-                    document.getElementById('macdSignal').textContent = diff > 0 ? 'Bullish' : 'Bearish';
-                    document.getElementById('macdSignal').className = diff > 0 ? 'font-semibold positive' : 'font-semibold negative';
-                }
+                document.getElementById('macdValue').textContent = `MACD: ${macdValue.toFixed(4)}`;
+                document.getElementById('macdSignal').textContent = diff > 0 ? 'Bullish' : 'Bearish';
+                document.getElementById('macdSignal').className = diff > 0 ? 'font-semibold positive' : 'font-semibold negative';
+            }
+            
+            // ATR
+            if (data.atr_14 !== undefined) {
+                document.getElementById('atrValue').textContent = data.atr_14.toFixed(2);
+            }
+            
+            // Volume
+            if (data.volume !== undefined) {
+                const volume = data.volume;
+                const avgVolume = data.averageVolume || volume;
+                const volumeRatio = volume / avgVolume;
                 
-                // ATR
-                if (data.atr_14 !== undefined) {
-                    document.getElementById('atrValue').textContent = data.atr_14.toFixed(2);
-                }
-                
-                // Volume
-                if (data.volume !== undefined) {
-                    const volume = data.volume;
-                    const avgVolume = data.averageVolume || volume;
-                    const volumeRatio = avgVolume > 0 ? volume / avgVolume : 1;
-                    
-                    document.getElementById('volumeTrend').textContent = volumeRatio > 1.2 ? 'High' : volumeRatio < 0.8 ? 'Low' : 'Normal';
-                    document.getElementById('volumeChange').textContent = `${((volumeRatio - 1) * 100).toFixed(1)}% vs avg`;
-                    document.getElementById('volumeTrend').className = 
-                        volumeRatio > 1.2 ? 'font-semibold positive' : 
-                        volumeRatio < 0.8 ? 'font-semibold negative' : 
-                        'font-semibold neutral';
-                }
-            } catch (error) {
-                console.error('Error updating technical indicators:', error);
+                document.getElementById('volumeTrend').textContent = volumeRatio > 1.2 ? 'High' : volumeRatio < 0.8 ? 'Low' : 'Normal';
+                document.getElementById('volumeChange').textContent = `${((volumeRatio - 1) * 100).toFixed(1)}% vs avg`;
+                document.getElementById('volumeTrend').className = 
+                    volumeRatio > 1.2 ? 'font-semibold positive' : 
+                    volumeRatio < 0.8 ? 'font-semibold negative' : 
+                    'font-semibold neutral';
             }
         }
         
         // Update economic indicators
         async function updateEconomicIndicators() {
             try {
+                // Fetch economic data
                 const indicators = [
                     { symbol: '^VIX', elementId: 'vixValue' },
                     { symbol: '^TNX', elementId: 'tnxValue' },
@@ -1055,9 +976,7 @@
                             const change = data.changePercent || 0;
                             const element = document.getElementById(indicator.elementId);
                             
-                            if (element && price > 0) {
-                                element.innerHTML = `${price.toFixed(2)} <span class="${change >= 0 ? 'positive' : 'negative'} text-xs">(${change >= 0 ? '+' : ''}${change.toFixed(2)}%)</span>`;
-                            }
+                            element.innerHTML = `${price.toFixed(2)} <span class="${change >= 0 ? 'positive' : 'negative'} text-xs">(${change >= 0 ? '+' : ''}${change.toFixed(2)}%)</span>`;
                         }
                     } catch (e) {
                         console.error(`Error fetching ${indicator.symbol}:`, e);
@@ -1147,6 +1066,24 @@
             }
             
             return ema.slice(1); // Remove initial SMA
+        }
+        
+        function calculateBollingerBands(data, period) {
+            const sma = calculateSMA(data, period);
+            const upper = [];
+            const lower = [];
+            
+            for (let i = period - 1; i < data.length; i++) {
+                const slice = data.slice(i - period + 1, i + 1);
+                const mean = sma[i - period + 1];
+                const variance = slice.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / period;
+                const stdDev = Math.sqrt(variance);
+                
+                upper.push(mean + (stdDev * 2));
+                lower.push(mean - (stdDev * 2));
+            }
+            
+            return { upper, lower, middle: sma };
         }
         
         function calculateRSI(prices, period) {

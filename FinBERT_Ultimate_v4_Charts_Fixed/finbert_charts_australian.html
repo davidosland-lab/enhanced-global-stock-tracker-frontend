@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 FinBERT Ultimate Trading Charts - Australian Enhanced Edition</title>
+    
+    <!-- Chart.js and plugins -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.1/dist/chartjs-chart-financial.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.0/dist/chartjs-plugin-zoom.min.js"></script>
+    
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+        
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        .australian-flag {
+            background: linear-gradient(90deg, #00008B 0%, #00008B 33%, #FFFFFF 33%, #FFFFFF 66%, #FF0000 66%, #FF0000 100%);
+            height: 4px;
+            border-radius: 2px;
+        }
+        
+        .indicator-card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 12px;
+            padding: 12px;
+            transition: all 0.3s;
+        }
+        
+        .indicator-card:hover {
+            background: rgba(30, 41, 59, 0.8);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+        
+        .positive { color: #10b981; }
+        .negative { color: #ef4444; }
+        .neutral { color: #94a3b8; }
+        
+        .aus-indicator {
+            background: rgba(0, 8, 139, 0.1);
+            border-left: 3px solid #FFD700;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 500px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto px-4 py-6">
+        <!-- Header -->
+        <div class="glass-panel p-6 mb-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+                        FinBERT Ultimate Trading System
+                    </h1>
+                    <p class="text-gray-400 mt-2">Australian Market Enhanced Edition - ASX Optimized</p>
+                    <div class="australian-flag mt-2 w-32"></div>
+                </div>
+                <div class="text-right">
+                    <div class="text-sm text-gray-400" id="marketStatus">Market Status: --</div>
+                    <div class="text-sm text-gray-400" id="lastUpdate">Last update: --</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Controls -->
+        <div class="glass-panel p-6 mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-2">Stock Symbol</label>
+                    <input type="text" 
+                           id="symbolInput" 
+                           value="CBA.AX" 
+                           placeholder="e.g., CBA.AX, BHP.AX"
+                           class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg focus:border-blue-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-2">Market</label>
+                    <select id="marketSelect" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg">
+                        <option value="ASX">ASX - Australian</option>
+                        <option value="US">US Markets</option>
+                        <option value="GLOBAL">Global</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-2">Time Period</label>
+                    <select id="periodSelect" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg">
+                        <option value="1d">1 Day</option>
+                        <option value="5d">5 Days</option>
+                        <option value="1mo" selected>1 Month</option>
+                        <option value="3mo">3 Months</option>
+                        <option value="6mo">6 Months</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-400 mb-2">Chart Type</label>
+                    <select id="chartTypeSelect" class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg">
+                        <option value="candlestick">Candlestick</option>
+                        <option value="ohlc">OHLC</option>
+                        <option value="line">Line</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button onclick="loadStockData()" class="w-full px-6 py-2 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-lg hover:shadow-lg transition">
+                        <i class="fas fa-chart-line mr-2"></i>Analyze
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Australian Indicators Panel (shown for ASX stocks) -->
+        <div id="australianPanel" class="glass-panel p-6 mb-6" style="display: none;">
+            <h3 class="text-xl font-semibold mb-4">
+                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 20'%3E%3Crect width='30' height='20' fill='%2300008B'/%3E%3C/svg%3E" 
+                     class="inline w-6 h-4 mr-2" alt="AU Flag">
+                Australian Market Indicators
+            </h3>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                <!-- RBA & Monetary -->
+                <div class="indicator-card aus-indicator">
+                    <div class="text-xs text-gray-400">RBA Rate</div>
+                    <div class="text-lg font-bold" id="rbaRate">--</div>
+                    <div class="text-xs" id="rbaExpectation">--</div>
+                </div>
+                
+                <!-- Inflation -->
+                <div class="indicator-card aus-indicator">
+                    <div class="text-xs text-gray-400">CPI Estimate</div>
+                    <div class="text-lg font-bold" id="cpiEstimate">--</div>
+                    <div class="text-xs" id="inflationTrend">--</div>
+                </div>
+                
+                <!-- Employment -->
+                <div class="indicator-card aus-indicator">
+                    <div class="text-xs text-gray-400">Unemployment</div>
+                    <div class="text-lg font-bold" id="unemployment">--</div>
+                    <div class="text-xs" id="labourMarket">--</div>
+                </div>
+                
+                <!-- Housing -->
+                <div class="indicator-card aus-indicator">
+                    <div class="text-xs text-gray-400">Housing</div>
+                    <div class="text-lg font-bold" id="housingIndex">--</div>
+                    <div class="text-xs" id="housingStrength">--</div>
+                </div>
+                
+                <!-- AUD/USD -->
+                <div class="indicator-card aus-indicator">
+                    <div class="text-xs text-gray-400">AUD/USD</div>
+                    <div class="text-lg font-bold" id="audUsd">--</div>
+                    <div class="text-xs" id="audTrend">--</div>
+                </div>
+                
+                <!-- ASX 200 -->
+                <div class="indicator-card aus-indicator">
+                    <div class="text-xs text-gray-400">ASX 200</div>
+                    <div class="text-lg font-bold" id="asx200">--</div>
+                    <div class="text-xs" id="asxMomentum">--</div>
+                </div>
+            </div>
+            
+            <!-- Commodities Row -->
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-3 mt-3">
+                <div class="indicator-card">
+                    <div class="text-xs text-gray-400">Iron Ore</div>
+                    <div class="text-lg font-bold" id="ironOre">--</div>
+                    <div class="text-xs" id="ironTrend">--</div>
+                </div>
+                
+                <div class="indicator-card">
+                    <div class="text-xs text-gray-400">Gold (USD)</div>
+                    <div class="text-lg font-bold" id="gold">--</div>
+                </div>
+                
+                <div class="indicator-card">
+                    <div class="text-xs text-gray-400">Coal</div>
+                    <div class="text-lg font-bold" id="coal">--</div>
+                </div>
+                
+                <div class="indicator-card">
+                    <div class="text-xs text-gray-400">LNG</div>
+                    <div class="text-lg font-bold" id="lng">--</div>
+                </div>
+                
+                <div class="indicator-card">
+                    <div class="text-xs text-gray-400">China Demand</div>
+                    <div class="text-lg font-bold" id="chinaDemand">--</div>
+                    <div class="text-xs" id="chinaGrowth">--</div>
+                </div>
+            </div>
+            
+            <!-- Sentiment Indices -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                <div class="indicator-card">
+                    <div class="text-xs text-gray-400">Consumer Sentiment</div>
+                    <div class="text-lg font-bold" id="consumerSentiment">--</div>
+                    <div class="text-xs">Westpac-Melbourne Index Proxy</div>
+                </div>
+                
+                <div class="indicator-card">
+                    <div class="text-xs text-gray-400">Business Confidence</div>
+                    <div class="text-lg font-bold" id="businessConfidence">--</div>
+                    <div class="text-xs">NAB Index Proxy</div>
+                </div>
+                
+                <div class="indicator-card">
+                    <div class="text-xs text-gray-400">Overall AU Sentiment</div>
+                    <div class="text-2xl font-bold" id="auSentimentScore">--</div>
+                    <div class="text-sm" id="auSentimentLabel">--</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left Panel - Price & Predictions -->
+            <div class="space-y-6">
+                <!-- Current Price -->
+                <div class="glass-panel p-6">
+                    <h3 class="text-lg font-semibold text-gray-300 mb-4">Current Price</h3>
+                    <div class="text-3xl font-bold" id="currentPrice">--</div>
+                    <div class="text-sm mt-1" id="priceChange">--</div>
+                </div>
+                
+                <!-- AI Predictions -->
+                <div class="glass-panel p-6">
+                    <h3 class="text-lg font-semibold text-gray-300 mb-4">
+                        <i class="fas fa-robot mr-2 text-purple-500"></i>AI Predictions
+                    </h3>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="text-sm text-gray-400">Next Day</div>
+                            <div class="text-2xl font-bold" id="nextDayPrediction">--</div>
+                            <div class="text-sm" id="nextDayConfidence">--</div>
+                        </div>
+                        <div>
+                            <div class="text-sm text-gray-400">5-Day Target</div>
+                            <div class="text-2xl font-bold" id="target5d">--</div>
+                        </div>
+                        <div>
+                            <div class="text-sm text-gray-400">10-Day Target</div>
+                            <div class="text-2xl font-bold" id="target10d">--</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Combined Sentiment -->
+                <div class="glass-panel p-6">
+                    <h3 class="text-lg font-semibold text-gray-300 mb-4">
+                        <i class="fas fa-brain mr-2 text-blue-500"></i>Combined Sentiment
+                    </h3>
+                    <div class="text-2xl font-bold" id="sentimentScore">--</div>
+                    <div class="text-sm text-gray-400 mt-2" id="sentimentComponents">
+                        News: -- | Market: --
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Center/Right Panel - Chart -->
+            <div class="lg:col-span-2">
+                <div class="glass-panel p-6">
+                    <h3 class="text-lg font-semibold text-gray-300 mb-4">Price Chart</h3>
+                    <div class="chart-container">
+                        <canvas id="priceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Global variables
+        const API_BASE = 'http://localhost:5000';
+        let priceChart = null;
+        let currentData = null;
+        let isAustralianStock = false;
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('FinBERT Ultimate - Australian Enhanced Edition');
+            
+            // Check if default symbol is Australian
+            checkIfAustralian();
+            
+            // Load data
+            loadStockData();
+            
+            // Update time
+            setInterval(updateTime, 60000);
+        });
+        
+        function checkIfAustralian() {
+            const symbol = document.getElementById('symbolInput').value.toUpperCase();
+            isAustralianStock = symbol.endsWith('.AX') || symbol.endsWith('.ASX');
+            
+            // Show/hide Australian panel
+            document.getElementById('australianPanel').style.display = isAustralianStock ? 'block' : 'none';
+            
+            // Update market selector
+            if (isAustralianStock) {
+                document.getElementById('marketSelect').value = 'ASX';
+            }
+        }
+        
+        async function loadStockData() {
+            const symbol = document.getElementById('symbolInput').value.toUpperCase();
+            const period = document.getElementById('periodSelect').value;
+            
+            if (!symbol) return;
+            
+            checkIfAustralian();
+            
+            try {
+                // Fetch stock data
+                const stockResponse = await fetch(`${API_BASE}/api/stock/${symbol}`);
+                const stockData = await stockResponse.json();
+                
+                // Fetch prediction
+                const predResponse = await fetch(`${API_BASE}/api/predict/${symbol}`);
+                const predData = await predResponse.json();
+                
+                // Fetch historical
+                const histResponse = await fetch(`${API_BASE}/api/historical/${symbol}?period=${period}`);
+                const histData = await histResponse.json();
+                
+                // If Australian stock, fetch Australian indicators
+                if (isAustralianStock) {
+                    const ausResponse = await fetch(`${API_BASE}/api/australian-indicators`);
+                    const ausData = await ausResponse.json();
+                    updateAustralianIndicators(ausData);
+                }
+                
+                // Update UI
+                updatePriceInfo(stockData, predData);
+                updateChart(histData);
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        }
+        
+        function updatePriceInfo(stockData, predData) {
+            // Current price
+            document.getElementById('currentPrice').textContent = `$${stockData.currentPrice?.toFixed(2) || '--'}`;
+            
+            const changeEl = document.getElementById('priceChange');
+            if (stockData.change) {
+                changeEl.textContent = `${stockData.change >= 0 ? '+' : ''}${stockData.change.toFixed(2)} (${stockData.changePercent?.toFixed(2)}%)`;
+                changeEl.className = stockData.change >= 0 ? 'text-sm mt-1 positive' : 'text-sm mt-1 negative';
+            }
+            
+            // Predictions
+            if (predData.next_day_prediction) {
+                document.getElementById('nextDayPrediction').textContent = `$${predData.next_day_prediction.price.toFixed(2)}`;
+                document.getElementById('nextDayConfidence').innerHTML = `
+                    ${predData.next_day_prediction.direction === 'up' ? '↑' : '↓'} 
+                    ${Math.abs(predData.next_day_prediction.change).toFixed(2)}%
+                    <span class="text-blue-400">(${predData.next_day_prediction.confidence_percent?.toFixed(1)}% conf)</span>
+                `;
+            }
+            
+            if (predData.target_prices) {
+                const target5 = predData.target_prices[0];
+                const target10 = predData.target_prices[1];
+                
+                if (target5) {
+                    document.getElementById('target5d').innerHTML = `
+                        $${target5.price.toFixed(2)}
+                        <span class="text-xs ${target5.change_percent >= 0 ? 'positive' : 'negative'}">
+                            (${target5.change_percent >= 0 ? '+' : ''}${target5.change_percent.toFixed(1)}%)
+                        </span>
+                    `;
+                }
+                
+                if (target10) {
+                    document.getElementById('target10d').innerHTML = `
+                        $${target10.price.toFixed(2)}
+                        <span class="text-xs ${target10.change_percent >= 0 ? 'positive' : 'negative'}">
+                            (${target10.change_percent >= 0 ? '+' : ''}${target10.change_percent.toFixed(1)}%)
+                        </span>
+                    `;
+                }
+            }
+            
+            // Sentiment
+            if (predData.sentiment_score !== undefined) {
+                const sentiment = predData.sentiment_score;
+                document.getElementById('sentimentScore').textContent = sentiment.toFixed(3);
+                document.getElementById('sentimentScore').className = 
+                    sentiment > 0.1 ? 'text-2xl font-bold positive' :
+                    sentiment < -0.1 ? 'text-2xl font-bold negative' :
+                    'text-2xl font-bold neutral';
+                
+                // Show components if Australian
+                if (isAustralianStock && predData.australian_indicators) {
+                    const ausSentiment = predData.australian_indicators.overall_sentiment?.sentiment_score || 0;
+                    document.getElementById('sentimentComponents').textContent = 
+                        `News: ${((sentiment - ausSentiment * 0.4) / 0.6).toFixed(2)} | AU Market: ${ausSentiment.toFixed(2)}`;
+                }
+            }
+        }
+        
+        function updateAustralianIndicators(data) {
+            if (!data) return;
+            
+            // Monetary Policy
+            if (data.monetary_policy) {
+                document.getElementById('rbaRate').textContent = `${data.monetary_policy.rba_rate_proxy?.toFixed(2)}%`;
+                document.getElementById('rbaExpectation').textContent = data.monetary_policy.rate_expectations || '';
+            }
+            
+            // Inflation
+            if (data.inflation) {
+                document.getElementById('cpiEstimate').textContent = `${data.inflation.cpi_estimate?.toFixed(1)}%`;
+                document.getElementById('inflationTrend').textContent = 
+                    data.inflation.cpi_estimate > 3.5 ? '↑ Rising' : 
+                    data.inflation.cpi_estimate < 2.5 ? '↓ Low' : '→ Stable';
+            }
+            
+            // Labour Market
+            if (data.labour_market) {
+                document.getElementById('unemployment').textContent = `${data.labour_market.unemployment_proxy?.toFixed(1)}%`;
+                document.getElementById('labourMarket').textContent = data.labour_market.labour_market_tightness || '';
+            }
+            
+            // Housing
+            if (data.housing) {
+                document.getElementById('housingIndex').textContent = `${data.housing.house_price_index_change >= 0 ? '+' : ''}${data.housing.house_price_index_change?.toFixed(1)}%`;
+                document.getElementById('housingStrength').textContent = data.housing.housing_market_strength || '';
+            }
+            
+            // Currency
+            if (data.market) {
+                document.getElementById('audUsd').textContent = `$${data.market.aud_usd?.toFixed(4)}`;
+                document.getElementById('audTrend').textContent = data.market.aud_trend || '';
+                document.getElementById('asx200').textContent = Math.round(data.market.asx200 || 0).toLocaleString();
+                document.getElementById('asxMomentum').textContent = data.market.asx200_momentum || '';
+            }
+            
+            // Commodities
+            if (data.commodities) {
+                document.getElementById('ironOre').textContent = `$${data.commodities.iron_ore_usd?.toFixed(0)}`;
+                document.getElementById('gold').textContent = `$${data.commodities.gold_usd?.toFixed(0)}`;
+                document.getElementById('coal').textContent = `$${data.trade?.coal_proxy?.toFixed(2) || '--'}`;
+                document.getElementById('lng').textContent = `$${data.trade?.lng_proxy?.toFixed(2) || '--'}`;
+            }
+            
+            // China
+            if (data.china) {
+                document.getElementById('chinaDemand').textContent = data.china.china_demand_outlook || '';
+                document.getElementById('chinaGrowth').textContent = data.china.china_growth_momentum || '';
+            }
+            
+            // Sentiment
+            if (data.sentiment) {
+                document.getElementById('consumerSentiment').textContent = data.sentiment.consumer_sentiment_index?.toFixed(1) || '--';
+                document.getElementById('businessConfidence').textContent = data.sentiment.business_confidence_index?.toFixed(1) || '--';
+            }
+            
+            // Overall Sentiment
+            if (data.overall_sentiment) {
+                const score = data.overall_sentiment.sentiment_score;
+                const percentage = data.overall_sentiment.sentiment_percentage;
+                
+                document.getElementById('auSentimentScore').textContent = score.toFixed(3);
+                document.getElementById('auSentimentLabel').textContent = 
+                    `${data.overall_sentiment.sentiment_label} (${percentage.toFixed(1)}%)`;
+                
+                document.getElementById('auSentimentScore').className = 
+                    score > 0.2 ? 'text-2xl font-bold positive' :
+                    score < -0.2 ? 'text-2xl font-bold negative' :
+                    'text-2xl font-bold neutral';
+            }
+        }
+        
+        function updateChart(histData) {
+            if (!histData.data) return;
+            
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            const chartType = document.getElementById('chartTypeSelect').value;
+            
+            if (priceChart) {
+                priceChart.destroy();
+            }
+            
+            const datasets = [];
+            
+            if (chartType === 'candlestick') {
+                datasets.push({
+                    label: 'Price',
+                    data: histData.data.map(d => ({
+                        x: new Date(d.date).getTime(),
+                        o: d.open,
+                        h: d.high,
+                        l: d.low,
+                        c: d.close
+                    })),
+                    borderColor: {
+                        up: '#10b981',
+                        down: '#ef4444',
+                        unchanged: '#94a3b8'
+                    },
+                    backgroundColor: {
+                        up: 'rgba(16, 185, 129, 0.8)',
+                        down: 'rgba(239, 68, 68, 0.8)',
+                        unchanged: 'rgba(148, 163, 184, 0.8)'
+                    }
+                });
+            } else {
+                // Line chart
+                datasets.push({
+                    label: 'Price',
+                    data: histData.data.map(d => ({
+                        x: new Date(d.date),
+                        y: d.close
+                    })),
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.1,
+                    fill: true
+                });
+            }
+            
+            priceChart = new Chart(ctx, {
+                type: chartType === 'candlestick' ? 'candlestick' : 'line',
+                data: { datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            grid: {
+                                color: 'rgba(148, 163, 184, 0.1)'
+                            },
+                            ticks: {
+                                color: '#94a3b8'
+                            }
+                        },
+                        y: {
+                            position: 'right',
+                            grid: {
+                                color: 'rgba(148, 163, 184, 0.1)'
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                callback: value => '$' + value.toFixed(2)
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('lastUpdate').textContent = `Last update: ${now.toLocaleTimeString()}`;
+            
+            // Check market hours (ASX: 10am-4pm Sydney time)
+            const sydneyTime = new Date(now.toLocaleString("en-US", {timeZone: "Australia/Sydney"}));
+            const hours = sydneyTime.getHours();
+            const isMarketOpen = hours >= 10 && hours < 16 && sydneyTime.getDay() > 0 && sydneyTime.getDay() < 6;
+            
+            document.getElementById('marketStatus').textContent = 
+                `ASX Market: ${isMarketOpen ? '🟢 Open' : '🔴 Closed'}`;
+        }
+        
+        updateTime();
+    </script>
+</body>
+</html>

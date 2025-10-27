@@ -2,18 +2,12 @@
 cls
 echo ================================================================
 echo    FinBERT Ultimate Trading System with Charts
-echo    Version 3.0 - Complete Edition
+echo    Version 3.0 - Complete Edition (FIXED)
 echo ================================================================
 echo.
 
 :: Set environment variable to skip .env file issues
 set FLASK_SKIP_DOTENV=1
-
-:: Check if virtual environment exists and activate it
-if exist "venv\Scripts\activate.bat" (
-    echo Activating virtual environment...
-    call venv\Scripts\activate.bat
-)
 
 :: Check Python
 python --version >nul 2>&1
@@ -24,26 +18,41 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [1/3] Starting FinBERT Ultimate backend server...
+echo [1/3] Starting FinBERT Ultimate API server...
 echo.
 
-:: Start the backend server in a new window
-start "FinBERT Ultimate Server" /min cmd /c "python app_finbert_ultimate.py"
+:: Use the FIXED API version
+if exist "app_finbert_api_fixed.py" (
+    echo Using FIXED API server with real data only...
+    start "FinBERT Ultimate API Server" /min cmd /c "python app_finbert_api_fixed.py"
+) else if exist "app_finbert_api.py" (
+    echo Using API server with REST endpoints...
+    start "FinBERT Ultimate API Server" /min cmd /c "python app_finbert_api.py"
+) else (
+    echo Using standard server...
+    start "FinBERT Ultimate Server" /min cmd /c "python app_finbert_ultimate.py"
+)
 
 :: Wait for server to initialize
-echo Waiting for server to initialize...
-timeout /t 5 /nobreak >nul
+echo Waiting for server to initialize (this may take 10-15 seconds)...
+echo Please be patient while FinBERT loads...
+timeout /t 12 /nobreak >nul
 
 :: Check if server is running
 echo [2/3] Checking server status...
-curl -s http://localhost:5000/ >nul 2>&1
+curl -s http://localhost:5000/api >nul 2>&1
 if errorlevel 1 (
-    echo.
-    echo [WARNING] Server might still be starting up...
-    echo If charts don't load data, please wait a moment and refresh.
-    echo.
+    curl -s http://localhost:5000/ >nul 2>&1
+    if errorlevel 1 (
+        echo.
+        echo [WARNING] Server is still starting up...
+        echo The charts will open, but you may need to wait and click "Analyze"
+        timeout /t 5 /nobreak >nul
+    ) else (
+        echo [SUCCESS] Server is running!
+    )
 ) else (
-    echo [SUCCESS] Server is running!
+    echo [SUCCESS] API Server is running with real data!
 )
 
 echo.
@@ -58,32 +67,18 @@ echo ================================================================
 echo    System Started Successfully!
 echo ================================================================
 echo.
-echo Access Points:
-echo   - Charts UI:  [Browser should open automatically]
-echo   - API Server: http://localhost:5000
-echo   - API Docs:   http://localhost:5000/api
+echo IMPORTANT NOTES:
+echo   - Using 100%% REAL market data (no synthetic/hardcoded values)
+echo   - First prediction takes 30-60 seconds (model training)
+echo   - Charts may show "Waiting for backend" initially (normal)
 echo.
-echo Available Endpoints:
-echo   - GET  /api/stock/{symbol}       - Get stock data
-echo   - GET  /api/predict/{symbol}     - Get AI predictions
-echo   - POST /api/train               - Train new model
-echo   - GET  /api/historical/{symbol}  - Get historical data
-echo   - GET  /api/news/{symbol}        - Get news & sentiment
+echo Quick Start:
+echo   1. Wait for "Backend server connected" message in browser
+echo   2. Enter a stock symbol (e.g., AAPL, MSFT, TSLA)
+echo   3. Click "Analyze" to load real market data
+echo   4. Predictions will show after model trains
 echo.
-echo Quick Start Guide:
-echo   1. Enter a stock symbol (e.g., AAPL, MSFT, TSLA)
-echo   2. Select time period (1D to 1Y)
-echo   3. Click "Analyze" to load data
-echo   4. Toggle indicators on/off as needed
-echo   5. View predictions and sentiment scores
-echo.
-echo Tips:
-echo   - First prediction may take 30-60 seconds (model training)
-echo   - Subsequent predictions are faster (~2-5 seconds)
-echo   - Use mouse wheel to zoom charts
-echo   - Click and drag to pan through time
-echo.
-echo To stop: Press Ctrl+C in the server window or close this window
+echo To stop: Press Ctrl+C in the server window
 echo.
 echo ================================================================
 echo.
