@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ML Fix Test</title>
+    <script>
+    // This is the FIXED fetchPredictions function
+    async function testMLPredictions() {
+        const symbol = 'AAPL';  // Test with AAPL
+        console.log('Starting ML prediction test for:', symbol);
+        
+        try {
+            const response = await fetch(`/api/predict/${symbol}`);
+            console.log('Response status:', response.status);
+            
+            const data = await response.json();
+            console.log('Response data:', data);
+            
+            if (data.available) {
+                alert('SUCCESS! ML Predictions working!\n\nCheck console for details.');
+                
+                // Display predictions
+                if (data.predictions) {
+                    data.predictions.forEach(pred => {
+                        console.log(`${pred.days} day prediction: $${pred.price.toFixed(2)} (${pred.return.toFixed(2)}%)`);
+                    });
+                }
+            } else {
+                alert('ML not available: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Error: ' + error.message);
+        }
+    }
+    </script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        button {
+            padding: 20px 40px;
+            font-size: 18px;
+            background: white;
+            color: #667eea;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #f0f0f0;
+        }
+        .info {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>ML Predictions Direct Test</h1>
+    
+    <div class="info">
+        <p>This page tests the ML prediction endpoint directly.</p>
+        <p>Click the button below and check:</p>
+        <ol>
+            <li>Alert message for success/failure</li>
+            <li>Browser console (F12) for detailed output</li>
+        </ol>
+    </div>
+    
+    <button onclick="testMLPredictions()">Test ML Predictions for AAPL</button>
+    
+    <div class="info">
+        <h3>If this works but the main app doesn't:</h3>
+        <p>The issue is in the tab switching JavaScript, not the ML endpoint.</p>
+        <p>Use the fixed JavaScript function from this page.</p>
+    </div>
+    
+    <script>
+        console.log('ML Test Page Ready');
+        console.log('Click the button to test ML predictions');
+    </script>
+</body>
+</html>
