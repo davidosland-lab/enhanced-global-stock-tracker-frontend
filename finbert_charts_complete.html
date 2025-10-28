@@ -3,194 +3,195 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>📊 FinBERT Ultimate Trading System v3.2</title>
-    
-    <!-- Chart.js and plugins -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.1/dist/chartjs-chart-financial.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.0/dist/chartjs-plugin-zoom.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
-    
-    <!-- Tailwind CSS -->
+    <title>FinBERT Ultimate Trading System v3.3 - Enhanced Charts</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            background: linear-gradient(135deg, #0a0f1c 0%, #1a1f2c 100%);
+            font-family: 'Inter', sans-serif;
             color: #e2e8f0;
             min-height: 100vh;
         }
-        
+
         .glass-panel {
-            background: rgba(15, 23, 42, 0.95);
-            backdrop-filter: blur(20px);
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(12px);
+            border-radius: 12px;
             border: 1px solid rgba(148, 163, 184, 0.1);
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
         }
-        
+
         .chart-container {
             position: relative;
-            height: 500px;
+            width: 100%;
         }
         
-        .positive { color: #10b981; }
-        .negative { color: #ef4444; }
-        .neutral { color: #94a3b8; }
+        .price-chart-container {
+            height: 400px;
+            margin-bottom: 20px;
+        }
         
+        .volume-chart-container {
+            height: 150px;
+        }
+
+        .indicator-value {
+            transition: all 0.3s ease;
+        }
+
+        .indicator-value.positive {
+            color: #10b981;
+        }
+
+        .indicator-value.negative {
+            color: #ef4444;
+        }
+
+        .news-item {
+            transition: all 0.3s ease;
+        }
+
+        .news-item:hover {
+            transform: translateX(5px);
+            background: rgba(51, 65, 85, 0.3);
+        }
+
+        .sentiment-bar {
+            width: 100%;
+            height: 8px;
+            background: linear-gradient(90deg, #ef4444 0%, #eab308 50%, #10b981 100%);
+            border-radius: 4px;
+            margin-top: 10px;
+            position: relative;
+        }
+
+        .sentiment-indicator {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            top: -6px;
+            transform: translateX(-50%);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            transition: left 0.3s ease;
+        }
+
+        .loading-spinner {
+            border: 3px solid rgba(59, 130, 246, 0.2);
+            border-radius: 50%;
+            border-top: 3px solid #3b82f6;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
         .interval-btn, .timeframe-btn {
-            padding: 8px 16px;
-            background: rgba(30, 41, 59, 0.8);
+            padding: 6px 12px;
+            margin: 2px;
+            border-radius: 6px;
+            background: rgba(51, 65, 85, 0.5);
             border: 1px solid rgba(148, 163, 184, 0.2);
-            border-radius: 8px;
-            color: #94a3b8;
+            color: #e2e8f0;
             cursor: pointer;
-            transition: all 0.3s;
-            margin: 0 4px;
+            transition: all 0.3s ease;
+            font-size: 12px;
         }
-        
+
         .interval-btn:hover, .timeframe-btn:hover {
             background: rgba(59, 130, 246, 0.2);
             border-color: #3b82f6;
-            color: #3b82f6;
         }
-        
+
         .interval-btn.active, .timeframe-btn.active {
-            background: #3b82f6;
-            color: white;
-            border-color: #3b82f6;
-        }
-        
-        .zoom-controls {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            z-index: 100;
-            display: flex;
-            gap: 8px;
-        }
-        
-        .zoom-btn {
-            width: 36px;
-            height: 36px;
-            background: rgba(30, 41, 59, 0.9);
-            border: 1px solid rgba(148, 163, 184, 0.2);
-            border-radius: 8px;
-            color: #94a3b8;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s;
-        }
-        
-        .zoom-btn:hover {
             background: rgba(59, 130, 246, 0.3);
             border-color: #3b82f6;
             color: #3b82f6;
         }
-        
-        .sentiment-bar {
-            height: 8px;
-            border-radius: 4px;
-            background: linear-gradient(90deg, 
-                #ef4444 0%, 
-                #f59e0b 25%, 
-                #94a3b8 50%, 
-                #10b981 75%, 
-                #059669 100%);
-            position: relative;
-            margin: 10px 0;
-        }
-        
-        .sentiment-indicator {
-            position: absolute;
-            top: -8px;
-            width: 24px;
-            height: 24px;
-            background: white;
-            border-radius: 50%;
-            border: 3px solid #3b82f6;
-            transform: translateX(-50%);
-            transition: left 0.5s ease;
-        }
-        
-        .loading {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 400px;
-        }
-        
-        .spinner {
-            border: 3px solid rgba(59, 130, 246, 0.1);
-            border-left-color: #3b82f6;
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        
+
         .confidence-badge {
-            display: inline-flex;
-            align-items: center;
-            padding: 4px 12px;
-            background: rgba(139, 92, 246, 0.2);
-            border: 1px solid #8b5cf6;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #8b5cf6;
+            background: linear-gradient(135deg, #3b82f6, #1e40af);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
         }
-        
-        .news-item {
-            padding: 12px;
-            background: rgba(30, 41, 59, 0.5);
-            border-radius: 8px;
-            margin-bottom: 8px;
-            transition: all 0.3s;
+
+        .zoom-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 10;
+            display: flex;
+            gap: 5px;
         }
-        
-        .news-item:hover {
+
+        .zoom-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 6px;
             background: rgba(30, 41, 59, 0.8);
-            transform: translateX(4px);
+            border: 1px solid rgba(148, 163, 184, 0.3);
+            color: #e2e8f0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .zoom-btn:hover {
+            background: rgba(59, 130, 246, 0.3);
+            border-color: #3b82f6;
+        }
+
+        .chart-sync-line {
+            position: absolute;
+            width: 1px;
+            background: rgba(255, 255, 255, 0.3);
+            pointer-events: none;
+            z-index: 5;
         }
     </style>
 </head>
-<body>
-    <div class="container mx-auto px-4 py-6 max-w-7xl">
+<body class="p-6">
+    <div class="container mx-auto max-w-7xl">
         <!-- Header -->
         <div class="glass-panel p-6 mb-6">
-            <div class="flex items-center justify-between mb-6">
-                <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-                    FinBERT Ultimate Trading System v3.2
+            <div class="flex justify-between items-center mb-4">
+                <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
+                    FinBERT Ultimate Trading System v3.3
                 </h1>
-                <div class="flex items-center gap-4">
-                    <span class="text-sm text-gray-400">Real-Time Data</span>
-                    <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                <div class="flex items-center gap-2" id="lastUpdateContainer">
+                    <span class="text-sm text-gray-400">Last Update:</span>
+                    <span class="text-sm" id="lastUpdate">--</span>
                 </div>
             </div>
             
-            <!-- Symbol Input & Controls -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                    <label class="block text-sm font-medium mb-2">Stock Symbol</label>
-                    <div class="flex gap-2">
-                        <input type="text" id="symbolInput" value="AAPL" 
-                               class="flex-1 px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none">
-                        <button onclick="loadAllData()" class="px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition">
-                            Load
-                        </button>
-                    </div>
-                </div>
-                
+            <!-- Stock Input -->
+            <div class="flex gap-4">
+                <input type="text" 
+                       id="stockSymbol" 
+                       placeholder="Enter Stock Symbol (e.g., AAPL, MSFT)" 
+                       class="flex-1 px-4 py-3 bg-slate-800 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none">
+                <button onclick="analyzeStock()" 
+                        class="px-6 py-3 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-lg font-semibold hover:from-blue-600 hover:to-cyan-500 transition-all">
+                    <i class="fas fa-chart-line mr-2"></i>Analyze Stock
+                </button>
+            </div>
+            
+            <!-- Time Controls -->
+            <div class="mt-4 flex flex-wrap gap-4">
                 <div>
                     <label class="block text-sm font-medium mb-2">Interval</label>
                     <div class="flex flex-wrap" id="intervalButtons">
@@ -257,11 +258,11 @@
             </div>
         </div>
         
-        <!-- Main Chart -->
+        <!-- Main Chart with Volume -->
         <div class="glass-panel p-6 mb-6">
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-xl font-semibold">
-                    Price Chart
+                    Price & Volume Chart
                     <span id="chartInterval" class="text-sm text-gray-400 ml-2"></span>
                 </h2>
                 <select id="chartType" class="px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg">
@@ -271,7 +272,8 @@
                 </select>
             </div>
             
-            <div class="chart-container">
+            <!-- Price Chart -->
+            <div class="chart-container price-chart-container">
                 <div class="zoom-controls">
                     <button class="zoom-btn" onclick="zoomIn()" title="Zoom In">+</button>
                     <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out">-</button>
@@ -280,8 +282,13 @@
                 <canvas id="priceChart"></canvas>
             </div>
             
+            <!-- Volume Chart -->
+            <div class="chart-container volume-chart-container">
+                <canvas id="volumeChart"></canvas>
+            </div>
+            
             <div class="mt-4 flex gap-4 text-xs text-gray-400">
-                <span>Scroll: Zoom | Drag: Select area | Ctrl+Drag: Pan</span>
+                <span>Scroll: Zoom | Drag: Select area | Ctrl+Drag: Pan | Hover: View details</span>
             </div>
         </div>
         
@@ -300,257 +307,140 @@
                 <div class="text-xl font-bold" id="vwap">--</div>
             </div>
             <div class="glass-panel p-4">
-                <div class="text-sm text-gray-400">Volume</div>
-                <div class="text-xl font-bold" id="volume">--</div>
+                <div class="text-sm text-gray-400">Volume (Avg)</div>
+                <div class="text-xl font-bold" id="avgVolume">--</div>
+            </div>
+        </div>
+
+        <!-- Economic Indicators -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="glass-panel p-4">
+                <div class="text-sm text-gray-400">VIX</div>
+                <div class="text-xl font-bold" id="vixValue">--</div>
+            </div>
+            <div class="glass-panel p-4">
+                <div class="text-sm text-gray-400">10Y Treasury</div>
+                <div class="text-xl font-bold" id="treasuryValue">--</div>
+            </div>
+            <div class="glass-panel p-4">
+                <div class="text-sm text-gray-400">Dollar Index</div>
+                <div class="text-xl font-bold" id="dollarValue">--</div>
+            </div>
+            <div class="glass-panel p-4">
+                <div class="text-sm text-gray-400">Gold</div>
+                <div class="text-xl font-bold" id="goldValue">--</div>
             </div>
         </div>
         
-        <!-- News & Economic Indicators -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Recent News -->
-            <div class="glass-panel p-6">
-                <h3 class="text-lg font-semibold mb-4">Recent News & Sentiment</h3>
-                <div id="newsFeed" class="max-h-64 overflow-y-auto">
-                    <div class="text-gray-400 text-center py-4">Loading news...</div>
-                </div>
-            </div>
-            
-            <!-- Economic Indicators -->
-            <div class="glass-panel p-6">
-                <h3 class="text-lg font-semibold mb-4">Economic Indicators</h3>
-                <div class="grid grid-cols-2 gap-3">
-                    <div class="p-3 bg-slate-800 rounded">
-                        <div class="text-xs text-gray-400">VIX (Fear)</div>
-                        <div class="font-bold" id="vix">--</div>
-                    </div>
-                    <div class="p-3 bg-slate-800 rounded">
-                        <div class="text-xs text-gray-400">10Y Treasury</div>
-                        <div class="font-bold" id="tnx">--</div>
-                    </div>
-                    <div class="p-3 bg-slate-800 rounded">
-                        <div class="text-xs text-gray-400">Dollar Index</div>
-                        <div class="font-bold" id="dxy">--</div>
-                    </div>
-                    <div class="p-3 bg-slate-800 rounded">
-                        <div class="text-xs text-gray-400">Gold</div>
-                        <div class="font-bold" id="gold">--</div>
-                    </div>
+        <!-- News Feed -->
+        <div class="glass-panel p-6">
+            <h2 class="text-xl font-semibold mb-4">Latest News & Sentiment</h2>
+            <div id="newsFeed" class="space-y-3 max-h-96 overflow-y-auto">
+                <div class="text-center text-gray-500">
+                    <i class="fas fa-newspaper text-4xl mb-2"></i>
+                    <p>Enter a stock symbol to load news</p>
                 </div>
             </div>
         </div>
     </div>
-    
+
     <script>
-        const API_BASE = '';
         let priceChart = null;
-        let currentSymbol = 'AAPL';
+        let volumeChart = null;
+        let chartData = [];
         let currentInterval = '1d';
         let currentPeriod = '1m';
-        let chartData = [];
-        
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            setupEventListeners();
-            loadAllData();
-            
-            // Auto-refresh for intraday
-            setInterval(() => {
-                if (currentInterval !== '1d') {
-                    loadStockData();
+
+        // Initialize interval buttons
+        document.querySelectorAll('.interval-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.interval-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentInterval = this.dataset.interval;
+                const symbol = document.getElementById('stockSymbol').value;
+                if (symbol) {
+                    analyzeStock();
                 }
-            }, 30000);
+            });
         });
-        
-        function setupEventListeners() {
-            // Symbol input
-            document.getElementById('symbolInput').addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    currentSymbol = e.target.value.toUpperCase();
-                    loadAllData();
+
+        // Initialize period buttons
+        document.querySelectorAll('.timeframe-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentPeriod = this.dataset.period;
+                const symbol = document.getElementById('stockSymbol').value;
+                if (symbol) {
+                    analyzeStock();
                 }
             });
+        });
+
+        // Chart type change listener
+        document.getElementById('chartType').addEventListener('change', function() {
+            if (chartData.length > 0) {
+                updateCharts(chartData);
+            }
+        });
+
+        function formatTimeLabel(date, interval) {
+            const d = new Date(date);
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
             
-            // Interval buttons
-            document.querySelectorAll('.interval-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('.interval-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    currentInterval = btn.dataset.interval;
-                    document.getElementById('chartInterval').textContent = 
-                        currentInterval !== '1d' ? `(${currentInterval} interval)` : '';
-                    loadStockData();
-                });
-            });
-            
-            // Period buttons
-            document.querySelectorAll('.timeframe-btn').forEach(btn => {
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    currentPeriod = btn.dataset.period;
-                    loadStockData();
-                });
-            });
-            
-            // Chart type
-            document.getElementById('chartType').addEventListener('change', () => updateChart());
-        }
-        
-        async function loadAllData() {
-            currentSymbol = document.getElementById('symbolInput').value.toUpperCase();
-            await Promise.all([
-                loadStockData(),
-                loadPrediction(),
-                loadNews(),
-                loadEconomicIndicators()
-            ]);
-        }
-        
-        async function loadStockData() {
-            try {
-                const stockResponse = await fetch(`${API_BASE}/api/stock/${currentSymbol}?interval=${currentInterval}`);
-                const stockData = await stockResponse.json();
-                
-                const histResponse = await fetch(`${API_BASE}/api/historical/${currentSymbol}?period=${currentPeriod}&interval=${currentInterval}`);
-                const histData = await histResponse.json();
-                
-                if (stockData && !stockData.error) {
-                    updatePriceDisplay(stockData);
-                    updateIndicators(stockData);
-                }
-                
-                if (histData && histData.data) {
-                    chartData = histData.data;
-                    updateChart();
-                }
-            } catch (error) {
-                console.error('Error loading data:', error);
+            if (interval === '1m' || interval === '3m' || interval === '5m') {
+                // For minute intervals, show time
+                const hours = d.getHours();
+                const minutes = d.getMinutes();
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                const displayHours = hours % 12 || 12;
+                return `${displayHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+            } else if (interval === '15m' || interval === '60m') {
+                // For 15m and hourly, show time and date
+                const hours = d.getHours();
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                const displayHours = hours % 12 || 12;
+                return `${months[d.getMonth()]} ${d.getDate()} ${displayHours}:00 ${ampm}`;
+            } else {
+                // For daily, show month and day
+                return `${months[d.getMonth()]} ${d.getDate()}`;
             }
         }
-        
-        async function loadPrediction() {
-            try {
-                const response = await fetch(`${API_BASE}/api/predict/${currentSymbol}`);
-                const data = await response.json();
-                
-                if (data && !data.error) {
-                    // Update prediction display
-                    if (data.next_day_prediction) {
-                        const pred = data.next_day_prediction;
-                        document.getElementById('predictedPrice').textContent = `$${pred.price?.toFixed(2) || '--'}`;
-                        
-                        const changeEl = document.getElementById('predictedChange');
-                        changeEl.textContent = `${pred.change >= 0 ? '+' : ''}${pred.change?.toFixed(2) || 0}%`;
-                        changeEl.className = pred.change >= 0 ? 'positive' : 'negative';
-                        
-                        document.getElementById('predictionConfidence').textContent = pred.confidence?.toFixed(0) || '--';
-                    }
-                    
-                    document.getElementById('modelAccuracy').textContent = data.model_accuracy?.toFixed(0) || '--';
-                    
-                    // Update sentiment
-                    const sentiment = data.sentiment_score || 0;
-                    const sentimentText = sentiment > 0.1 ? 'Bullish' : sentiment < -0.1 ? 'Bearish' : 'Neutral';
-                    document.getElementById('sentimentScore').textContent = sentimentText;
-                    document.getElementById('sentimentScore').className = 
-                        `text-3xl font-bold ${sentiment > 0.1 ? 'positive' : sentiment < -0.1 ? 'negative' : 'neutral'}`;
-                    
-                    // Position sentiment indicator
-                    const position = 50 + (sentiment * 50);
-                    document.getElementById('sentimentIndicator').style.left = `${position}%`;
-                    
-                    document.getElementById('sentimentConfidence').textContent = 
-                        data.sentiment_confidence?.toFixed(0) || '--';
-                }
-            } catch (error) {
-                console.error('Error loading prediction:', error);
+
+        function formatVolume(volume) {
+            if (volume >= 1000000000) {
+                return (volume / 1000000000).toFixed(1) + 'B';
+            } else if (volume >= 1000000) {
+                return (volume / 1000000).toFixed(1) + 'M';
+            } else if (volume >= 1000) {
+                return (volume / 1000).toFixed(1) + 'K';
             }
+            return volume.toFixed(0);
         }
-        
-        async function loadNews() {
-            try {
-                const response = await fetch(`${API_BASE}/api/news/${currentSymbol}`);
-                const data = await response.json();
-                
-                const newsFeed = document.getElementById('newsFeed');
-                
-                if (data && data.news && data.news.length > 0) {
-                    newsFeed.innerHTML = data.news.map(item => `
-                        <div class="news-item">
-                            <div class="font-medium text-sm">${item.title}</div>
-                            <div class="flex items-center gap-2 mt-1">
-                                <span class="text-xs ${item.sentiment > 0 ? 'positive' : item.sentiment < 0 ? 'negative' : 'neutral'}">
-                                    ${item.sentiment > 0 ? '↑' : item.sentiment < 0 ? '↓' : '→'} 
-                                    ${(item.sentiment * 100).toFixed(0)}%
-                                </span>
-                                <span class="text-xs text-gray-500">
-                                    ${item.confidence?.toFixed(0) || '--'}% conf
-                                </span>
-                            </div>
-                        </div>
-                    `).join('');
-                } else {
-                    newsFeed.innerHTML = '<div class="text-gray-400 text-center py-4">No recent news</div>';
-                }
-            } catch (error) {
-                console.error('Error loading news:', error);
-            }
-        }
-        
-        async function loadEconomicIndicators() {
-            try {
-                const response = await fetch(`${API_BASE}/api/economic`);
-                const data = await response.json();
-                
-                if (data) {
-                    ['VIX', 'TNX', 'DXY', 'GOLD'].forEach(key => {
-                        const el = document.getElementById(key.toLowerCase());
-                        if (el && data[key]) {
-                            const value = data[key].value;
-                            const change = data[key].change;
-                            el.innerHTML = `
-                                ${typeof value === 'number' ? value.toFixed(2) : value}
-                                <span class="${change >= 0 ? 'positive' : 'negative'} text-xs">
-                                    ${change >= 0 ? '+' : ''}${change?.toFixed(1) || 0}%
-                                </span>
-                            `;
-                        }
-                    });
-                }
-            } catch (error) {
-                console.error('Error loading economic indicators:', error);
-            }
-        }
-        
-        function updatePriceDisplay(data) {
-            document.getElementById('currentPrice').textContent = `$${data.price?.toFixed(2) || '--'}`;
+
+        function updateCharts(data) {
+            chartData = data;
             
-            const changeEl = document.getElementById('priceChange');
-            const change = data.change || 0;
-            const changePct = data.changePercent || 0;
-            changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%)`;
-            changeEl.className = `text-sm mt-1 ${change >= 0 ? 'positive' : 'negative'}`;
-            
-            document.getElementById('dayHigh').textContent = `$${data.high?.toFixed(2) || '--'}`;
-            document.getElementById('dayLow').textContent = `$${data.low?.toFixed(2) || '--'}`;
-            document.getElementById('volume').textContent = formatVolume(data.volume);
-        }
-        
-        function updateIndicators(data) {
-            if (data.indicators) {
-                document.getElementById('rsi').textContent = data.indicators.RSI || '--';
-                document.getElementById('sma20').textContent = `$${data.indicators.SMA20?.toFixed(2) || '--'}`;
-                document.getElementById('vwap').textContent = `$${data.indicators.VWAP?.toFixed(2) || '--'}`;
+            if (!data || data.length === 0) {
+                console.error('No data to display');
+                return;
             }
-        }
-        
-        function updateChart() {
-            if (!chartData || chartData.length === 0) return;
-            
-            const ctx = document.getElementById('priceChart').getContext('2d');
+
+            // Destroy existing charts
+            if (priceChart) {
+                priceChart.destroy();
+            }
+            if (volumeChart) {
+                volumeChart.destroy();
+            }
+
+            const priceCtx = document.getElementById('priceChart').getContext('2d');
+            const volumeCtx = document.getElementById('volumeChart').getContext('2d');
             const chartType = document.getElementById('chartType').value;
             
             const isIntraday = currentInterval !== '1d';
+            
+            // Prepare labels with proper time formatting
             const labels = chartData.map(d => {
                 if (isIntraday && d.timestamp) {
                     return new Date(d.timestamp);
@@ -558,10 +448,28 @@
                 return new Date(d.date || d.Date);
             });
             
-            const datasets = [];
+            // Prepare volume data
+            const volumeData = chartData.map((d, i) => {
+                const close = d.close || d.Close;
+                const open = d.open || d.Open;
+                const color = close >= open ? '#10b981' : '#ef4444';
+                return {
+                    x: labels[i],
+                    y: d.volume || d.Volume || 0,
+                    backgroundColor: color,
+                    borderColor: color
+                };
+            });
+
+            // Calculate average volume
+            const avgVolume = volumeData.reduce((sum, v) => sum + v.y, 0) / volumeData.length;
+            document.getElementById('avgVolume').textContent = formatVolume(avgVolume);
+
+            // Prepare price datasets
+            const priceDatasets = [];
             
             if (chartType === 'candlestick') {
-                datasets.push({
+                priceDatasets.push({
                     label: 'Price',
                     type: 'candlestick',
                     data: chartData.map((d, i) => ({
@@ -582,12 +490,12 @@
                         unchanged: '#94a3b8'
                     },
                     barThickness: 'flex',
-                    maxBarThickness: isIntraday ? 4 : 12,  // Limit candlestick width
+                    maxBarThickness: isIntraday ? 4 : 12,
                     categoryPercentage: 0.8,
                     barPercentage: 0.9
                 });
             } else if (chartType === 'ohlc') {
-                datasets.push({
+                priceDatasets.push({
                     label: 'Price',
                     type: 'ohlc',
                     data: chartData.map((d, i) => ({
@@ -610,7 +518,7 @@
                     barThickness: 1
                 });
             } else {
-                datasets.push({
+                priceDatasets.push({
                     label: 'Price',
                     type: 'line',
                     data: chartData.map((d, i) => ({
@@ -625,14 +533,28 @@
                     fill: true
                 });
             }
-            
-            if (priceChart) {
-                priceChart.destroy();
+
+            // Configure time units based on interval
+            let timeUnit = 'day';
+            let displayFormats = {
+                minute: 'h:mm a',
+                hour: 'MMM d, h a',
+                day: 'MMM d',
+                month: 'MMM yyyy'
+            };
+
+            if (isIntraday) {
+                if (currentInterval === '1m' || currentInterval === '3m' || currentInterval === '5m') {
+                    timeUnit = 'minute';
+                } else if (currentInterval === '15m' || currentInterval === '60m') {
+                    timeUnit = 'hour';
+                }
             }
-            
-            priceChart = new Chart(ctx, {
+
+            // Create price chart
+            priceChart = new Chart(priceCtx, {
                 type: chartType === 'line' ? 'line' : chartType,
-                data: { datasets: datasets },
+                data: { datasets: priceDatasets },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
@@ -651,16 +573,28 @@
                             titleColor: '#fff',
                             bodyColor: '#fff',
                             callbacks: {
+                                title: function(tooltipItems) {
+                                    if (tooltipItems[0]) {
+                                        return formatTimeLabel(tooltipItems[0].parsed.x, currentInterval);
+                                    }
+                                    return '';
+                                },
                                 label: function(context) {
                                     if (context.raw && context.raw.c) {
+                                        const vol = chartData[context.dataIndex]?.volume || chartData[context.dataIndex]?.Volume || 0;
                                         return [
-                                            `O: ${context.raw.o.toFixed(2)}`,
-                                            `H: ${context.raw.h.toFixed(2)}`,
-                                            `L: ${context.raw.l.toFixed(2)}`,
-                                            `C: ${context.raw.c.toFixed(2)}`
+                                            `Open: $${context.raw.o.toFixed(2)}`,
+                                            `High: $${context.raw.h.toFixed(2)}`,
+                                            `Low: $${context.raw.l.toFixed(2)}`,
+                                            `Close: $${context.raw.c.toFixed(2)}`,
+                                            `Volume: ${formatVolume(vol)}`
                                         ];
                                     }
-                                    return `$${(context.parsed.y || 0).toFixed(2)}`;
+                                    const vol = chartData[context.dataIndex]?.volume || chartData[context.dataIndex]?.Volume || 0;
+                                    return [
+                                        `Price: $${(context.parsed.y || 0).toFixed(2)}`,
+                                        `Volume: ${formatVolume(vol)}`
+                                    ];
                                 }
                             }
                         },
@@ -671,8 +605,17 @@
                             },
                             pan: {
                                 enabled: true,
-                                mode: 'xy',
-                                modifierKey: 'ctrl'
+                                mode: 'x',
+                                modifierKey: 'ctrl',
+                                onPanComplete: function() {
+                                    // Sync volume chart pan
+                                    if (volumeChart) {
+                                        const xScale = priceChart.scales.x;
+                                        volumeChart.options.scales.x.min = xScale.min;
+                                        volumeChart.options.scales.x.max = xScale.max;
+                                        volumeChart.update('none');
+                                    }
+                                }
                             },
                             zoom: {
                                 wheel: {
@@ -682,12 +625,21 @@
                                 pinch: {
                                     enabled: true
                                 },
-                                mode: 'xy',
+                                mode: 'x',
                                 drag: {
                                     enabled: true,
                                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
                                     borderColor: '#3b82f6',
                                     borderWidth: 1
+                                },
+                                onZoomComplete: function() {
+                                    // Sync volume chart zoom
+                                    if (volumeChart) {
+                                        const xScale = priceChart.scales.x;
+                                        volumeChart.options.scales.x.min = xScale.min;
+                                        volumeChart.options.scales.x.max = xScale.max;
+                                        volumeChart.update('none');
+                                    }
                                 }
                             }
                         }
@@ -696,29 +648,28 @@
                         x: {
                             type: 'time',
                             time: {
-                                unit: isIntraday ? 'minute' : 'day',
-                                displayFormats: {
-                                    minute: 'HH:mm',
-                                    hour: 'HH:mm',
-                                    day: 'MMM dd'
-                                }
+                                unit: timeUnit,
+                                displayFormats: displayFormats
                             },
                             grid: {
-                                display: true,
-                                color: 'rgba(148, 163, 184, 0.1)'
+                                color: 'rgba(148, 163, 184, 0.1)',
+                                drawBorder: false
                             },
                             ticks: {
                                 color: '#94a3b8',
                                 maxRotation: 0,
                                 autoSkip: true,
-                                maxTicksLimit: isIntraday ? 12 : 20
+                                maxTicksLimit: isIntraday ? 10 : 15,
+                                callback: function(value) {
+                                    return formatTimeLabel(value, currentInterval);
+                                }
                             }
                         },
                         y: {
                             position: 'right',
                             grid: {
-                                display: true,
-                                color: 'rgba(148, 163, 184, 0.1)'
+                                color: 'rgba(148, 163, 184, 0.1)',
+                                drawBorder: false
                             },
                             ticks: {
                                 color: '#94a3b8',
@@ -730,34 +681,250 @@
                     }
                 }
             });
+
+            // Create volume chart
+            volumeChart = new Chart(volumeCtx, {
+                type: 'bar',
+                data: {
+                    datasets: [{
+                        label: 'Volume',
+                        data: volumeData,
+                        backgroundColor: volumeData.map(v => v.backgroundColor),
+                        borderColor: volumeData.map(v => v.borderColor),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            callbacks: {
+                                title: function(tooltipItems) {
+                                    if (tooltipItems[0]) {
+                                        return formatTimeLabel(tooltipItems[0].parsed.x, currentInterval);
+                                    }
+                                    return '';
+                                },
+                                label: function(context) {
+                                    return 'Volume: ' + formatVolume(context.parsed.y);
+                                }
+                            }
+                        },
+                        zoom: {
+                            pan: {
+                                enabled: true,
+                                mode: 'x',
+                                modifierKey: 'ctrl',
+                                onPanComplete: function() {
+                                    // Sync price chart pan
+                                    if (priceChart) {
+                                        const xScale = volumeChart.scales.x;
+                                        priceChart.options.scales.x.min = xScale.min;
+                                        priceChart.options.scales.x.max = xScale.max;
+                                        priceChart.update('none');
+                                    }
+                                }
+                            },
+                            zoom: {
+                                wheel: {
+                                    enabled: true,
+                                    speed: 0.1
+                                },
+                                mode: 'x',
+                                onZoomComplete: function() {
+                                    // Sync price chart zoom
+                                    if (priceChart) {
+                                        const xScale = volumeChart.scales.x;
+                                        priceChart.options.scales.x.min = xScale.min;
+                                        priceChart.options.scales.x.max = xScale.max;
+                                        priceChart.update('none');
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: timeUnit,
+                                displayFormats: displayFormats
+                            },
+                            grid: {
+                                color: 'rgba(148, 163, 184, 0.1)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: isIntraday ? 10 : 15,
+                                callback: function(value) {
+                                    return formatTimeLabel(value, currentInterval);
+                                }
+                            }
+                        },
+                        y: {
+                            position: 'right',
+                            grid: {
+                                color: 'rgba(148, 163, 184, 0.1)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                callback: function(value) {
+                                    return formatVolume(value);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
-        
-        // Zoom functions
+
         function zoomIn() {
             if (priceChart) {
                 priceChart.zoom(1.1);
+                if (volumeChart) {
+                    volumeChart.zoom(1.1);
+                }
             }
         }
-        
+
         function zoomOut() {
             if (priceChart) {
                 priceChart.zoom(0.9);
+                if (volumeChart) {
+                    volumeChart.zoom(0.9);
+                }
             }
         }
-        
+
         function resetZoom() {
             if (priceChart) {
                 priceChart.resetZoom();
+                if (volumeChart) {
+                    volumeChart.resetZoom();
+                }
             }
         }
-        
-        function formatVolume(vol) {
-            if (!vol) return '--';
-            if (vol >= 1e9) return (vol / 1e9).toFixed(2) + 'B';
-            if (vol >= 1e6) return (vol / 1e6).toFixed(2) + 'M';
-            if (vol >= 1e3) return (vol / 1e3).toFixed(2) + 'K';
-            return vol.toString();
+
+        async function analyzeStock() {
+            const symbol = document.getElementById('stockSymbol').value.toUpperCase();
+            
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+
+            // Show loading state
+            document.getElementById('currentPrice').innerHTML = '<div class="loading-spinner mx-auto"></div>';
+            document.getElementById('chartInterval').textContent = `Loading ${currentInterval} data...`;
+
+            try {
+                // Fetch stock data with interval and period
+                const response = await fetch(`http://localhost:5000/api/stock/${symbol}?interval=${currentInterval}&period=${currentPeriod}`);
+                const data = await response.json();
+
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+
+                // Update price display
+                document.getElementById('currentPrice').textContent = `$${data.current_price.toFixed(2)}`;
+                const changeClass = data.price_change >= 0 ? 'text-green-400' : 'text-red-400';
+                document.getElementById('priceChange').innerHTML = 
+                    `<span class="${changeClass}">${data.price_change >= 0 ? '+' : ''}${data.price_change.toFixed(2)} (${data.price_change_percent >= 0 ? '+' : ''}${data.price_change_percent.toFixed(2)}%)</span>`;
+                document.getElementById('dayHigh').textContent = `$${data.day_high.toFixed(2)}`;
+                document.getElementById('dayLow').textContent = `$${data.day_low.toFixed(2)}`;
+
+                // Update technical indicators
+                document.getElementById('rsi').textContent = data.indicators.rsi?.toFixed(2) || '--';
+                document.getElementById('sma20').textContent = `$${data.indicators.sma_20?.toFixed(2) || '--'}`;
+                document.getElementById('vwap').textContent = `$${data.indicators.vwap?.toFixed(2) || '--'}`;
+
+                // Update economic indicators
+                document.getElementById('vixValue').textContent = data.economic_indicators?.vix?.toFixed(2) || '--';
+                document.getElementById('treasuryValue').textContent = data.economic_indicators?.treasury_10y ? `${data.economic_indicators.treasury_10y.toFixed(2)}%` : '--';
+                document.getElementById('dollarValue').textContent = data.economic_indicators?.dollar_index?.toFixed(2) || '--';
+                document.getElementById('goldValue').textContent = data.economic_indicators?.gold ? `$${data.economic_indicators.gold.toFixed(2)}` : '--';
+
+                // Update prediction
+                if (data.ml_prediction) {
+                    document.getElementById('predictedPrice').textContent = `$${data.ml_prediction.predicted_price.toFixed(2)}`;
+                    const predChangeClass = data.ml_prediction.predicted_change >= 0 ? 'text-green-400' : 'text-red-400';
+                    document.getElementById('predictedChange').innerHTML = 
+                        `<span class="${predChangeClass}">${data.ml_prediction.predicted_change >= 0 ? '+' : ''}${data.ml_prediction.predicted_change.toFixed(2)} (${data.ml_prediction.predicted_change_percent >= 0 ? '+' : ''}${data.ml_prediction.predicted_change_percent.toFixed(2)}%)</span>`;
+                    document.getElementById('predictionConfidence').textContent = data.ml_prediction.confidence || '--';
+                    document.getElementById('modelAccuracy').textContent = data.ml_prediction.model_accuracy || '--';
+                }
+
+                // Update sentiment
+                if (data.sentiment_analysis) {
+                    const sentimentValue = (data.sentiment_analysis.average_sentiment + 1) * 50; // Convert -1 to 1 range to 0 to 100
+                    document.getElementById('sentimentScore').textContent = sentimentValue.toFixed(0);
+                    document.getElementById('sentimentIndicator').style.left = `${sentimentValue}%`;
+                    document.getElementById('sentimentConfidence').textContent = data.sentiment_analysis.confidence?.toFixed(0) || '--';
+                }
+
+                // Update news feed
+                if (data.news && data.news.length > 0) {
+                    const newsFeed = document.getElementById('newsFeed');
+                    newsFeed.innerHTML = data.news.map(article => {
+                        const sentimentClass = article.sentiment > 0 ? 'text-green-400' : article.sentiment < 0 ? 'text-red-400' : 'text-gray-400';
+                        const sentimentText = article.sentiment > 0 ? 'Positive' : article.sentiment < 0 ? 'Negative' : 'Neutral';
+                        
+                        return `
+                            <div class="news-item p-3 border-l-2 ${article.sentiment > 0 ? 'border-green-500' : article.sentiment < 0 ? 'border-red-500' : 'border-gray-500'}">
+                                <div class="flex justify-between items-start mb-1">
+                                    <h3 class="font-semibold text-sm">${article.title}</h3>
+                                    <span class="text-xs ${sentimentClass}">${sentimentText}</span>
+                                </div>
+                                <p class="text-xs text-gray-400">${article.summary || 'No summary available'}</p>
+                                <div class="flex justify-between items-center mt-2">
+                                    <span class="text-xs text-gray-500">${article.source || 'Unknown source'}</span>
+                                    <span class="text-xs text-gray-500">${new Date(article.published).toLocaleDateString()}</span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+
+                // Update charts
+                if (data.chart_data && data.chart_data.length > 0) {
+                    updateCharts(data.chart_data);
+                    document.getElementById('chartInterval').textContent = `${currentInterval === '1d' ? 'Daily' : currentInterval} | ${currentPeriod.toUpperCase()}`;
+                }
+
+                // Update last update time
+                document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert(`Error analyzing stock: ${error.message}`);
+                document.getElementById('currentPrice').textContent = '--';
+            }
         }
+
+        // Initialize with keyboard shortcut
+        document.getElementById('stockSymbol').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                analyzeStock();
+            }
+        });
     </script>
 </body>
 </html>
