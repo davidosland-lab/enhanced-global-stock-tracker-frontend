@@ -37,14 +37,6 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score
-
-# Try to import FinBERT
-try:
-    from transformers import AutoModelForSequenceClassification, AutoTokenizer
-    import torch
-    FINBERT_AVAILABLE = True
-    print("✓ FinBERT loaded successfully")
-except ImportError:
     FINBERT_AVAILABLE = False
     print("⚠ FinBERT not available - using fallback sentiment")
 
