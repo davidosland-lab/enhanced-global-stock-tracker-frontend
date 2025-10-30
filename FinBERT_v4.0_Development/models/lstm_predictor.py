@@ -1,6 +1,6 @@
 """
 LSTM Model for Stock Price Prediction
-FinBERT v4.0 - Advanced Time Series Prediction
+FinBERT v4.0 - Advanced Time Series Prediction with Sentiment Integration
 """
 
 import numpy as np
@@ -11,6 +11,10 @@ import logging
 from datetime import datetime, timedelta
 import os
 import pickle
+import sys
+
+# Add models directory to path for imports
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # TensorFlow imports
 try:
@@ -48,6 +52,16 @@ except ImportError:
             return (X - self.min_) / self.scale_
 
 logger = logging.getLogger(__name__)
+
+# Try to import FinBERT sentiment analyzer
+try:
+    from finbert_sentiment import finbert_analyzer, get_sentiment_analysis
+    FINBERT_AVAILABLE = True
+    logger.info("FinBERT sentiment analyzer available")
+except (ImportError, ValueError, Exception) as e:
+    FINBERT_AVAILABLE = False
+    finbert_analyzer = None
+    logger.warning(f"FinBERT sentiment analyzer not available: {e}")
 
 class StockLSTMPredictor:
     """
@@ -243,20 +257,22 @@ class StockLSTMPredictor:
             'model_path': self.model_path
         }
     
-    def predict(self, data: pd.DataFrame, return_all: bool = False) -> Dict:
+    def predict(self, data: pd.DataFrame, return_all: bool = False, sentiment_data: Optional[Dict] = None, symbol: str = None) -> Dict:
         """
-        Make predictions using trained LSTM
+        Make predictions using trained LSTM with optional sentiment integration
         
         Args:
             data: Recent stock data for prediction
             return_all: Return all predictions or just the next one
+            sentiment_data: Optional sentiment analysis data to enhance prediction
+            symbol: Stock symbol for mock sentiment generation if needed
         
         Returns:
-            Prediction dictionary
+            Prediction dictionary with sentiment integration
         """
         if not self.is_trained and not self.load_model():
             # Use simple fallback if model not available
-            return self._simple_prediction(data)
+            return self._simple_prediction(data, sentiment_data, symbol)
         
         try:
             # Prepare data
@@ -265,7 +281,7 @@ class StockLSTMPredictor:
             
             # Need at least sequence_length data points
             if len(scaled_data) < self.sequence_length:
-                return self._simple_prediction(data)
+                return self._simple_prediction(data, sentiment_data, symbol)
             
             # Prepare input sequence
             X = scaled_data[-self.sequence_length:].reshape(1, self.sequence_length, len(self.features))
@@ -285,29 +301,47 @@ class StockLSTMPredictor:
             price_change_percent = price_change_scaled * 10  # Scale to percentage
             predicted_price = last_price * (1 + price_change_percent / 100)
             
-            # Determine signal
+            # Get or generate sentiment data
+            if sentiment_data is None and symbol:
+                sentiment_data = self._get_sentiment(symbol)
+            
+            # Integrate sentiment into prediction
+            if sentiment_data:
+                direction, confidence, predicted_price, price_change_percent = self._integrate_sentiment(
+                    direction, confidence_raw, predicted_price, last_price, sentiment_data
+                )
+            else:
+                # Original logic without sentiment
+                if direction > 0.3:
+                    signal = "BUY"
+                    confidence = min(50 + abs(direction) * 30 + confidence_raw * 20, 85)
+                elif direction < -0.3:
+                    signal = "SELL"
+                    confidence = min(50 + abs(direction) * 30 + confidence_raw * 20, 85)
+                else:
+                    signal = "HOLD"
+                    confidence = 50 + confidence_raw * 10
+            
+            # Determine final signal
             if direction > 0.3:
                 signal = "BUY"
-                confidence = min(50 + abs(direction) * 30 + confidence_raw * 20, 85)
             elif direction < -0.3:
                 signal = "SELL"
-                confidence = min(50 + abs(direction) * 30 + confidence_raw * 20, 85)
             else:
                 signal = "HOLD"
-                confidence = 50 + confidence_raw * 10
             
             # Calculate technical indicators for context
             sma_20 = data['close'].tail(20).mean() if len(data) >= 20 else last_price
             rsi = self._calculate_rsi(data['close'].tail(14)) if len(data) >= 14 else 50
             
-            return {
+            result = {
                 'prediction': signal,
                 'predicted_price': float(round(predicted_price, 2)),
                 'current_price': float(round(last_price, 2)),
                 'predicted_change': float(round(predicted_price - last_price, 2)),
                 'predicted_change_percent': float(round(price_change_percent, 2)),
                 'confidence': float(round(confidence, 1)),
-                'model_type': 'LSTM',
+                'model_type': 'LSTM + Sentiment' if sentiment_data else 'LSTM',
                 'model_accuracy': 78.5,  # Based on validation metrics
                 'technical_indicators': {
                     'sma_20': float(round(sma_20, 2)),
@@ -317,13 +351,66 @@ class StockLSTMPredictor:
                 'timestamp': datetime.now().isoformat()
             }
             
+            # Add sentiment data if available
+            if sentiment_data:
+                result['sentiment'] = sentiment_data
+            
+            return result
+            
         except Exception as e:
             logger.error(f"LSTM prediction error: {e}")
-            return self._simple_prediction(data)
+            return self._simple_prediction(data, sentiment_data, symbol)
     
-    def _simple_prediction(self, data: pd.DataFrame) -> Dict:
+    def _get_sentiment(self, symbol: str) -> Optional[Dict]:
+        """Get sentiment data for a symbol"""
+        if FINBERT_AVAILABLE and finbert_analyzer:
+            return finbert_analyzer.get_mock_sentiment(symbol)
+        return None
+    
+    def _integrate_sentiment(self, direction: float, confidence_raw: float, 
+                            predicted_price: float, last_price: float, 
+                            sentiment_data: Dict) -> Tuple[float, float, float, float]:
         """
-        Simple fallback prediction when LSTM not available
+        Integrate sentiment into LSTM prediction
+        
+        Args:
+            direction: LSTM direction prediction
+            confidence_raw: Raw confidence from LSTM
+            predicted_price: Initial predicted price
+            last_price: Current price
+            sentiment_data: Sentiment analysis results
+        
+        Returns:
+            Tuple of (adjusted_direction, adjusted_confidence, adjusted_price, adjusted_change_percent)
+        """
+        # Extract sentiment score (-1 to 1)
+        sentiment_score = sentiment_data.get('compound', 0)
+        sentiment_confidence = sentiment_data.get('confidence', 50) / 100.0
+        
+        # Weight sentiment based on its confidence
+        sentiment_weight = 0.3 * sentiment_confidence  # Max 30% weight
+        lstm_weight = 1.0 - sentiment_weight
+        
+        # Adjust direction with sentiment
+        adjusted_direction = (direction * lstm_weight) + (sentiment_score * sentiment_weight)
+        
+        # Adjust confidence
+        # High agreement between LSTM and sentiment increases confidence
+        agreement = 1.0 - abs(direction - sentiment_score) / 2.0
+        confidence = min(50 + abs(adjusted_direction) * 30 + confidence_raw * 20 + agreement * 10, 90)
+        
+        # Adjust price prediction with sentiment
+        sentiment_price_impact = last_price * (sentiment_score * 0.02)  # Up to 2% impact
+        adjusted_price = predicted_price + sentiment_price_impact
+        
+        # Calculate adjusted change percent
+        adjusted_change_percent = ((adjusted_price - last_price) / last_price) * 100
+        
+        return adjusted_direction, confidence, adjusted_price, adjusted_change_percent
+    
+    def _simple_prediction(self, data: pd.DataFrame, sentiment_data: Optional[Dict] = None, symbol: str = None) -> Dict:
+        """
+        Simple fallback prediction when LSTM not available with sentiment integration
         """
         if len(data) == 0:
             return {
@@ -335,6 +422,10 @@ class StockLSTMPredictor:
             }
         
         last_price = data['close'].iloc[-1] if 'close' in data.columns else data.get('Close', [0]).iloc[-1]
+        
+        # Get or generate sentiment
+        if sentiment_data is None and symbol:
+            sentiment_data = self._get_sentiment(symbol)
         
         # Simple trend analysis
         if len(data) >= 5:
@@ -357,19 +448,42 @@ class StockLSTMPredictor:
             confidence = 50
             predicted_change = 0
         
+        # Adjust with sentiment if available
+        if sentiment_data:
+            sentiment_score = sentiment_data.get('compound', 0)
+            sentiment_adjustment = sentiment_score * 1.5  # Adjust predicted change
+            predicted_change += sentiment_adjustment
+            
+            # Adjust confidence based on sentiment-trend agreement
+            if (predicted_change > 0 and sentiment_score > 0) or (predicted_change < 0 and sentiment_score < 0):
+                confidence = min(confidence + 10, 85)  # Agreement bonus
+            
+            # Update prediction based on adjusted change
+            if predicted_change > 1:
+                prediction = "BUY"
+            elif predicted_change < -1:
+                prediction = "SELL"
+            else:
+                prediction = "HOLD"
+        
         predicted_price = last_price * (1 + predicted_change / 100)
         
-        return {
+        result = {
             'prediction': prediction,
             'predicted_price': round(predicted_price, 2),
             'current_price': round(last_price, 2),
             'predicted_change': round(predicted_price - last_price, 2),
             'predicted_change_percent': round(predicted_change, 2),
-            'confidence': confidence,
-            'model_type': 'Simple (LSTM not trained)',
+            'confidence': round(confidence, 1),
+            'model_type': 'Simple + Sentiment' if sentiment_data else 'Simple (LSTM not trained)',
             'model_accuracy': 65.0,
             'timestamp': datetime.now().isoformat()
         }
+        
+        if sentiment_data:
+            result['sentiment'] = sentiment_data
+        
+        return result
     
     def _calculate_rsi(self, prices: pd.Series, period: int = 14) -> float:
         """Calculate RSI indicator"""
@@ -453,19 +567,21 @@ class StockLSTMPredictor:
 # Singleton instance for the application
 lstm_predictor = StockLSTMPredictor()
 
-def get_lstm_prediction(chart_data: List[Dict], current_price: float) -> Dict:
+def get_lstm_prediction(chart_data: List[Dict], current_price: float, sentiment_data: Optional[Dict] = None, symbol: str = None) -> Dict:
     """
-    Convenience function to get LSTM prediction
+    Convenience function to get LSTM prediction with optional sentiment
     
     Args:
         chart_data: List of price/volume data
         current_price: Current stock price
+        sentiment_data: Optional sentiment analysis data
+        symbol: Stock symbol for sentiment generation if needed
     
     Returns:
-        Prediction dictionary
+        Prediction dictionary with sentiment integration
     """
     if not chart_data:
-        return lstm_predictor._simple_prediction(pd.DataFrame())
+        return lstm_predictor._simple_prediction(pd.DataFrame(), sentiment_data, symbol)
     
     # Convert to DataFrame
     df = pd.DataFrame(chart_data)
@@ -476,4 +592,4 @@ def get_lstm_prediction(chart_data: List[Dict], current_price: float) -> Dict:
     elif 'close' not in df.columns:
         df['close'] = df.get('price', current_price)
     
-    return lstm_predictor.predict(df)
+    return lstm_predictor.predict(df, sentiment_data=sentiment_data, symbol=symbol)

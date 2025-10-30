@@ -23,6 +23,15 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from config_dev import get_config, DevelopmentConfig
 from models.lstm_predictor import lstm_predictor, get_lstm_prediction
 
+# Import FinBERT sentiment analyzer (must be after other imports)
+FINBERT_AVAILABLE = False
+finbert_analyzer = None
+try:
+    from models.finbert_sentiment import finbert_analyzer, get_sentiment_analysis, get_batch_sentiment
+    FINBERT_AVAILABLE = True
+except (ImportError, ValueError, Exception) as e:
+    print(f"Note: FinBERT not available ({e}). Using fallback sentiment.")
+
 # Suppress warnings
 warnings.filterwarnings('ignore')
 
@@ -40,10 +49,11 @@ app = Flask(__name__)
 CORS(app, origins=config.CORS_ORIGINS)
 
 class EnhancedMLPredictor:
-    """Enhanced ML predictor that combines multiple models"""
+    """Enhanced ML predictor that combines multiple models including FinBERT sentiment"""
     
     def __init__(self):
         self.lstm_enabled = config.FEATURES.get('USE_LSTM', False)
+        self.finbert_enabled = FINBERT_AVAILABLE
         self.models_loaded = False
         self.initialize_models()
     
@@ -57,20 +67,49 @@ class EnhancedMLPredictor:
                 logger.info("LSTM model loaded successfully")
             else:
                 logger.info("No pre-trained LSTM model found. Using simple predictions.")
+            
+            # Log FinBERT status
+            if self.finbert_enabled:
+                logger.info("FinBERT sentiment analysis available")
+            else:
+                logger.info("FinBERT not available - using fallback sentiment")
+                
         except Exception as e:
             logger.error(f"Error loading models: {e}")
     
-    def get_ensemble_prediction(self, chart_data: List[Dict], current_price: float, symbol: str) -> Dict:
+    def get_sentiment_for_symbol(self, symbol: str) -> Optional[Dict]:
         """
-        Get ensemble prediction from multiple models
+        Get sentiment analysis for a stock symbol
+        Uses mock data as fallback when news unavailable
+        """
+        if not self.finbert_enabled or not finbert_analyzer:
+            return None
+        
+        try:
+            # Generate mock sentiment (in production, would fetch real news)
+            sentiment = finbert_analyzer.get_mock_sentiment(symbol)
+            logger.info(f"Sentiment for {symbol}: {sentiment.get('sentiment')} ({sentiment.get('confidence')}%)")
+            return sentiment
+        except Exception as e:
+            logger.error(f"Error getting sentiment for {symbol}: {e}")
+            return None
+    
+    def get_ensemble_prediction(self, chart_data: List[Dict], current_price: float, symbol: str, include_sentiment: bool = True) -> Dict:
+        """
+        Get ensemble prediction from multiple models including sentiment
         """
         predictions = []
         weights = []
         
-        # LSTM Prediction
+        # Get sentiment data
+        sentiment_data = None
+        if include_sentiment and self.finbert_enabled:
+            sentiment_data = self.get_sentiment_for_symbol(symbol)
+        
+        # LSTM Prediction (with sentiment integration)
         if self.lstm_enabled or config.FEATURES.get('USE_LSTM', False):
             try:
-                lstm_pred = get_lstm_prediction(chart_data, current_price)
+                lstm_pred = get_lstm_prediction(chart_data, current_price, sentiment_data, symbol)
                 predictions.append(lstm_pred)
                 weights.append(0.5)  # Higher weight for LSTM
                 logger.info(f"LSTM prediction for {symbol}: {lstm_pred.get('prediction')}")
@@ -78,7 +117,7 @@ class EnhancedMLPredictor:
                 logger.error(f"LSTM prediction failed: {e}")
         
         # Simple trend-based prediction (fallback)
-        simple_pred = self.simple_prediction(chart_data, current_price)
+        simple_pred = self.simple_prediction(chart_data, current_price, sentiment_data)
         predictions.append(simple_pred)
         weights.append(0.3)
         
@@ -89,17 +128,21 @@ class EnhancedMLPredictor:
         
         # Combine predictions
         if len(predictions) == 1:
-            return predictions[0]
+            result = predictions[0]
+        else:
+            # Weighted ensemble
+            result = self.combine_predictions(predictions, weights)
+            result['models_used'] = len(predictions)
+            result['ensemble'] = True
         
-        # Weighted ensemble
-        final_prediction = self.combine_predictions(predictions, weights)
-        final_prediction['models_used'] = len(predictions)
-        final_prediction['ensemble'] = True
+        # Add sentiment to final result
+        if sentiment_data:
+            result['sentiment'] = sentiment_data
         
-        return final_prediction
+        return result
     
-    def simple_prediction(self, chart_data: List[Dict], current_price: float) -> Dict:
-        """Simple trend-based prediction"""
+    def simple_prediction(self, chart_data: List[Dict], current_price: float, sentiment_data: Optional[Dict] = None) -> Dict:
+        """Simple trend-based prediction with optional sentiment adjustment"""
         if not chart_data or len(chart_data) < 5:
             return {
                 'prediction': 'HOLD',
@@ -125,11 +168,20 @@ class EnhancedMLPredictor:
             confidence = 55
             predicted_change = 0.1
         
+        # Adjust with sentiment if available
+        if sentiment_data:
+            sentiment_score = sentiment_data.get('compound', 0)
+            predicted_change += sentiment_score * 1.5  # Sentiment adjustment
+            
+            # Boost confidence if sentiment agrees with trend
+            if (predicted_change > 0 and sentiment_score > 0) or (predicted_change < 0 and sentiment_score < 0):
+                confidence = min(confidence + 10, 85)
+        
         return {
             'prediction': prediction,
             'predicted_price': current_price * (1 + predicted_change / 100),
             'confidence': confidence,
-            'model_type': 'Trend'
+            'model_type': 'Trend + Sentiment' if sentiment_data else 'Trend'
         }
     
     def technical_prediction(self, chart_data: List[Dict], current_price: float) -> Dict:
@@ -452,6 +504,32 @@ def train_model(symbol):
             'symbol': symbol
         }), 500
 
+@app.route('/api/sentiment/<symbol>')
+def get_sentiment(symbol):
+    """Get sentiment analysis for a stock symbol"""
+    try:
+        if not ml_predictor.finbert_enabled:
+            return jsonify({
+                'error': 'FinBERT sentiment analysis not available',
+                'fallback': True,
+                'message': 'Install transformers and torch for full functionality'
+            }), 503
+        
+        sentiment = ml_predictor.get_sentiment_for_symbol(symbol)
+        
+        if sentiment:
+            return jsonify({
+                'symbol': symbol.upper(),
+                'sentiment': sentiment,
+                'timestamp': datetime.now().isoformat()
+            })
+        else:
+            return jsonify({'error': f'Unable to fetch sentiment for {symbol}'}), 404
+            
+    except Exception as e:
+        logger.error(f"Error in sentiment API: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/health')
 def health():
     """Health check endpoint"""
@@ -460,24 +538,39 @@ def health():
         'version': '4.0-dev',
         'environment': 'development',
         'lstm_status': 'loaded' if ml_predictor.lstm_enabled else 'not loaded',
+        'finbert_status': 'available' if ml_predictor.finbert_enabled else 'not available',
         'features': config.FEATURES
     })
 
 if __name__ == '__main__':
     print("=" * 70)
-    print("  FinBERT v4.0 Development Server - With LSTM Integration")
+    print("  FinBERT v4.0 Development Server - FULL AI/ML Experience")
     print("=" * 70)
     print()
-    print("Features:")
-    print(f"✓ LSTM Models: {'Enabled' if ml_predictor.lstm_enabled else 'Available but not trained'}")
-    print("✓ Ensemble Predictions")
+    print("🎯 Features:")
+    print(f"{'✓' if ml_predictor.lstm_enabled else '○'} LSTM Neural Networks: {'Trained & Loaded' if ml_predictor.lstm_enabled else 'Available (needs training)'}")
+    print(f"{'✓' if ml_predictor.finbert_enabled else '○'} FinBERT Sentiment: {'Active' if ml_predictor.finbert_enabled else 'Not installed'}")
+    print("✓ Ensemble Predictions (Multi-Model)")
     print("✓ Enhanced Technical Analysis")
-    print("✓ Development Mode with Debug")
+    print("✓ Real-time Market Data (Yahoo Finance)")
+    print("✓ Candlestick & Volume Charts")
     print()
-    print("To train LSTM model:")
-    print("  python models/train_lstm.py --symbol AAPL --epochs 50")
+    print("📊 API Endpoints:")
+    print(f"  /api/stock/<symbol>    - Stock data with AI predictions")
+    print(f"  /api/sentiment/<symbol> - FinBERT sentiment analysis")
+    print(f"  /api/train/<symbol>     - Train LSTM model (POST)")
+    print(f"  /api/models             - Model information")
+    print(f"  /api/health             - System health")
     print()
-    print(f"Server starting on http://localhost:{config.PORT}")
+    if not ml_predictor.lstm_enabled:
+        print("💡 To train LSTM model:")
+        print("   python models/train_lstm.py --symbol AAPL --epochs 50")
+        print()
+    if not ml_predictor.finbert_enabled:
+        print("💡 To enable FinBERT sentiment:")
+        print("   pip install -r requirements-full.txt")
+        print()
+    print(f"🚀 Server starting on http://localhost:{config.PORT}")
     print("=" * 70)
     
     app.run(

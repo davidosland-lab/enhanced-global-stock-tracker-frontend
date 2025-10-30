@@ -356,6 +356,71 @@
                 </div>
             </div>
 
+            <!-- FinBERT Sentiment Card -->
+            <div class="glass-panel p-6">
+                <h3 class="text-lg font-bold mb-4">
+                    <i class="fas fa-brain text-green-500"></i> FinBERT Sentiment
+                </h3>
+                
+                <div id="sentimentContent" class="text-center text-gray-500">
+                    <i class="fas fa-comments text-4xl mb-3 opacity-30"></i>
+                    <p class="text-sm">Analyzing market sentiment...</p>
+                </div>
+
+                <div id="sentimentData" class="hidden">
+                    <!-- Sentiment Badge -->
+                    <div class="text-center mb-4">
+                        <div id="sentimentBadge" class="prediction-badge mb-2">NEUTRAL</div>
+                        <div class="text-sm text-gray-400">Market Sentiment</div>
+                    </div>
+
+                    <!-- Sentiment Scores -->
+                    <div class="space-y-3">
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-green-400">Positive</span>
+                                <span id="sentimentPositive">0%</span>
+                            </div>
+                            <div class="h-2 bg-slate-700 rounded-full overflow-hidden">
+                                <div id="sentimentPositiveBar" class="h-full bg-green-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-gray-400">Neutral</span>
+                                <span id="sentimentNeutral">0%</span>
+                            </div>
+                            <div class="h-2 bg-slate-700 rounded-full overflow-hidden">
+                                <div id="sentimentNeutralBar" class="h-full bg-gray-400" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between text-sm mb-1">
+                                <span class="text-red-400">Negative</span>
+                                <span id="sentimentNegative">0%</span>
+                            </div>
+                            <div class="h-2 bg-slate-700 rounded-full overflow-hidden">
+                                <div id="sentimentNegativeBar" class="h-full bg-red-500" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <div class="pt-3 border-t border-gray-700">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-gray-400">Compound Score</span>
+                                <span class="font-semibold" id="sentimentCompound">0.00</span>
+                            </div>
+                            <div class="flex justify-between text-sm mt-1">
+                                <span class="text-gray-400">Confidence</span>
+                                <span class="font-semibold" id="sentimentConfidence">0%</span>
+                            </div>
+                            <div class="text-xs text-gray-500 mt-2" id="sentimentMethod">Method: FinBERT</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Market Stats Card -->
             <div class="glass-panel p-6">
                 <h3 class="text-lg font-bold mb-4">
@@ -548,6 +613,9 @@
                 // Update prediction
                 updatePrediction(data);
                 
+                // Update sentiment
+                updateSentiment(data);
+                
                 // Update stats
                 updateStats(data);
                 
@@ -628,6 +696,56 @@
             
             document.getElementById('change').innerHTML = 
                 `<span class="${changeColor}">${changeSign}$${change.toFixed(2)} (${changeSign}${changePercent.toFixed(2)}%)</span>`;
+        }
+
+        function updateSentiment(data) {
+            // Check if sentiment data is available
+            const sentiment = data.ml_prediction?.sentiment;
+            
+            if (!sentiment) {
+                // Show placeholder
+                document.getElementById('sentimentContent').classList.remove('hidden');
+                document.getElementById('sentimentData').classList.add('hidden');
+                return;
+            }
+
+            // Hide placeholder and show data
+            document.getElementById('sentimentContent').classList.add('hidden');
+            document.getElementById('sentimentData').classList.remove('hidden');
+
+            // Update sentiment badge
+            const sentimentLabel = sentiment.sentiment?.toUpperCase() || 'NEUTRAL';
+            const sentimentBadge = document.getElementById('sentimentBadge');
+            sentimentBadge.textContent = sentimentLabel;
+            sentimentBadge.className = `prediction-badge prediction-${sentimentLabel}`;
+
+            // Update sentiment scores
+            const scores = sentiment.scores || { positive: 0, neutral: 0, negative: 0 };
+            const positivePercent = (scores.positive * 100).toFixed(1);
+            const neutralPercent = (scores.neutral * 100).toFixed(1);
+            const negativePercent = (scores.negative * 100).toFixed(1);
+
+            document.getElementById('sentimentPositive').textContent = `${positivePercent}%`;
+            document.getElementById('sentimentPositiveBar').style.width = `${positivePercent}%`;
+
+            document.getElementById('sentimentNeutral').textContent = `${neutralPercent}%`;
+            document.getElementById('sentimentNeutralBar').style.width = `${neutralPercent}%`;
+
+            document.getElementById('sentimentNegative').textContent = `${negativePercent}%`;
+            document.getElementById('sentimentNegativeBar').style.width = `${negativePercent}%`;
+
+            // Update compound score and confidence
+            const compound = sentiment.compound || 0;
+            const compoundColor = compound > 0 ? 'text-green-400' : compound < 0 ? 'text-red-400' : 'text-gray-400';
+            document.getElementById('sentimentCompound').innerHTML = 
+                `<span class="${compoundColor}">${compound.toFixed(3)}</span>`;
+
+            document.getElementById('sentimentConfidence').textContent = `${sentiment.confidence?.toFixed(1) || 0}%`;
+            
+            // Update method
+            const method = sentiment.method || 'FinBERT';
+            const isMock = sentiment.is_mock ? ' (Demo Data)' : '';
+            document.getElementById('sentimentMethod').textContent = `Method: ${method}${isMock}`;
         }
 
         function updateCharts(data) {
