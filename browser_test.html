@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Browser ML Test</title>
+    <style>
+        body { 
+            font-family: monospace; 
+            padding: 20px; 
+            background: #f0f0f0;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #output {
+            background: white;
+            border: 1px solid #ccc;
+            padding: 20px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+            min-height: 300px;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>Browser ML Endpoint Test</h1>
+    
+    <button onclick="testDirectFetch()">Test Direct Fetch</button>
+    <button onclick="testWithHeaders()">Test With Headers</button>
+    <button onclick="testXHR()">Test XMLHttpRequest</button>
+    <button onclick="clearOutput()">Clear</button>
+    
+    <div id="output"></div>
+    
+    <script>
+        const output = document.getElementById('output');
+        
+        function log(msg, type = 'info') {
+            const time = new Date().toLocaleTimeString();
+            output.innerHTML += `<span class="${type}">[${time}] ${msg}</span>\n`;
+        }
+        
+        function clearOutput() {
+            output.innerHTML = '';
+        }
+        
+        // Test 1: Direct fetch (minimal)
+        async function testDirectFetch() {
+            log('Test 1: Direct fetch to /api/predict/AAPL', 'info');
+            
+            try {
+                const response = await fetch('/api/predict/AAPL');
+                log(`Response status: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                
+                const text = await response.text();
+                log(`Response length: ${text.length} bytes`, 'info');
+                
+                try {
+                    const data = JSON.parse(text);
+                    if (data.available) {
+                        log('✓ ML Predictions received!', 'success');
+                        log(`Current price: $${data.current_price?.toFixed(2)}`, 'success');
+                        if (data.predictions) {
+                            log(`Predictions: ${data.predictions.length} days`, 'success');
+                        }
+                    } else {
+                        log('ML not available: ' + data.error, 'error');
+                    }
+                } catch (parseError) {
+                    log('Failed to parse JSON: ' + parseError.message, 'error');
+                    log('Response text: ' + text.substring(0, 200), 'error');
+                }
+            } catch (error) {
+                log('Fetch failed: ' + error.message, 'error');
+                console.error('Full error:', error);
+            }
+        }
+        
+        // Test 2: Fetch with headers
+        async function testWithHeaders() {
+            log('Test 2: Fetch with headers', 'info');
+            
+            try {
+                const response = await fetch('/api/predict/AAPL', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                log(`Response status: ${response.status} ${response.statusText}`, response.ok ? 'success' : 'error');
+                
+                if (!response.ok) {
+                    const text = await response.text();
+                    log('Error response: ' + text.substring(0, 500), 'error');
+                } else {
+                    const data = await response.json();
+                    log('✓ Success with headers!', 'success');
+                    log(JSON.stringify(data, null, 2).substring(0, 500), 'success');
+                }
+            } catch (error) {
+                log('Fetch with headers failed: ' + error.message, 'error');
+            }
+        }
+        
+        // Test 3: XMLHttpRequest (old school)
+        function testXHR() {
+            log('Test 3: XMLHttpRequest', 'info');
+            
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', '/api/predict/AAPL', true);
+            
+            xhr.onload = function() {
+                log(`XHR status: ${xhr.status} ${xhr.statusText}`, xhr.status === 200 ? 'success' : 'error');
+                
+                if (xhr.status === 200) {
+                    try {
+                        const data = JSON.parse(xhr.responseText);
+                        log('✓ XHR Success!', 'success');
+                        if (data.predictions) {
+                            log(`Got ${data.predictions.length} predictions`, 'success');
+                        }
+                    } catch (e) {
+                        log('XHR parse error: ' + e.message, 'error');
+                    }
+                } else {
+                    log('XHR error response: ' + xhr.responseText.substring(0, 500), 'error');
+                }
+            };
+            
+            xhr.onerror = function() {
+                log('XHR network error', 'error');
+            };
+            
+            xhr.send();
+        }
+        
+        // Auto-test on load
+        window.onload = function() {
+            log('Browser ML Test Ready', 'success');
+            log('Click buttons to test different request methods\n', 'info');
+        };
+    </script>
+</body>
+</html>
