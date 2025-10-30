@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinBERT Ultimate Trading System v3.0</title>
+    
+    <!-- Chart.js and plugins -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.3.0/build/global/luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1/dist/chartjs-adapter-luxon.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.0/dist/chartjs-plugin-zoom.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        .glass {
+            background: rgba(30, 41, 59, 0.50);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+        
+        .positive { color: #10b981; }
+        .negative { color: #ef4444; }
+        .neutral { color: #94a3b8; }
+        
+        .chart-container {
+            position: relative;
+            height: 400px;
+            width: 100%;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #3b82f6;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .indicator-card {
+            transition: all 0.3s ease;
+        }
+        
+        .indicator-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4">
+    <div class="max-w-7xl mx-auto">
+        <!-- Header -->
+        <div class="glass rounded-lg p-6 mb-6">
+            <h1 class="text-3xl font-bold mb-4">FinBERT Ultimate Trading System v3.0</h1>
+            <p class="text-gray-400">Real-time market analysis with AI-powered predictions</p>
+        </div>
+        
+        <!-- Search Bar -->
+        <div class="glass rounded-lg p-4 mb-6">
+            <div class="flex gap-4">
+                <input 
+                    type="text" 
+                    id="symbolInput" 
+                    placeholder="Enter stock symbol (e.g., AAPL, MSFT, CBA.AX)" 
+                    class="flex-1 bg-slate-800/50 rounded px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value="AAPL"
+                >
+                <button 
+                    onclick="loadStock()" 
+                    class="bg-blue-600 hover:bg-blue-700 px-6 py-2 rounded font-semibold transition"
+                >
+                    Analyze
+                </button>
+            </div>
+        </div>
+        
+        <!-- Main Content Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left Column - Price & Predictions -->
+            <div class="space-y-6">
+                <!-- Current Price Card -->
+                <div class="glass rounded-lg p-6">
+                    <h2 class="text-xl font-semibold mb-4">Current Price</h2>
+                    <div id="currentPrice" class="text-3xl font-bold">--</div>
+                    <div id="priceChange" class="text-sm mt-1">--</div>
+                    <div class="mt-4 space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span>Open</span>
+                            <span id="openPrice">--</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>High</span>
+                            <span id="highPrice">--</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Low</span>
+                            <span id="lowPrice">--</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Volume</span>
+                            <span id="volume">--</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- ML Predictions Card -->
+                <div class="glass rounded-lg p-6">
+                    <h2 class="text-xl font-semibold mb-4">AI Predictions</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <div class="text-sm text-gray-400">Next Day Prediction</div>
+                            <div class="flex justify-between items-center">
+                                <span id="nextDayPrice" class="text-2xl font-bold">--</span>
+                                <span id="nextDayConfidence" class="text-sm">--</span>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-sm text-gray-400">5-Day Target</div>
+                            <div class="flex justify-between items-center">
+                                <span id="targetPrice" class="text-2xl font-bold">--</span>
+                                <span id="targetConfidence" class="text-sm">--</span>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="text-sm text-gray-400">Model Accuracy</div>
+                            <div id="modelAccuracy" class="text-lg">--</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Sentiment Analysis Card -->
+                <div class="glass rounded-lg p-6">
+                    <h2 class="text-xl font-semibold mb-4">FinBERT Sentiment</h2>
+                    <div class="text-center">
+                        <div id="sentimentScore" class="text-3xl font-bold">--</div>
+                        <div class="text-sm text-gray-400 mt-2">Market Sentiment</div>
+                    </div>
+                    <div class="mt-4">
+                        <div class="bg-slate-700 rounded-full h-2 relative">
+                            <div id="sentimentBar" class="absolute h-2 rounded-full bg-blue-500 transition-all" style="width: 50%"></div>
+                        </div>
+                        <div class="flex justify-between text-xs mt-1">
+                            <span>Bearish</span>
+                            <span>Neutral</span>
+                            <span>Bullish</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Center Column - Charts -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Chart Controls -->
+                <div class="glass rounded-lg p-4">
+                    <div class="flex gap-4 flex-wrap">
+                        <select id="chartType" class="bg-slate-800/50 rounded px-3 py-1" onchange="updateChart()">
+                            <option value="line">Line Chart</option>
+                            <option value="candlestick">Candlestick</option>
+                        </select>
+                        <select id="period" class="bg-slate-800/50 rounded px-3 py-1" onchange="loadStock()">
+                            <option value="5d">5 Days</option>
+                            <option value="1m">1 Month</option>
+                            <option value="3m" selected>3 Months</option>
+                            <option value="6m">6 Months</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Main Price Chart -->
+                <div class="glass rounded-lg p-6">
+                    <h2 class="text-xl font-semibold mb-4">Price Chart</h2>
+                    <div class="chart-container">
+                        <canvas id="priceChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Technical Indicators -->
+                <div class="glass rounded-lg p-6">
+                    <h2 class="text-xl font-semibold mb-4">Technical Indicators</h2>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                            <div class="text-sm text-gray-400">RSI</div>
+                            <div id="rsi" class="text-xl font-semibold">--</div>
+                        </div>
+                        <div>
+                            <div class="text-sm text-gray-400">MACD</div>
+                            <div id="macd" class="text-xl font-semibold">--</div>
+                        </div>
+                        <div>
+                            <div class="text-sm text-gray-400">ATR</div>
+                            <div id="atr" class="text-xl font-semibold">--</div>
+                        </div>
+                        <div>
+                            <div class="text-sm text-gray-400">SMA 20</div>
+                            <div id="sma20" class="text-xl font-semibold">--</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Economic Indicators -->
+                <div class="glass rounded-lg p-6">
+                    <h2 class="text-xl font-semibold mb-4">Economic Indicators</h2>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="indicator-card">
+                            <div class="text-sm text-gray-400">VIX</div>
+                            <div id="vix" class="text-xl font-semibold">--</div>
+                            <div id="vixChange" class="text-xs">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="text-sm text-gray-400">10Y Treasury</div>
+                            <div id="tnx" class="text-xl font-semibold">--</div>
+                            <div id="tnxChange" class="text-xs">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="text-sm text-gray-400">Dollar Index</div>
+                            <div id="dxy" class="text-xl font-semibold">--</div>
+                            <div id="dxyChange" class="text-xs">--</div>
+                        </div>
+                        <div class="indicator-card">
+                            <div class="text-sm text-gray-400">Gold</div>
+                            <div id="gold" class="text-xl font-semibold">--</div>
+                            <div id="goldChange" class="text-xs">--</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_URL = 'http://localhost:5000';
+        let priceChart = null;
+        let currentData = null;
+        
+        async function loadStock() {
+            const symbol = document.getElementById('symbolInput').value.toUpperCase();
+            const period = document.getElementById('period').value;
+            
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            
+            // Show loading state
+            document.getElementById('currentPrice').innerHTML = '<div class="loading"></div>';
+            
+            try {
+                // Fetch stock data
+                const stockResponse = await fetch(`${API_URL}/api/stock/${symbol}`);
+                const stockData = await stockResponse.json();
+                
+                if (stockData.error) {
+                    throw new Error(stockData.error);
+                }
+                
+                // Fetch historical data
+                const histResponse = await fetch(`${API_URL}/api/historical/${symbol}?period=${period}`);
+                const histData = await histResponse.json();
+                
+                // Fetch predictions
+                const predResponse = await fetch(`${API_URL}/api/predict/${symbol}`);
+                const predData = await predResponse.json();
+                
+                // Update UI
+                updatePriceInfo(stockData);
+                updateIndicators(stockData.indicators || {});
+                updatePredictions(predData);
+                updateChart(histData.data || stockData.chartData || []);
+                
+                // Load economic indicators
+                loadEconomicIndicators();
+                
+                currentData = { stock: stockData, historical: histData, predictions: predData };
+                
+            } catch (error) {
+                console.error('Error loading stock:', error);
+                alert('Error loading stock data: ' + error.message);
+                document.getElementById('currentPrice').textContent = '--';
+            }
+        }
+        
+        function updatePriceInfo(data) {
+            document.getElementById('currentPrice').textContent = `$${data.price?.toFixed(2) || '--'}`;
+            
+            const changeEl = document.getElementById('priceChange');
+            const change = data.change || 0;
+            const changePercent = data.changePercent || 0;
+            changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%)`;
+            changeEl.className = `text-sm mt-1 ${change >= 0 ? 'positive' : 'negative'}`;
+            
+            document.getElementById('openPrice').textContent = `$${data.open?.toFixed(2) || '--'}`;
+            document.getElementById('highPrice').textContent = `$${data.high?.toFixed(2) || '--'}`;
+            document.getElementById('lowPrice').textContent = `$${data.low?.toFixed(2) || '--'}`;
+            document.getElementById('volume').textContent = formatVolume(data.volume || 0);
+        }
+        
+        function updateIndicators(indicators) {
+            document.getElementById('rsi').textContent = indicators.RSI !== undefined ? indicators.RSI : '--';
+            document.getElementById('macd').textContent = indicators.MACD !== undefined ? indicators.MACD.toFixed(4) : '--';
+            document.getElementById('atr').textContent = indicators.ATR !== undefined ? indicators.ATR.toFixed(2) : '--';
+            document.getElementById('sma20').textContent = indicators.SMA20 !== undefined ? `$${indicators.SMA20.toFixed(2)}` : '--';
+            
+            // Color code RSI
+            const rsiEl = document.getElementById('rsi');
+            if (indicators.RSI !== undefined) {
+                if (indicators.RSI > 70) {
+                    rsiEl.className = 'text-xl font-semibold negative';
+                } else if (indicators.RSI < 30) {
+                    rsiEl.className = 'text-xl font-semibold positive';
+                } else {
+                    rsiEl.className = 'text-xl font-semibold neutral';
+                }
+            }
+        }
+        
+        function updatePredictions(pred) {
+            if (!pred || pred.error) {
+                document.getElementById('nextDayPrice').textContent = '--';
+                document.getElementById('nextDayConfidence').textContent = '--';
+                document.getElementById('targetPrice').textContent = '--';
+                document.getElementById('targetConfidence').textContent = '--';
+                document.getElementById('modelAccuracy').textContent = '--';
+                document.getElementById('sentimentScore').textContent = '--';
+                return;
+            }
+            
+            // Next day prediction
+            if (pred.next_day_prediction) {
+                const ndp = pred.next_day_prediction;
+                document.getElementById('nextDayPrice').textContent = `$${ndp.price?.toFixed(2) || '--'}`;
+                const conf = ndp.confidence || 0;
+                document.getElementById('nextDayConfidence').textContent = `${ndp.direction === 'up' ? '↑' : '↓'} ${conf.toFixed(1)}% confidence`;
+                document.getElementById('nextDayConfidence').className = `text-sm ${ndp.direction === 'up' ? 'positive' : 'negative'}`;
+            }
+            
+            // Target price
+            if (pred.target_prices && pred.target_prices[0]) {
+                const target = pred.target_prices[0];
+                document.getElementById('targetPrice').textContent = `$${target.price?.toFixed(2) || '--'}`;
+                document.getElementById('targetConfidence').textContent = `${target.confidence?.toFixed(1) || '--'}% confidence`;
+            }
+            
+            // Model accuracy
+            if (pred.model_accuracy) {
+                const acc = (pred.model_accuracy * 100).toFixed(1);
+                document.getElementById('modelAccuracy').textContent = `${acc}% accuracy`;
+            }
+            
+            // Sentiment
+            const sentiment = pred.sentiment_score || 0;
+            document.getElementById('sentimentScore').textContent = sentiment.toFixed(3);
+            document.getElementById('sentimentScore').className = `text-3xl font-bold ${sentiment > 0.1 ? 'positive' : sentiment < -0.1 ? 'negative' : 'neutral'}`;
+            
+            // Update sentiment bar
+            const sentimentPercent = (sentiment + 1) * 50; // Convert -1 to 1 range to 0-100%
+            document.getElementById('sentimentBar').style.width = `${sentimentPercent}%`;
+        }
+        
+        function updateChart(data) {
+            if (!data || data.length === 0) {
+                console.error('No chart data available');
+                return;
+            }
+            
+            const chartType = document.getElementById('chartType').value;
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            
+            // Destroy existing chart
+            if (priceChart) {
+                priceChart.destroy();
+            }
+            
+            // Prepare datasets
+            const datasets = [];
+            
+            if (chartType === 'candlestick') {
+                // Candlestick data
+                datasets.push({
+                    label: 'Price',
+                    data: data.map(d => ({
+                        x: d.date,
+                        o: d.open,
+                        h: d.high,
+                        l: d.low,
+                        c: d.close
+                    })),
+                    borderColor: ctx => ctx.parsed.c >= ctx.parsed.o ? '#10b981' : '#ef4444',
+                    backgroundColor: ctx => ctx.parsed.c >= ctx.parsed.o ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.5)',
+                    borderWidth: 1
+                });
+            } else {
+                // Line chart
+                datasets.push({
+                    label: 'Close Price',
+                    data: data.map(d => ({
+                        x: d.date,
+                        y: d.close
+                    })),
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.1,
+                    fill: true
+                });
+                
+                // Add SMA line
+                const sma20 = calculateSMA(data.map(d => d.close), 20);
+                if (sma20.length > 0) {
+                    datasets.push({
+                        label: 'SMA 20',
+                        data: sma20.map((v, i) => ({
+                            x: data[i + 19].date,
+                            y: v
+                        })),
+                        borderColor: '#f59e0b',
+                        borderWidth: 1,
+                        pointRadius: 0,
+                        borderDash: [5, 5]
+                    });
+                }
+            }
+            
+            // Create chart
+            priceChart = new Chart(ctx, {
+                type: chartType === 'candlestick' ? 'candlestick' : 'line',
+                data: { datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top',
+                            labels: {
+                                color: '#94a3b8'
+                            }
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            callbacks: {
+                                label: function(context) {
+                                    if (chartType === 'candlestick' && context.raw) {
+                                        return [
+                                            `O: ${context.raw.o.toFixed(2)}`,
+                                            `H: ${context.raw.h.toFixed(2)}`,
+                                            `L: ${context.raw.l.toFixed(2)}`,
+                                            `C: ${context.raw.c.toFixed(2)}`
+                                        ];
+                                    }
+                                    return `${context.dataset.label}: $${context.parsed.y?.toFixed(2) || '--'}`;
+                                }
+                            }
+                        },
+                        zoom: {
+                            zoom: {
+                                wheel: {
+                                    enabled: true
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'x'
+                            },
+                            pan: {
+                                enabled: true,
+                                mode: 'x'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                parser: 'yyyy-MM-dd',
+                                unit: 'day'
+                            },
+                            grid: {
+                                color: 'rgba(148, 163, 184, 0.1)'
+                            },
+                            ticks: {
+                                color: '#94a3b8'
+                            }
+                        },
+                        y: {
+                            position: 'right',
+                            grid: {
+                                color: 'rgba(148, 163, 184, 0.1)'
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                callback: function(value) {
+                                    return '$' + value.toFixed(2);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        async function loadEconomicIndicators() {
+            try {
+                const response = await fetch(`${API_URL}/api/economic`);
+                const data = await response.json();
+                
+                if (data.VIX) {
+                    document.getElementById('vix').textContent = data.VIX.value?.toFixed(2) || '--';
+                    const vixChange = document.getElementById('vixChange');
+                    vixChange.textContent = `${data.VIX.change >= 0 ? '+' : ''}${data.VIX.change?.toFixed(2) || '0.00'}%`;
+                    vixChange.className = `text-xs ${data.VIX.change >= 0 ? 'negative' : 'positive'}`; // VIX inverse
+                }
+                
+                if (data.TNX) {
+                    document.getElementById('tnx').textContent = data.TNX.value?.toFixed(2) || '--';
+                    const tnxChange = document.getElementById('tnxChange');
+                    tnxChange.textContent = `${data.TNX.change >= 0 ? '+' : ''}${data.TNX.change?.toFixed(2) || '0.00'}%`;
+                    tnxChange.className = `text-xs ${data.TNX.change >= 0 ? 'positive' : 'negative'}`;
+                }
+                
+                if (data.DXY) {
+                    document.getElementById('dxy').textContent = data.DXY.value?.toFixed(2) || '--';
+                    const dxyChange = document.getElementById('dxyChange');
+                    dxyChange.textContent = `${data.DXY.change >= 0 ? '+' : ''}${data.DXY.change?.toFixed(2) || '0.00'}%`;
+                    dxyChange.className = `text-xs ${data.DXY.change >= 0 ? 'positive' : 'negative'}`;
+                }
+                
+                if (data.GOLD) {
+                    document.getElementById('gold').textContent = `$${data.GOLD.value?.toFixed(2) || '--'}`;
+                    const goldChange = document.getElementById('goldChange');
+                    goldChange.textContent = `${data.GOLD.change >= 0 ? '+' : ''}${data.GOLD.change?.toFixed(2) || '0.00'}%`;
+                    goldChange.className = `text-xs ${data.GOLD.change >= 0 ? 'positive' : 'negative'}`;
+                }
+                
+            } catch (error) {
+                console.error('Error loading economic indicators:', error);
+            }
+        }
+        
+        function calculateSMA(prices, period) {
+            const sma = [];
+            for (let i = period - 1; i < prices.length; i++) {
+                let sum = 0;
+                for (let j = 0; j < period; j++) {
+                    sum += prices[i - j];
+                }
+                sma.push(sum / period);
+            }
+            return sma;
+        }
+        
+        function formatVolume(volume) {
+            if (volume >= 1e9) return (volume / 1e9).toFixed(2) + 'B';
+            if (volume >= 1e6) return (volume / 1e6).toFixed(2) + 'M';
+            if (volume >= 1e3) return (volume / 1e3).toFixed(2) + 'K';
+            return volume.toString();
+        }
+        
+        // Load initial stock on page load
+        window.addEventListener('load', () => {
+            loadStock();
+        });
+        
+        // Allow Enter key to trigger search
+        document.getElementById('symbolInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                loadStock();
+            }
+        });
+    </script>
+</body>
+</html>
