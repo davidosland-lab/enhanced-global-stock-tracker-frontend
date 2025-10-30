@@ -90,14 +90,19 @@ echo.
 echo TensorFlow is required for training LSTM models but is optional.
 echo The system works without it using fallback prediction methods.
 echo.
-echo TensorFlow package size: ~600MB
+echo TensorFlow package size: ~600MB (or ~200MB for CPU-only version)
 echo.
-set /p INSTALL_TF="Install TensorFlow? (y/n): "
+echo Options:
+echo   1. Full TensorFlow (GPU + CPU support) - ~600MB
+echo   2. TensorFlow CPU-only (no GPU) - ~200MB
+echo   3. Skip TensorFlow
+echo.
+set /p TF_CHOICE="Choose option (1/2/3): "
 
-if /i "%INSTALL_TF%"=="y" (
+if "%TF_CHOICE%"=="1" (
     echo.
-    echo Installing TensorFlow... (this may take several minutes)
-    pip install tensorflow==2.15.0
+    echo Installing TensorFlow with GPU support... (this may take several minutes)
+    pip install tensorflow>=2.15.0
     if errorlevel 1 (
         echo.
         echo WARNING: TensorFlow installation failed
@@ -106,10 +111,55 @@ if /i "%INSTALL_TF%"=="y" (
     ) else (
         echo TensorFlow installed successfully!
     )
+) else if "%TF_CHOICE%"=="2" (
+    echo.
+    echo Installing TensorFlow CPU-only... (this may take several minutes)
+    pip install tensorflow-cpu>=2.15.0
+    if errorlevel 1 (
+        echo.
+        echo WARNING: TensorFlow installation failed
+        echo The system will work without it but LSTM training will be limited
+        echo.
+    ) else (
+        echo TensorFlow CPU-only installed successfully!
+    )
 ) else (
     echo.
     echo Skipping TensorFlow installation
-    echo You can install it later with: pip install tensorflow==2.15.0
+    echo You can install it later with:
+    echo   - Full: pip install tensorflow
+    echo   - CPU: pip install tensorflow-cpu
+)
+
+REM Install optional FinBERT/Transformers (for sentiment analysis)
+echo.
+echo ============================================================================
+echo FinBERT Sentiment Model Installation (Optional)
+echo ============================================================================
+echo.
+echo FinBERT (transformers) is used for financial sentiment analysis.
+echo This is optional - the system works without it.
+echo.
+echo Package size: ~500MB (includes PyTorch and transformers)
+echo.
+set /p INSTALL_FINBERT="Install FinBERT sentiment model? (y/n): "
+
+if /i "%INSTALL_FINBERT%"=="y" (
+    echo.
+    echo Installing transformers and torch... (this may take several minutes)
+    pip install torch>=2.0.0 transformers>=4.30.0
+    if errorlevel 1 (
+        echo.
+        echo WARNING: FinBERT/transformers installation failed
+        echo The system will work without it
+        echo.
+    ) else (
+        echo FinBERT dependencies installed successfully!
+    )
+) else (
+    echo.
+    echo Skipping FinBERT installation
+    echo You can install it later with: pip install torch transformers
 )
 
 REM Verify installation
@@ -120,7 +170,9 @@ python -c "import flask; print(f'Flask {flask.__version__} - OK')"
 python -c "import numpy; print(f'NumPy {numpy.__version__} - OK')"
 python -c "import pandas; print(f'Pandas {pandas.__version__} - OK')"
 python -c "import sklearn; print(f'scikit-learn {sklearn.__version__} - OK')"
+python -c "import yfinance; print(f'yfinance {yfinance.__version__} - OK')"
 python -c "try: import tensorflow as tf; print(f'TensorFlow {tf.__version__} - OK')\nexcept: print('TensorFlow - NOT INSTALLED (optional)')"
+python -c "try: import transformers; print(f'Transformers {transformers.__version__} - OK')\nexcept: print('Transformers - NOT INSTALLED (optional)')"
 
 echo.
 echo ============================================================================

@@ -266,16 +266,29 @@
         <!-- Chart Panel (2/3 width) -->
         <div class="lg:col-span-2">
             <div class="glass-panel p-6">
-                <div class="flex items-center justify-between mb-4">
-                    <h2 class="text-xl font-bold" id="chartTitle">Select a stock to begin</h2>
-                    <div id="intervalButtons">
-                        <button class="interval-btn" data-period="1d" onclick="changePeriod('1d')">1D</button>
-                        <button class="interval-btn" data-period="5d" onclick="changePeriod('5d')">5D</button>
-                        <button class="interval-btn active" data-period="1mo" onclick="changePeriod('1mo')">1M</button>
-                        <button class="interval-btn" data-period="3mo" onclick="changePeriod('3mo')">3M</button>
-                        <button class="interval-btn" data-period="6mo" onclick="changePeriod('6mo')">6M</button>
-                        <button class="interval-btn" data-period="1y" onclick="changePeriod('1y')">1Y</button>
-                        <button class="interval-btn" data-period="2y" onclick="changePeriod('2y')">2Y</button>
+                <div class="mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-xl font-bold" id="chartTitle">Select a stock to begin</h2>
+                        <div class="flex gap-2">
+                            <button class="chart-type-btn" onclick="switchChartType('line')">Line</button>
+                            <button class="chart-type-btn" onclick="switchChartType('candlestick')">Candlestick</button>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-1">
+                        <div class="text-xs text-gray-400 mr-2 py-1">Intraday:</div>
+                        <button class="interval-btn" data-period="1d" data-interval="1m" onclick="changePeriod('1d', '1m')">1min</button>
+                        <button class="interval-btn" data-period="1d" data-interval="3m" onclick="changePeriod('1d', '3m')">3min</button>
+                        <button class="interval-btn" data-period="1d" data-interval="5m" onclick="changePeriod('1d', '5m')">5min</button>
+                        <button class="interval-btn" data-period="1d" data-interval="15m" onclick="changePeriod('1d', '15m')">15min</button>
+                        <div class="border-l border-gray-600 mx-2"></div>
+                        <div class="text-xs text-gray-400 mr-2 py-1">Periods:</div>
+                        <button class="interval-btn" data-period="1d" data-interval="1d" onclick="changePeriod('1d', '1d')">1D</button>
+                        <button class="interval-btn" data-period="5d" data-interval="1d" onclick="changePeriod('5d', '1d')">5D</button>
+                        <button class="interval-btn active" data-period="1mo" data-interval="1d" onclick="changePeriod('1mo', '1d')">1M</button>
+                        <button class="interval-btn" data-period="3mo" data-interval="1d" onclick="changePeriod('3mo', '1d')">3M</button>
+                        <button class="interval-btn" data-period="6mo" data-interval="1d" onclick="changePeriod('6mo', '1d')">6M</button>
+                        <button class="interval-btn" data-period="1y" data-interval="1d" onclick="changePeriod('1y', '1d')">1Y</button>
+                        <button class="interval-btn" data-period="2y" data-interval="1d" onclick="changePeriod('2y', '1d')">2Y</button>
                     </div>
                 </div>
                 
@@ -309,9 +322,18 @@
                 </div>
 
                 <div id="predictionData" class="hidden">
+                    <!-- Current Price Display (Prominent) -->
+                    <div class="text-center mb-4 pb-4 border-b border-gray-700">
+                        <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">Current Price</div>
+                        <div class="text-4xl font-bold mb-1" id="currentPriceDisplay">$0.00</div>
+                        <div class="text-sm" id="currentPriceChange">+$0.00 (+0.00%)</div>
+                    </div>
+
+                    <!-- Prediction Display -->
                     <div class="text-center mb-4">
+                        <div class="text-xs text-gray-400 uppercase tracking-wide mb-2">AI Prediction</div>
                         <div id="predictionBadge" class="prediction-badge mb-3">HOLD</div>
-                        <div class="text-3xl font-bold mb-1" id="predictedPrice">$0.00</div>
+                        <div class="text-2xl font-bold mb-1" id="predictedPrice">$0.00</div>
                         <div class="text-sm text-gray-400" id="priceChange">+$0.00 (+0.00%)</div>
                     </div>
 
@@ -329,10 +351,6 @@
                         <div class="flex justify-between">
                             <span class="text-gray-400">Model Type</span>
                             <span class="font-semibold" id="modelType">-</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-gray-400">Current Price</span>
-                            <span class="font-semibold" id="currentPrice">$0.00</span>
                         </div>
                     </div>
                 </div>
@@ -435,6 +453,7 @@
 
         let currentSymbol = '';
         let currentPeriod = '1mo';
+        let currentInterval = '1d';
         let currentChartType = 'candlestick';
         let priceChart = null;
         let volumeChart = null;
@@ -460,7 +479,7 @@
             currentChartType = type;
             document.querySelectorAll('.chart-type-btn').forEach(btn => {
                 btn.classList.remove('active');
-                if (btn.dataset.type === type) {
+                if (btn.textContent.toLowerCase() === type) {
                     btn.classList.add('active');
                 }
             });
@@ -469,11 +488,12 @@
             }
         }
 
-        function changePeriod(period) {
+        function changePeriod(period, interval = '1d') {
             currentPeriod = period;
+            currentInterval = interval;
             document.querySelectorAll('.interval-btn').forEach(btn => {
                 btn.classList.remove('active');
-                if (btn.dataset.period === period) {
+                if (btn.dataset.period === period && btn.dataset.interval === interval) {
                     btn.classList.add('active');
                 }
             });
@@ -514,7 +534,7 @@
             }
 
             try {
-                const response = await fetch(`${API_BASE}/api/stock/${currentSymbol}?period=${currentPeriod}`);
+                const response = await fetch(`${API_BASE}/api/stock/${currentSymbol}?period=${currentPeriod}&interval=${currentInterval}`);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -552,19 +572,30 @@
             document.getElementById('predictionContent').classList.add('hidden');
             document.getElementById('predictionData').classList.remove('hidden');
 
+            // Update CURRENT PRICE (Prominent Display)
+            const currentPrice = data.current_price;
+            const previousClose = data.previous_close || currentPrice;
+            const currentChange = currentPrice - previousClose;
+            const currentChangePercent = (currentChange / previousClose * 100).toFixed(2);
+            const currentColor = currentChange >= 0 ? 'text-green-400' : 'text-red-400';
+            const currentSign = currentChange >= 0 ? '+' : '';
+
+            document.getElementById('currentPriceDisplay').textContent = 
+                `$${currentPrice.toFixed(2)}`;
+            document.getElementById('currentPriceChange').innerHTML = 
+                `<span class="${currentColor}">${currentSign}$${currentChange.toFixed(2)} (${currentSign}${currentChangePercent}%)</span>`;
+
             // Update prediction badge
             const badge = document.getElementById('predictionBadge');
             badge.textContent = prediction.prediction;
             badge.className = `prediction-badge prediction-${prediction.prediction}`;
 
-            // Update prices
+            // Update PREDICTED PRICE
             document.getElementById('predictedPrice').textContent = 
                 `$${prediction.predicted_price.toFixed(2)}`;
-            document.getElementById('currentPrice').textContent = 
-                `$${data.current_price.toFixed(2)}`;
 
-            const change = prediction.predicted_price - data.current_price;
-            const changePercent = (change / data.current_price * 100).toFixed(2);
+            const change = prediction.predicted_price - currentPrice;
+            const changePercent = (change / currentPrice * 100).toFixed(2);
             const changeColor = change >= 0 ? 'text-green-400' : 'text-red-400';
             const changeSign = change >= 0 ? '+' : '';
             
@@ -641,7 +672,9 @@
                             up: '#10b981',
                             down: '#ef4444',
                             unchanged: '#6b7280',
-                        }
+                        },
+                        barPercentage: 0.5,
+                        categoryPercentage: 0.8
                     }]
                 },
                 options: {

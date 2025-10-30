@@ -222,21 +222,29 @@ class EnhancedMLPredictor:
 ml_predictor = EnhancedMLPredictor()
 
 def fetch_yahoo_data(symbol, interval='1d', period='1m'):
-    """Fetch real market data from Yahoo Finance"""
+    """Fetch real market data from Yahoo Finance - NO FAKE DATA"""
     try:
-        if interval == '3m':
-            interval = '5m'
-        
+        # Map periods to Yahoo Finance ranges
         range_map = {
-            '1d': '5d', '5d': '5d', '1m': '1mo', 
+            '1d': '1d', '5d': '5d', '1m': '1mo', 
             '3m': '3mo', '6m': '6mo', '1y': '1y', '2y': '2y', '5y': '5y'
         }
         range_str = range_map.get(period, '1mo')
         
-        if interval == '1d':
-            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range={range_str}&interval=1d"
+        # Build URL based on interval type
+        if interval in ['1m', '2m', '5m', '15m', '30m', '60m', '90m']:
+            # Intraday data - use smaller range
+            if period == '1d':
+                range_str = '1d'
+            else:
+                range_str = '5d'  # Max for intraday
+            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range={range_str}&interval={interval}"
+        elif interval == '3m':
+            # 3m not supported by Yahoo, use 5m instead
+            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=5d&interval=5m"
         else:
-            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval={interval}&range=1d"
+            # Daily or longer intervals
+            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range={range_str}&interval={interval}"
         
         headers = {'User-Agent': 'Mozilla/5.0'}
         req = urllib.request.Request(url, headers=headers)
