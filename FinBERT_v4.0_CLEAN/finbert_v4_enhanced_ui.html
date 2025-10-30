@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinBERT v4.0 - Professional Trading System</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #0a0f1c 0%, #1a1f2c 100%);
+            font-family: 'Inter', sans-serif;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(12px);
+            border-radius: 12px;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            margin-bottom: 10px;
+        }
+
+        .volume-chart-container {
+            position: relative;
+            width: 100%;
+            height: 150px;
+            margin-top: 10px;
+        }
+
+        .loading-spinner {
+            border: 3px solid rgba(59, 130, 246, 0.2);
+            border-radius: 50%;
+            border-top: 3px solid #3b82f6;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .prediction-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.875rem;
+        }
+
+        .prediction-BUY {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid #10b981;
+        }
+
+        .prediction-SELL {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid #ef4444;
+        }
+
+        .prediction-HOLD {
+            background: rgba(234, 179, 8, 0.2);
+            color: #eab308;
+            border: 1px solid #eab308;
+        }
+
+        .chart-type-btn {
+            padding: 8px 16px;
+            margin: 0 4px;
+            background: rgba(51, 65, 85, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+            color: #94a3b8;
+        }
+
+        .chart-type-btn:hover {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+            color: #e2e8f0;
+        }
+
+        .chart-type-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        .interval-btn {
+            padding: 6px 12px;
+            margin: 2px;
+            background: rgba(51, 65, 85, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+        }
+
+        .interval-btn:hover {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+        }
+
+        .interval-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-content {
+            background: rgba(30, 41, 59, 0.95);
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 600px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: rgba(51, 65, 85, 0.5);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 10px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .train-log {
+            background: #0f172a;
+            padding: 15px;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+            margin-top: 15px;
+        }
+
+        .lstm-indicator {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-left: 8px;
+        }
+
+        .confidence-bar {
+            height: 6px;
+            background: rgba(51, 65, 85, 0.5);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            transition: width 0.5s ease;
+        }
+    </style>
+</head>
+<body class="p-6">
+    <!-- Header -->
+    <div class="glass-panel p-6 mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold mb-2">
+                    <i class="fas fa-brain text-blue-500"></i> FinBERT v4.0
+                    <span class="lstm-indicator">LSTM ENHANCED</span>
+                </h1>
+                <p class="text-gray-400">Professional Trading System with Candlestick Charts</p>
+            </div>
+            <div class="text-right">
+                <button onclick="openTrainModal()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition">
+                    <i class="fas fa-dumbbell mr-2"></i> Train Model
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Market Selector & Search -->
+    <div class="glass-panel p-6 mb-6">
+        <div class="flex flex-wrap items-center gap-4">
+            <div class="flex gap-2">
+                <button class="chart-type-btn active" data-type="candlestick" onclick="switchChartType('candlestick')">
+                    <i class="fas fa-chart-candlestick mr-2"></i> Candlestick
+                </button>
+                <button class="chart-type-btn" data-type="line" onclick="switchChartType('line')">
+                    <i class="fas fa-chart-line mr-2"></i> Line
+                </button>
+            </div>
+
+            <div class="flex-1">
+                <input 
+                    type="text" 
+                    id="symbolInput" 
+                    placeholder="Enter stock symbol (e.g., AAPL or CBA.AX for ASX)"
+                    class="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                >
+            </div>
+
+            <button 
+                onclick="analyzeStock()" 
+                class="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition"
+            >
+                <i class="fas fa-chart-line mr-2"></i> Analyze
+            </button>
+        </div>
+
+        <!-- Quick Access -->
+        <div class="mt-4">
+            <div class="text-sm text-gray-400 mb-2">Quick Access:</div>
+            <div class="flex flex-wrap gap-2">
+                <button onclick="selectQuickSymbol('AAPL')" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition">AAPL</button>
+                <button onclick="selectQuickSymbol('MSFT')" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition">MSFT</button>
+                <button onclick="selectQuickSymbol('GOOGL')" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition">GOOGL</button>
+                <button onclick="selectQuickSymbol('TSLA')" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition">TSLA</button>
+                <button onclick="selectQuickSymbol('CBA.AX')" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition">CBA.AX</button>
+                <button onclick="selectQuickSymbol('BHP.AX')" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition">BHP.AX</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Chart Panel (2/3 width) -->
+        <div class="lg:col-span-2">
+            <div class="glass-panel p-6">
+                <div class="mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-xl font-bold" id="chartTitle">Select a stock to begin</h2>
+                        <div class="flex gap-2">
+                            <button class="chart-type-btn" onclick="switchChartType('line')">Line</button>
+                            <button class="chart-type-btn" onclick="switchChartType('candlestick')">Candlestick</button>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap gap-1">
+                        <div class="text-xs text-gray-400 mr-2 py-1">Intraday:</div>
+                        <button class="interval-btn" data-period="1d" data-interval="1m" onclick="changePeriod('1d', '1m')">1min</button>
+                        <button class="interval-btn" data-period="1d" data-interval="3m" onclick="changePeriod('1d', '3m')">3min</button>
+                        <button class="interval-btn" data-period="1d" data-interval="5m" onclick="changePeriod('1d', '5m')">5min</button>
+                        <button class="interval-btn" data-period="1d" data-interval="15m" onclick="changePeriod('1d', '15m')">15min</button>
+                        <div class="border-l border-gray-600 mx-2"></div>
+                        <div class="text-xs text-gray-400 mr-2 py-1">Periods:</div>
+                        <button class="interval-btn" data-period="1d" data-interval="1d" onclick="changePeriod('1d', '1d')">1D</button>
+                        <button class="interval-btn" data-period="5d" data-interval="1d" onclick="changePeriod('5d', '1d')">5D</button>
+                        <button class="interval-btn active" data-period="1mo" data-interval="1d" onclick="changePeriod('1mo', '1d')">1M</button>
+                        <button class="interval-btn" data-period="3mo" data-interval="1d" onclick="changePeriod('3mo', '1d')">3M</button>
+                        <button class="interval-btn" data-period="6mo" data-interval="1d" onclick="changePeriod('6mo', '1d')">6M</button>
+                        <button class="interval-btn" data-period="1y" data-interval="1d" onclick="changePeriod('1y', '1d')">1Y</button>
+                        <button class="interval-btn" data-period="2y" data-interval="1d" onclick="changePeriod('2y', '1d')">2Y</button>
+                    </div>
+                </div>
+                
+                <!-- Price Chart -->
+                <div class="chart-container">
+                    <canvas id="priceChart"></canvas>
+                </div>
+
+                <!-- Volume Chart -->
+                <div class="volume-chart-container">
+                    <canvas id="volumeChart"></canvas>
+                </div>
+
+                <div id="loadingIndicator" class="hidden flex justify-center items-center h-64">
+                    <div class="loading-spinner"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prediction & Stats Panel (1/3 width) -->
+        <div class="space-y-6">
+            <!-- ML Prediction Card -->
+            <div class="glass-panel p-6">
+                <h3 class="text-lg font-bold mb-4">
+                    <i class="fas fa-robot text-purple-500"></i> AI Prediction
+                </h3>
+                
+                <div id="predictionContent" class="text-center text-gray-500">
+                    <i class="fas fa-chart-line text-4xl mb-3 opacity-30"></i>
+                    <p>Analyze a stock to see predictions</p>
+                </div>
+
+                <div id="predictionData" class="hidden">
+                    <!-- Current Price Display (Prominent) -->
+                    <div class="text-center mb-4 pb-4 border-b border-gray-700">
+                        <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">Current Price</div>
+                        <div class="text-4xl font-bold mb-1" id="currentPriceDisplay">$0.00</div>
+                        <div class="text-sm" id="currentPriceChange">+$0.00 (+0.00%)</div>
+                    </div>
+
+                    <!-- Prediction Display -->
+                    <div class="text-center mb-4">
+                        <div class="text-xs text-gray-400 uppercase tracking-wide mb-2">AI Prediction</div>
+                        <div id="predictionBadge" class="prediction-badge mb-3">HOLD</div>
+                        <div class="text-2xl font-bold mb-1" id="predictedPrice">$0.00</div>
+                        <div class="text-sm text-gray-400" id="priceChange">+$0.00 (+0.00%)</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="flex justify-between text-sm mb-2">
+                            <span class="text-gray-400">Confidence</span>
+                            <span class="font-semibold" id="confidenceValue">0%</span>
+                        </div>
+                        <div class="confidence-bar">
+                            <div id="confidenceFill" class="confidence-fill" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Model Type</span>
+                            <span class="font-semibold" id="modelType">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Market Stats Card -->
+            <div class="glass-panel p-6">
+                <h3 class="text-lg font-bold mb-4">
+                    <i class="fas fa-chart-bar text-blue-500"></i> Market Data
+                </h3>
+                
+                <div id="statsContent" class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Day High</span>
+                        <span class="font-bold" id="dayHigh">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Day Low</span>
+                        <span class="font-bold" id="dayLow">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Volume</span>
+                        <span class="font-bold" id="volume">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Change</span>
+                        <span class="font-bold" id="change">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Training Modal -->
+    <div id="trainModal" class="modal">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">
+                    <i class="fas fa-dumbbell text-purple-500 mr-2"></i> Train LSTM Model
+                </h2>
+                <button onclick="closeTrainModal()" class="text-gray-400 hover:text-white text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold mb-2">Stock Symbol</label>
+                    <input 
+                        type="text" 
+                        id="trainSymbol" 
+                        placeholder="e.g., AAPL or CBA.AX"
+                        class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                    >
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold mb-2">Epochs (Training Iterations)</label>
+                    <input 
+                        type="number" 
+                        id="trainEpochs" 
+                        value="50"
+                        min="10"
+                        max="200"
+                        class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                    >
+                    <p class="text-xs text-gray-400 mt-1">Recommended: 50-100 (Higher = More accurate but slower)</p>
+                </div>
+
+                <div id="trainingProgress" class="hidden">
+                    <div class="flex justify-between text-sm mb-2">
+                        <span>Training Progress</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div id="progressFill" class="progress-fill"></div>
+                    </div>
+
+                    <div id="trainLog" class="train-log mt-3">
+                        <div class="text-green-400">Starting training...</div>
+                    </div>
+                </div>
+
+                <button 
+                    id="startTrainBtn"
+                    onclick="startTraining()" 
+                    class="w-full px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition"
+                >
+                    <i class="fas fa-play mr-2"></i> Start Training
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = window.location.hostname === 'localhost' 
+            ? 'http://localhost:5001' 
+            : window.location.origin;
+
+        let currentSymbol = '';
+        let currentPeriod = '1mo';
+        let currentInterval = '1d';
+        let currentChartType = 'candlestick';
+        let priceChart = null;
+        let volumeChart = null;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkHealth();
+        });
+
+        // Enter key in search
+        document.getElementById('symbolInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                analyzeStock();
+            }
+        });
+
+        function selectQuickSymbol(symbol) {
+            document.getElementById('symbolInput').value = symbol;
+            analyzeStock();
+        }
+
+        function switchChartType(type) {
+            currentChartType = type;
+            document.querySelectorAll('.chart-type-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent.toLowerCase() === type) {
+                    btn.classList.add('active');
+                }
+            });
+            if (currentSymbol) {
+                analyzeStock();
+            }
+        }
+
+        function changePeriod(period, interval = '1d') {
+            currentPeriod = period;
+            currentInterval = interval;
+            document.querySelectorAll('.interval-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.dataset.period === period && btn.dataset.interval === interval) {
+                    btn.classList.add('active');
+                }
+            });
+            if (currentSymbol) {
+                analyzeStock();
+            }
+        }
+
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/api/health`);
+                const data = await response.json();
+                console.log('Health check:', data);
+            } catch (error) {
+                console.error('Health check failed:', error);
+            }
+        }
+
+        async function analyzeStock() {
+            const input = document.getElementById('symbolInput').value.trim().toUpperCase();
+            if (!input) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+
+            currentSymbol = input;
+            document.getElementById('chartTitle').textContent = `${currentSymbol} Analysis`;
+
+            // Show loading
+            document.getElementById('loadingIndicator').classList.remove('hidden');
+            if (priceChart) {
+                priceChart.destroy();
+                priceChart = null;
+            }
+            if (volumeChart) {
+                volumeChart.destroy();
+                volumeChart = null;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/stock/${currentSymbol}?period=${currentPeriod}&interval=${currentInterval}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Hide loading
+                document.getElementById('loadingIndicator').classList.add('hidden');
+                
+                // Update prediction
+                updatePrediction(data);
+                
+                // Update stats
+                updateStats(data);
+                
+                // Update charts
+                updateCharts(data);
+                
+            } catch (error) {
+                console.error('Error analyzing stock:', error);
+                alert(`Failed to analyze ${currentSymbol}. Please check the symbol and try again.`);
+                document.getElementById('loadingIndicator').classList.add('hidden');
+            }
+        }
+
+        function updatePrediction(data) {
+            const prediction = data.ml_prediction;
+            
+            if (!prediction) {
+                return;
+            }
+
+            // Show prediction data
+            document.getElementById('predictionContent').classList.add('hidden');
+            document.getElementById('predictionData').classList.remove('hidden');
+
+            // Update CURRENT PRICE (Prominent Display)
+            const currentPrice = data.current_price;
+            const previousClose = data.previous_close || currentPrice;
+            const currentChange = currentPrice - previousClose;
+            const currentChangePercent = (currentChange / previousClose * 100).toFixed(2);
+            const currentColor = currentChange >= 0 ? 'text-green-400' : 'text-red-400';
+            const currentSign = currentChange >= 0 ? '+' : '';
+
+            document.getElementById('currentPriceDisplay').textContent = 
+                `$${currentPrice.toFixed(2)}`;
+            document.getElementById('currentPriceChange').innerHTML = 
+                `<span class="${currentColor}">${currentSign}$${currentChange.toFixed(2)} (${currentSign}${currentChangePercent}%)</span>`;
+
+            // Update prediction badge
+            const badge = document.getElementById('predictionBadge');
+            badge.textContent = prediction.prediction;
+            badge.className = `prediction-badge prediction-${prediction.prediction}`;
+
+            // Update PREDICTED PRICE
+            document.getElementById('predictedPrice').textContent = 
+                `$${prediction.predicted_price.toFixed(2)}`;
+
+            const change = prediction.predicted_price - currentPrice;
+            const changePercent = (change / currentPrice * 100).toFixed(2);
+            const changeColor = change >= 0 ? 'text-green-400' : 'text-red-400';
+            const changeSign = change >= 0 ? '+' : '';
+            
+            document.getElementById('priceChange').innerHTML = 
+                `<span class="${changeColor}">${changeSign}$${change.toFixed(2)} (${changeSign}${changePercent}%)</span>`;
+
+            // Update confidence
+            const confidence = Math.round(prediction.confidence);
+            document.getElementById('confidenceValue').textContent = `${confidence}%`;
+            document.getElementById('confidenceFill').style.width = `${confidence}%`;
+
+            // Update model info
+            document.getElementById('modelType').textContent = prediction.model_type || 'Technical';
+        }
+
+        function updateStats(data) {
+            document.getElementById('dayHigh').textContent = `$${data.day_high.toFixed(2)}`;
+            document.getElementById('dayLow').textContent = `$${data.day_low.toFixed(2)}`;
+            
+            const volume = data.volume;
+            const volumeStr = volume > 1000000 
+                ? `${(volume / 1000000).toFixed(2)}M` 
+                : `${(volume / 1000).toFixed(2)}K`;
+            document.getElementById('volume').textContent = volumeStr;
+
+            const change = data.price_change;
+            const changePercent = data.price_change_percent;
+            const changeColor = change >= 0 ? 'text-green-400' : 'text-red-400';
+            const changeSign = change >= 0 ? '+' : '';
+            
+            document.getElementById('change').innerHTML = 
+                `<span class="${changeColor}">${changeSign}$${change.toFixed(2)} (${changeSign}${changePercent.toFixed(2)}%)</span>`;
+        }
+
+        function updateCharts(data) {
+            const chartData = data.chart_data || [];
+
+            if (chartData.length === 0) {
+                return;
+            }
+
+            if (currentChartType === 'candlestick') {
+                createCandlestickChart(chartData);
+            } else {
+                createLineChart(chartData);
+            }
+
+            createVolumeChart(chartData);
+        }
+
+        function createCandlestickChart(chartData) {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+
+            const candlestickData = chartData.map(d => ({
+                x: new Date(d.date),
+                o: d.open,
+                h: d.high,
+                l: d.low,
+                c: d.close
+            }));
+
+            priceChart = new Chart(ctx, {
+                type: 'candlestick',
+                data: {
+                    datasets: [{
+                        label: currentSymbol,
+                        data: candlestickData,
+                        color: {
+                            up: '#10b981',
+                            down: '#ef4444',
+                            unchanged: '#6b7280',
+                        },
+                        borderColor: {
+                            up: '#10b981',
+                            down: '#ef4444',
+                            unchanged: '#6b7280',
+                        },
+                        barPercentage: 0.5,
+                        categoryPercentage: 0.8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            padding: 12,
+                            titleColor: '#e2e8f0',
+                            bodyColor: '#e2e8f0',
+                            borderColor: '#3b82f6',
+                            borderWidth: 1,
+                        },
+                        zoom: {
+                            zoom: {
+                                wheel: {
+                                    enabled: true
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'x'
+                            },
+                            pan: {
+                                enabled: true,
+                                mode: 'x'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            grid: {
+                                color: 'rgba(148, 163, 184, 0.1)'
+                            },
+                            ticks: {
+                                color: '#94a3b8'
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(148, 163, 184, 0.1)'
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                callback: (value) => `$${value.toFixed(2)}`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createLineChart(chartData) {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+
+            const labels = chartData.map(d => new Date(d.date));
+            const prices = chartData.map(d => d.close);
+
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(59, 130, 246, 0.3)');
+            gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
+
+            priceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: currentSymbol,
+                        data: prices,
+                        borderColor: '#3b82f6',
+                        backgroundColor: gradient,
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: '#3b82f6',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            padding: 12,
+                            titleColor: '#e2e8f0',
+                            bodyColor: '#e2e8f0',
+                            borderColor: '#3b82f6',
+                            borderWidth: 1,
+                            callbacks: {
+                                title: (items) => {
+                                    const date = new Date(items[0].parsed.x);
+                                    return date.toLocaleDateString('en-US', { 
+                                        year: 'numeric', 
+                                        month: 'short', 
+                                        day: 'numeric'
+                                    });
+                                },
+                                label: (context) => {
+                                    return `Price: $${context.parsed.y.toFixed(2)}`;
+                                }
+                            }
+                        },
+                        zoom: {
+                            zoom: {
+                                wheel: {
+                                    enabled: true
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'x'
+                            },
+                            pan: {
+                                enabled: true,
+                                mode: 'x'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            grid: {
+                                color: 'rgba(148, 163, 184, 0.1)'
+                            },
+                            ticks: {
+                                color: '#94a3b8'
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(148, 163, 184, 0.1)'
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                callback: (value) => `$${value.toFixed(2)}`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function createVolumeChart(chartData) {
+            const ctx = document.getElementById('volumeChart').getContext('2d');
+
+            const labels = chartData.map(d => new Date(d.date));
+            const volumes = chartData.map(d => d.volume);
+            const colors = chartData.map((d, i) => {
+                if (i === 0) return '#6b7280';
+                return d.close >= chartData[i-1].close ? '#10b981' : '#ef4444';
+            });
+
+            volumeChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Volume',
+                        data: volumes,
+                        backgroundColor: colors,
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            padding: 12,
+                            titleColor: '#e2e8f0',
+                            bodyColor: '#e2e8f0',
+                            borderColor: '#3b82f6',
+                            borderWidth: 1,
+                            callbacks: {
+                                title: (items) => {
+                                    const date = new Date(items[0].parsed.x);
+                                    return date.toLocaleDateString('en-US', { 
+                                        year: 'numeric', 
+                                        month: 'short', 
+                                        day: 'numeric'
+                                    });
+                                },
+                                label: (context) => {
+                                    const vol = context.parsed.y;
+                                    const volStr = vol > 1000000 
+                                        ? `${(vol / 1000000).toFixed(2)}M` 
+                                        : `${(vol / 1000).toFixed(2)}K`;
+                                    return `Volume: ${volStr}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            display: false
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(148, 163, 184, 0.1)'
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                callback: (value) => {
+                                    return value > 1000000 
+                                        ? `${(value / 1000000).toFixed(0)}M` 
+                                        : `${(value / 1000).toFixed(0)}K`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Training Modal Functions
+        function openTrainModal() {
+            document.getElementById('trainModal').style.display = 'block';
+            const symbol = document.getElementById('symbolInput').value.trim().toUpperCase();
+            if (symbol) {
+                document.getElementById('trainSymbol').value = symbol;
+            }
+        }
+
+        function closeTrainModal() {
+            document.getElementById('trainModal').style.display = 'none';
+            document.getElementById('trainingProgress').classList.add('hidden');
+        }
+
+        async function startTraining() {
+            const symbol = document.getElementById('trainSymbol').value.trim().toUpperCase();
+            const epochs = parseInt(document.getElementById('trainEpochs').value);
+
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+
+            if (epochs < 10 || epochs > 200) {
+                alert('Please enter epochs between 10 and 200');
+                return;
+            }
+
+            // Show progress
+            document.getElementById('trainingProgress').classList.remove('hidden');
+            document.getElementById('startTrainBtn').disabled = true;
+            document.getElementById('startTrainBtn').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Training...';
+
+            const logDiv = document.getElementById('trainLog');
+            logDiv.innerHTML = '<div class="text-green-400">Initializing training...</div>';
+
+            try {
+                // Simulate training progress (since actual training is async)
+                let progress = 0;
+                const progressInterval = setInterval(() => {
+                    progress += 2;
+                    if (progress <= 90) {
+                        document.getElementById('progressFill').style.width = `${progress}%`;
+                        document.getElementById('progressPercent').textContent = `${progress}%`;
+                        
+                        if (progress % 10 === 0) {
+                            logDiv.innerHTML += `<div class="text-blue-400">Epoch ${Math.floor(progress/2)}/${epochs} - Training...</div>`;
+                            logDiv.scrollTop = logDiv.scrollHeight;
+                        }
+                    }
+                }, 1000);
+
+                const response = await fetch(`${API_BASE}/api/train/${symbol}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        epochs: epochs,
+                        sequence_length: 30
+                    })
+                });
+
+                clearInterval(progressInterval);
+
+                if (!response.ok) {
+                    throw new Error(`Training failed: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+
+                // Complete progress
+                document.getElementById('progressFill').style.width = '100%';
+                document.getElementById('progressPercent').textContent = '100%';
+                
+                logDiv.innerHTML += `<div class="text-green-400 font-bold">✓ Training completed successfully!</div>`;
+                logDiv.innerHTML += `<div class="text-gray-400">Model saved for ${symbol}</div>`;
+                logDiv.scrollTop = logDiv.scrollHeight;
+
+                // Re-enable button
+                setTimeout(() => {
+                    document.getElementById('startTrainBtn').disabled = false;
+                    document.getElementById('startTrainBtn').innerHTML = '<i class="fas fa-check mr-2"></i> Training Complete!';
+                    
+                    setTimeout(() => {
+                        closeTrainModal();
+                        document.getElementById('startTrainBtn').innerHTML = '<i class="fas fa-play mr-2"></i> Start Training';
+                        
+                        // Refresh analysis if same symbol
+                        if (currentSymbol === symbol) {
+                            analyzeStock();
+                        }
+                    }, 2000);
+                }, 1000);
+
+            } catch (error) {
+                console.error('Training error:', error);
+                logDiv.innerHTML += `<div class="text-red-400">✗ Training failed: ${error.message}</div>`;
+                
+                document.getElementById('startTrainBtn').disabled = false;
+                document.getElementById('startTrainBtn').innerHTML = '<i class="fas fa-play mr-2"></i> Retry Training';
+            }
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('trainModal');
+            if (event.target == modal) {
+                closeTrainModal();
+            }
+        }
+    </script>
+</body>
+</html>

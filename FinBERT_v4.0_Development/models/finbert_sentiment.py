@@ -309,54 +309,8 @@ class FinBERTSentimentAnalyzer:
         else:
             return ('HOLD', 'Weak')
     
-    def get_mock_sentiment(self, symbol: str) -> Dict:
-        """
-        Generate mock sentiment data when news is unavailable
-        Used as fallback for demonstration/testing
-        
-        Args:
-            symbol: Stock symbol
-        
-        Returns:
-            Mock sentiment data
-        """
-        # Generate pseudo-random but consistent sentiment based on symbol
-        hash_val = sum(ord(c) for c in symbol)
-        base_sentiment = (hash_val % 100) / 100.0
-        
-        # Create sentiment scores
-        if base_sentiment > 0.6:
-            sentiment_label = 'positive'
-            positive = 0.5 + (base_sentiment - 0.6) * 1.25
-            negative = 0.1 + (1 - base_sentiment) * 0.2
-            neutral = 1.0 - (positive + negative)
-        elif base_sentiment < 0.4:
-            sentiment_label = 'negative'
-            negative = 0.5 + (0.4 - base_sentiment) * 1.25
-            positive = 0.1 + base_sentiment * 0.2
-            neutral = 1.0 - (positive + negative)
-        else:
-            sentiment_label = 'neutral'
-            neutral = 0.6
-            positive = 0.2
-            negative = 0.2
-        
-        compound = positive - negative
-        confidence = max(positive, negative, neutral)
-        
-        return {
-            'sentiment': sentiment_label,
-            'confidence': round(confidence * 100, 2),
-            'scores': {
-                'negative': round(negative, 4),
-                'neutral': round(neutral, 4),
-                'positive': round(positive, 4)
-            },
-            'compound': round(compound, 4),
-            'method': 'Mock (No News Available)',
-            'timestamp': datetime.now().isoformat(),
-            'is_mock': True
-        }
+    # REMOVED: get_mock_sentiment() method - Use real news data from news_sentiment_real.py instead
+    # Never use mock/fake sentiment data in production
 
 
 # Singleton instance
