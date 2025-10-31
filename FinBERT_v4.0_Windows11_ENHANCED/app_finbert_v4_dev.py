@@ -13,7 +13,7 @@ import urllib.request
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 import numpy as np
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 
 # Add models directory to path
@@ -49,7 +49,10 @@ logger = logging.getLogger(__name__)
 # Load configuration
 config = get_config('development')
 
-app = Flask(__name__)
+# Initialize Flask with explicit template folder
+app = Flask(__name__, 
+            template_folder='templates',
+            static_folder='static')
 CORS(app, origins=config.CORS_ORIGINS)
 
 class EnhancedMLPredictor:
@@ -397,18 +400,17 @@ def fetch_yahoo_data(symbol, interval='1d', period='1m'):
 @app.route('/')
 def index():
     """Serve the v4.0 enhanced UI with candlestick charts and training"""
-    import os
-    ui_file = os.path.join(os.path.dirname(__file__), 'finbert_v4_enhanced_ui.html')
     try:
-        with open(ui_file, 'r', encoding='utf-8') as f:
-            return f.read()
-    except FileNotFoundError as e:
-        print(f"UI file not found: {ui_file} - {e}")
+        return render_template('finbert_v4_enhanced_ui.html')
+    except Exception as e:
+        logger.error(f"Error rendering template: {e}")
         return f"""
     <html>
     <head><title>FinBERT v4.0 Development</title></head>
     <body style="font-family: Arial; margin: 40px;">
         <h1>🚀 FinBERT v4.0 Development Server</h1>
+        <h2>⚠️ Template Error</h2>
+        <p>Error: {e}</p>
         <h2>Features Enabled:</h2>
         <ul>
             <li>LSTM Models: {'✅ Enabled' if config.FEATURES.get('USE_LSTM') else '❌ Disabled'}</li>

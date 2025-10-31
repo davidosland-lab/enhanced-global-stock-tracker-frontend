@@ -325,22 +325,45 @@ def fetch_yahoo_data(symbol, interval='1d', period='1m'):
         current_price = meta.get('regularMarketPrice', 0)
         prev_close = meta.get('chartPreviousClose', meta.get('previousClose', 0))
         
+        # Get indicators early to calculate proper previous close
+        indicators = result.get('indicators', {})
+        quote = indicators.get('quote', [{}])[0]
+        closes = quote.get('close', [])
+        
         # Get last close if current is 0
         if current_price == 0:
-            indicators = result.get('indicators', {})
-            quote = indicators.get('quote', [{}])[0]
-            closes = quote.get('close', [])
             for i in range(len(closes) - 1, -1, -1):
                 if closes[i] is not None and closes[i] > 0:
                     current_price = closes[i]
                     break
         
+        # Calculate more accurate previous close from chart data
+        # Use the second-to-last valid close price for better accuracy
+        if len(closes) >= 2:
+            # Find last valid close (current)
+            last_valid_idx = -1
+            for i in range(len(closes) - 1, -1, -1):
+                if closes[i] is not None and closes[i] > 0:
+                    last_valid_idx = i
+                    break
+            
+            # Find previous valid close
+            if last_valid_idx > 0:
+                for i in range(last_valid_idx - 1, -1, -1):
+                    if closes[i] is not None and closes[i] > 0:
+                        prev_close = closes[i]
+                        break
+        
+        # Calculate change based on better previous close
+        change = current_price - prev_close if prev_close else 0
+        change_percent = ((current_price - prev_close) / prev_close * 100) if prev_close else 0
+        
         response_data = {
             'symbol': symbol.upper(),
             'price': current_price,
             'previousClose': prev_close,
-            'change': current_price - prev_close if prev_close else 0,
-            'changePercent': ((current_price - prev_close) / prev_close * 100) if prev_close else 0,
+            'change': change,
+            'changePercent': change_percent,
             'volume': meta.get('regularMarketVolume', 0),
             'high': meta.get('regularMarketDayHigh', current_price),
             'low': meta.get('regularMarketDayLow', current_price),
