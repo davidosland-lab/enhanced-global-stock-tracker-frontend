@@ -890,6 +890,163 @@ def get_allocation_strategies():
         ]
     })
 
+@app.route('/api/backtest/optimize', methods=['POST'])
+def optimize_backtest_parameters():
+    """
+    Optimize backtest parameters to find best configuration
+    
+    Request JSON:
+    {
+        "symbol": "AAPL",
+        "start_date": "2023-01-01",
+        "end_date": "2024-11-01",
+        "model_type": "ensemble",
+        "initial_capital": 10000,
+        "optimization_method": "random",  # "grid" or "random"
+        "max_iterations": 50,  # For random search
+        "parameter_grid": {  # Optional custom grid
+            "confidence_threshold": [0.55, 0.60, 0.65, 0.70],
+            "lookback_days": [45, 60, 75, 90],
+            "max_position_size": [0.10, 0.15, 0.20]
+        }
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['symbol', 'start_date', 'end_date']
+        missing = [f for f in required_fields if f not in data]
+        if missing:
+            return jsonify({'error': f'Missing required fields: {missing}'}), 400
+        
+        symbol = data['symbol'].upper()
+        start_date = data['start_date']
+        end_date = data['end_date']
+        model_type = data.get('model_type', 'ensemble')
+        initial_capital = data.get('initial_capital', 10000)
+        optimization_method = data.get('optimization_method', 'random')
+        max_iterations = data.get('max_iterations', 50)
+        
+        logger.info(f"Starting parameter optimization for {symbol} using {optimization_method} search")
+        
+        # Import optimizer and backtesting modules
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'models'))
+        from backtesting.parameter_optimizer import (
+            ParameterOptimizer, 
+            DEFAULT_PARAMETER_GRID, 
+            QUICK_PARAMETER_GRID
+        )
+        from backtesting.single_stock_backtester import run_backtest
+        
+        # Use custom parameter grid if provided, otherwise use default
+        if 'parameter_grid' in data and data['parameter_grid']:
+            parameter_grid = data['parameter_grid']
+        else:
+            # Use quick grid for faster testing
+            parameter_grid = QUICK_PARAMETER_GRID
+        
+        # Create optimizer with backtest function
+        def backtest_wrapper(**params):
+            """Wrapper function for backtesting"""
+            try:
+                result = run_backtest(
+                    symbol=params.get('symbol', symbol),
+                    start_date=params.get('start_date', start_date),
+                    end_date=params.get('end_date', end_date),
+                    initial_capital=params.get('initial_capital', initial_capital),
+                    model_type=params.get('model_type', model_type),
+                    confidence_threshold=params.get('confidence_threshold', 0.60),
+                    lookback_days=params.get('lookback_days', 60),
+                    max_position_size=params.get('max_position_size', 0.20),
+                    use_cache=True
+                )
+                return result.get('performance', {})
+            except Exception as e:
+                logger.error(f"Backtest wrapper error: {e}")
+                return {
+                    'total_return_pct': -999,
+                    'sharpe_ratio': -999,
+                    'max_drawdown_pct': -999,
+                    'win_rate': 0
+                }
+        
+        optimizer = ParameterOptimizer(
+            backtest_function=backtest_wrapper,
+            parameter_grid=parameter_grid,
+            optimization_metric='total_return_pct',
+            train_test_split=0.75
+        )
+        
+        # Run optimization
+        if optimization_method == 'grid':
+            best_params, results_df = optimizer.grid_search(
+                symbol=symbol,
+                start_date=start_date,
+                end_date=end_date,
+                model_type=model_type,
+                initial_capital=initial_capital
+            )
+        else:  # random search
+            best_params, results_df = optimizer.random_search(
+                symbol=symbol,
+                start_date=start_date,
+                end_date=end_date,
+                n_iterations=max_iterations,
+                model_type=model_type,
+                initial_capital=initial_capital
+            )
+        
+        # Generate summary report
+        summary = optimizer.generate_summary_report()
+        
+        # Prepare response
+        response = {
+            'status': 'success',
+            'optimization_method': optimization_method,
+            'symbol': symbol,
+            'period': {
+                'start': start_date,
+                'end': end_date
+            },
+            'best_parameters': best_params,
+            'summary': {
+                'total_configurations_tested': summary.get('total_configurations_tested', 0),
+                'avg_train_return': round(summary.get('avg_train_return', 0), 2),
+                'avg_test_return': round(summary.get('avg_test_return', 0), 2),
+                'best_train_return': round(summary.get('best_train_return', 0), 2),
+                'best_test_return': round(summary.get('best_test_return', 0), 2),
+                'avg_overfit_score': round(summary.get('avg_overfit_score', 0), 2),
+                'configurations_with_low_overfit': summary.get('configurations_with_low_overfit', 0)
+            },
+            'top_10_configurations': summary.get('top_10_configs', [])[:10],
+            'improvement_analysis': {
+                'baseline_return': 0,  # Would need to run a baseline backtest
+                'optimized_return': round(summary.get('best_test_return', 0), 2),
+                'improvement_pct': 0  # Calculated if baseline available
+            }
+        }
+        
+        logger.info(
+            f"Optimization complete: Best params = {best_params}, "
+            f"Test return = {summary.get('best_test_return', 0):.2f}%"
+        )
+        
+        return jsonify(response)
+        
+    except ImportError as e:
+        logger.error(f"Parameter optimization module import error: {e}")
+        return jsonify({
+            'error': 'Parameter optimization framework not available',
+            'message': str(e)
+        }), 503
+        
+    except Exception as e:
+        logger.error(f"Parameter optimization error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     print("=" * 70)
     print("  FinBERT v4.0 Development Server - FULL AI/ML Experience")
@@ -904,6 +1061,7 @@ if __name__ == '__main__':
     print("✓ Candlestick & Volume Charts")
     print("✓ Backtesting Framework (Walk-Forward Validation)")
     print("✓ Portfolio Backtesting (Multi-Stock with Correlation Analysis)")
+    print("✓ Parameter Optimization (Grid Search & Random Search)")
     print()
     print("📊 API Endpoints:")
     print(f"  /api/stock/<symbol>           - Stock data with AI predictions")
@@ -912,6 +1070,7 @@ if __name__ == '__main__':
     print(f"  /api/models                   - Model information")
     print(f"  /api/backtest/run             - Single-stock backtesting (POST)")
     print(f"  /api/backtest/portfolio       - Multi-stock portfolio backtest (POST)")
+    print(f"  /api/backtest/optimize        - Parameter optimization (POST)")
     print(f"  /api/backtest/models          - Available backtest models")
     print(f"  /api/backtest/allocation-strategies - Portfolio allocation strategies")
     print(f"  /api/health                   - System health")
