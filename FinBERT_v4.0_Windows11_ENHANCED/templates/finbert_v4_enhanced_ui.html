@@ -242,6 +242,9 @@
                 <button onclick="openPortfolioBacktestModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg transition">
                     <i class="fas fa-briefcase mr-2"></i> Portfolio Backtest
                 </button>
+                <button onclick="openOptimizeModal()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 rounded-lg transition">
+                    <i class="fas fa-sliders-h mr-2"></i> Optimize Parameters
+                </button>
                 <button onclick="openTrainModal()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition">
                     <i class="fas fa-dumbbell mr-2"></i> Train Model
                 </button>
@@ -984,6 +987,205 @@
                     class="w-full px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-semibold transition"
                 >
                     <i class="fas fa-play mr-2"></i> Run Portfolio Backtest
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Parameter Optimization Modal -->
+    <div id="optimizeModal" class="modal">
+        <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
+            <div class="flex justify-between items-center mb-6 sticky top-0 bg-slate-800 z-10 pb-4 pt-2 -mt-8 px-8 -mx-8">
+                <h2 class="text-2xl font-bold">
+                    <i class="fas fa-sliders-h text-amber-500 mr-2"></i> Parameter Optimization
+                </h2>
+                <button onclick="closeOptimizeModal()" class="text-gray-400 hover:text-white text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4 px-1">
+                <!-- Stock Symbol -->
+                <div>
+                    <label class="block text-sm font-semibold mb-2">Stock Symbol</label>
+                    <input 
+                        type="text" 
+                        id="optimizeSymbol" 
+                        placeholder="e.g., AAPL"
+                        class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                    >
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- Model Type -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Model Type</label>
+                        <select 
+                            id="optimizeModel" 
+                            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                        >
+                            <option value="ensemble">Ensemble (Recommended)</option>
+                            <option value="lstm">LSTM Neural Network</option>
+                            <option value="technical">Technical Analysis</option>
+                            <option value="momentum">Momentum Strategy</option>
+                        </select>
+                    </div>
+
+                    <!-- Optimization Method -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Optimization Method</label>
+                        <select 
+                            id="optimizeMethod" 
+                            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                        >
+                            <option value="random">Random Search (Fast - 50 tests)</option>
+                            <option value="grid">Grid Search (Thorough - 60 tests)</option>
+                        </select>
+                        <div class="text-xs text-gray-400 mt-1">Random search is recommended for speed</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <!-- Start Date -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Start Date</label>
+                        <input 
+                            type="date" 
+                            id="optimizeStartDate" 
+                            value="2023-01-01"
+                            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                        >
+                    </div>
+
+                    <!-- End Date -->
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">End Date</label>
+                        <input 
+                            type="date" 
+                            id="optimizeEndDate" 
+                            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                        >
+                    </div>
+                </div>
+
+                <!-- Progress Indicator -->
+                <div id="optimizeProgress" class="hidden">
+                    <div class="bg-slate-800 rounded-lg p-4">
+                        <div class="flex justify-between text-sm mb-2">
+                            <span>Optimization Progress</span>
+                            <span id="optimizeProgressText">Testing configurations...</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div id="optimizeProgressFill" class="progress-fill" style="width: 50%"></div>
+                        </div>
+                        <div class="text-xs text-gray-400 mt-2">
+                            This may take 2-5 minutes depending on the method and date range
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Display -->
+                <div id="optimizeResults" class="hidden">
+                    <div class="bg-slate-800 rounded-lg p-4 mt-4">
+                        <h3 class="text-lg font-bold mb-3">
+                            <i class="fas fa-trophy text-amber-500 mr-2"></i>
+                            Optimization Complete!
+                        </h3>
+                        
+                        <!-- Best Parameters Found -->
+                        <div class="bg-slate-700 rounded-lg p-4 mb-4">
+                            <h4 class="text-md font-semibold mb-3">Best Parameters Found:</h4>
+                            <div class="grid grid-cols-2 gap-3 text-sm">
+                                <div>
+                                    <div class="text-gray-400">Confidence Threshold</div>
+                                    <div class="text-xl font-bold text-amber-400" id="optBestConfidence">--</div>
+                                </div>
+                                <div>
+                                    <div class="text-gray-400">Lookback Days</div>
+                                    <div class="text-xl font-bold text-amber-400" id="optBestLookback">--</div>
+                                </div>
+                                <div>
+                                    <div class="text-gray-400">Position Size</div>
+                                    <div class="text-xl font-bold text-amber-400" id="optBestPosition">--</div>
+                                </div>
+                                <div>
+                                    <div class="text-gray-400">Expected Return (Test)</div>
+                                    <div class="text-xl font-bold text-green-400" id="optBestReturn">--</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Summary Statistics -->
+                        <div class="grid grid-cols-3 gap-4 text-sm mb-4">
+                            <div>
+                                <div class="text-gray-400">Configurations Tested</div>
+                                <div class="text-lg font-semibold" id="optTotalTests">--</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-400">Avg Train Return</div>
+                                <div class="text-lg font-semibold" id="optAvgTrain">--</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-400">Avg Test Return</div>
+                                <div class="text-lg font-semibold" id="optAvgTest">--</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-400">Best Train Return</div>
+                                <div class="text-lg font-semibold text-blue-400" id="optBestTrain">--</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-400">Best Test Return</div>
+                                <div class="text-lg font-semibold text-green-400" id="optBestTest">--</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-400">Low Overfit Configs</div>
+                                <div class="text-lg font-semibold" id="optLowOverfit">--</div>
+                            </div>
+                        </div>
+
+                        <!-- Apply Button -->
+                        <button 
+                            onclick="applyOptimalParameters()" 
+                            class="w-full px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition"
+                        >
+                            <i class="fas fa-check mr-2"></i> Apply Optimal Parameters to Backtest
+                        </button>
+                    </div>
+
+                    <!-- Top 10 Configurations Table -->
+                    <div class="bg-slate-800 rounded-lg p-4 mt-4">
+                        <h4 class="text-md font-semibold mb-3">
+                            <i class="fas fa-list-ol text-blue-500 mr-2"></i>
+                            Top 10 Configurations
+                        </h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="border-b border-gray-700">
+                                        <th class="text-left py-2">Rank</th>
+                                        <th class="text-left py-2">Confidence</th>
+                                        <th class="text-left py-2">Lookback</th>
+                                        <th class="text-left py-2">Position</th>
+                                        <th class="text-right py-2">Train Return</th>
+                                        <th class="text-right py-2">Test Return</th>
+                                        <th class="text-right py-2">Overfit</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="optTop10Table">
+                                    <!-- Populated dynamically -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Start Button -->
+                <button 
+                    id="startOptimizeBtn"
+                    onclick="startOptimization()" 
+                    class="w-full px-6 py-3 bg-amber-600 hover:bg-amber-700 rounded-lg font-semibold transition"
+                >
+                    <i class="fas fa-rocket mr-2"></i> Start Optimization
                 </button>
             </div>
         </div>
@@ -2682,6 +2884,7 @@
             const trainModal = document.getElementById('trainModal');
             const backtestModal = document.getElementById('backtestModal');
             const portfolioModal = document.getElementById('portfolioBacktestModal');
+            const optimizeModal = document.getElementById('optimizeModal');
             
             if (event.target == trainModal) {
                 closeTrainModal();
@@ -2689,7 +2892,241 @@
                 closeBacktestModal();
             } else if (event.target == portfolioModal) {
                 closePortfolioBacktestModal();
+            } else if (event.target == optimizeModal) {
+                closeOptimizeModal();
             }
+        }
+
+        // ============================================================================
+        // PARAMETER OPTIMIZATION FUNCTIONS
+        // ============================================================================
+
+        let optimizationResults = null; // Store results for applying parameters
+
+        /**
+         * Open Parameter Optimization Modal
+         */
+        function openOptimizeModal() {
+            const modal = document.getElementById('optimizeModal');
+            modal.style.display = 'block';
+            
+            // Set default values
+            document.getElementById('optimizeSymbol').value = currentSymbol || 'AAPL';
+            document.getElementById('optimizeModel').value = 'ensemble';
+            document.getElementById('optimizeMethod').value = 'random';
+            
+            // Set date range (default: last 2 years to today)
+            const today = new Date().toISOString().split('T')[0];
+            const twoYearsAgo = new Date();
+            twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+            const startDate = twoYearsAgo.toISOString().split('T')[0];
+            
+            document.getElementById('optimizeStartDate').value = startDate;
+            document.getElementById('optimizeEndDate').value = today;
+            
+            // Reset UI state
+            document.getElementById('optimizeProgress').classList.add('hidden');
+            document.getElementById('optimizeResults').classList.add('hidden');
+            document.getElementById('startOptimizeBtn').disabled = false;
+            document.getElementById('startOptimizeBtn').classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        /**
+         * Close Parameter Optimization Modal
+         */
+        function closeOptimizeModal() {
+            const modal = document.getElementById('optimizeModal');
+            modal.style.display = 'none';
+            
+            // Reset results
+            optimizationResults = null;
+        }
+
+        /**
+         * Start Parameter Optimization Process
+         */
+        async function startOptimization() {
+            const symbol = document.getElementById('optimizeSymbol').value.trim().toUpperCase();
+            const modelType = document.getElementById('optimizeModel').value;
+            const optimizationMethod = document.getElementById('optimizeMethod').value;
+            const startDate = document.getElementById('optimizeStartDate').value;
+            const endDate = document.getElementById('optimizeEndDate').value;
+
+            // Validation
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+
+            if (!startDate || !endDate) {
+                alert('Please select start and end dates');
+                return;
+            }
+
+            if (new Date(startDate) >= new Date(endDate)) {
+                alert('Start date must be before end date');
+                return;
+            }
+
+            // Show progress indicator
+            document.getElementById('optimizeProgress').classList.remove('hidden');
+            document.getElementById('optimizeResults').classList.add('hidden');
+            document.getElementById('startOptimizeBtn').disabled = true;
+            document.getElementById('startOptimizeBtn').classList.add('opacity-50', 'cursor-not-allowed');
+            document.getElementById('optimizeProgressText').textContent = 'Testing configurations...';
+            document.getElementById('optimizeProgressFill').style.width = '50%';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/backtest/optimize`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        start_date: startDate,
+                        end_date: endDate,
+                        model_type: modelType,
+                        optimization_method: optimizationMethod,
+                        max_iterations: optimizationMethod === 'random' ? 50 : null
+                    })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Optimization failed');
+                }
+
+                const data = await response.json();
+                optimizationResults = data;
+
+                // Update progress to complete
+                document.getElementById('optimizeProgressText').textContent = 'Optimization complete!';
+                document.getElementById('optimizeProgressFill').style.width = '100%';
+
+                // Display results after brief delay
+                setTimeout(() => {
+                    displayOptimizationResults(data);
+                }, 500);
+
+            } catch (error) {
+                console.error('Optimization error:', error);
+                alert(`Optimization failed: ${error.message}`);
+                
+                // Hide progress, re-enable button
+                document.getElementById('optimizeProgress').classList.add('hidden');
+                document.getElementById('startOptimizeBtn').disabled = false;
+                document.getElementById('startOptimizeBtn').classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        /**
+         * Display Optimization Results
+         */
+        function displayOptimizationResults(data) {
+            const bestParams = data.best_parameters;
+            const summary = data.summary;
+
+            // Hide progress, show results
+            document.getElementById('optimizeProgress').classList.add('hidden');
+            document.getElementById('optimizeResults').classList.remove('hidden');
+
+            // Display best parameters
+            document.getElementById('optBestConfidence').textContent = bestParams.confidence_threshold.toFixed(2);
+            document.getElementById('optBestLookback').textContent = bestParams.lookback_days;
+            document.getElementById('optBestPosition').textContent = (bestParams.max_position_size * 100).toFixed(0) + '%';
+            
+            const testReturn = summary.best_test_return;
+            document.getElementById('optBestReturn').textContent = testReturn.toFixed(2) + '%';
+            document.getElementById('optBestReturn').className = 'text-xl font-bold ' + (testReturn >= 0 ? 'text-green-400' : 'text-red-400');
+
+            // Display summary statistics
+            document.getElementById('optTotalTests').textContent = summary.total_configurations;
+            document.getElementById('optAvgTrain').textContent = summary.avg_train_return.toFixed(2) + '%';
+            document.getElementById('optAvgTest').textContent = summary.avg_test_return.toFixed(2) + '%';
+            document.getElementById('optBestTrain').textContent = summary.best_train_return.toFixed(2) + '%';
+            document.getElementById('optBestTest').textContent = summary.best_test_return.toFixed(2) + '%';
+            document.getElementById('optLowOverfit').textContent = summary.low_overfit_count;
+
+            // Display top 10 configurations
+            displayTop10Configurations(data.top_10_configurations);
+
+            // Re-enable start button
+            document.getElementById('startOptimizeBtn').disabled = false;
+            document.getElementById('startOptimizeBtn').classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+
+        /**
+         * Display Top 10 Configurations Table
+         */
+        function displayTop10Configurations(top10) {
+            const tableBody = document.getElementById('optTop10Table');
+            tableBody.innerHTML = '';
+
+            top10.forEach((config, index) => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-gray-700 hover:bg-slate-700';
+                
+                const trainReturn = config.train_return;
+                const testReturn = config.test_return;
+                const overfitScore = config.overfit_score;
+                
+                // Color code based on performance
+                const trainColor = trainReturn >= 0 ? 'text-blue-400' : 'text-red-400';
+                const testColor = testReturn >= 0 ? 'text-green-400' : 'text-red-400';
+                const overfitColor = overfitScore < 20 ? 'text-green-400' : overfitScore < 40 ? 'text-yellow-400' : 'text-red-400';
+                
+                row.innerHTML = `
+                    <td class="py-2">${index + 1}</td>
+                    <td class="py-2">${config.confidence_threshold.toFixed(2)}</td>
+                    <td class="py-2">${config.lookback_days}</td>
+                    <td class="py-2">${(config.max_position_size * 100).toFixed(0)}%</td>
+                    <td class="py-2 text-right ${trainColor}">${trainReturn.toFixed(2)}%</td>
+                    <td class="py-2 text-right ${testColor}">${testReturn.toFixed(2)}%</td>
+                    <td class="py-2 text-right ${overfitColor}">${overfitScore.toFixed(1)}%</td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+        }
+
+        /**
+         * Apply Optimal Parameters to Backtest Form
+         */
+        function applyOptimalParameters() {
+            if (!optimizationResults) {
+                alert('No optimization results available');
+                return;
+            }
+
+            const bestParams = optimizationResults.best_parameters;
+            
+            // Close optimization modal
+            closeOptimizeModal();
+            
+            // Open backtest modal with optimal parameters
+            openBacktestModal();
+            
+            // Set the optimized parameters
+            setTimeout(() => {
+                document.getElementById('backtestSymbol').value = document.getElementById('optimizeSymbol').value;
+                document.getElementById('backtestStartDate').value = document.getElementById('optimizeStartDate').value;
+                document.getElementById('backtestEndDate').value = document.getElementById('optimizeEndDate').value;
+                document.getElementById('backtestModel').value = document.getElementById('optimizeModel').value;
+                
+                // Set optimized parameters (if form has these fields)
+                // Note: You may need to add these input fields to the backtest modal
+                const confidenceInput = document.getElementById('backtestConfidence');
+                const lookbackInput = document.getElementById('backtestLookback');
+                const positionInput = document.getElementById('backtestPositionSize');
+                
+                if (confidenceInput) confidenceInput.value = bestParams.confidence_threshold;
+                if (lookbackInput) lookbackInput.value = bestParams.lookback_days;
+                if (positionInput) positionInput.value = bestParams.max_position_size;
+                
+                // Show success message
+                alert(`Applied optimal parameters:\n\nConfidence: ${bestParams.confidence_threshold.toFixed(2)}\nLookback: ${bestParams.lookback_days} days\nPosition Size: ${(bestParams.max_position_size * 100).toFixed(0)}%`);
+            }, 100);
         }
     </script>
 </body>
