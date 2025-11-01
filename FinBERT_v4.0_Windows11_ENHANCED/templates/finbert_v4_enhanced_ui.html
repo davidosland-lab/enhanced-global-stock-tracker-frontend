@@ -145,11 +145,32 @@
 
         .modal-content {
             background: rgba(30, 41, 59, 0.95);
-            margin: 5% auto;
+            margin: 2% auto;
             padding: 30px;
             border-radius: 12px;
-            max-width: 600px;
+            max-width: 900px;
             border: 1px solid rgba(148, 163, 184, 0.2);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        /* Custom scrollbar for modal */
+        .modal-content::-webkit-scrollbar {
+            width: 10px;
+        }
+        
+        .modal-content::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 5px;
+        }
+        
+        .modal-content::-webkit-scrollbar-thumb {
+            background: rgba(59, 130, 246, 0.5);
+            border-radius: 5px;
+        }
+        
+        .modal-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(59, 130, 246, 0.7);
         }
 
         .progress-bar {
@@ -214,7 +235,13 @@
                 </h1>
                 <p class="text-gray-400">Professional Trading System with Candlestick Charts</p>
             </div>
-            <div class="text-right">
+            <div class="text-right flex gap-3">
+                <button onclick="openBacktestModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg transition">
+                    <i class="fas fa-chart-line mr-2"></i> Backtest Strategy
+                </button>
+                <button onclick="openPortfolioBacktestModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg transition">
+                    <i class="fas fa-briefcase mr-2"></i> Portfolio Backtest
+                </button>
                 <button onclick="openTrainModal()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition">
                     <i class="fas fa-dumbbell mr-2"></i> Train Model
                 </button>
@@ -534,6 +561,429 @@
                     class="w-full px-6 py-3 bg-purple-600 hover:bg-purple-700 rounded-lg font-semibold transition"
                 >
                     <i class="fas fa-play mr-2"></i> Start Training
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Backtesting Modal -->
+    <div id="backtestModal" class="modal">
+        <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
+            <div class="flex justify-between items-center mb-6 sticky top-0 bg-slate-800 z-10 pb-4 pt-2 -mt-8 px-8 -mx-8">
+                <h2 class="text-2xl font-bold">
+                    <i class="fas fa-chart-line text-blue-500 mr-2"></i> Backtest Strategy
+                </h2>
+                <button onclick="closeBacktestModal()" class="text-gray-400 hover:text-white text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4 px-1">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Stock Symbol</label>
+                        <input 
+                            type="text" 
+                            id="backtestSymbol" 
+                            placeholder="e.g., AAPL or CBA.AX"
+                            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Model Type</label>
+                        <select 
+                            id="backtestModel" 
+                            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                        >
+                            <option value="ensemble">Ensemble (Recommended - LSTM + Technical + Momentum)</option>
+                            <option value="lstm">LSTM Neural Network</option>
+                            <option value="technical">Technical Analysis</option>
+                            <option value="momentum">Momentum Strategy</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Start Date</label>
+                        <input 
+                            type="date" 
+                            id="backtestStartDate" 
+                            value="2023-01-01"
+                            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">End Date</label>
+                        <input 
+                            type="date" 
+                            id="backtestEndDate" 
+                            value="2023-12-31"
+                            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                        >
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Initial Capital ($)</label>
+                        <input 
+                            type="number" 
+                            id="backtestCapital" 
+                            value="10000"
+                            min="1000"
+                            step="1000"
+                            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Lookback Days</label>
+                        <input 
+                            type="number" 
+                            id="backtestLookback" 
+                            value="60"
+                            min="10"
+                            max="200"
+                            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                        >
+                    </div>
+                </div>
+
+                <div id="backtestProgress" class="hidden">
+                    <div class="flex justify-between text-sm mb-2">
+                        <span>Backtest Progress</span>
+                        <span id="backtestProgressPercent">Running...</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div id="backtestProgressFill" class="progress-fill" style="width: 50%"></div>
+                    </div>
+                </div>
+
+                <div id="backtestResults" class="hidden">
+                    <div class="bg-slate-800 rounded-lg p-4 mt-4">
+                        <h3 class="text-lg font-bold mb-3">Backtest Results</h3>
+                        
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <div class="text-gray-400">Total Return</div>
+                                <div class="text-2xl font-bold" id="backtestReturn">--</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-400">Total Trades</div>
+                                <div class="text-2xl font-bold" id="backtestTrades">--</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-400">Win Rate</div>
+                                <div class="text-xl font-semibold" id="backtestWinRate">--</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-400">Sharpe Ratio</div>
+                                <div class="text-xl font-semibold" id="backtestSharpe">--</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-400">Max Drawdown</div>
+                                <div class="text-xl font-semibold" id="backtestDrawdown">--</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-400">Profit Factor</div>
+                                <div class="text-xl font-semibold" id="backtestProfitFactor">--</div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 pt-4 border-t border-gray-700">
+                            <div class="text-sm text-gray-400 mb-2">Final Equity</div>
+                            <div class="text-3xl font-bold" id="backtestFinalEquity">$0</div>
+                        </div>
+                    </div>
+                    
+                    <!-- Visualization Charts -->
+                    <div id="backtestCharts" class="hidden mt-4 space-y-4">
+                        <!-- Equity Curve Chart -->
+                        <div class="bg-slate-800 rounded-lg p-4">
+                            <h4 class="text-md font-semibold mb-3">
+                                <i class="fas fa-chart-line text-green-500 mr-2"></i>
+                                Equity Curve
+                            </h4>
+                            <div id="equityCurveChart" style="width: 100%; height: 300px;"></div>
+                        </div>
+                        
+                        <!-- Drawdown Chart -->
+                        <div class="bg-slate-800 rounded-lg p-4">
+                            <h4 class="text-md font-semibold mb-3">
+                                <i class="fas fa-chart-area text-red-500 mr-2"></i>
+                                Drawdown Analysis
+                            </h4>
+                            <div id="drawdownChart" style="width: 100%; height: 250px;"></div>
+                        </div>
+                        
+                        <!-- Trade Distribution Chart -->
+                        <div class="bg-slate-800 rounded-lg p-4">
+                            <h4 class="text-md font-semibold mb-3">
+                                <i class="fas fa-chart-bar text-blue-500 mr-2"></i>
+                                Trade Distribution
+                            </h4>
+                            <div id="tradeDistributionChart" style="width: 100%; height: 300px;"></div>
+                        </div>
+                        
+                        <!-- Monthly Returns Heatmap -->
+                        <div class="bg-slate-800 rounded-lg p-4">
+                            <h4 class="text-md font-semibold mb-3">
+                                <i class="fas fa-calendar-alt text-purple-500 mr-2"></i>
+                                Monthly Returns
+                            </h4>
+                            <div id="monthlyReturnsChart" style="width: 100%; height: 250px;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <button 
+                    id="startBacktestBtn"
+                    onclick="startBacktest()" 
+                    class="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition"
+                >
+                    <i class="fas fa-play mr-2"></i> Run Backtest
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Portfolio Backtesting Modal -->
+    <div id="portfolioBacktestModal" class="modal">
+        <div class="modal-content" style="max-width: 1000px; max-height: 90vh; overflow-y: auto;">
+            <div class="flex justify-between items-center mb-6 sticky top-0 bg-slate-800 z-10 pb-4 pt-2 -mt-8 px-8 -mx-8">
+                <h2 class="text-2xl font-bold">
+                    <i class="fas fa-briefcase text-indigo-500 mr-2"></i> Portfolio Backtest
+                </h2>
+                <button onclick="closePortfolioBacktestModal()" class="text-gray-400 hover:text-white text-2xl">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="space-y-4 px-1">
+                <!-- Stock Symbols -->
+                <div>
+                    <label class="block text-sm font-semibold mb-2">
+                        Stock Symbols (comma-separated)
+                        <span class="text-gray-400 font-normal ml-2">e.g., AAPL, MSFT, GOOGL</span>
+                    </label>
+                    <input 
+                        type="text" 
+                        id="portfolioSymbols" 
+                        placeholder="Enter 2 or more symbols"
+                        class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                    >
+                    <div class="text-xs text-gray-400 mt-1">Minimum 2 stocks required for portfolio backtest</div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Model Type</label>
+                        <select 
+                            id="portfolioModel" 
+                            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                        >
+                            <option value="ensemble">Ensemble (Recommended)</option>
+                            <option value="lstm">LSTM Neural Network</option>
+                            <option value="technical">Technical Analysis</option>
+                            <option value="momentum">Momentum Strategy</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Allocation Strategy</label>
+                        <select 
+                            id="portfolioAllocation" 
+                            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                            onchange="toggleCustomAllocations()"
+                        >
+                            <option value="equal">Equal Weight</option>
+                            <option value="risk_parity">Risk Parity (Inverse Volatility)</option>
+                            <option value="custom">Custom Weights</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Custom Allocations (hidden by default) -->
+                <div id="customAllocationsDiv" class="hidden">
+                    <label class="block text-sm font-semibold mb-2">
+                        Custom Allocations
+                        <span class="text-gray-400 font-normal ml-2">Must sum to 100%</span>
+                    </label>
+                    <textarea 
+                        id="customAllocations" 
+                        placeholder='{"AAPL": 0.4, "MSFT": 0.35, "GOOGL": 0.25}'
+                        rows="3"
+                        class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none font-mono text-sm"
+                    ></textarea>
+                    <div class="text-xs text-gray-400 mt-1">Enter as JSON object. Values should sum to 1.0</div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Start Date</label>
+                        <input 
+                            type="date" 
+                            id="portfolioStartDate" 
+                            value="2023-01-01"
+                            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">End Date</label>
+                        <input 
+                            type="date" 
+                            id="portfolioEndDate" 
+                            value="2023-12-31"
+                            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                        >
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Initial Capital ($)</label>
+                        <input 
+                            type="number" 
+                            id="portfolioCapital" 
+                            value="10000"
+                            min="1000"
+                            step="1000"
+                            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                        >
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-semibold mb-2">Rebalance Frequency</label>
+                        <select 
+                            id="portfolioRebalance" 
+                            class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                        >
+                            <option value="monthly">Monthly</option>
+                            <option value="never">Never</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="quarterly">Quarterly</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="portfolioProgress" class="hidden">
+                    <div class="flex justify-between text-sm mb-2">
+                        <span>Portfolio Backtest Progress</span>
+                        <span id="portfolioProgressPercent">Running...</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div id="portfolioProgressFill" class="progress-fill" style="width: 50%"></div>
+                    </div>
+                </div>
+
+                <div id="portfolioResults" class="hidden">
+                    <div class="bg-slate-800 rounded-lg p-4 mt-4">
+                        <h3 class="text-lg font-bold mb-3">Portfolio Results</h3>
+                        
+                        <div class="grid grid-cols-3 gap-4 text-sm">
+                            <div>
+                                <div class="text-gray-400">Total Return</div>
+                                <div class="text-2xl font-bold" id="portfolioReturn">--</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-400">Sharpe Ratio</div>
+                                <div class="text-2xl font-bold" id="portfolioSharpe">--</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-400">Max Drawdown</div>
+                                <div class="text-2xl font-bold" id="portfolioDrawdown">--</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-400">Total Trades</div>
+                                <div class="text-xl font-semibold" id="portfolioTrades">--</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-400">Win Rate</div>
+                                <div class="text-xl font-semibold" id="portfolioWinRate">--</div>
+                            </div>
+                            <div>
+                                <div class="text-gray-400">Profit Factor</div>
+                                <div class="text-xl font-semibold" id="portfolioProfitFactor">--</div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 pt-4 border-t border-gray-700">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <div class="text-sm text-gray-400 mb-2">Final Portfolio Value</div>
+                                    <div class="text-3xl font-bold" id="portfolioFinalValue">$0</div>
+                                </div>
+                                <div>
+                                    <div class="text-sm text-gray-400 mb-2">Stocks Traded</div>
+                                    <div class="text-3xl font-bold" id="portfolioStocks">0</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Diversification Metrics -->
+                        <div class="mt-4 pt-4 border-t border-gray-700">
+                            <h4 class="text-md font-semibold mb-3">
+                                <i class="fas fa-chart-pie text-purple-500 mr-2"></i>
+                                Diversification Analysis
+                            </h4>
+                            <div class="grid grid-cols-3 gap-4 text-sm">
+                                <div>
+                                    <div class="text-gray-400">Avg Correlation</div>
+                                    <div class="text-lg font-semibold" id="portfolioAvgCorr">--</div>
+                                </div>
+                                <div>
+                                    <div class="text-gray-400">Diversification Ratio</div>
+                                    <div class="text-lg font-semibold" id="portfolioDivRatio">--</div>
+                                </div>
+                                <div>
+                                    <div class="text-gray-400">Effective Stocks</div>
+                                    <div class="text-lg font-semibold" id="portfolioEffStocks">--</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Portfolio Charts -->
+                    <div id="portfolioCharts" class="hidden mt-4 space-y-4">
+                        <!-- Portfolio Equity Curve -->
+                        <div class="bg-slate-800 rounded-lg p-4">
+                            <h4 class="text-md font-semibold mb-3">
+                                <i class="fas fa-chart-line text-green-500 mr-2"></i>
+                                Portfolio Equity Curve
+                            </h4>
+                            <div id="portfolioEquityChart" style="width: 100%; height: 300px;"></div>
+                        </div>
+                        
+                        <!-- Allocation Breakdown -->
+                        <div class="bg-slate-800 rounded-lg p-4">
+                            <h4 class="text-md font-semibold mb-3">
+                                <i class="fas fa-chart-pie text-blue-500 mr-2"></i>
+                                Current Allocation
+                            </h4>
+                            <div id="portfolioAllocationChart" style="width: 100%; height: 300px;"></div>
+                        </div>
+                        
+                        <!-- Contribution Analysis -->
+                        <div class="bg-slate-800 rounded-lg p-4">
+                            <h4 class="text-md font-semibold mb-3">
+                                <i class="fas fa-chart-bar text-indigo-500 mr-2"></i>
+                                Stock Contribution to Returns
+                            </h4>
+                            <div id="portfolioContributionChart" style="width: 100%; height: 300px;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <button 
+                    id="startPortfolioBacktestBtn"
+                    onclick="startPortfolioBacktest()" 
+                    class="w-full px-6 py-3 bg-indigo-600 hover:bg-indigo-700 rounded-lg font-semibold transition"
+                >
+                    <i class="fas fa-play mr-2"></i> Run Portfolio Backtest
                 </button>
             </div>
         </div>
@@ -1363,11 +1813,879 @@
             }
         }
 
-        // Close modal when clicking outside
+        // Backtesting Modal Functions
+        function openBacktestModal() {
+            document.getElementById('backtestModal').style.display = 'block';
+            const symbol = document.getElementById('symbolInput').value.trim().toUpperCase();
+            if (symbol) {
+                document.getElementById('backtestSymbol').value = symbol;
+            }
+            
+            // Set default end date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('backtestEndDate').value = today;
+            
+            // Set start date to 1 year ago
+            const oneYearAgo = new Date();
+            oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+            document.getElementById('backtestStartDate').value = oneYearAgo.toISOString().split('T')[0];
+        }
+
+        function closeBacktestModal() {
+            document.getElementById('backtestModal').style.display = 'none';
+            document.getElementById('backtestProgress').classList.add('hidden');
+            document.getElementById('backtestResults').classList.add('hidden');
+            document.getElementById('backtestCharts').classList.add('hidden');
+        }
+
+        async function startBacktest() {
+            const symbol = document.getElementById('backtestSymbol').value.trim().toUpperCase();
+            const startDate = document.getElementById('backtestStartDate').value;
+            const endDate = document.getElementById('backtestEndDate').value;
+            const modelType = document.getElementById('backtestModel').value;
+            const initialCapital = parseInt(document.getElementById('backtestCapital').value);
+            const lookbackDays = parseInt(document.getElementById('backtestLookback').value);
+
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+
+            if (!startDate || !endDate) {
+                alert('Please select start and end dates');
+                return;
+            }
+
+            if (new Date(startDate) >= new Date(endDate)) {
+                alert('Start date must be before end date');
+                return;
+            }
+
+            // Show progress
+            document.getElementById('backtestProgress').classList.remove('hidden');
+            document.getElementById('backtestResults').classList.add('hidden');
+            document.getElementById('startBacktestBtn').disabled = true;
+            document.getElementById('startBacktestBtn').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Running Backtest...';
+
+            try {
+                const response = await fetch(`${API_BASE}/api/backtest/run`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        start_date: startDate,
+                        end_date: endDate,
+                        model_type: modelType,
+                        initial_capital: initialCapital,
+                        lookback_days: lookbackDays
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || `Backtest failed: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+
+                // Hide progress
+                document.getElementById('backtestProgress').classList.add('hidden');
+                
+                // Show results
+                document.getElementById('backtestResults').classList.remove('hidden');
+                
+                // Update result fields
+                const perf = result.performance;
+                const returnPct = perf.total_return_pct || 0;
+                const returnColor = returnPct >= 0 ? 'text-green-400' : 'text-red-400';
+                
+                document.getElementById('backtestReturn').innerHTML = `<span class="${returnColor}">${returnPct >= 0 ? '+' : ''}${returnPct.toFixed(2)}%</span>`;
+                document.getElementById('backtestTrades').textContent = perf.total_trades || 0;
+                document.getElementById('backtestWinRate').textContent = `${(perf.win_rate || 0).toFixed(1)}%`;
+                document.getElementById('backtestSharpe').textContent = (perf.sharpe_ratio || 0).toFixed(2);
+                document.getElementById('backtestDrawdown').textContent = `${(perf.max_drawdown_pct || 0).toFixed(2)}%`;
+                document.getElementById('backtestProfitFactor').textContent = (perf.profit_factor || 0).toFixed(2);
+                document.getElementById('backtestFinalEquity').innerHTML = `<span class="${returnColor}">$${(perf.final_equity || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>`;
+
+                // Update button
+                document.getElementById('startBacktestBtn').disabled = false;
+                document.getElementById('startBacktestBtn').innerHTML = '<i class="fas fa-check mr-2"></i> Backtest Complete!';
+                
+                // Show success message
+                console.log('Backtest Results:', result);
+                console.log('Performance data:', perf);
+                console.log('Charts data:', perf.charts);
+                
+                // Display charts if data is available
+                if (perf.charts && Object.keys(perf.charts).length > 0) {
+                    console.log('Displaying charts...');
+                    document.getElementById('backtestCharts').classList.remove('hidden');
+                    displayBacktestCharts(perf.charts);
+                } else {
+                    console.warn('No chart data available:', perf.charts);
+                }
+
+            } catch (error) {
+                console.error('Backtest error:', error);
+                alert(`Backtest failed: ${error.message}`);
+                
+                document.getElementById('backtestProgress').classList.add('hidden');
+                document.getElementById('startBacktestBtn').disabled = false;
+                document.getElementById('startBacktestBtn').innerHTML = '<i class="fas fa-play mr-2"></i> Run Backtest';
+            }
+        }
+
+        // Display backtest visualization charts
+        function displayBacktestCharts(charts) {
+            if (!charts) return;
+            
+            // Display Equity Curve
+            if (charts.equity_curve && charts.equity_curve.length > 0) {
+                displayEquityCurve(charts.equity_curve);
+            }
+            
+            // Display Drawdown Chart
+            if (charts.drawdown_curve && charts.drawdown_curve.length > 0) {
+                displayDrawdownChart(charts.drawdown_curve);
+            }
+            
+            // Display Trade Distribution
+            if (charts.trade_distribution) {
+                displayTradeDistribution(charts.trade_distribution);
+            }
+            
+            // Display Monthly Returns
+            if (charts.monthly_returns) {
+                displayMonthlyReturns(charts.monthly_returns);
+            }
+        }
+        
+        function displayEquityCurve(data) {
+            const chartDiv = document.getElementById('equityCurveChart');
+            const chart = echarts.init(chartDiv);
+            
+            const option = {
+                backgroundColor: 'transparent',
+                title: {
+                    text: 'Portfolio Value Over Time',
+                    textStyle: { color: '#94a3b8', fontSize: 14 },
+                    left: 'center'
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    borderColor: '#475569',
+                    textStyle: { color: '#e2e8f0' },
+                    formatter: function(params) {
+                        const date = params[0].name;
+                        const equity = params[0].value;
+                        const cash = params[1].value;
+                        const positions = params[2].value;
+                        return `${date}<br/>
+                                <span style="color: #10B981;">● Total Equity: $${equity.toLocaleString()}</span><br/>
+                                <span style="color: #3B82F6;">● Cash: $${cash.toLocaleString()}</span><br/>
+                                <span style="color: #F59E0B;">● Positions: $${positions.toLocaleString()}</span>`;
+                    }
+                },
+                legend: {
+                    data: ['Total Equity', 'Cash', 'Positions Value'],
+                    textStyle: { color: '#94a3b8' },
+                    top: 30
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    top: '80',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: data.map(d => d.timestamp),
+                    axisLabel: { color: '#64748b', rotate: 45 },
+                    axisLine: { lineStyle: { color: '#334155' } }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: {
+                        color: '#64748b',
+                        formatter: '${value}'
+                    },
+                    axisLine: { lineStyle: { color: '#334155' } },
+                    splitLine: { lineStyle: { color: '#1e293b', type: 'dashed' } }
+                },
+                series: [
+                    {
+                        name: 'Total Equity',
+                        type: 'line',
+                        data: data.map(d => d.equity),
+                        smooth: true,
+                        lineStyle: { color: '#10B981', width: 3 },
+                        itemStyle: { color: '#10B981' },
+                        areaStyle: {
+                            color: {
+                                type: 'linear',
+                                x: 0, y: 0, x2: 0, y2: 1,
+                                colorStops: [
+                                    { offset: 0, color: 'rgba(16, 185, 129, 0.3)' },
+                                    { offset: 1, color: 'rgba(16, 185, 129, 0.05)' }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        name: 'Cash',
+                        type: 'line',
+                        data: data.map(d => d.cash),
+                        smooth: true,
+                        lineStyle: { color: '#3B82F6', width: 2 },
+                        itemStyle: { color: '#3B82F6' }
+                    },
+                    {
+                        name: 'Positions Value',
+                        type: 'line',
+                        data: data.map(d => d.positions_value),
+                        smooth: true,
+                        lineStyle: { color: '#F59E0B', width: 2 },
+                        itemStyle: { color: '#F59E0B' }
+                    }
+                ]
+            };
+            
+            chart.setOption(option);
+            window.addEventListener('resize', () => chart.resize());
+        }
+        
+        function displayDrawdownChart(data) {
+            const chartDiv = document.getElementById('drawdownChart');
+            const chart = echarts.init(chartDiv);
+            
+            const option = {
+                backgroundColor: 'transparent',
+                title: {
+                    text: 'Drawdown from Peak',
+                    textStyle: { color: '#94a3b8', fontSize: 14 },
+                    left: 'center'
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    borderColor: '#475569',
+                    textStyle: { color: '#e2e8f0' },
+                    formatter: function(params) {
+                        const date = params[0].name;
+                        const drawdown = params[0].value;
+                        const peak = params[0].data.peak;
+                        const equity = params[0].data.equity;
+                        return `${date}<br/>
+                                <span style="color: #EF4444;">● Drawdown: ${drawdown.toFixed(2)}%</span><br/>
+                                <span style="color: #94a3b8;">Peak: $${peak.toLocaleString()}</span><br/>
+                                <span style="color: #94a3b8;">Current: $${equity.toLocaleString()}</span>`;
+                    }
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    top: '60',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: data.map(d => d.timestamp),
+                    axisLabel: { color: '#64748b', rotate: 45 },
+                    axisLine: { lineStyle: { color: '#334155' } }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: {
+                        color: '#64748b',
+                        formatter: '{value}%'
+                    },
+                    axisLine: { lineStyle: { color: '#334155' } },
+                    splitLine: { lineStyle: { color: '#1e293b', type: 'dashed' } }
+                },
+                series: [{
+                    name: 'Drawdown',
+                    type: 'line',
+                    data: data.map(d => ({
+                        value: d.drawdown,
+                        peak: d.peak,
+                        equity: d.equity
+                    })),
+                    smooth: true,
+                    lineStyle: { color: '#EF4444', width: 2 },
+                    itemStyle: { color: '#EF4444' },
+                    areaStyle: {
+                        color: {
+                            type: 'linear',
+                            x: 0, y: 0, x2: 0, y2: 1,
+                            colorStops: [
+                                { offset: 0, color: 'rgba(239, 68, 68, 0.3)' },
+                                { offset: 1, color: 'rgba(239, 68, 68, 0.05)' }
+                            ]
+                        }
+                    }
+                }]
+            };
+            
+            chart.setOption(option);
+            window.addEventListener('resize', () => chart.resize());
+        }
+        
+        function displayTradeDistribution(data) {
+            const chartDiv = document.getElementById('tradeDistributionChart');
+            const chart = echarts.init(chartDiv);
+            
+            const buckets = data.buckets;
+            const labels = data.labels;
+            
+            const option = {
+                backgroundColor: 'transparent',
+                title: {
+                    text: 'Trade P&L Distribution',
+                    textStyle: { color: '#94a3b8', fontSize: 14 },
+                    left: 'center'
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    borderColor: '#475569',
+                    textStyle: { color: '#e2e8f0' },
+                    axisPointer: { type: 'shadow' }
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    top: '60',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: labels,
+                    axisLabel: { color: '#64748b' },
+                    axisLine: { lineStyle: { color: '#334155' } }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: { color: '#64748b' },
+                    axisLine: { lineStyle: { color: '#334155' } },
+                    splitLine: { lineStyle: { color: '#1e293b', type: 'dashed' } }
+                },
+                series: [{
+                    name: 'Number of Trades',
+                    type: 'bar',
+                    data: [
+                        { value: buckets.large_loss, itemStyle: { color: '#DC2626' } },
+                        { value: buckets.medium_loss, itemStyle: { color: '#EF4444' } },
+                        { value: buckets.small_loss, itemStyle: { color: '#F87171' } },
+                        { value: buckets.small_win, itemStyle: { color: '#34D399' } },
+                        { value: buckets.medium_win, itemStyle: { color: '#10B981' } },
+                        { value: buckets.large_win, itemStyle: { color: '#059669' } }
+                    ],
+                    barWidth: '60%'
+                }]
+            };
+            
+            chart.setOption(option);
+            window.addEventListener('resize', () => chart.resize());
+        }
+        
+        function displayMonthlyReturns(data) {
+            const chartDiv = document.getElementById('monthlyReturnsChart');
+            const chart = echarts.init(chartDiv);
+            
+            const months = data.months || [];
+            const returns = data.returns || [];
+            
+            if (months.length === 0) {
+                chartDiv.innerHTML = '<div style="text-align: center; padding: 20px; color: #64748b;">No monthly data available</div>';
+                return;
+            }
+            
+            const option = {
+                backgroundColor: 'transparent',
+                title: {
+                    text: 'Monthly Returns (%)',
+                    textStyle: { color: '#94a3b8', fontSize: 14 },
+                    left: 'center'
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    borderColor: '#475569',
+                    textStyle: { color: '#e2e8f0' },
+                    formatter: function(params) {
+                        const month = params[0].name;
+                        const ret = params[0].value;
+                        const color = ret >= 0 ? '#10B981' : '#EF4444';
+                        return `${month}<br/><span style="color: ${color};">Return: ${ret >= 0 ? '+' : ''}${ret.toFixed(2)}%</span>`;
+                    }
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    top: '60',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: months,
+                    axisLabel: { color: '#64748b', rotate: 45 },
+                    axisLine: { lineStyle: { color: '#334155' } }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: {
+                        color: '#64748b',
+                        formatter: '{value}%'
+                    },
+                    axisLine: { lineStyle: { color: '#334155' } },
+                    splitLine: { lineStyle: { color: '#1e293b', type: 'dashed' } }
+                },
+                series: [{
+                    name: 'Monthly Return',
+                    type: 'bar',
+                    data: returns.map(ret => ({
+                        value: ret,
+                        itemStyle: {
+                            color: ret >= 0 ? '#10B981' : '#EF4444'
+                        }
+                    })),
+                    barWidth: '60%'
+                }]
+            };
+            
+            chart.setOption(option);
+            window.addEventListener('resize', () => chart.resize());
+        }
+        
+        // Portfolio Backtesting Functions
+        function openPortfolioBacktestModal() {
+            document.getElementById('portfolioBacktestModal').style.display = 'block';
+            // Set default dates (last year)
+            const today = new Date();
+            document.getElementById('portfolioEndDate').value = today.toISOString().split('T')[0];
+            const oneYearAgo = new Date(today);
+            oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+            document.getElementById('portfolioStartDate').value = oneYearAgo.toISOString().split('T')[0];
+        }
+
+        function closePortfolioBacktestModal() {
+            document.getElementById('portfolioBacktestModal').style.display = 'none';
+            document.getElementById('portfolioProgress').classList.add('hidden');
+            document.getElementById('portfolioResults').classList.add('hidden');
+            document.getElementById('portfolioCharts').classList.add('hidden');
+        }
+
+        function toggleCustomAllocations() {
+            const strategy = document.getElementById('portfolioAllocation').value;
+            const customDiv = document.getElementById('customAllocationsDiv');
+            if (strategy === 'custom') {
+                customDiv.classList.remove('hidden');
+            } else {
+                customDiv.classList.add('hidden');
+            }
+        }
+
+        async function startPortfolioBacktest() {
+            const symbolsInput = document.getElementById('portfolioSymbols').value.trim();
+            const startDate = document.getElementById('portfolioStartDate').value;
+            const endDate = document.getElementById('portfolioEndDate').value;
+            const modelType = document.getElementById('portfolioModel').value;
+            const initialCapital = parseInt(document.getElementById('portfolioCapital').value);
+            const allocationStrategy = document.getElementById('portfolioAllocation').value;
+            const rebalanceFrequency = document.getElementById('portfolioRebalance').value;
+
+            // Parse symbols
+            const symbols = symbolsInput.split(',').map(s => s.trim().toUpperCase()).filter(s => s.length > 0);
+
+            // Validation
+            if (symbols.length < 2) {
+                alert('Please enter at least 2 stock symbols');
+                return;
+            }
+
+            if (!startDate || !endDate) {
+                alert('Please select start and end dates');
+                return;
+            }
+
+            if (new Date(startDate) >= new Date(endDate)) {
+                alert('Start date must be before end date');
+                return;
+            }
+
+            // Parse custom allocations if needed
+            let customAllocations = null;
+            if (allocationStrategy === 'custom') {
+                try {
+                    const allocText = document.getElementById('customAllocations').value.trim();
+                    if (allocText) {
+                        customAllocations = JSON.parse(allocText);
+                        // Validate sum to 1.0
+                        const sum = Object.values(customAllocations).reduce((a, b) => a + b, 0);
+                        if (Math.abs(sum - 1.0) > 0.01) {
+                            alert(`Custom allocations must sum to 1.0 (current sum: ${sum.toFixed(2)})`);
+                            return;
+                        }
+                    } else {
+                        alert('Please enter custom allocations for the custom strategy');
+                        return;
+                    }
+                } catch (e) {
+                    alert('Invalid JSON format for custom allocations');
+                    return;
+                }
+            }
+
+            // Show progress
+            document.getElementById('portfolioProgress').classList.remove('hidden');
+            document.getElementById('portfolioResults').classList.add('hidden');
+            document.getElementById('startPortfolioBacktestBtn').disabled = true;
+            document.getElementById('startPortfolioBacktestBtn').innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Running Portfolio Backtest...';
+
+            try {
+                const requestBody = {
+                    symbols: symbols,
+                    start_date: startDate,
+                    end_date: endDate,
+                    model_type: modelType,
+                    initial_capital: initialCapital,
+                    allocation_strategy: allocationStrategy,
+                    rebalance_frequency: rebalanceFrequency
+                };
+
+                if (customAllocations) {
+                    requestBody.custom_allocations = customAllocations;
+                }
+
+                const response = await fetch(`${API_BASE}/api/backtest/portfolio`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || `Portfolio backtest failed: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+
+                // Hide progress
+                document.getElementById('portfolioProgress').classList.add('hidden');
+                
+                // Show results
+                document.getElementById('portfolioResults').classList.remove('hidden');
+                
+                // Update result fields
+                const metrics = result.portfolio_metrics;
+                const returnPct = metrics.total_return_pct || 0;
+                const returnColor = returnPct >= 0 ? 'text-green-400' : 'text-red-400';
+                
+                document.getElementById('portfolioReturn').innerHTML = `<span class="${returnColor}">${returnPct >= 0 ? '+' : ''}${returnPct.toFixed(2)}%</span>`;
+                document.getElementById('portfolioSharpe').textContent = (metrics.sharpe_ratio || 0).toFixed(2);
+                document.getElementById('portfolioDrawdown').textContent = `${(metrics.max_drawdown_pct || 0).toFixed(2)}%`;
+                document.getElementById('portfolioTrades').textContent = metrics.total_trades || 0;
+                document.getElementById('portfolioWinRate').textContent = `${(metrics.win_rate || 0).toFixed(1)}%`;
+                document.getElementById('portfolioProfitFactor').textContent = (metrics.profit_factor || 0).toFixed(2);
+                document.getElementById('portfolioFinalValue').innerHTML = `<span class="${returnColor}">$${(metrics.final_value || 0).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>`;
+                document.getElementById('portfolioStocks').textContent = metrics.num_symbols || 0;
+
+                // Diversification metrics
+                const div = result.diversification || {};
+                document.getElementById('portfolioAvgCorr').textContent = (div.avg_correlation || 0).toFixed(3);
+                document.getElementById('portfolioDivRatio').textContent = (div.diversification_ratio || 0).toFixed(3);
+                document.getElementById('portfolioEffStocks').textContent = (div.effective_num_stocks || 0).toFixed(1);
+
+                // Update button
+                document.getElementById('startPortfolioBacktestBtn').disabled = false;
+                document.getElementById('startPortfolioBacktestBtn').innerHTML = '<i class="fas fa-check mr-2"></i> Portfolio Backtest Complete!';
+                
+                console.log('Portfolio Backtest Results:', result);
+                
+                // Display charts if data is available
+                if (metrics.charts && Object.keys(metrics.charts).length > 0) {
+                    console.log('Displaying portfolio charts...');
+                    document.getElementById('portfolioCharts').classList.remove('hidden');
+                    displayPortfolioCharts(metrics.charts);
+                } else {
+                    console.warn('No chart data available');
+                }
+
+            } catch (error) {
+                alert('Portfolio Backtest Error: ' + error.message);
+                console.error('Portfolio backtest error:', error);
+                document.getElementById('portfolioProgress').classList.add('hidden');
+                document.getElementById('startPortfolioBacktestBtn').disabled = false;
+                document.getElementById('startPortfolioBacktestBtn').innerHTML = '<i class="fas fa-exclamation-triangle mr-2"></i> Try Again';
+            }
+        }
+
+        function displayPortfolioCharts(charts) {
+            // Portfolio Equity Curve
+            if (charts.equity_curve && charts.equity_curve.length > 0) {
+                displayPortfolioEquityCurve(charts.equity_curve);
+            }
+
+            // Allocation Pie Chart
+            if (charts.allocation_pie) {
+                displayAllocationPie(charts.allocation_pie);
+            }
+
+            // Contribution Analysis
+            if (charts.contribution_analysis) {
+                displayContributionChart(charts.contribution_analysis);
+            }
+        }
+
+        function displayPortfolioEquityCurve(data) {
+            const chartDiv = document.getElementById('portfolioEquityChart');
+            const chart = echarts.init(chartDiv);
+            
+            const option = {
+                backgroundColor: 'transparent',
+                title: {
+                    text: 'Portfolio Value Over Time',
+                    textStyle: { color: '#94a3b8', fontSize: 14 },
+                    left: 'center'
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    borderColor: '#475569',
+                    textStyle: { color: '#e2e8f0' },
+                    formatter: function(params) {
+                        let result = params[0].axisValue + '<br/>';
+                        params.forEach(p => {
+                            result += `${p.marker} ${p.seriesName}: $${p.value.toLocaleString()}<br/>`;
+                        });
+                        return result;
+                    }
+                },
+                legend: {
+                    data: ['Total Equity', 'Cash', 'Positions Value'],
+                    textStyle: { color: '#94a3b8' },
+                    top: 30
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '10%',
+                    top: '15%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: data.map(d => d.timestamp),
+                    axisLabel: { 
+                        color: '#64748b',
+                        rotate: 45,
+                        interval: Math.floor(data.length / 10)
+                    },
+                    axisLine: { lineStyle: { color: '#334155' } }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: { 
+                        color: '#64748b',
+                        formatter: '${value}'
+                    },
+                    splitLine: { lineStyle: { color: '#1e293b' } },
+                    axisLine: { lineStyle: { color: '#334155' } }
+                },
+                series: [
+                    {
+                        name: 'Total Equity',
+                        type: 'line',
+                        data: data.map(d => d.equity),
+                        smooth: true,
+                        lineStyle: { color: '#10B981', width: 3 },
+                        itemStyle: { color: '#10B981' },
+                        areaStyle: {
+                            color: {
+                                type: 'linear',
+                                x: 0, y: 0, x2: 0, y2: 1,
+                                colorStops: [
+                                    { offset: 0, color: 'rgba(16, 185, 129, 0.4)' },
+                                    { offset: 1, color: 'rgba(16, 185, 129, 0.05)' }
+                                ]
+                            }
+                        }
+                    },
+                    {
+                        name: 'Cash',
+                        type: 'line',
+                        data: data.map(d => d.cash),
+                        smooth: true,
+                        lineStyle: { color: '#3b82f6', width: 2 },
+                        itemStyle: { color: '#3b82f6' }
+                    },
+                    {
+                        name: 'Positions Value',
+                        type: 'line',
+                        data: data.map(d => d.positions_value),
+                        smooth: true,
+                        lineStyle: { color: '#8b5cf6', width: 2 },
+                        itemStyle: { color: '#8b5cf6' }
+                    }
+                ]
+            };
+            
+            chart.setOption(option);
+            window.addEventListener('resize', () => chart.resize());
+        }
+
+        function displayAllocationPie(data) {
+            if (!data.symbols || data.symbols.length === 0) return;
+
+            const chartDiv = document.getElementById('portfolioAllocationChart');
+            const chart = echarts.init(chartDiv);
+            
+            const pieData = data.symbols.map((symbol, idx) => ({
+                name: symbol,
+                value: data.values[idx]
+            }));
+            
+            const option = {
+                backgroundColor: 'transparent',
+                title: {
+                    text: 'Portfolio Allocation',
+                    subtext: `Total: $${data.total_value.toLocaleString()}`,
+                    textStyle: { color: '#94a3b8', fontSize: 14 },
+                    subtextStyle: { color: '#64748b' },
+                    left: 'center'
+                },
+                tooltip: {
+                    trigger: 'item',
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    borderColor: '#475569',
+                    textStyle: { color: '#e2e8f0' },
+                    formatter: '{b}: ${c} ({d}%)'
+                },
+                legend: {
+                    orient: 'vertical',
+                    right: '5%',
+                    top: 'center',
+                    textStyle: { color: '#94a3b8' }
+                },
+                series: [{
+                    type: 'pie',
+                    radius: ['40%', '70%'],
+                    center: ['40%', '50%'],
+                    data: pieData,
+                    label: {
+                        color: '#e2e8f0',
+                        formatter: '{b}\n{d}%'
+                    },
+                    itemStyle: {
+                        borderRadius: 5,
+                        borderColor: '#1e293b',
+                        borderWidth: 2
+                    },
+                    emphasis: {
+                        itemStyle: {
+                            shadowBlur: 10,
+                            shadowOffsetX: 0,
+                            shadowColor: 'rgba(0, 0, 0, 0.5)'
+                        }
+                    }
+                }]
+            };
+            
+            chart.setOption(option);
+            window.addEventListener('resize', () => chart.resize());
+        }
+
+        function displayContributionChart(data) {
+            if (!data.symbols || data.symbols.length === 0) return;
+
+            const chartDiv = document.getElementById('portfolioContributionChart');
+            const chart = echarts.init(chartDiv);
+            
+            // Sort by contribution
+            const sorted = data.symbols.map((symbol, idx) => ({
+                symbol: symbol,
+                contribution: data.contributions[idx]
+            })).sort((a, b) => b.contribution - a.contribution);
+            
+            const option = {
+                backgroundColor: 'transparent',
+                title: {
+                    text: 'Contribution to Portfolio Returns',
+                    textStyle: { color: '#94a3b8', fontSize: 14 },
+                    left: 'center'
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    borderColor: '#475569',
+                    textStyle: { color: '#e2e8f0' },
+                    formatter: '{b}: ${c}'
+                },
+                grid: {
+                    left: '10%',
+                    right: '10%',
+                    top: '15%',
+                    bottom: '10%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: sorted.map(d => d.symbol),
+                    axisLabel: { color: '#64748b' },
+                    axisLine: { lineStyle: { color: '#334155' } }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: { 
+                        color: '#64748b',
+                        formatter: '${value}'
+                    },
+                    splitLine: { lineStyle: { color: '#1e293b' } },
+                    axisLine: { lineStyle: { color: '#334155' } }
+                },
+                series: [{
+                    type: 'bar',
+                    data: sorted.map(d => ({
+                        value: d.contribution,
+                        itemStyle: {
+                            color: d.contribution >= 0 ? '#10B981' : '#EF4444'
+                        }
+                    })),
+                    barWidth: '60%',
+                    label: {
+                        show: true,
+                        position: 'top',
+                        color: '#e2e8f0',
+                        formatter: '${c}'
+                    }
+                }]
+            };
+            
+            chart.setOption(option);
+            window.addEventListener('resize', () => chart.resize());
+        }
+        
+        // Close modals when clicking outside
         window.onclick = function(event) {
-            const modal = document.getElementById('trainModal');
-            if (event.target == modal) {
+            const trainModal = document.getElementById('trainModal');
+            const backtestModal = document.getElementById('backtestModal');
+            const portfolioModal = document.getElementById('portfolioBacktestModal');
+            
+            if (event.target == trainModal) {
                 closeTrainModal();
+            } else if (event.target == backtestModal) {
+                closeBacktestModal();
+            } else if (event.target == portfolioModal) {
+                closePortfolioBacktestModal();
             }
         }
     </script>

@@ -579,6 +579,317 @@ def health():
         'features': config.FEATURES
     })
 
+# ============================================================================
+# BACKTESTING API ENDPOINTS
+# ============================================================================
+
+@app.route('/api/backtest/run', methods=['POST'])
+def run_backtest():
+    """
+    Run a backtest with specified parameters
+    
+    Request JSON:
+    {
+        "symbol": "AAPL",
+        "start_date": "2023-01-01",
+        "end_date": "2023-12-31",
+        "model_type": "ensemble",  # or "finbert", "lstm"
+        "initial_capital": 10000,
+        "lookback_days": 60
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['symbol', 'start_date', 'end_date']
+        missing = [f for f in required_fields if f not in data]
+        if missing:
+            return jsonify({'error': f'Missing required fields: {missing}'}), 400
+        
+        symbol = data['symbol'].upper()
+        start_date = data['start_date']
+        end_date = data['end_date']
+        model_type = data.get('model_type', 'ensemble')
+        initial_capital = data.get('initial_capital', 10000)
+        lookback_days = data.get('lookback_days', 60)
+        
+        logger.info(f"Starting backtest for {symbol} ({start_date} to {end_date})")
+        
+        # Import backtesting modules
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'models'))
+        from backtesting import HistoricalDataLoader, BacktestPredictionEngine, TradingSimulator
+        
+        # Phase 1: Load historical data
+        loader = HistoricalDataLoader(
+            symbol=symbol,
+            start_date=start_date,
+            end_date=end_date,
+            use_cache=True
+        )
+        
+        historical_data = loader.load_price_data()
+        
+        if historical_data.empty:
+            return jsonify({'error': f'No data available for {symbol}'}), 404
+        
+        # Phase 2: Generate predictions
+        engine = BacktestPredictionEngine(
+            model_type=model_type,
+            confidence_threshold=0.6
+        )
+        
+        predictions = engine.walk_forward_backtest(
+            data=historical_data,
+            start_date=start_date,
+            end_date=end_date,
+            prediction_frequency='daily',
+            lookback_days=lookback_days
+        )
+        
+        if predictions.empty:
+            return jsonify({'error': 'Failed to generate predictions'}), 500
+        
+        # Phase 3: Simulate trading
+        simulator = TradingSimulator(
+            initial_capital=initial_capital,
+            commission_rate=0.001,
+            slippage_rate=0.0005,
+            max_position_size=0.20
+        )
+        
+        for idx, row in predictions.iterrows():
+            simulator.execute_signal(
+                timestamp=row['timestamp'],
+                signal=row['prediction'],
+                price=row.get('actual_price', row['current_price']),
+                confidence=row['confidence']
+            )
+        
+        # Close remaining positions
+        if simulator.positions:
+            last_price = predictions.iloc[-1].get('actual_price', predictions.iloc[-1]['current_price'])
+            last_timestamp = predictions.iloc[-1]['timestamp']
+            simulator._close_positions(last_timestamp, last_price)
+        
+        # Get performance metrics
+        metrics = simulator.calculate_performance_metrics()
+        
+        # Evaluate prediction accuracy
+        eval_metrics = engine.evaluate_predictions(predictions)
+        
+        # Prepare response
+        response = {
+            'symbol': symbol,
+            'backtest_period': {
+                'start': start_date,
+                'end': end_date
+            },
+            'model_type': model_type,
+            'data_points': len(historical_data),
+            'predictions_generated': len(predictions),
+            'performance': {
+                'initial_capital': metrics.get('initial_capital', 0),
+                'final_equity': metrics.get('final_equity', 0),
+                'total_return_pct': metrics.get('total_return_pct', 0),
+                'total_trades': metrics.get('total_trades', 0),
+                'winning_trades': metrics.get('winning_trades', 0),
+                'losing_trades': metrics.get('losing_trades', 0),
+                'win_rate': metrics.get('win_rate', 0) * 100,
+                'sharpe_ratio': metrics.get('sharpe_ratio', 0),
+                'sortino_ratio': metrics.get('sortino_ratio', 0),
+                'max_drawdown_pct': metrics.get('max_drawdown_pct', 0),
+                'profit_factor': metrics.get('profit_factor', 0),
+                'total_commission_paid': metrics.get('total_commission_paid', 0),
+                'avg_hold_time_days': metrics.get('avg_hold_time_days', 0),
+                'charts': metrics.get('charts', {})  # Add chart data
+            },
+            'prediction_accuracy': {
+                'total_predictions': eval_metrics.get('total_predictions', 0),
+                'actionable_predictions': eval_metrics.get('actionable_predictions', 0),
+                'buy_signals': eval_metrics.get('buy_signals', 0),
+                'sell_signals': eval_metrics.get('sell_signals', 0),
+                'overall_accuracy': eval_metrics.get('overall_accuracy', 0) * 100 if 'overall_accuracy' in eval_metrics else None
+            },
+            'equity_curve': simulator.get_equity_curve_df().reset_index().to_dict('records')[:100],  # First 100 points
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        logger.info(f"Backtest complete for {symbol}: Return={metrics.get('total_return_pct', 0):.2f}%, Trades={metrics.get('total_trades', 0)}")
+        
+        return jsonify(response)
+        
+    except ImportError as e:
+        logger.error(f"Backtesting module import error: {e}")
+        return jsonify({
+            'error': 'Backtesting framework not available',
+            'message': str(e)
+        }), 503
+        
+    except Exception as e:
+        logger.error(f"Backtest error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/backtest/portfolio', methods=['POST'])
+def run_portfolio_backtest():
+    """
+    Run a portfolio backtest with multiple stocks
+    
+    Request JSON:
+    {
+        "symbols": ["AAPL", "MSFT", "GOOGL"],
+        "start_date": "2023-01-01",
+        "end_date": "2023-12-31",
+        "model_type": "ensemble",
+        "initial_capital": 10000,
+        "allocation_strategy": "equal",  # or "risk_parity", "custom"
+        "custom_allocations": {"AAPL": 0.4, "MSFT": 0.3, "GOOGL": 0.3},  # optional
+        "rebalance_frequency": "monthly"  # or "never", "weekly", "quarterly"
+    }
+    """
+    try:
+        data = request.get_json()
+        
+        # Validate required fields
+        required_fields = ['symbols', 'start_date', 'end_date']
+        missing = [f for f in required_fields if f not in data]
+        if missing:
+            return jsonify({'error': f'Missing required fields: {missing}'}), 400
+        
+        symbols = [s.upper() for s in data['symbols']]
+        if len(symbols) < 2:
+            return jsonify({'error': 'Portfolio must contain at least 2 stocks'}), 400
+        
+        start_date = data['start_date']
+        end_date = data['end_date']
+        model_type = data.get('model_type', 'ensemble')
+        initial_capital = data.get('initial_capital', 10000)
+        allocation_strategy = data.get('allocation_strategy', 'equal')
+        custom_allocations = data.get('custom_allocations', {})
+        rebalance_frequency = data.get('rebalance_frequency', 'monthly')
+        
+        logger.info(f"Starting portfolio backtest: {symbols} ({start_date} to {end_date})")
+        
+        # Import portfolio backtesting modules
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'models'))
+        from backtesting.portfolio_backtester import run_portfolio_backtest
+        
+        # Run portfolio backtest
+        results = run_portfolio_backtest(
+            symbols=symbols,
+            start_date=start_date,
+            end_date=end_date,
+            initial_capital=initial_capital,
+            model_type=model_type,
+            allocation_strategy=allocation_strategy,
+            custom_allocations=custom_allocations if allocation_strategy == 'custom' else None,
+            rebalance_frequency=rebalance_frequency,
+            confidence_threshold=0.6,
+            lookback_days=60,
+            use_cache=True
+        )
+        
+        if 'error' in results:
+            return jsonify(results), 500
+        
+        # Format response
+        response = {
+            'status': results.get('status', 'unknown'),
+            'symbols': symbols,
+            'backtest_period': {
+                'start': start_date,
+                'end': end_date
+            },
+            'config': results.get('backtest_config', {}),
+            'portfolio_metrics': results.get('portfolio_metrics', {}),
+            'target_allocations': results.get('target_allocations', {}),
+            'diversification': results.get('diversification', {}),
+            'correlation_matrix': results.get('correlation_matrix', {}),
+            'execution_summary': results.get('execution_summary', {}),
+            'timestamp': datetime.now().isoformat()
+        }
+        
+        logger.info(
+            f"Portfolio backtest complete: "
+            f"Return={results.get('portfolio_metrics', {}).get('total_return_pct', 0):.2f}%, "
+            f"Trades={results.get('portfolio_metrics', {}).get('total_trades', 0)}"
+        )
+        
+        return jsonify(response)
+        
+    except ImportError as e:
+        logger.error(f"Portfolio backtesting module import error: {e}")
+        return jsonify({
+            'error': 'Portfolio backtesting framework not available',
+            'message': str(e)
+        }), 503
+        
+    except Exception as e:
+        logger.error(f"Portfolio backtest error: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/backtest/models', methods=['GET'])
+def get_backtest_models():
+    """Get available backtesting models"""
+    return jsonify({
+        'models': [
+            {
+                'id': 'lstm',
+                'name': 'LSTM Neural Network',
+                'description': 'Pattern recognition using moving averages and trends',
+                'recommended_for': 'Range-bound and trending markets'
+            },
+            {
+                'id': 'technical',
+                'name': 'Technical Analysis',
+                'description': 'RSI, MACD, Bollinger Bands, and moving averages',
+                'recommended_for': 'Mean reversion and breakout strategies'
+            },
+            {
+                'id': 'momentum',
+                'name': 'Momentum Strategy',
+                'description': 'Price momentum, trend strength, and rate of change',
+                'recommended_for': 'Trending markets with clear direction'
+            },
+            {
+                'id': 'ensemble',
+                'name': 'Ensemble (Recommended)',
+                'description': 'Combined LSTM (40%) + Technical (35%) + Momentum (25%)',
+                'recommended_for': 'All market conditions - most robust'
+            }
+        ]
+    })
+
+@app.route('/api/backtest/allocation-strategies', methods=['GET'])
+def get_allocation_strategies():
+    """Get available portfolio allocation strategies"""
+    return jsonify({
+        'strategies': [
+            {
+                'id': 'equal',
+                'name': 'Equal Weight',
+                'description': 'Allocate capital equally across all stocks',
+                'example': 'Each stock gets 1/N of capital'
+            },
+            {
+                'id': 'risk_parity',
+                'name': 'Risk Parity',
+                'description': 'Allocate inversely to volatility - less volatile stocks get more capital',
+                'example': 'Low volatility stocks get higher allocation'
+            },
+            {
+                'id': 'custom',
+                'name': 'Custom Weights',
+                'description': 'Specify exact allocation for each symbol',
+                'example': 'AAPL: 40%, MSFT: 35%, GOOGL: 25%'
+            }
+        ]
+    })
+
 if __name__ == '__main__':
     print("=" * 70)
     print("  FinBERT v4.0 Development Server - FULL AI/ML Experience")
@@ -591,13 +902,19 @@ if __name__ == '__main__':
     print("✓ Enhanced Technical Analysis")
     print("✓ Real-time Market Data (Yahoo Finance)")
     print("✓ Candlestick & Volume Charts")
+    print("✓ Backtesting Framework (Walk-Forward Validation)")
+    print("✓ Portfolio Backtesting (Multi-Stock with Correlation Analysis)")
     print()
     print("📊 API Endpoints:")
-    print(f"  /api/stock/<symbol>    - Stock data with AI predictions")
-    print(f"  /api/sentiment/<symbol> - FinBERT sentiment analysis")
-    print(f"  /api/train/<symbol>     - Train LSTM model (POST)")
-    print(f"  /api/models             - Model information")
-    print(f"  /api/health             - System health")
+    print(f"  /api/stock/<symbol>           - Stock data with AI predictions")
+    print(f"  /api/sentiment/<symbol>       - FinBERT sentiment analysis")
+    print(f"  /api/train/<symbol>           - Train LSTM model (POST)")
+    print(f"  /api/models                   - Model information")
+    print(f"  /api/backtest/run             - Single-stock backtesting (POST)")
+    print(f"  /api/backtest/portfolio       - Multi-stock portfolio backtest (POST)")
+    print(f"  /api/backtest/models          - Available backtest models")
+    print(f"  /api/backtest/allocation-strategies - Portfolio allocation strategies")
+    print(f"  /api/health                   - System health")
     print()
     if not ml_predictor.lstm_enabled:
         print("💡 To train LSTM model:")
