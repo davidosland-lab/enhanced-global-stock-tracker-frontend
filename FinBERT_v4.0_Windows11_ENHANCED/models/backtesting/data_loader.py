@@ -110,6 +110,10 @@ class HistoricalDataLoader:
             # Clean column names
             data.columns = data.columns.str.replace(' ', '_')
             
+            # Remove timezone from index to avoid tz-aware/tz-naive mixing issues
+            if data.index.tz is not None:
+                data.index = data.index.tz_localize(None)
+            
             # Validate data if enabled
             if self.validate_data:
                 validation_results = self.validator.validate_data_quality(

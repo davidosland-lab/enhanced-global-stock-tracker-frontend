@@ -285,7 +285,10 @@ class PortfolioBacktester:
         # Get all unique timestamps across all symbols
         all_timestamps = set()
         for predictions_df in predictions_by_symbol.values():
-            all_timestamps.update(predictions_df['timestamp'].tolist())
+            timestamps = predictions_df['timestamp'].tolist()
+            # Normalize timestamps to remove timezone info
+            timestamps = [pd.to_datetime(ts).tz_localize(None) if hasattr(pd.to_datetime(ts), 'tz') and pd.to_datetime(ts).tz is not None else pd.to_datetime(ts) for ts in timestamps]
+            all_timestamps.update(timestamps)
         
         # Sort timestamps
         sorted_timestamps = sorted(list(all_timestamps))
@@ -305,27 +308,39 @@ class PortfolioBacktester:
             current_prices = {}
             
             for symbol, predictions_df in predictions_by_symbol.items():
-                # Find prediction for this timestamp
-                pred_row = predictions_df[predictions_df['timestamp'] == timestamp]
-                
-                if not pred_row.empty:
-                    pred = pred_row.iloc[0]
-                    signals[symbol] = {
-                        'prediction': pred['prediction'],
-                        'confidence': pred['confidence']
-                    }
+                try:
+                    # Normalize timestamp for comparison
+                    norm_timestamp = pd.to_datetime(timestamp).tz_localize(None) if hasattr(pd.to_datetime(timestamp), 'tz') and pd.to_datetime(timestamp).tz is not None else pd.to_datetime(timestamp)
                     
-                    # Get current price
-                    if 'actual_price' in pred:
-                        current_prices[symbol] = pred['actual_price']
-                    elif 'current_price' in pred:
-                        current_prices[symbol] = pred['current_price']
-                    else:
-                        # Fallback: get from historical data
-                        data = historical_data[symbol]
-                        price_data = data[data.index == timestamp]
-                        if not price_data.empty:
-                            current_prices[symbol] = price_data['Close'].iloc[0]
+                    # Normalize prediction timestamps
+                    pred_timestamps = predictions_df['timestamp'].apply(lambda x: pd.to_datetime(x).tz_localize(None) if hasattr(pd.to_datetime(x), 'tz') and pd.to_datetime(x).tz is not None else pd.to_datetime(x))
+                    
+                    # Find prediction for this timestamp
+                    matching_idx = pred_timestamps[pred_timestamps == norm_timestamp].index
+                    
+                    if len(matching_idx) > 0:
+                        pred = predictions_df.iloc[matching_idx[0]]
+                        signals[symbol] = {
+                            'prediction': pred['prediction'],
+                            'confidence': pred['confidence']
+                        }
+                        
+                        # Get current price
+                        if 'actual_price' in pred:
+                            current_prices[symbol] = pred['actual_price']
+                        elif 'current_price' in pred:
+                            current_prices[symbol] = pred['current_price']
+                        else:
+                            # Fallback: get from historical data
+                            data = historical_data[symbol]
+                            # Ensure data index is timezone-naive
+                            if data.index.tz is not None:
+                                data.index = data.index.tz_localize(None)
+                            price_data = data[data.index == norm_timestamp]
+                            if not price_data.empty:
+                                current_prices[symbol] = price_data['Close'].iloc[0]
+                except Exception as e:
+                    logger.warning(f"Error processing signal for {symbol} at {timestamp}: {e}")
             
             # Execute signals for this timestamp
             if signals and current_prices:

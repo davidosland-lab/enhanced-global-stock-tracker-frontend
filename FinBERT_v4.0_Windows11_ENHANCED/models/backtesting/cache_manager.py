@@ -130,6 +130,10 @@ class CacheManager:
                 df.set_index('date', inplace=True)
                 df.index.name = 'Date'
                 
+                # Ensure timezone-naive index
+                if df.index.tz is not None:
+                    df.index = df.index.tz_localize(None)
+                
                 # Rename columns to match Yahoo Finance format
                 df.columns = ['Open', 'High', 'Low', 'Close', 'Volume', 'Adj Close']
                 
