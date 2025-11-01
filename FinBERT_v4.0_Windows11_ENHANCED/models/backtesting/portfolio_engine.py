@@ -643,14 +643,23 @@ class PortfolioBacktestEngine:
         }
     
     def _get_contribution_analysis(self) -> Dict:
-        """Analyze each symbol's contribution to portfolio returns"""
+        """Analyze each symbol's contribution to portfolio returns (realized + unrealized)"""
         contributions = {}
         
+        # Calculate realized P&L from closed trades
         for symbol in self.trades_by_symbol.keys():
             symbol_trades = [t for t in self.trades_by_symbol[symbol] if 'pnl' in t]
-            if symbol_trades:
-                total_contribution = sum(t['pnl'] for t in symbol_trades)
-                contributions[symbol] = round(total_contribution, 2)
+            realized_pnl = sum(t['pnl'] for t in symbol_trades) if symbol_trades else 0
+            contributions[symbol] = realized_pnl
+        
+        # Add unrealized P&L from open positions
+        for symbol, position in self.positions.items():
+            if symbol not in contributions:
+                contributions[symbol] = 0
+            contributions[symbol] += position.unrealized_pnl
+        
+        # Round final contributions
+        contributions = {k: round(v, 2) for k, v in contributions.items()}
         
         return {
             'symbols': list(contributions.keys()),
