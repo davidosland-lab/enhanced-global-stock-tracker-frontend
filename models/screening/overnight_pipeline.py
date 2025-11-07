@@ -38,6 +38,8 @@ try:
     from .batch_predictor import BatchPredictor
     from .opportunity_scorer import OpportunityScorer
     from .report_generator import ReportGenerator
+    from .send_notification import EmailNotifier
+    from .lstm_trainer import LSTMTrainer
 except ImportError:
     # Fall back to absolute imports (when run as script)
     from stock_scanner import StockScanner
@@ -45,6 +47,8 @@ except ImportError:
     from batch_predictor import BatchPredictor
     from opportunity_scorer import OpportunityScorer
     from report_generator import ReportGenerator
+    from send_notification import EmailNotifier
+    from lstm_trainer import LSTMTrainer
 
 # Setup logging with proper path handling
 import sys
@@ -101,6 +105,8 @@ class OvernightPipeline:
             self.predictor = BatchPredictor()
             self.scorer = OpportunityScorer()
             self.reporter = ReportGenerator()
+            self.notifier = EmailNotifier()
+            self.trainer = LSTMTrainer()
             logger.info("✓ All components initialized successfully")
         except Exception as e:
             logger.error(f"✗ Component initialization failed: {e}")
@@ -190,6 +196,31 @@ class OvernightPipeline:
             logger.info(f"Report Generated: {report_path}")
             logger.info(f"End Time: {datetime.now(self.timezone).strftime('%Y-%m-%d %H:%M:%S %Z')}")
             
+            # Send email notifications
+            try:
+                logger.info("\n" + "="*80)
+                logger.info("PHASE 7: EMAIL NOTIFICATIONS")
+                logger.info("="*80)
+                
+                # Send morning report
+                if self.notifier.enabled and self.notifier.send_morning_report:
+                    logger.info("Sending morning report email...")
+                    self.notifier.send_morning_report(
+                        report_path=str(report_path),
+                        summary=results.get('summary', {}),
+                        top_opportunities=results.get('top_opportunities', [])
+                    )
+                
+                # Send alerts for high-confidence opportunities
+                if self.notifier.enabled and self.notifier.send_alerts:
+                    logger.info("Checking for high-confidence opportunities...")
+                    self.notifier.send_alert(results.get('top_opportunities', []))
+                
+                logger.info("✓ Email notifications completed")
+            except Exception as e:
+                logger.warning(f"Email notification failed: {str(e)}")
+                # Don't fail the pipeline if emails fail
+            
             return results
             
         except Exception as e:
@@ -197,6 +228,18 @@ class OvernightPipeline:
             logger.error(traceback.format_exc())
             self.status['phase'] = 'failed'
             self.status['errors'].append(str(e))
+            
+            # Send error notification
+            try:
+                if self.notifier.enabled and self.notifier.send_errors:
+                    logger.info("Sending error notification...")
+                    self.notifier.send_error(
+                        error_message=str(e),
+                        error_traceback=traceback.format_exc(),
+                        phase=self.status.get('phase', 'unknown')
+                    )
+            except Exception as email_error:
+                logger.warning(f"Failed to send error notification: {str(email_error)}")
             
             # Save error state
             self._save_error_state(e)
@@ -385,12 +428,37 @@ class OvernightPipeline:
             top_n=10
         )
         
+        # Prepare summary for email notifications
+        report_date = datetime.now(self.timezone).strftime('%Y-%m-%d')
+        summary = {
+            'report_date': report_date,
+            'total_stocks_scanned': len(scored_stocks),
+            'opportunities_found': len(top_opportunities),
+            'spi_sentiment_score': spi_sentiment['sentiment_score'],
+            'market_bias': spi_sentiment['recommendation']['stance']
+        }
+        
+        # Prepare top opportunities with complete info for emails
+        top_opps_detailed = [
+            {
+                'symbol': opp['symbol'],
+                'company_name': opp['name'],
+                'opportunity_score': opp['opportunity_score'],
+                'signal': opp.get('prediction', 'HOLD'),
+                'confidence': opp.get('confidence', 0),
+                'sector': opp.get('sector', 'Unknown'),
+                'current_price': opp['price']
+            }
+            for opp in top_opportunities
+        ]
+        
         # Prepare results
         results = {
             'status': 'success',
             'timestamp': datetime.now(self.timezone).isoformat(),
             'execution_time_seconds': int(elapsed_time),
             'execution_time_minutes': round(elapsed_time / 60, 2),
+            'summary': summary,
             'statistics': {
                 'total_stocks_scanned': len(scored_stocks),
                 'top_opportunities_count': len(top_opportunities),
@@ -405,17 +473,7 @@ class OvernightPipeline:
                 'direction': spi_sentiment['gap_prediction']['direction'],
                 'recommendation': spi_sentiment['recommendation']['stance']
             },
-            'top_opportunities': [
-                {
-                    'symbol': opp['symbol'],
-                    'name': opp['name'],
-                    'score': opp['opportunity_score'],
-                    'prediction': opp.get('prediction'),
-                    'confidence': opp.get('confidence'),
-                    'price': opp['price']
-                }
-                for opp in top_opportunities
-            ],
+            'top_opportunities': top_opps_detailed,
             'report_path': report_path,
             'errors': self.status['errors'],
             'warnings': self.status['warnings']
@@ -430,7 +488,7 @@ class OvernightPipeline:
     
     def _save_pipeline_state(self, results: Dict):
         """Save pipeline execution state to JSON"""
-        state_dir = Path('logs/screening')
+        state_dir = BASE_PATH / 'reports' / 'pipeline_state'
         state_dir.mkdir(parents=True, exist_ok=True)
         
         date_str = datetime.now(self.timezone).strftime('%Y-%m-%d')
