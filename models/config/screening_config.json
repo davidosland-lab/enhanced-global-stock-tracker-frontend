@@ -1,0 +1,97 @@
+{
+  "schedule": {
+    "start_time": "22:00",
+    "end_time": "07:00",
+    "timezone": "Australia/Sydney",
+    "frequency": "daily",
+    "enabled": true
+  },
+  "screening": {
+    "stocks_per_sector": 30,
+    "max_total_stocks": 240,
+    "validation_timeout_seconds": 10,
+    "ensemble_weights": {
+      "lstm": 0.45,
+      "trend": 0.25,
+      "technical": 0.15,
+      "sentiment": 0.15
+    },
+    "opportunity_threshold": 65,
+    "top_picks_count": 10,
+    "min_confidence_score": 60
+  },
+  "lstm_training": {
+    "enabled": true,
+    "max_models_per_night": 20,
+    "stale_threshold_days": 7,
+    "epochs": 50,
+    "batch_size": 32,
+    "validation_split": 0.2,
+    "priority_strategy": "highest_opportunity_score"
+  },
+  "spi_monitoring": {
+    "enabled": true,
+    "symbol": "^AXJO",
+    "futures_symbol": "AP",
+    "check_interval_minutes": 30,
+    "gap_threshold_pct": 0.3,
+    "trading_hours": {
+      "start": "17:10",
+      "end": "08:00",
+      "timezone": "Australia/Sydney"
+    },
+    "us_indices": {
+      "enabled": true,
+      "symbols": ["^GSPC", "^IXIC", "^DJI"],
+      "correlation_weight": 0.35
+    }
+  },
+  "data_fetch": {
+    "history_period": "3mo",
+    "history_interval": "1d",
+    "retry_attempts": 3,
+    "retry_delay_seconds": 5,
+    "cache_duration_hours": 12
+  },
+  "scoring": {
+    "weights": {
+      "prediction_confidence": 0.30,
+      "technical_strength": 0.20,
+      "spi_alignment": 0.15,
+      "liquidity": 0.15,
+      "volatility": 0.10,
+      "sector_momentum": 0.10
+    },
+    "penalties": {
+      "low_volume": 10,
+      "high_volatility": 15,
+      "negative_sentiment": 20
+    },
+    "bonuses": {
+      "fresh_lstm_model": 5,
+      "high_win_rate": 10,
+      "sector_leader": 5
+    }
+  },
+  "reporting": {
+    "output_format": "html",
+    "include_charts": true,
+    "include_technical_details": true,
+    "max_stocks_in_report": 50,
+    "email_enabled": false,
+    "save_to_disk": true,
+    "report_path": "reports/morning_reports"
+  },
+  "logging": {
+    "level": "INFO",
+    "log_path": "logs/screening",
+    "max_log_files": 30,
+    "log_rotation": "daily"
+  },
+  "performance": {
+    "parallel_processing": true,
+    "max_workers": 4,
+    "batch_size": 10,
+    "memory_limit_mb": 4096
+  }
+}
