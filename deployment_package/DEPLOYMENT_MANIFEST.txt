@@ -1,0 +1,364 @@
+================================================================================
+  ASX OVERNIGHT STOCK SCANNER v4.4.4 - DEPLOYMENT MANIFEST
+================================================================================
+
+Package:     ASX_Stock_Scanner_v4.4.4_Complete_20251112.zip
+Version:     4.4.4
+Build Date:  2025-11-12
+Size:        ~1.1 MB (compressed)
+
+================================================================================
+  PACKAGE CONTENTS
+================================================================================
+
+Core Application
+────────────────────────────────────────────────────────────────────────────
+models/
+├── config/
+│   └── screening_config.json              Email & scheduler configuration
+├── screening/
+│   ├── overnight_pipeline.py              Main orchestrator
+│   ├── stock_scanner.py                   Stock screening engine
+│   ├── spi_monitor.py                     Market sentiment monitor
+│   ├── batch_predictor.py                 ML prediction engine
+│   ├── opportunity_scorer.py              Opportunity scoring
+│   ├── report_generator.py                HTML report generation
+│   ├── send_notification.py               Email notification system
+│   ├── send_completion_notification.py    Completion emails
+│   ├── send_error_notification.py         Error emails
+│   ├── lstm_trainer.py                    LSTM model trainer
+│   └── ...
+
+FinBERT Integration
+────────────────────────────────────────────────────────────────────────────
+finbert_v4.4.4/
+├── models/
+│   ├── finbert_bridge.py                  FinBERT integration bridge
+│   ├── news_sentiment_real.py             News & sentiment analysis
+│   ├── lstm_predictor.py                  LSTM prediction wrapper
+│   ├── trained/                           Pre-trained LSTM models
+│   └── config/
+│       └── screening_config.json          FinBERT configuration
+└── ...
+
+Scripts & Tools
+────────────────────────────────────────────────────────────────────────────
+schedule_pipeline.py                       5:00 AM AEST scheduler
+test_email_quick.py                        Email configuration test
+run_overnight_pipeline.py                  Manual pipeline runner
+
+scripts/screening/
+├── test_full_pipeline.py                  Full system test
+├── test_screening_system.py               Screening test
+├── test_email_notifications.py            Email test
+├── test_lstm_training.py                  LSTM training test
+├── test_finbert_integration.py            FinBERT test
+└── ...
+
+Requirements
+────────────────────────────────────────────────────────────────────────────
+requirements_scheduler.txt                 Python dependencies
+
+Documentation
+────────────────────────────────────────────────────────────────────────────
+README.md                                  Main deployment guide (13.8 KB)
+EMAIL_AND_SCHEDULER_SETUP.md              Complete email/scheduler setup (11.6 KB)
+QUICK_START_EMAIL_SCHEDULER.md            Quick reference (4.7 KB)
+FINAL_EMAIL_SETUP_INSTRUCTIONS.md         Step-by-step email setup (7.7 KB)
+SETUP_COMPLETE_README.md                  Setup overview (7.5 KB)
+PROTONMAIL_SMTP_SOLUTION.md               ProtonMail solutions (7 KB)
+PROTONMAIL_RECEIVING_EXPLAINED.md         ProtonMail receiving guide (5.1 KB)
+EMAIL_SCHEDULER_DELIVERY_SUMMARY.md       Complete summary (13.5 KB)
+COMMAND_REFERENCE.txt                      Quick commands (5.1 KB)
+DEPLOYMENT_MANIFEST.txt                    This file
+
+================================================================================
+  SYSTEM FEATURES
+================================================================================
+
+Stock Screening
+────────────────────────────────────────────────────────────────────────────
+✓ 240 ASX stocks across 8 sectors
+✓ 5-component scoring (0-100): Liquidity, Momentum, RSI, Volatility, Sector
+✓ Validation criteria: Price ($0.50-$500), Volume (>100K), Data (>20 days)
+✓ Real-time data via yahooquery (90-100% success rate)
+
+Prediction System (Ensemble)
+────────────────────────────────────────────────────────────────────────────
+✓ LSTM Neural Networks (45% weight)
+✓ FinBERT Sentiment Analysis (15% weight)
+✓ Trend Analysis (25% weight)
+✓ Technical Indicators (15% weight)
+✓ BUY/SELL/HOLD signals with confidence scores
+
+Market Sentiment
+────────────────────────────────────────────────────────────────────────────
+✓ SPI 200 Futures monitoring
+✓ US Market Integration (S&P 500, Nasdaq, Dow Jones)
+✓ Gap prediction (overnight market moves)
+✓ Market bias detection (BULLISH/BEARISH/NEUTRAL)
+
+News & Sentiment Analysis
+────────────────────────────────────────────────────────────────────────────
+✓ Real news collection (Yahoo Finance, RBA official sources)
+✓ FinBERT sentiment analysis (financial AI model)
+✓ 15-minute caching (SQLite database)
+✓ Australian context detection (RBA, government, indicators)
+✓ Up to 20 articles per stock
+
+Email Notifications
+────────────────────────────────────────────────────────────────────────────
+✓ Morning reports (HTML attachment)
+✓ High-confidence alerts (≥80 score)
+✓ Error notifications (with traceback)
+✓ Multiple recipient support
+✓ Gmail/Outlook/SendGrid support
+
+Scheduler
+────────────────────────────────────────────────────────────────────────────
+✓ 5:00 AM AEST/AEDT daily execution
+✓ Automatic timezone handling
+✓ Error recovery & retry logic
+✓ Comprehensive logging
+✓ Background process support
+✓ Systemd service configuration
+
+================================================================================
+  DEPLOYMENT STEPS
+================================================================================
+
+1. Extract Package
+   ─────────────────────────────────────────────────────────────────────────
+   unzip ASX_Stock_Scanner_v4.4.4_Complete_20251112.zip
+   cd deployment_package
+
+2. Install Dependencies
+   ─────────────────────────────────────────────────────────────────────────
+   pip install yahooquery pandas numpy yfinance pytz schedule
+   
+   Optional (ML features):
+   pip install tensorflow keras transformers torch
+
+3. Configure Email
+   ─────────────────────────────────────────────────────────────────────────
+   Edit: models/config/screening_config.json (lines 85-100)
+   
+   Options:
+   - Gmail:    smtp.gmail.com:587 (requires app password)
+   - Outlook:  smtp-mail.outlook.com:587
+   - SendGrid: smtp.sendgrid.net:587
+
+4. Test Email
+   ─────────────────────────────────────────────────────────────────────────
+   python3 test_email_quick.py
+   
+   Expected: "✅ TEST EMAIL SENT SUCCESSFULLY!"
+
+5. Start Scheduler
+   ─────────────────────────────────────────────────────────────────────────
+   Foreground:  python3 schedule_pipeline.py
+   Background:  nohup python3 schedule_pipeline.py > logs/scheduler/nohup.log 2>&1 &
+   Systemd:     See README.md section "Systemd Service"
+
+6. Verify
+   ─────────────────────────────────────────────────────────────────────────
+   Check logs:  tail -20 logs/scheduler/scheduler.log
+   Next run:    grep "Next scheduled run" logs/scheduler/scheduler.log
+   Tomorrow:    Check email at 5:45 AM
+
+================================================================================
+  DAILY EXECUTION TIMELINE
+================================================================================
+
+5:00 AM  │ Scheduler triggers pipeline
+5:00-5:02│ Fetch market sentiment (SPI 200, US markets)
+5:02-5:20│ Scan 240 ASX stocks across 8 sectors
+5:20-5:40│ Generate predictions (LSTM, sentiment, technical)
+5:40-5:45│ Score opportunities, generate HTML report
+5:45 AM  │ Send email to configured recipients
+
+Total Duration: ~45 minutes
+
+================================================================================
+  MORNING REPORT PREVIEW
+================================================================================
+
+Subject:   📊 ASX Morning Report - YYYY-MM-DD
+
+Content:
+  • Stocks scanned: 240
+  • Opportunities found: 45
+  • SPI sentiment: 72.5/100
+  • Market bias: BULLISH
+  • Top 5 opportunities:
+    1. CBA.AX - Score: 87.3/100, Signal: BUY, Confidence: 89.2%
+    2. BHP.AX - Score: 85.1/100, Signal: BUY, Confidence: 82.5%
+    3. CSL.AX - Score: 82.7/100, Signal: BUY, Confidence: 76.8%
+    4. WES.AX - Score: 80.4/100, Signal: HOLD, Confidence: 74.1%
+    5. RIO.AX - Score: 78.9/100, Signal: BUY, Confidence: 71.5%
+
+Attachment: Full HTML report with charts & analysis
+
+================================================================================
+  EMAIL CONFIGURATION OPTIONS
+================================================================================
+
+Option 1: Gmail (Recommended)
+  Requirements: Gmail account, 2-Step Verification, App password
+  Setup: https://myaccount.google.com/apppasswords
+  SMTP: smtp.gmail.com:587
+
+Option 2: Outlook/Hotmail (Easiest)
+  Requirements: Outlook account, Regular password
+  Setup: Use existing Outlook account
+  SMTP: smtp-mail.outlook.com:587
+
+Option 3: SendGrid (High Volume)
+  Requirements: SendGrid account (free tier: 100 emails/day)
+  Setup: https://sendgrid.com → Generate API key
+  SMTP: smtp.sendgrid.net:587
+
+ProtonMail:
+  Receiving: ✅ Works perfectly (any SMTP can send TO ProtonMail)
+  Sending:   ❌ Requires Bridge (paid plan)
+  Solution:  Use Gmail/Outlook/SendGrid to send TO ProtonMail
+
+================================================================================
+  MONITORING & LOGS
+================================================================================
+
+Log Files:
+  logs/scheduler/scheduler.log              Scheduler execution
+  logs/screening/overnight_pipeline.log     Pipeline execution
+  logs/screening/email_notifications.log    Email delivery
+
+Reports:
+  reports/morning_reports/YYYY-MM-DD_market_report.html
+  reports/pipeline_state/YYYY-MM-DD_pipeline_state.json
+
+Commands:
+  View logs:       tail -20 logs/scheduler/scheduler.log
+  Check status:    ps aux | grep schedule_pipeline
+  Next run:        grep "Next scheduled run" logs/scheduler/scheduler.log
+  Recent reports:  ls -lht reports/morning_reports/ | head -6
+
+================================================================================
+  SYSTEM REQUIREMENTS
+================================================================================
+
+Python:     3.8 or higher
+Memory:     2 GB RAM (minimum), 4 GB RAM (recommended)
+Disk:       500 MB (minimum), 2 GB (recommended)
+Network:    Internet connection for market data & email
+
+Required Packages:
+  yahooquery>=2.3.0, pandas>=2.0.0, numpy>=1.24.0
+  yfinance>=0.2.28, pytz>=2023.3, schedule>=1.2.0
+
+Optional Packages (ML):
+  tensorflow>=2.10.0, keras>=2.10.0
+  transformers>=4.25.0, torch>=1.13.0
+
+================================================================================
+  TROUBLESHOOTING
+================================================================================
+
+Email Not Sending:
+  1. Check config:  grep smtp models/config/screening_config.json
+  2. Test SMTP:     python3 test_email_quick.py
+  3. Check logs:    tail -30 logs/screening/email_notifications.log
+
+Scheduler Not Running:
+  1. Check process: ps aux | grep schedule_pipeline
+  2. View logs:     tail -50 logs/scheduler/scheduler.log
+  3. Restart:       python3 schedule_pipeline.py
+
+Pipeline Errors:
+  1. Check logs:    grep ERROR logs/screening/overnight_pipeline.log
+  2. View full:     tail -100 logs/screening/overnight_pipeline.log
+  3. Test mode:     python3 run_overnight_pipeline.py --mode test
+
+================================================================================
+  DOCUMENTATION GUIDE
+================================================================================
+
+Start Here:
+  README.md - Main deployment guide with quick start
+
+Email Setup:
+  FINAL_EMAIL_SETUP_INSTRUCTIONS.md - Step-by-step email setup
+  PROTONMAIL_RECEIVING_EXPLAINED.md - ProtonMail receiving guide
+  PROTONMAIL_SMTP_SOLUTION.md - All SMTP options
+
+Scheduler Setup:
+  EMAIL_AND_SCHEDULER_SETUP.md - Complete setup guide
+  QUICK_START_EMAIL_SCHEDULER.md - Quick reference
+
+Reference:
+  COMMAND_REFERENCE.txt - Quick commands
+  EMAIL_SCHEDULER_DELIVERY_SUMMARY.md - Complete summary
+  DEPLOYMENT_MANIFEST.txt - This file
+
+================================================================================
+  VERSION HISTORY
+================================================================================
+
+v4.4.4 (2025-11-12)
+  ✓ Complete email notification system
+  ✓ 5:00 AM AEST scheduler
+  ✓ Gmail/Outlook/SendGrid support
+  ✓ ProtonMail receiving support
+  ✓ Comprehensive documentation
+  ✓ Background process support
+  ✓ Systemd service configuration
+
+v4.4.3
+  ✓ Yahooquery integration (90-100% success)
+  ✓ Alpha Vantage fallback removed
+  ✓ Batch predictor fixes
+
+v4.4.0
+  ✓ FinBERT sentiment analysis
+  ✓ LSTM neural networks
+  ✓ News collection & caching
+  ✓ SPI 200 monitoring
+
+================================================================================
+  SUPPORT
+================================================================================
+
+For issues, provide:
+  1. logs/scheduler/scheduler.log (last 50 lines)
+  2. logs/screening/overnight_pipeline.log (full file)
+  3. logs/screening/email_notifications.log (last 20 lines)
+  4. Error message and timestamp
+
+Configuration check:
+  python3 -c "import json; config = json.load(open('models/config/screening_config.json')); print('Email:', config['email_notifications']['enabled'])"
+
+================================================================================
+  LICENSE
+================================================================================
+
+This software is provided as-is for personal use.
+
+================================================================================
+  DEPLOYMENT PACKAGE CREATED
+================================================================================
+
+Package:     ASX_Stock_Scanner_v4.4.4_Complete_20251112.zip
+Size:        ~1.1 MB (compressed)
+Created:     2025-11-12
+Status:      ✅ READY FOR DEPLOYMENT
+
+Next Steps:
+  1. Extract package
+  2. Install dependencies
+  3. Configure email (5 min)
+  4. Test email
+  5. Start scheduler
+  6. Check email tomorrow at 5:45 AM!
+
+================================================================================
+  ENJOY AUTOMATED STOCK SCREENING! 📊📧🚀
+================================================================================

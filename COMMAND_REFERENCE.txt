@@ -1,0 +1,162 @@
+═══════════════════════════════════════════════════════════════════════════════
+                       QUICK COMMAND REFERENCE
+═══════════════════════════════════════════════════════════════════════════════
+
+📧 EMAIL TESTING
+───────────────────────────────────────────────────────────────────────────────
+Test email configuration:
+  cd /home/user/webapp && python3 test_email_quick.py
+
+Expected: "✅ TEST EMAIL SENT SUCCESSFULLY!"
+
+⏰ SCHEDULER OPERATIONS
+───────────────────────────────────────────────────────────────────────────────
+Test pipeline immediately (~45 min):
+  cd /home/user/webapp && python3 schedule_pipeline.py --test
+
+Start scheduler (foreground):
+  cd /home/user/webapp && python3 schedule_pipeline.py
+
+Start scheduler (background):
+  cd /home/user/webapp
+  nohup python3 schedule_pipeline.py > logs/scheduler/nohup.log 2>&1 &
+  echo $! > logs/scheduler/scheduler.pid
+
+Check if scheduler is running:
+  ps aux | grep schedule_pipeline
+
+Stop background scheduler:
+  kill $(cat logs/scheduler/scheduler.pid)
+  rm logs/scheduler/scheduler.pid
+
+🔍 MONITORING
+───────────────────────────────────────────────────────────────────────────────
+View scheduler log (last 20 lines):
+  tail -20 logs/scheduler/scheduler.log
+
+View pipeline log (last 50 lines):
+  tail -50 logs/screening/overnight_pipeline.log
+
+View email log (last 20 lines):
+  tail -20 logs/screening/email_notifications.log
+
+Follow logs in real-time:
+  tail -f logs/scheduler/scheduler.log
+
+Check next scheduled run:
+  grep "Next scheduled run" logs/scheduler/scheduler.log | tail -1
+
+📊 REPORTS
+───────────────────────────────────────────────────────────────────────────────
+List recent reports:
+  ls -lht reports/morning_reports/ | head -6
+
+View latest report path:
+  ls -t reports/morning_reports/*.html | head -1
+
+Open latest report (Linux):
+  xdg-open $(ls -t reports/morning_reports/*.html | head -1)
+
+⚙️ CONFIGURATION
+───────────────────────────────────────────────────────────────────────────────
+Edit email configuration:
+  nano models/config/screening_config.json
+  (Line 90: smtp_password)
+
+Check email configuration:
+  cd /home/user/webapp
+  python3 -c "
+  import json
+  with open('models/config/screening_config.json') as f:
+      config = json.load(f)
+      email = config['email_notifications']
+      print(f'Enabled: {email[\"enabled\"]}')
+      print(f'Recipients: {email[\"recipient_emails\"]}')
+      print(f'Password Set: {\"No\" if \"YOUR_GMAIL\" in email[\"smtp_password\"] else \"Yes\"}')"
+
+🔧 MANUAL PIPELINE RUN
+───────────────────────────────────────────────────────────────────────────────
+Run full pipeline once:
+  cd /home/user/webapp && python3 run_overnight_pipeline.py
+
+Run test mode (Financials only, 5 stocks):
+  cd /home/user/webapp && python3 run_overnight_pipeline.py --mode test
+
+📁 IMPORTANT FILES
+───────────────────────────────────────────────────────────────────────────────
+Configuration:
+  models/config/screening_config.json
+
+Scripts:
+  schedule_pipeline.py           # 5:00 AM scheduler
+  test_email_quick.py            # Email test
+  run_overnight_pipeline.py      # Manual runner
+
+Logs:
+  logs/scheduler/scheduler.log
+  logs/screening/overnight_pipeline.log
+  logs/screening/email_notifications.log
+
+Reports:
+  reports/morning_reports/YYYY-MM-DD_market_report.html
+  reports/pipeline_state/YYYY-MM-DD_pipeline_state.json
+
+🆘 TROUBLESHOOTING
+───────────────────────────────────────────────────────────────────────────────
+Test SMTP connection:
+  python3 -c "
+  import smtplib
+  server = smtplib.SMTP('smtp.gmail.com', 587)
+  server.starttls()
+  server.login('david.osland@gmail.com', 'YOUR_APP_PASSWORD')
+  print('✅ SMTP login successful!')
+  server.quit()"
+
+Check for errors in logs:
+  grep ERROR logs/screening/overnight_pipeline.log | tail -20
+  grep ERROR logs/scheduler/scheduler.log | tail -20
+
+Check disk space:
+  df -h
+
+Check Python dependencies:
+  pip list | grep -E "schedule|pytz|yahooquery|pandas|yfinance"
+
+🔐 GMAIL APP PASSWORD SETUP
+───────────────────────────────────────────────────────────────────────────────
+1. Visit: https://myaccount.google.com/apppasswords
+2. Sign in: david.osland@gmail.com
+3. Create app password: "ASX Stock Scanner"
+4. Copy 16-character password
+5. Edit: models/config/screening_config.json (line 90)
+6. Replace: YOUR_GMAIL_APP_PASSWORD_HERE
+7. Save and test: python3 test_email_quick.py
+
+📚 DOCUMENTATION
+───────────────────────────────────────────────────────────────────────────────
+Full setup guide:
+  EMAIL_AND_SCHEDULER_SETUP.md
+
+Quick reference:
+  QUICK_START_EMAIL_SCHEDULER.md
+
+Overview:
+  SETUP_COMPLETE_README.md
+
+Delivery summary:
+  EMAIL_SCHEDULER_DELIVERY_SUMMARY.md
+
+This file:
+  COMMAND_REFERENCE.txt
+
+═══════════════════════════════════════════════════════════════════════════════
+                        READY FOR DEPLOYMENT
+═══════════════════════════════════════════════════════════════════════════════
+
+Next Steps:
+1. Add Gmail app password to configuration
+2. Test email: python3 test_email_quick.py
+3. Start scheduler: python3 schedule_pipeline.py
+4. Check tomorrow at 5:45 AM for morning report!
+
+═══════════════════════════════════════════════════════════════════════════════

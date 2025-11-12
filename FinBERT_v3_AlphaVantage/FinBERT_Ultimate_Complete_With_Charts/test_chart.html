@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple API Test</title>
+</head>
+<body>
+    <h1>API Test</h1>
+    <div id="result"></div>
+    
+    <script>
+        async function testAPI() {
+            const resultDiv = document.getElementById('result');
+            
+            try {
+                // Test stock endpoint
+                const response = await fetch('http://localhost:5000/api/stock/AAPL');
+                const data = await response.json();
+                
+                resultDiv.innerHTML = `
+                    <h2>AAPL Data:</h2>
+                    <p>Price: $${data.price}</p>
+                    <p>Change: ${data.changePercent}%</p>
+                    <p>Volume: ${data.volume}</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `<p style="color:red">Error: ${error.message}</p>`;
+            }
+        }
+        
+        testAPI();
+    </script>
+</body>
+</html>

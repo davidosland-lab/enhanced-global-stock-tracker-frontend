@@ -24,7 +24,7 @@ if %ERRORLEVEL% EQU 0 (
     echo - X-axis now shows correct ADST times
     echo - ASX plots from 10:00 - 16:00 ADST
     echo - FTSE plots from 19:00 - 03:30 ADST (crosses midnight)
-    echo - S&P 500 plots from 01:30 - 08:00 ADST
+    echo - S^&P 500 plots from 01:30 - 08:00 ADST
     echo - Market gaps properly shown when markets are closed
     echo - Time labels clearly show market open/close times
     echo.

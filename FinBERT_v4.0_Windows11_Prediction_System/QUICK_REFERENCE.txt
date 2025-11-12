@@ -1,0 +1,151 @@
+================================================================================
+  FINBERT v4.0 - PREDICTION SYSTEM - QUICK REFERENCE CARD
+================================================================================
+
+📦 QUICK START
+--------------
+1. Double-click START_SERVER.bat
+2. Open browser: http://localhost:5001
+3. Enter stock symbol: AAPL
+4. Click "Analyze"
+
+🌍 SUPPORTED MARKETS
+--------------------
+US:  AAPL, TSLA, MSFT, GOOGL (no suffix)
+AU:  BHP.AX, CBA.AX, ANZ.AX, WBC.AX (.AX suffix)
+UK:  BP.L, HSBA.L, VOD.L, GSK.L (.L suffix)
+
+🔗 API ENDPOINTS
+----------------
+Predictions:
+  GET  /api/predictions/AAPL           - Get cached prediction
+  GET  /api/predictions/AAPL/history   - Prediction history (30 days)
+  GET  /api/predictions/AAPL/accuracy  - Accuracy statistics
+  POST /api/predictions/validate       - Manual validation
+  GET  /api/predictions/scheduler/status - Scheduler info
+
+Stock Data:
+  GET  /api/stock/AAPL?period=1y       - Stock data + prediction
+  GET  /api/sentiment/AAPL             - Sentiment analysis
+  GET  /api/health                     - System health
+
+📊 PREDICTION STATUS
+--------------------
+🟢 Cached  - From database (consistent)
+🔒 Locked  - Market open (cannot change)
+✨ Fresh   - Newly generated
+
+⏰ MARKET HOURS
+---------------
+US (EST):  09:30 - 16:00  | Prediction: 08:00-09:30  | Validate: 16:15
+AU (AEDT): 10:00 - 16:00  | Prediction: 08:30-10:00  | Validate: 16:15
+UK (GMT):  08:00 - 16:30  | Prediction: 06:30-08:00  | Validate: 16:45
+
+💾 DATABASE FILES
+-----------------
+trading.db              - Prediction storage (auto-created)
+news_sentiment_cache.db - Sentiment cache (auto-created)
+
+🔧 CONFIGURATION
+----------------
+Edit config_dev.py:
+  PORT = 5001                      - Change server port
+  PREDICTION_CACHE_HOURS = 24      - Cache duration
+  ENABLE_SCHEDULER = True          - Enable auto-validation
+
+🐛 TROUBLESHOOTING
+------------------
+Port in use:
+  netstat -ano | findstr :5001
+  taskkill /PID <PID> /F
+
+Python not found:
+  - Reinstall Python with "Add to PATH" checked
+  - Or use: C:\Python311\python.exe app_finbert_v4_dev.py
+
+Dependencies missing:
+  pip install -r requirements.txt
+
+Database locked:
+  - Close all app instances
+  - Delete trading.db-journal if exists
+
+🚀 ADVANCED FEATURES
+--------------------
+Train LSTM Model:
+  python models/train_lstm.py --symbol AAPL --epochs 50
+
+Install GPU Support (NVIDIA):
+  pip uninstall tensorflow
+  pip install tensorflow-gpu
+
+View Logs:
+  - Check console output
+  - Look for INFO/WARNING/ERROR messages
+
+📚 DOCUMENTATION
+----------------
+README_PREDICTION_SYSTEM.md    - Complete feature guide
+INSTALLATION_GUIDE.md          - Step-by-step setup
+MULTI_TIMEZONE_PREDICTIONS.md  - Technical documentation
+
+🧪 TEST COMMANDS
+----------------
+# PowerShell / Command Prompt
+
+# Test prediction
+curl http://localhost:5001/api/predictions/AAPL
+
+# Test history
+curl http://localhost:5001/api/predictions/AAPL/history?days=7
+
+# Test scheduler
+curl http://localhost:5001/api/predictions/scheduler/status
+
+# Test multiple markets
+curl http://localhost:5001/api/predictions/TSLA      # US
+curl http://localhost:5001/api/predictions/BHP.AX    # AU
+curl http://localhost:5001/api/predictions/BP.L      # UK
+
+📈 ACCURACY TRACKING
+--------------------
+View in Browser:
+  1. Analyze a stock
+  2. Scroll down to "Prediction Accuracy Tracking"
+  3. See summary stats and history table
+
+API Access:
+  GET /api/predictions/AAPL/accuracy?period=month
+
+Metrics:
+  - Total Predictions
+  - Overall Accuracy %
+  - Direction Accuracy (BUY/SELL/HOLD)
+  - Average Price Error ($)
+
+🎯 BEST PRACTICES
+-----------------
+1. Wait for market close to validate accuracy
+2. Train LSTM models for better predictions
+3. Monitor scheduler status regularly
+4. Check database size periodically
+5. Use cached predictions for consistency
+
+⚠️ IMPORTANT NOTES
+-------------------
+✓ Predictions lock at market open
+✓ Scheduler runs automatically (Mon-Fri)
+✓ Database grows over time (monitor size)
+✓ Internet required for stock data
+✓ Not financial advice - for analysis only
+
+📞 SUPPORT
+----------
+- Check INSTALLATION_GUIDE.md for common issues
+- Review error messages in console
+- Verify Python and dependencies installed
+- Test with simple examples first
+
+================================================================================
+FinBERT v4.0 | Version 4.0.0 | Windows 11 Optimized | November 2025
+================================================================================

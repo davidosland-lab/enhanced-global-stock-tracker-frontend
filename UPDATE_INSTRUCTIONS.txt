@@ -1,0 +1,101 @@
+═══════════════════════════════════════════════════════════════════════════════
+                    QUICK FIX - PARAMETER COMPATIBILITY
+═══════════════════════════════════════════════════════════════════════════════
+
+🔧 ISSUE FIXED: TypeError - cache_ttl_minutes parameter
+
+📦 NEW PACKAGE: FinBERT_v4.4.4_ALPHA_VANTAGE_FIXED_20251108_063941.zip
+
+═══════════════════════════════════════════════════════════════════════════════
+                        WHAT WAS WRONG
+═══════════════════════════════════════════════════════════════════════════════
+
+ERROR MESSAGE:
+  TypeError: AlphaVantageDataFetcher.__init__() got an unexpected keyword 
+  argument 'cache_ttl_minutes'
+
+CAUSE:
+  • AlphaVantageDataFetcher expected: cache_ttl_hours
+  • StockScanner was passing: cache_ttl_minutes
+  • Parameter name mismatch
+
+═══════════════════════════════════════════════════════════════════════════════
+                        WHAT WAS FIXED
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ Changed AlphaVantageDataFetcher parameter name
+✅ FROM: cache_ttl_hours → TO: cache_ttl_minutes
+✅ Updated default: 4 hours → 240 minutes (equivalent)
+✅ Fixed timedelta calculation
+✅ Improved logging (shows minutes and hours)
+
+═══════════════════════════════════════════════════════════════════════════════
+                    INSTALLATION (2 OPTIONS)
+═══════════════════════════════════════════════════════════════════════════════
+
+OPTION A: FRESH INSTALL (Recommended)
+--------------------------------------
+1. Delete old folder:
+   C:\Users\david\AOSS\COMPLETE_SYSTEM_PACKAGE\
+
+2. Extract new ZIP:
+   FinBERT_v4.4.4_ALPHA_VANTAGE_FIXED_20251108_063941.zip
+
+3. Run:
+   cd C:\Users\david\AOSS\COMPLETE_SYSTEM_PACKAGE
+   python scripts\run_overnight_screener.py
+
+OPTION B: QUICK UPDATE (Just one file)
+---------------------------------------
+1. Download fixed file from repo:
+   models/screening/alpha_vantage_fetcher.py
+
+2. Replace in your folder:
+   C:\Users\david\AOSS\COMPLETE_SYSTEM_PACKAGE\models\screening\
+
+3. Run:
+   python scripts\run_overnight_screener.py
+
+═══════════════════════════════════════════════════════════════════════════════
+                        VERIFICATION
+═══════════════════════════════════════════════════════════════════════════════
+
+RUN:
+  python scripts\run_overnight_screener.py
+
+EXPECTED OUTPUT (First few lines):
+  [INFO] Alpha Vantage Data Fetcher initialized
+  [INFO]   Cache TTL: 240 minutes (4.0 hours)
+  [INFO]   Rate limit: 12.0s between calls (5/min)
+  [INFO] Stock Scanner initialized (ALPHA VANTAGE MODE)
+  [INFO] Starting overnight screener...
+
+NO ERRORS = ✅ Working correctly!
+
+═══════════════════════════════════════════════════════════════════════════════
+                        GIT REPOSITORY
+═══════════════════════════════════════════════════════════════════════════════
+
+📝 Commit: ab54933 - "FIX: AlphaVantageDataFetcher parameter compatibility"
+🌿 Branch: finbert-v4.0-development
+🔗 PR: https://github.com/davidosland-lab/enhanced-global-stock-tracker-frontend/pull/7
+✅ Status: Pushed and ready
+
+═══════════════════════════════════════════════════════════════════════════════
+                        WHAT HAPPENS NEXT
+═══════════════════════════════════════════════════════════════════════════════
+
+After running the screener:
+
+⏱️  First run: ~16 minutes (validates and fetches 40 stocks)
+📊 API calls: ~80/500
+💾 Cache: Saved for 4 hours (240 minutes)
+📄 Report: Generated in reports\morning_reports\
+
+⏱️  Subsequent runs (within 4 hours): <1 minute (loads from cache)
+📊 API calls: 0/500 (uses cached data)
+
+═══════════════════════════════════════════════════════════════════════════════
+Generated: 2025-11-08
+Fix: Parameter compatibility
+═══════════════════════════════════════════════════════════════════════════════

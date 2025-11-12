@@ -1,0 +1,253 @@
+═══════════════════════════════════════════════════════════════════════════════
+  🔧 SURGICAL FIX: 429 Rate Limit Storm ELIMINATED - Quick Reference
+═══════════════════════════════════════════════════════════════════════════════
+
+📅 Date: 2025-11-08
+🔗 PR: https://github.com/davidosland-lab/enhanced-global-stock-tracker-frontend/pull/7
+📝 Commit: 6639d73 - "SURGICAL FIX: Remove ALL /quoteSummary usage"
+🌿 Branch: finbert-v4.0-development
+
+═══════════════════════════════════════════════════════════════════════════════
+  🎯 WHAT WAS FIXED
+═══════════════════════════════════════════════════════════════════════════════
+
+ROOT CAUSE:
+  Yahoo Finance /quoteSummary endpoint (Ticker.info) = MOST rate-limited endpoint
+  Every ticker validation was calling info() → 100 tickers = 100 quoteSummary calls
+  Result: 429 rate limit storm, "Validation complete: 0/5 passed"
+
+SOLUTION:
+  ✅ Removed ALL Ticker.info / quoteSummary calls
+  ✅ Validate tickers using PRICE DATA ONLY (yf.download batch call)
+  ✅ Ticker is valid if it returns any OHLCV rows
+  ✅ Single batch call for entire ticker list = ZERO quoteSummary calls
+
+═══════════════════════════════════════════════════════════════════════════════
+  📁 FILES CHANGED
+═══════════════════════════════════════════════════════════════════════════════
+
+models/screening/data_fetcher.py:
+  ✅ ADDED: validate_by_prices() - Price-based validation
+  ✅ UPDATED: validate_stock_batch() - Uses price validation now
+  ✅ UPDATED: fetch_batch() - Supports interval/start/end
+  ✅ ADDED: _hist_cache_key() - Proper cache key generation
+  ✅ ADDED: fetch_indices_soft() - Market indices helper
+  ❌ REMOVED: fetch_ticker_info() - Main 429 source
+
+models/screening/stock_scanner.py:
+  ✅ UPDATED: _scan_sector_batch() - Uses price validation
+  ✅ REMOVED: All fetch_ticker_info() calls
+  ✅ ADDED: mock_info dict from OHLCV data
+
+═══════════════════════════════════════════════════════════════════════════════
+  🧪 TESTING RESULTS
+═══════════════════════════════════════════════════════════════════════════════
+
+Test 1: Price-Based Validation
+  Command: validate_by_prices(['CBA.AX', 'WBC.AX', 'ANZ.AX'])
+  Result: ✅ 3/3 tickers validated
+  Time: < 1 second
+  429 Errors: ZERO
+
+Test 2: Batch Fetch
+  Command: fetch_batch(['CBA.AX', 'WBC.AX'], period='5d', interval='1d')
+  Result: ✅ 5 days data for both tickers
+  Columns: Open, High, Low, Close, Volume
+  429 Errors: ZERO
+
+Test 3: Validation with Criteria
+  Criteria: min_price=20, max_price=150, min_avg_volume=1000000
+  Result: ✅ 2/3 passed (price/volume filtering from OHLCV)
+  429 Errors: ZERO
+
+═══════════════════════════════════════════════════════════════════════════════
+  🚀 HOW TO DEPLOY (5 STEPS)
+═══════════════════════════════════════════════════════════════════════════════
+
+STEP 1: Pull Latest Code
+  cd COMPLETE_SYSTEM_PACKAGE
+  git pull origin finbert-v4.0-development
+
+STEP 2: Test Price-Based Validation
+  python -c "from models.screening.data_fetcher import HybridDataFetcher; \
+             f = HybridDataFetcher(); \
+             v = f.validate_by_prices(['CBA.AX','WBC.AX'], period='5d'); \
+             print('✅ Working!' if v else '❌ Error')"
+  
+  Expected: ✅ Working!
+  If Error: Check yfinance installation (pip install yfinance)
+
+STEP 3: Train LSTM for 1 Stock (Optional)
+  python models/screening/lstm_trainer.py --symbol CBA.AX --epochs 50
+  
+  Expected: Training completes in ~5-10 minutes
+  Creates: trained_models/CBA_AX_model.keras
+
+STEP 4: Test Overnight Scanner (5 stocks)
+  python scripts/run_overnight_screener.py --test
+  
+  Expected Output:
+    ✓ Validating 5 tickers via price data (NOT quoteSummary)
+    ✓ Validation complete: 5/5 passed
+    ✓ Batch fetch complete: 5/5 tickers
+    ✓ NO 429 errors
+  
+  If you see 429 errors: STOP and report logs
+
+STEP 5: Run Full Overnight Scan
+  python scripts/run_overnight_screener.py
+  
+  Expected: 
+    - Scans all sectors
+    - Validates 100+ tickers
+    - ZERO 429 errors
+    - Generates reports in models/screening/reports/
+
+═══════════════════════════════════════════════════════════════════════════════
+  📊 BEFORE vs AFTER
+═══════════════════════════════════════════════════════════════════════════════
+
+BEFORE (❌ 429 Storm):
+  ┌─────────────────────────────────────────────────┐
+  │ For each ticker:                                │
+  │   1. Call Ticker.info → /quoteSummary (SLOW)    │
+  │   2. Extract market_cap, avg_volume, price      │
+  │   3. Validate against criteria                  │
+  │                                                 │
+  │ 100 tickers = 100 quoteSummary calls           │
+  │ Result: 429 RATE LIMIT STORM 🔥                │
+  │         "Validation complete: 0/5 passed"       │
+  └─────────────────────────────────────────────────┘
+
+AFTER (✅ No 429s):
+  ┌─────────────────────────────────────────────────┐
+  │ 1. ONE batch call: yf.download(all_tickers)     │
+  │    → Returns OHLCV data for all tickers (FAST)  │
+  │                                                 │
+  │ 2. Validate: ticker valid if has price rows     │
+  │                                                 │
+  │ 3. Optional filters from OHLCV:                 │
+  │    - Last close price                           │
+  │    - 20-day avg volume                          │
+  │                                                 │
+  │ 100 tickers = 1-2 batch calls                  │
+  │ Result: ZERO 429 errors ✨                     │
+  │         "Validation complete: 100/100 passed"   │
+  └─────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════
+  ✅ SUCCESS METRICS
+═══════════════════════════════════════════════════════════════════════════════
+
+After deploying, you should see:
+
+  ✅ ZERO 429 errors in logs
+  ✅ Validation success rate: 100% (was 0%)
+  ✅ Faster validation: 5-10 seconds for 100 tickers (was timing out)
+  ✅ Overnight scans complete successfully
+  ✅ Reports generated in models/screening/reports/
+  ✅ Email notifications sent (if configured)
+
+═══════════════════════════════════════════════════════════════════════════════
+  🆘 TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════════════════
+
+ISSUE: Still seeing 429 errors
+  → Check logs to identify which Yahoo endpoint is failing
+  → If it's NOT /quoteSummary, increase rate_limit_delay in data_fetcher.py
+  → If Yahoo blocked your IP, wait 1 hour and try again
+
+ISSUE: "Validation complete: 0 passed"
+  → Check internet connection
+  → Try: pip install --upgrade yfinance
+  → Test manually: yf.download(['CBA.AX'], period='5d')
+
+ISSUE: Import errors
+  → Ensure you're in COMPLETE_SYSTEM_PACKAGE directory
+  → Check: python -c "import models.screening.data_fetcher"
+  → If error, check PYTHONPATH or use: cd COMPLETE_SYSTEM_PACKAGE
+
+ISSUE: Cache directory errors
+  → Create manually: mkdir cache
+  → Check permissions: ls -la cache/
+  → Clear cache: rm cache/*.pkl
+
+═══════════════════════════════════════════════════════════════════════════════
+  📚 KEY FUNCTIONS (Reference)
+═══════════════════════════════════════════════════════════════════════════════
+
+validate_by_prices(tickers, period="5d", interval="1d")
+  Purpose: Validate tickers using price data (NO quoteSummary)
+  Returns: List of valid ticker symbols
+  Example: valid = fetcher.validate_by_prices(['CBA.AX', 'WBC.AX'])
+
+validate_stock_batch(tickers, criteria)
+  Purpose: Validate with optional price/volume filtering
+  Criteria: {'min_price': 20, 'max_price': 150, 'min_avg_volume': 1000000}
+  Returns: List of tickers passing all filters
+  Example: valid = fetcher.validate_stock_batch(tickers, criteria)
+
+fetch_batch(tickers, period="5d", interval="1d", start=None, end=None)
+  Purpose: Batch fetch OHLCV data for multiple tickers
+  Returns: Dict mapping ticker → DataFrame
+  Example: data = fetcher.fetch_batch(['CBA.AX', 'WBC.AX'], period='1mo')
+
+_safe_yf_download(tickers, period, interval, ...)
+  Purpose: Wrapper with exponential backoff and retry logic
+  Retries: 6 attempts with delays: 0.6, 1.2, 2.4, 4.8, 9.6 seconds
+  Internal: Used by validate_by_prices() and fetch_batch()
+
+═══════════════════════════════════════════════════════════════════════════════
+  📝 IMPORTANT NOTES
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Fundamentals (Market Cap, Beta):
+   - NOT available from price data alone
+   - Set to defaults in mock_info dict
+   - Can add later from EODHD/FMP API (separate low-frequency calls)
+   - Store in local DB, refresh weekly
+
+2. Scoring Still Works:
+   - Liquidity: Uses 20-day avg volume from OHLCV ✅
+   - Momentum: Uses MA20, MA50 from OHLCV ✅
+   - Technical: Uses RSI, volatility from OHLCV ✅
+   - Market cap/beta: Defaults (enhance later if needed)
+
+3. Cache Performance:
+   - Cache keys now include interval/period/start/end
+   - Prevents wrong granularity data being returned
+   - 30-minute TTL (configurable)
+   - Automatic cleanup of old cache files
+
+4. Backward Compatibility:
+   - External API unchanged
+   - validate_stock_batch() still works (now uses price validation)
+   - fetch_batch() enhanced with interval support
+   - Legacy code continues to work
+
+═══════════════════════════════════════════════════════════════════════════════
+  🔗 RESOURCES
+═══════════════════════════════════════════════════════════════════════════════
+
+Full Documentation: SURGICAL_FIX_DEPLOYMENT_SUMMARY.md
+Pull Request: https://github.com/davidosland-lab/enhanced-global-stock-tracker-frontend/pull/7
+Commit: 6639d73
+Branch: finbert-v4.0-development
+
+═══════════════════════════════════════════════════════════════════════════════
+  ✨ STATUS
+═══════════════════════════════════════════════════════════════════════════════
+
+  ✅ Surgical fix implemented and tested
+  ✅ NO /quoteSummary calls in entire codebase
+  ✅ Price-based validation working: 3/3 ASX stocks
+  ✅ Batch fetching working: Proper MultiIndex handling
+  ✅ Committed to finbert-v4.0-development
+  ✅ Pushed to remote repository
+  ✅ PR #7 updated automatically
+
+═══════════════════════════════════════════════════════════════════════════════
+Generated: 2025-11-08
+Assistant: Claude Code (Sonnet 3.5)
+Project: Enhanced Global Stock Tracker - FinBERT v4.4.4
+═══════════════════════════════════════════════════════════════════════════════

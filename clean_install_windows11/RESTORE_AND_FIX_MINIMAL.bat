@@ -44,7 +44,7 @@ echo.
 echo What has been fixed:
 echo   - Display shows ADST (Australian Daylight Saving Time)
 echo   - FTSE: 19:00 - 03:30 ADST
-echo   - S&P 500: 01:30 - 08:00 ADST
+echo   - S^&P 500: 01:30 - 08:00 ADST
 echo   - Time conversion uses UTC+11 (ADST)
 echo.
 echo The original working functionality is preserved.
