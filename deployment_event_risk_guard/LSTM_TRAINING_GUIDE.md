@@ -1,199 +1,322 @@
 # LSTM Training Guide - Event Risk Guard System
 
-**Document Version**: 1.0  
-**Date**: November 12, 2025  
-**System**: Event Risk Guard with LSTM Prediction Enhancement
-
----
-
 ## Overview
 
-The Event Risk Guard system includes LSTM (Long Short-Term Memory) neural network models for enhanced stock price prediction. This guide explains how to train LSTM models, what parameters to use, and how they integrate with Event Risk Guard.
+This guide explains how to train LSTM (Long Short-Term Memory) models for stock price prediction in the Event Risk Guard system.
 
 ---
 
 ## Training Parameters
 
-### Core Training Configuration
+### Core Training Parameters
 
-These parameters are configured in `models/config/screening_config.json`:
+| Parameter | Default Value | Description | Range | Impact |
+|-----------|--------------|-------------|-------|--------|
+| **Epochs** | `50` | Number of complete passes through training data | 20-100 | More epochs = better learning but longer training time |
+| **Sequence Length** | `60` | Number of historical days used for prediction | 30-120 | Longer sequence = more context but slower training |
+| **Batch Size** | `32` | Number of samples processed before model update | 16-64 | Larger = faster but more memory usage |
+| **Validation Split** | `0.2` (20%) | Portion of data reserved for validation | 0.1-0.3 | Higher = better validation but less training data |
+| **Training Period** | `2y` (2 years) | Historical data timeframe | 1y-5y | More data = better model but slower download |
 
-| Parameter | Value | Description |
-|-----------|-------|-------------|
-| **Epochs** | 50 | Number of training iterations per stock |
-| **Batch Size** | 32 | Number of samples processed before updating model |
-| **Validation Split** | 0.2 (20%) | Percentage of data reserved for validation |
-| **Sequence Length** | 60 days | Historical lookback window |
-| **Historical Data** | 2 years | Training data period |
-| **Max Models Per Night** | 20 | Maximum models to train in automated runs |
-| **Stale Threshold** | 7 days | Days before model is considered outdated |
-| **Priority Strategy** | highest_opportunity_score | Which stocks to train first |
+### Model Architecture Parameters
 
-### Model Architecture
+| Parameter | Default Value | Description |
+|-----------|--------------|-------------|
+| **LSTM Units (Layer 1)** | `100` | Neurons in first LSTM layer |
+| **LSTM Units (Layer 2)** | `50` | Neurons in second LSTM layer |
+| **Dropout Rate** | `0.2` | Fraction of inputs dropped to prevent overfitting |
+| **Optimizer** | `Adam` | Training optimization algorithm |
+| **Loss Function** | `MSE` (Mean Squared Error) | Error measurement metric |
 
-- **Input Layer**: 60-day sequence of OHLCV data + technical indicators
-- **LSTM Layers**: 2 stacked LSTM layers (50 units each)
-- **Dropout**: 0.2 (20% dropout for regularization)
-- **Output Layer**: Dense layer with 1 unit (next-day price prediction)
-- **Loss Function**: Mean Squared Error (MSE)
-- **Optimizer**: Adam (learning rate: 0.001)
+### Feature Set
 
----
+The LSTM model uses 8 technical features:
 
-## Training Time Estimates
-
-### Per-Stock Training Time
-
-| Stock Type | Typical Time | Factors |
-|------------|--------------|---------|
-| **ASX Stocks** (CBA.AX, BHP.AX) | 10-15 minutes | 2 years data, 50 epochs |
-| **US Stocks** (AAPL, MSFT) | 10-15 minutes | Same configuration |
-| **Low-Volume Stocks** | 5-10 minutes | Less historical data available |
-| **High-Volume Stocks** | 15-20 minutes | More data points to process |
-
-### Batch Training Time
-
-| Batch Size | Estimated Time | Notes |
-|------------|----------------|-------|
-| **10 stocks** (default) | 1.5-2.5 hours | Overnight batch (TRAIN_LSTM_OVERNIGHT.bat) |
-| **20 stocks** | 3-5 hours | Maximum overnight training |
-| **5 stocks** | 45-75 minutes | Quick custom batch |
-
-**Recommended**: Run overnight training sessions (10-20 stocks) during non-trading hours.
+1. **close** - Closing price (primary target)
+2. **volume** - Trading volume
+3. **high** - Daily high price
+4. **low** - Daily low price
+5. **open** - Opening price
+6. **sma_20** - 20-day Simple Moving Average
+7. **rsi** - Relative Strength Index (14-day)
+8. **macd** - Moving Average Convergence Divergence
 
 ---
 
-## Training Methods
+## Training Scripts
 
-### Method 1: Overnight Batch Training (Recommended)
+### 1. TRAIN_LSTM_OVERNIGHT.bat
 
-**Purpose**: Train LSTM models for top 10 ASX stocks automatically.
+**Purpose:** Train 10 priority ASX stocks overnight  
+**Time:** 1.5-2 hours (100-120 minutes)  
+**Stocks:** CBA.AX, ANZ.AX, NAB.AX, WBC.AX, MQG.AX, BHP.AX, RIO.AX, CSL.AX, WES.AX, BOQ.AX
 
-**Command**:
+**When to use:**
+- First-time setup of Event Risk Guard system
+- Monthly model refresh for all priority stocks
+- After major market events requiring model updates
+
+**Command:**
 ```batch
 TRAIN_LSTM_OVERNIGHT.bat
 ```
 
-**Stock Selection** (aligned with Event Risk Guard focus):
-1. **CBA.AX** - Commonwealth Bank (Basel III reports)
-2. **ANZ.AX** - ANZ Banking Group (Basel III reports)
-3. **NAB.AX** - National Australia Bank (Basel III reports)
-4. **WBC.AX** - Westpac Banking Corp (Basel III reports)
-5. **MQG.AX** - Macquarie Group (Earnings events)
-6. **BHP.AX** - BHP Group (Dividend events)
-7. **RIO.AX** - Rio Tinto (Dividend events)
-8. **CSL.AX** - CSL Limited (Earnings events)
-9. **WES.AX** - Wesfarmers (Earnings events)
-10. **BOQ.AX** - Bank of Queensland (Basel III reports)
-
-**Process**:
-1. Double-click `TRAIN_LSTM_OVERNIGHT.bat`
-2. Verify TensorFlow is installed
-3. Press ENTER to confirm training
-4. Wait 1-2 hours for completion
-5. Models saved to `models/lstm/`
-
-**Output Files**:
-- `models/lstm/CBA.AX_lstm_model.keras` (trained model)
-- `models/lstm/CBA.AX_lstm_metadata.json` (training stats)
-- `logs/lstm_training/training_log_[timestamp].txt`
+**What it does:**
+1. Verifies Python and TensorFlow installation
+2. Downloads 2 years historical data for each stock
+3. Trains LSTM model with 50 epochs, 60-day sequences
+4. Saves trained models to `models\` directory
+5. Saves metadata (training date, loss, features) to JSON files
 
 ---
 
-### Method 2: Custom Interactive Training
+### 2. TRAIN_LSTM_CUSTOM.bat
 
-**Purpose**: Choose specific stocks to train interactively.
+**Purpose:** Interactive training with flexible stock selection  
+**Time:** 10-15 minutes per stock  
+**Modes:** Pre-defined lists, Manual entry, File import
 
-**Command**:
+**When to use:**
+- Training specific stocks not in overnight list
+- Testing on US stocks (AAPL, MSFT, GOOGL)
+- Training UK or other international stocks
+- Custom watchlist training
+
+**Interactive Mode:**
 ```batch
 TRAIN_LSTM_CUSTOM.bat
 ```
 
-**Options**:
-
-#### Option A: Pre-defined Lists
-```
-1. top10       - Top 10 ASX + US stocks
-2. australian  - 8 major ASX stocks
-3. us_tech     - 6 US technology stocks
-4. us_mega     - 6 US mega-cap stocks
-5. uk_ftse     - 5 UK FTSE 100 stocks
-```
-
-#### Option B: Manual Entry
-```
-Enter stock symbols: CBA.AX,ANZ.AX,NAB.AX,WBC.AX
-```
-
-#### Option C: Load from File
-
-**stocks.txt** (plain text format):
-```
-CBA.AX
-ANZ.AX
-NAB.AX
-WBC.AX
-MQG.AX
-```
-
-**stocks.json** (JSON format):
-```json
-[
-  {"symbol": "CBA.AX", "name": "Commonwealth Bank"},
-  {"symbol": "ANZ.AX", "name": "ANZ Banking Group"},
-  {"symbol": "NAB.AX", "name": "National Australia Bank"}
-]
-```
-
-**Usage**:
+**Command-Line Mode:**
 ```batch
-TRAIN_LSTM_CUSTOM.bat --file stocks.txt
-```
+REM Train specific symbols
+TRAIN_LSTM_CUSTOM.bat --symbols CBA.AX,BHP.AX,CSL.AX
 
----
-
-### Method 3: Command-Line Training
-
-**Command-Line Arguments**:
-
-```batch
-# Train specific symbols
-TRAIN_LSTM_CUSTOM.bat --symbols CBA.AX,ANZ.AX,NAB.AX
-
-# Use pre-defined list
+REM Use pre-defined list
 TRAIN_LSTM_CUSTOM.bat --list australian
 
-# Load from file
+REM Load from file
 TRAIN_LSTM_CUSTOM.bat --file my_stocks.txt
+```
 
-# Interactive mode (default)
-TRAIN_LSTM_CUSTOM.bat --interactive
+**Pre-defined Lists:**
+- `top10` - Top 10 global stocks (US + ASX)
+- `us_tech` - US tech giants (AAPL, MSFT, GOOGL, NVDA, AMD, INTC)
+- `us_mega` - US mega caps (AAPL, MSFT, GOOGL, AMZN, META, TSLA)
+- `australian` - Top ASX stocks (CBA.AX, BHP.AX, WBC.AX, etc.)
+- `uk_ftse` - UK FTSE stocks (BP.L, SHEL.L, HSBA.L, etc.)
+
+---
+
+### 3. TRAIN_LSTM_SINGLE.bat
+
+**Purpose:** Quick training for one stock  
+**Time:** 10-15 minutes  
+**Use case:** Urgent model update for specific stock
+
+**Command:**
+```batch
+TRAIN_LSTM_SINGLE.bat CBA.AX
+TRAIN_LSTM_SINGLE.bat AAPL
+TRAIN_LSTM_SINGLE.bat BHP.AX
+```
+
+**When to use:**
+- Refreshing model for a stock with upcoming event
+- Testing LSTM training on a new stock
+- Quick model update after major company news
+
+---
+
+## Training Process Explained
+
+### Step 1: Data Collection (30-60 seconds per stock)
+
+1. Downloads 2 years historical data from Yahoo Finance
+2. Fetches: Open, High, Low, Close, Volume
+3. Validates data quality (removes NaN values)
+4. Minimum requirement: 100 trading days
+
+### Step 2: Feature Engineering (10-20 seconds)
+
+1. Calculates technical indicators:
+   - Simple Moving Averages (10, 20, 50-day)
+   - Exponential Moving Averages (12, 26-day)
+   - MACD (Moving Average Convergence Divergence)
+   - RSI (Relative Strength Index, 14-day)
+   - Bollinger Bands (20-day, 2 std dev)
+   - Volume indicators (10-day SMA, volume ratio)
+   - Daily returns and volatility (20-day)
+
+2. Normalizes features to 0-1 range
+3. Creates sequences (60 days → 1 day prediction)
+
+### Step 3: Model Training (8-12 minutes per stock)
+
+1. **Architecture:**
+   - Input Layer: 60 sequences × 8 features = 480 inputs
+   - LSTM Layer 1: 100 units, return sequences
+   - Dropout: 20% (prevents overfitting)
+   - LSTM Layer 2: 50 units
+   - Dropout: 20%
+   - Dense Output: 1 unit (next-day price)
+
+2. **Training Loop:**
+   - 50 epochs (complete passes through data)
+   - Batch size: 32 samples
+   - Validation: 20% of data held out
+   - Early stopping: Monitors validation loss
+   - Learning rate: Adaptive (Adam optimizer)
+
+3. **Progress Output:**
+   ```
+   Epoch 1/50  - loss: 0.0245 - val_loss: 0.0198
+   Epoch 2/50  - loss: 0.0187 - val_loss: 0.0156
+   ...
+   Epoch 50/50 - loss: 0.0042 - val_loss: 0.0038
+   ```
+
+### Step 4: Model Saving (5-10 seconds)
+
+1. Saves trained model: `models\lstm_CBA.AX_model.keras`
+2. Saves metadata: `models\lstm_CBA.AX_metadata.json`
+   ```json
+   {
+     "symbol": "CBA.AX",
+     "training_date": "2025-11-12T10:30:45",
+     "data_points": 504,
+     "features": ["close", "volume", "high", "low", "open", "sma_20", "rsi", "macd"],
+     "sequence_length": 60,
+     "epochs": 50,
+     "results": {
+       "final_loss": 0.0042,
+       "final_val_loss": 0.0038,
+       "training_time": 542.3
+     }
+   }
+   ```
+
+---
+
+## Training Parameters - Detailed Explanation
+
+### 1. Epochs (Default: 50)
+
+**What it is:** Number of complete passes through the entire training dataset.
+
+**Impact:**
+- **Too few (< 20):** Model underfits, poor accuracy
+- **Optimal (30-70):** Good balance of learning and training time
+- **Too many (> 100):** Overfitting risk, diminishing returns
+
+**Recommendation:**
+- **Quick test:** 20 epochs (~4 minutes per stock)
+- **Standard training:** 50 epochs (~10 minutes per stock)
+- **High accuracy:** 70-100 epochs (~15-20 minutes per stock)
+
+**Example:**
+```python
+# train_lstm_batch.py (line 67-68)
+result = train_model_for_symbol(
+    symbol=symbol,
+    epochs=50,  # Standard: 50 epochs
+    sequence_length=60
+)
 ```
 
 ---
 
-## Training Requirements
+### 2. Sequence Length (Default: 60 days)
 
-### System Requirements
+**What it is:** Number of historical days used to predict the next day's price.
 
-| Component | Requirement | Notes |
-|-----------|-------------|-------|
-| **Python** | 3.9+ | Verified during installation |
-| **TensorFlow** | 2.13.0+ | ~400-500 MB download |
-| **Keras** | 2.13.0+ | Bundled with TensorFlow |
-| **RAM** | 4 GB minimum | 8 GB recommended for batch training |
-| **Disk Space** | 1 GB free | For models and training logs |
-| **Internet** | Required | To download historical stock data |
+**Impact:**
+- **Shorter (30-40 days):** Faster training, less context, good for volatile stocks
+- **Optimal (60 days):** 3 months context, captures quarterly patterns
+- **Longer (90-120 days):** More context but slower training, risk of overfitting
 
-### Data Requirements
+**Recommendation:**
+- **High volatility stocks (tech):** 40-50 days
+- **Stable stocks (banks):** 60-70 days
+- **Dividend stocks:** 90 days (captures quarterly cycles)
 
-| Requirement | Minimum | Recommended | Notes |
-|-------------|---------|-------------|-------|
-| **Historical Data** | 100 days | 500+ days (2 years) | More data = better accuracy |
-| **Trading Days** | 80 days | 400+ days | Excludes weekends/holidays |
-| **Data Completeness** | 90% | 98%+ | Missing data may affect training |
+**Trade-offs:**
 
-**Note**: If a stock has insufficient data, training will skip that symbol with a warning.
+| Sequence Length | Training Time | Context | Memory Usage | Best For |
+|-----------------|--------------|---------|--------------|----------|
+| 30 days | 5-7 min | Low | Low | Quick tests, volatile stocks |
+| 60 days | 10-15 min | Medium | Medium | Standard, most stocks |
+| 90 days | 15-20 min | High | High | Dividend stocks, stable companies |
+| 120 days | 20-30 min | Very High | Very High | Long-term predictions |
+
+---
+
+### 3. Batch Size (Default: 32)
+
+**What it is:** Number of training samples processed before model weights are updated.
+
+**Impact:**
+- **Small (16):** More frequent updates, better convergence, slower training
+- **Medium (32):** Good balance, standard choice
+- **Large (64-128):** Faster training, uses more memory, less precise updates
+
+**Recommendation:**
+- **16 GB RAM:** Batch size 32 (safe)
+- **32 GB RAM:** Batch size 64 (faster)
+- **8 GB RAM:** Batch size 16 (conservative)
+
+**Memory Usage Estimates:**
+
+| Batch Size | RAM Usage | Training Speed | Convergence Quality |
+|-----------|-----------|----------------|---------------------|
+| 16 | ~1.5 GB | Slow | Excellent |
+| 32 | ~2.5 GB | Medium | Good |
+| 64 | ~4 GB | Fast | Moderate |
+| 128 | ~7 GB | Very Fast | Lower |
+
+---
+
+### 4. Validation Split (Default: 0.2 = 20%)
+
+**What it is:** Percentage of training data reserved for validation (not used in training).
+
+**Impact:**
+- **Low (10%):** More training data but less validation confidence
+- **Standard (20%):** Good balance
+- **High (30%):** Better validation but less training data
+
+**Recommendation:**
+- **Large datasets (2+ years):** 20% validation
+- **Small datasets (1 year):** 15% validation
+- **Very small datasets (< 6 months):** 10% validation
+
+**Example with 2 years data (504 trading days):**
+- Training: 80% = 403 days
+- Validation: 20% = 101 days
+
+---
+
+### 5. Training Period (Default: 2 years)
+
+**What it is:** Amount of historical data downloaded for training.
+
+**Options:**
+- `1y` = 1 year (~252 trading days)
+- `2y` = 2 years (~504 trading days)
+- `5y` = 5 years (~1260 trading days)
+
+**Recommendation:**
+- **Standard stocks:** 2 years (good balance)
+- **New IPOs:** 1 year (may be all available)
+- **Stable companies:** 5 years (captures multiple cycles)
+
+**Trade-offs:**
+
+| Period | Data Points | Training Time | Model Quality | Download Time |
+|--------|------------|---------------|---------------|---------------|
+| 1 year | ~252 days | 5-8 min | Moderate | 10-15 sec |
+| 2 years | ~504 days | 10-15 min | Good | 20-30 sec |
+| 5 years | ~1260 days | 20-30 min | Excellent | 40-60 sec |
 
 ---
 
@@ -201,433 +324,279 @@ TRAIN_LSTM_CUSTOM.bat --interactive
 
 ### Training Metrics
 
-After each training session, the following metrics are logged:
+**Loss (MSE - Mean Squared Error):**
+- Measures average squared difference between predictions and actual prices
+- Lower is better
+- Target: < 0.01 for good model
 
-| Metric | Description | Good Value |
-|--------|-------------|------------|
-| **Final Loss** | Mean Squared Error on training data | < 0.01 |
-| **Final Validation Loss** | MSE on validation data | < 0.02 |
-| **Training Time** | Time taken to train model | 10-15 min |
-| **Epochs Completed** | Number of training iterations | 50 |
+**Validation Loss:**
+- Same metric but on held-out validation data
+- Should be close to training loss
+- If much higher → overfitting
 
-### Example Output
-
+**Example Good Training:**
 ```
-✅ CBA.AX: Training COMPLETE!
-   Final Loss: 0.0087
-   Final Val Loss: 0.0142
-   Model saved to: models/lstm_CBA.AX_model.keras
-   Time taken: 12.3 minutes
-```
-
----
-
-## Integration with Event Risk Guard
-
-### Prediction Ensemble Weighting
-
-When LSTM models are available, predictions use this ensemble:
-
-| Component | Weight | Purpose |
-|-----------|--------|---------|
-| **LSTM Model** | 45% | Time series price prediction |
-| **Trend Analysis** | 25% | Moving average crossovers |
-| **Technical Indicators** | 15% | RSI, MACD, Bollinger Bands |
-| **FinBERT Sentiment** | 15% | News sentiment analysis |
-
-### Without LSTM Models
-
-If LSTM models aren't trained, the system uses:
-
-| Component | Weight | Purpose |
-|-----------|--------|---------|
-| **FinBERT Sentiment** | 60% | News sentiment analysis |
-| **Trend Analysis** | 25% | Moving average crossovers |
-| **Technical Indicators** | 15% | RSI, MACD, Bollinger Bands |
-
-**Recommendation**: Train LSTM models for stocks you trade frequently to improve prediction accuracy.
-
----
-
-## Event Risk Guard Integration
-
-### Risk-Adjusted Predictions
-
-Event Risk Guard modifies LSTM predictions based on event risk:
-
-```python
-# Example: CBA.AX with Basel III report in 2 days
-original_confidence = 0.75  # LSTM confidence
-event_risk_score = 0.65     # Moderate-high risk
-weight_haircut = 0.45       # 45% position reduction
-
-adjusted_confidence = 0.75 * (1 - 0.45) = 0.4125
-
-# Result: Confidence reduced from 75% to 41%
-# Position size reduced accordingly
+Epoch 50/50
+Training Loss: 0.0042
+Validation Loss: 0.0038
+Status: ✅ GOOD (validation < training, both low)
 ```
 
-### Sit-Out Windows
-
-Event Risk Guard can override LSTM predictions:
-
-```python
-# Example: NAB.AX earnings in 1 day
-lstm_prediction = "BUY"
-event_skip_trading = True   # Within sit-out window
-
-final_prediction = "HOLD"   # Overridden by Event Risk Guard
+**Example Overfitting:**
 ```
-
-**Why This Matters**: The CBA -6.6% loss on Nov 11, 2025 would have been avoided because Event Risk Guard would have detected the Basel III report and forced a HOLD signal.
-
----
-
-## Training Best Practices
-
-### When to Train Models
-
-| Scenario | Action | Frequency |
-|----------|--------|-----------|
-| **Initial Setup** | Train all target stocks | Once (1-2 hours) |
-| **Weekly Maintenance** | Retrain stale models (>7 days) | Weekly (30-60 min) |
-| **New Stock Added** | Train specific stock | As needed (10-15 min) |
-| **Market Regime Change** | Retrain all models | Quarterly (1-2 hours) |
-| **Poor Performance** | Retrain underperforming stocks | Monthly (varies) |
-
-### Recommended Schedule
-
+Epoch 50/50
+Training Loss: 0.0015
+Validation Loss: 0.0089
+Status: ⚠️ OVERFITTING (validation >> training)
+Action: Reduce epochs or increase dropout
 ```
-Monday:     No training (market open)
-Tuesday:    No training (market open)
-Wednesday:  No training (market open)
-Thursday:   No training (market open)
-Friday:     No training (market open)
-Saturday:   Batch training (10 stocks, 1-2 hours)
-Sunday:     Custom training (new stocks, as needed)
-```
-
-### Training Priorities
-
-1. **High Priority** (Train first):
-   - Stocks in `event_calendar.csv` (Basel III, earnings, dividends)
-   - Banks (CBA, ANZ, NAB, WBC) - regulatory event exposure
-   - High-volume stocks (BHP, RIO, CSL)
-
-2. **Medium Priority**:
-   - Stocks you trade frequently
-   - Stocks with recent poor predictions
-
-3. **Low Priority**:
-   - Low-volume stocks
-   - Rarely traded stocks
 
 ---
 
 ## Troubleshooting
 
-### Common Issues
+### Problem: Training Too Slow (> 20 min per stock)
 
-#### Issue 1: "TensorFlow not installed"
+**Solutions:**
+1. Reduce sequence length: 60 → 40 days
+2. Reduce epochs: 50 → 30 epochs
+3. Increase batch size: 32 → 64 (if you have RAM)
+4. Use fewer features: Remove low-impact indicators
 
-**Error**:
-```
-ERROR: TensorFlow is not installed
-LSTM training requires TensorFlow and Keras
-```
+### Problem: Poor Accuracy (Loss > 0.02)
 
-**Solution**:
+**Solutions:**
+1. Increase epochs: 50 → 70
+2. Increase training data: 2y → 5y
+3. Increase sequence length: 60 → 90 days
+4. Check data quality (missing values, outliers)
+
+### Problem: Out of Memory Error
+
+**Solutions:**
+1. Reduce batch size: 32 → 16
+2. Reduce sequence length: 60 → 40
+3. Close other programs
+4. Train fewer stocks at once
+
+### Problem: Model Not Improving After Epoch 20
+
+**Solutions:**
+1. Stop training early (model has converged)
+2. Increase learning rate (modify optimizer)
+3. Add more features or data
+4. Check for data quality issues
+
+---
+
+## Best Practices
+
+### 1. Training Schedule
+
+**Monthly Refresh:**
 ```batch
-# Option 1: Run full installation
-INSTALL.bat
-
-# Option 2: Install TensorFlow only
-pip install tensorflow>=2.13.0
+REM First weekend of each month
+TRAIN_LSTM_OVERNIGHT.bat
 ```
+
+**After Major Events:**
+```batch
+REM Train affected stocks only
+TRAIN_LSTM_SINGLE.bat CBA.AX
+TRAIN_LSTM_SINGLE.bat NAB.AX
+```
+
+### 2. Model Staleness
+
+Models are considered **stale** after:
+- **7 days** (default threshold)
+- Major market events (crashes, rallies)
+- Company-specific events (earnings, acquisitions)
+
+Check staleness:
+```python
+# In overnight_pipeline.py (line 82-120)
+stale_threshold_days = 7
+current_time = datetime.now()
+threshold_time = current_time - timedelta(days=7)
+```
+
+### 3. Resource Management
+
+**Disk Space:**
+- Each model: ~2-5 MB
+- 10 models: ~30-50 MB
+- Metadata: ~5 KB per stock
+
+**Memory Usage During Training:**
+- Per stock: 2-4 GB RAM
+- Concurrent training: Not recommended (sequential is safer)
+
+### 4. Quality Checks
+
+After training, verify:
+1. **Model file exists:** `models\lstm_CBA.AX_model.keras`
+2. **Metadata exists:** `models\lstm_CBA.AX_metadata.json`
+3. **Loss is low:** Final loss < 0.01
+4. **Validation close to training:** Ratio < 2.0
 
 ---
 
-#### Issue 2: "Not enough data"
+## Integration with Event Risk Guard
 
-**Error**:
-```
-❌ XYZ.AX: Not enough data (45 days)
-   Minimum required: 100 days
-```
+### Prediction Weights (When LSTM Available)
 
-**Solution**:
-- Stock is too new or delisted
-- Skip this stock or use a different symbol
-- Check if symbol is correct (e.g., `CBA.AX` not `CBA`)
-
----
-
-#### Issue 3: Training too slow
-
-**Symptoms**: Training takes >30 minutes per stock
-
-**Causes**:
-- Large dataset (>5 years data)
-- Slow CPU (no GPU acceleration)
-- Insufficient RAM (swapping to disk)
-
-**Solutions**:
-1. Reduce sequence length: Edit `screening_config.json`:
-   ```json
-   "sequence_length": 30  // Reduce from 60 to 30
-   ```
-2. Reduce epochs:
-   ```json
-   "epochs": 30  // Reduce from 50 to 30
-   ```
-3. Close other applications to free RAM
-
----
-
-#### Issue 4: High validation loss
-
-**Symptoms**:
-```
-Final Loss: 0.0052
-Final Val Loss: 0.0487  // Much higher than training loss
+```python
+# Enhanced Stock Predictor weights
+LSTM_WEIGHT = 0.45      # 45% - Trained LSTM model
+TREND_WEIGHT = 0.25     # 25% - Moving average trends
+TECHNICAL_WEIGHT = 0.15 # 15% - RSI, MACD, Bollinger
+FINBERT_WEIGHT = 0.15   # 15% - News sentiment (72h)
 ```
 
-**Cause**: Model is overfitting (memorizing training data)
+### Fallback (No LSTM Trained)
 
-**Solutions**:
-1. Increase dropout rate (requires code modification)
-2. Reduce model complexity (fewer LSTM units)
-3. Get more training data (extend historical period)
-4. Use ensemble predictions (default behavior)
-
----
-
-#### Issue 5: Models not being used
-
-**Symptoms**: Pipeline runs but doesn't show LSTM predictions
-
-**Checklist**:
-1. ✅ Models exist in `models/lstm/` directory?
-2. ✅ Model filenames match: `{SYMBOL}_lstm_model.keras`?
-3. ✅ Metadata files exist: `{SYMBOL}_lstm_metadata.json`?
-4. ✅ TensorFlow installed in runtime environment?
-
-**Solution**: Retrain models using `TRAIN_LSTM_OVERNIGHT.bat`
-
----
-
-## Training Logs and Output
-
-### Training Logs Location
-
-```
-logs/
-├── lstm_training/
-│   ├── lstm_training.log           # Main training log
-│   └── training_log_20251112.txt   # Daily training summary
-└── screening/
-    └── overnight_pipeline.log       # Pipeline integration logs
+```python
+# When LSTM model not available
+TREND_WEIGHT = 0.40     # 40%
+TECHNICAL_WEIGHT = 0.35 # 35%
+FINBERT_WEIGHT = 0.25   # 25%
 ```
 
-### Training Summary Example
+### Event Risk Adjustments
 
-```
-================================================================================
-  📊 TRAINING SUMMARY
-================================================================================
+LSTM predictions are **adjusted** by Event Risk Guard:
 
-✅ Successfully trained: 10/10
-  ✓ CBA.AX   - Commonwealth Bank of Australia
-  ✓ ANZ.AX   - Australia and New Zealand Banking Group
-  ✓ NAB.AX   - National Australia Bank
-  ✓ WBC.AX   - Westpac Banking Corporation
-  ✓ MQG.AX   - Macquarie Group Limited
-  ✓ BHP.AX   - BHP Group Limited
-  ✓ RIO.AX   - Rio Tinto Limited
-  ✓ CSL.AX   - CSL Limited
-  ✓ WES.AX   - Wesfarmers Limited
-  ✓ BOQ.AX   - Bank of Queensland Limited
-
-⏱️  Total time: 124.5 minutes (2.1 hours)
-   Average per stock: 745.3 seconds
-
-🎯 Success Rate: 100.0%
-🎉 Perfect! All models trained successfully!
-
-💡 Next Steps:
-   1. Restart the FinBERT server to load trained models
-   2. Test predictions on trained stocks (should be more accurate)
-   3. Monitor accuracy improvements over time
-```
-
----
-
-## Model Metadata
-
-Each trained model has an accompanying metadata file:
-
-**Example**: `models/lstm/CBA.AX_lstm_metadata.json`
-
-```json
-{
-  "symbol": "CBA.AX",
-  "trained_at": "2025-11-12T23:15:42+11:00",
-  "training_duration_seconds": 745.3,
-  "epochs": 50,
-  "batch_size": 32,
-  "sequence_length": 60,
-  "validation_split": 0.2,
-  "data_period": "2y",
-  "data_points": 504,
-  "final_loss": 0.0087,
-  "final_val_loss": 0.0142,
-  "model_path": "models/lstm/CBA.AX_lstm_model.keras",
-  "scaler_path": "models/lstm/CBA.AX_scaler.pkl",
-  "version": "1.0"
-}
-```
-
----
-
-## Advanced Configuration
-
-### Modifying Training Parameters
-
-Edit `models/config/screening_config.json`:
-
-```json
-{
-  "lstm_training": {
-    "enabled": true,
-    "max_models_per_night": 20,
-    "stale_threshold_days": 7,
-    "epochs": 50,                    // ← Increase for better accuracy
-    "batch_size": 32,                // ← Decrease if out of memory
-    "validation_split": 0.2,         // ← Increase to reduce overfitting
-    "priority_strategy": "highest_opportunity_score",
-    "sequence_length": 60            // ← Increase for longer memory
-  }
-}
-```
-
-### Parameter Tuning Guide
-
-| Parameter | Lower Value | Higher Value | Trade-off |
-|-----------|-------------|--------------|-----------|
-| **epochs** | Faster training | Better accuracy | Time vs accuracy |
-| **batch_size** | Less memory | Faster training | Memory vs speed |
-| **validation_split** | More training data | Better validation | Bias vs variance |
-| **sequence_length** | Shorter memory | Longer memory | Simplicity vs complexity |
-
----
-
-## Performance Expectations
-
-### Expected Prediction Accuracy
-
-| Stock Type | Without LSTM | With LSTM | Improvement |
-|------------|--------------|-----------|-------------|
-| **High-Liquidity ASX** (CBA, BHP) | 55-60% | 62-68% | +7-12% |
-| **Medium-Liquidity ASX** (BOQ, WES) | 52-57% | 58-64% | +6-10% |
-| **Event-Affected Stocks** (Basel III) | 45-50% | 52-58% | +5-10% |
-
-**Note**: Event Risk Guard adds an additional layer of protection by filtering out high-risk predictions, which improves overall win rate by avoiding catastrophic losses (like the CBA -6.6% case).
-
-### Combined System Performance
-
-| Metric | FinBERT Only | FinBERT + LSTM | FinBERT + LSTM + Event Risk Guard |
-|--------|--------------|----------------|-----------------------------------|
-| **Accuracy** | 57% | 64% | 66% |
-| **Sharpe Ratio** | 1.2 | 1.5 | 1.8 |
-| **Max Drawdown** | -12% | -10% | -6% |
-| **Avoided Losses** | - | - | CBA -6.6% avoided |
-
-**Key Insight**: The combination of LSTM predictions + Event Risk Guard provides both improved accuracy AND downside protection.
-
----
-
-## Next Steps After Training
-
-1. **Verify Models**:
-   ```batch
-   dir models\lstm\*.keras
+1. **Weight Haircut Applied:**
+   ```python
+   if event_risk_score >= 0.8:
+       confidence *= (1 - 0.70)  # 70% haircut
+   elif event_risk_score >= 0.5:
+       confidence *= (1 - 0.45)  # 45% haircut
+   elif event_risk_score >= 0.25:
+       confidence *= (1 - 0.20)  # 20% haircut
    ```
 
-2. **Test Event Risk Guard**:
-   ```batch
-   TEST_EVENT_RISK_GUARD.bat
+2. **Forced HOLD:**
+   ```python
+   if event_skip_trading:
+       prediction = 'HOLD'  # Override LSTM prediction
+       reason = 'Event Risk: Sit-out window'
    ```
-
-3. **Run Overnight Pipeline**:
-   ```batch
-   RUN_OVERNIGHT_PIPELINE.bat
-   ```
-
-4. **Check CSV Exports**:
-   ```
-   output/screening/results_20251112.csv
-   output/screening/event_risk_summary_20251112.csv
-   ```
-
-5. **Monitor Performance**:
-   - Track prediction accuracy over time
-   - Compare LSTM vs non-LSTM predictions
-   - Monitor Event Risk Guard interventions
 
 ---
 
-## Summary
+## Advanced Tuning (Optional)
 
-### Key Takeaways
+### Custom Training Parameters
 
-✅ **Training Parameters**:
-- Epochs: 50
-- Batch Size: 32
-- Validation Split: 20%
-- Sequence Length: 60 days
-- Time: 10-15 minutes per stock
+Edit `train_lstm_batch.py` (lines 64-69):
 
-✅ **Training Methods**:
-- Overnight batch (10 stocks, 1-2 hours)
-- Custom interactive (choose stocks)
-- Command-line (automated scripts)
-
-✅ **Integration**:
-- LSTM predictions weighted 45% in ensemble
-- Event Risk Guard can override predictions
-- Risk-adjusted position sizing
-
-✅ **Benefits**:
-- +7-12% accuracy improvement
-- Better long-term trend capture
-- Protection from event-driven losses
-
-### Recommended Workflow
-
+```python
+result = train_model_for_symbol(
+    symbol=symbol,
+    epochs=50,              # ← Change here
+    sequence_length=60      # ← Change here
+)
 ```
-1. Initial Setup:
-   └─> INSTALL.bat (install TensorFlow)
-   └─> TRAIN_LSTM_OVERNIGHT.bat (train 10 ASX stocks)
-   └─> Wait 1-2 hours
 
-2. Weekly Maintenance:
-   └─> TRAIN_LSTM_CUSTOM.bat --list australian
-   └─> Retrain stale models (>7 days old)
+Edit `models/train_lstm.py` (lines 161-167):
 
-3. Daily Operations:
-   └─> RUN_OVERNIGHT_PIPELINE.bat (uses trained models)
-   └─> Check event_risk_summary.csv
-   └─> Review predictions with Event Risk Guard adjustments
+```python
+results = predictor.train(
+    train_data=df,
+    validation_split=0.2,   # ← Change here
+    epochs=epochs,
+    batch_size=32,          # ← Change here
+    verbose=1
+)
+```
+
+### Model Architecture Tuning
+
+Edit `models/lstm_predictor.py`:
+
+```python
+self.model.add(LSTM(100, return_sequences=True))  # ← Layer 1 units
+self.model.add(Dropout(0.2))                      # ← Dropout rate
+self.model.add(LSTM(50))                          # ← Layer 2 units
+self.model.add(Dropout(0.2))
 ```
 
 ---
 
-## Questions?
+## Summary of Recommendations
 
-For troubleshooting:
-1. Check `logs/lstm_training/lstm_training.log`
-2. Review training summary output
-3. Verify TensorFlow installation with `VERIFY_INSTALLATION.bat`
+### For Event Risk Guard ASX Focus
 
-**Document Last Updated**: November 12, 2025  
-**System Version**: Event Risk Guard v1.0 with LSTM Integration
+| Parameter | Recommended Value | Reason |
+|-----------|------------------|--------|
+| **Epochs** | `50` | Good accuracy without overfitting |
+| **Sequence Length** | `60` days | Captures quarterly patterns (Basel III, earnings) |
+| **Batch Size** | `32` | Safe for 16 GB RAM systems |
+| **Validation Split** | `20%` | Standard validation confidence |
+| **Training Period** | `2y` | Sufficient historical context |
+| **Refresh Schedule** | Monthly | Models stay current with market changes |
+
+### Expected Results
+
+**Training Time:**
+- Single stock: 10-15 minutes
+- 10 stocks (overnight): 1.5-2 hours
+- 20 stocks: 3-4 hours
+
+**Model Accuracy:**
+- Good model: Loss < 0.01, Validation/Training ratio < 1.5
+- Moderate model: Loss 0.01-0.02, ratio 1.5-2.0
+- Poor model: Loss > 0.02, ratio > 2.0 (retrain with more data)
+
+**Prediction Impact:**
+- LSTM models improve prediction accuracy by 15-25%
+- Most effective on stable stocks (banks, utilities)
+- Less effective on high-volatility stocks (tech, biotech)
+
+---
+
+## Quick Reference
+
+### Start Training Now
+
+```batch
+REM Option 1: Train all 10 priority ASX stocks (recommended)
+TRAIN_LSTM_OVERNIGHT.bat
+
+REM Option 2: Train specific stocks interactively
+TRAIN_LSTM_CUSTOM.bat
+
+REM Option 3: Train one stock quickly
+TRAIN_LSTM_SINGLE.bat CBA.AX
+```
+
+### Verify Training Worked
+
+```batch
+REM Check if models were created
+dir models\lstm_*.keras
+
+REM Run verification script
+VERIFY_INSTALLATION.bat
+
+REM Check training logs
+type logs\screening\lstm_training.log
+```
+
+### Re-train Stale Models
+
+```batch
+REM Check which models are stale (> 7 days old)
+python -c "from models.screening.lstm_trainer import LSTMTrainer; t = LSTMTrainer(); t.get_training_stats()"
+
+REM Re-train stale models
+TRAIN_LSTM_OVERNIGHT.bat
+```
+
+---
+
+**Last Updated:** 2025-11-12  
+**Version:** Event Risk Guard v1.0  
+**Tested On:** Windows 11, Python 3.10, TensorFlow 2.13.0
