@@ -129,4 +129,5 @@ echo Prediction weights: LSTM 45%%, Trend 25%%, Technical 15%%, FinBERT 15%%
 echo.
 echo ========================================================================
 echo.
+echo Press any key to close...
 pause
