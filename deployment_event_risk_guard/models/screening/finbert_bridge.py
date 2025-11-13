@@ -1,13 +1,12 @@
 """
-FinBERT Bridge Module
-=====================
-Adapter that connects Overnight Stock Screener to FinBERT v4.4.4 components.
+Event Risk Guard Bridge Module
+================================
+Adapter that connects Stock Scanner to Event Risk Guard ML components.
 
 **Architecture**: Adapter/Bridge Pattern
-- NO modifications to FinBERT v4.4.4 code
-- Read-only access to FinBERT modules
-- Clean interface for screener integration
+- Clean interface for scanner integration
 - Graceful fallback when components unavailable
+- Uses yfinance for data (NO Alpha Vantage)
 
 **Provides Access To**:
 1. Real LSTM neural network predictions
@@ -37,19 +36,19 @@ from datetime import datetime
 # Setup logging
 logger = logging.getLogger(__name__)
 
-# Calculate FinBERT path relative to this file
-FINBERT_PATH = Path(__file__).parent.parent.parent / 'finbert_v4.4.4'
-FINBERT_MODELS_PATH = FINBERT_PATH / 'models'
+# Calculate models path relative to this file
+# deployment_event_risk_guard/models/screening/finbert_bridge.py
+# -> models/ is parent.parent
+MODELS_PATH = Path(__file__).parent.parent
 
-# Add FinBERT to Python path (read-only access)
-if FINBERT_PATH.exists():
-    sys.path.insert(0, str(FINBERT_PATH))
-    sys.path.insert(0, str(FINBERT_MODELS_PATH))
-    logger.info(f"✓ Added FinBERT path to sys.path: {FINBERT_PATH}")
+# Add models directory to Python path for imports
+if MODELS_PATH.exists():
+    sys.path.insert(0, str(MODELS_PATH))
+    logger.info(f"✓ Added models path to sys.path: {MODELS_PATH}")
 else:
-    logger.warning(f"⚠ FinBERT path not found: {FINBERT_PATH}")
+    logger.warning(f"⚠ Models path not found: {MODELS_PATH}")
 
-# Import FinBERT modules (with error handling)
+# Import Event Risk Guard modules (with error handling)
 try:
     from lstm_predictor import StockLSTMPredictor
     LSTM_AVAILABLE = True
@@ -80,13 +79,12 @@ except ImportError as e:
 
 class FinBERTBridge:
     """
-    Bridge class providing Overnight Screener access to FinBERT v4.4.4 components
+    Bridge class providing Stock Scanner access to Event Risk Guard ML components
     
     **Design Pattern**: Adapter/Bridge
-    - Provides unified interface to FinBERT components
+    - Provides unified interface to ML components
     - Handles component availability gracefully
-    - NO modifications to FinBERT code
-    - Translates between screener and FinBERT data formats
+    - Translates between scanner and ML data formats
     
     **Components**:
     - LSTM Predictor: Real neural network predictions
@@ -157,14 +155,14 @@ class FinBERTBridge:
     
     def get_lstm_prediction(self, symbol: str, historical_data: pd.DataFrame) -> Optional[Dict]:
         """
-        Get REAL LSTM prediction from FinBERT's trained neural network model
+        Get REAL LSTM prediction from trained neural network model
         
         **Data Flow**:
-        1. Screener provides historical price data
-        2. Bridge passes to FinBERT LSTM predictor
-        3. LSTM loads trained .h5 model for symbol
+        1. Scanner provides historical price data
+        2. Bridge passes to LSTM predictor
+        3. LSTM loads trained .keras model for symbol
         4. Neural network generates prediction
-        5. Bridge translates result to screener format
+        5. Bridge translates result to scanner format
         
         Args:
             symbol: Stock ticker symbol (e.g., 'AAPL', 'MSFT')
@@ -206,10 +204,10 @@ class FinBERTBridge:
                 }
             
             # Check if model exists for symbol
-            model_path = FINBERT_PATH / 'models' / 'trained' / f'{symbol}_lstm.h5'
+            model_path = MODELS_PATH / 'trained_models' / f'{symbol}_lstm.h5'
             if not model_path.exists():
                 # Try .keras extension
-                model_path = FINBERT_PATH / 'models' / 'trained' / f'{symbol}_lstm.keras'
+                model_path = MODELS_PATH / 'trained_models' / f'{symbol}_lstm.keras'
                 if not model_path.exists():
                     logger.debug(f"No trained LSTM model found for {symbol}")
                     return {
@@ -263,11 +261,11 @@ class FinBERTBridge:
         Get REAL sentiment analysis using FinBERT transformer and news scraping
         
         **Data Flow**:
-        1. Bridge calls FinBERT news scraper
+        1. Bridge calls news scraper
         2. Scraper fetches REAL news from Yahoo Finance/Finviz
         3. FinBERT transformer analyzes each article
         4. Results aggregated and cached
-        5. Bridge translates to screener format
+        5. Bridge translates to scanner format
         
         **NO Synthetic Data**:
         - News is scraped from real sources
@@ -409,11 +407,11 @@ class FinBERTBridge:
             }
         """
         info = {
-            'finbert_path': str(FINBERT_PATH),
+            'models_path': str(MODELS_PATH),
             'lstm': {
                 'available': self._lstm_initialized,
                 'sequence_length': 60 if self.lstm_predictor else None,
-                'model_path': str(FINBERT_PATH / 'models' / 'trained') if self._lstm_initialized else None
+                'model_path': str(MODELS_PATH / 'trained_models') if self._lstm_initialized else None
             },
             'sentiment': {
                 'available': self._sentiment_initialized,
@@ -447,12 +445,12 @@ def get_finbert_bridge() -> FinBERTBridge:
 
 def test_bridge():
     """
-    Test FinBERT bridge functionality
+    Test Event Risk Guard bridge functionality
     
     This function can be run to verify the bridge is working correctly
     """
     print("\n" + "="*60)
-    print("FinBERT Bridge Test")
+    print("Event Risk Guard Bridge Test")
     print("="*60)
     
     bridge = get_finbert_bridge()
@@ -467,7 +465,7 @@ def test_bridge():
     # Get component info
     info = bridge.get_component_info()
     print("\nComponent Information:")
-    print(f"  FinBERT Path: {info['finbert_path']}")
+    print(f"  Models Path: {info['models_path']}")
     print(f"  LSTM Model Path: {info['lstm']['model_path']}")
     print(f"  Sentiment Model: {info['sentiment']['model_name']}")
     print(f"  News Sources: {', '.join(info['news']['sources'])}")
