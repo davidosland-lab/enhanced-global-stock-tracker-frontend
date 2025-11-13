@@ -1,4 +1,5 @@
 @echo off
+setlocal enabledelayedexpansion
 REM ====================================================================
 REM LSTM Single Stock Training - Quick Training for One Stock
 REM Fast training for testing or updating a specific stock
@@ -12,21 +13,31 @@ echo ========================================================================
 echo.
 
 if "%~1"=="" (
-    echo Usage: TRAIN_LSTM_SINGLE.bat [SYMBOL]
+    echo No stock symbol provided.
     echo.
-    echo Examples:
-    echo   TRAIN_LSTM_SINGLE.bat CBA.AX
-    echo   TRAIN_LSTM_SINGLE.bat AAPL
-    echo   TRAIN_LSTM_SINGLE.bat BHP.AX
+    echo You can provide a symbol in two ways:
+    echo   1. Command line: TRAIN_LSTM_SINGLE.bat CBA.AX
+    echo   2. Interactive: Enter symbol when prompted below
     echo.
-    echo This will train an LSTM model for the specified stock.
-    echo Expected time: 10-15 minutes per stock
+    echo Examples of valid symbols:
+    echo   - CBA.AX  (Commonwealth Bank)
+    echo   - ANZ.AX  (ANZ Banking Group)
+    echo   - BHP.AX  (BHP Group)
+    echo   - AAPL    (Apple Inc.)
+    echo   - MSFT    (Microsoft)
     echo.
-    pause
-    exit /b 1
+    set /p SYMBOL="Enter stock symbol (or press Ctrl+C to cancel): "
+    
+    if "!SYMBOL!"=="" (
+        echo.
+        echo [ERROR] No symbol entered. Exiting.
+        echo.
+        pause
+        exit /b 1
+    )
+) else (
+    set SYMBOL=%~1
 )
-
-set SYMBOL=%~1
 
 echo Training LSTM model for: %SYMBOL%
 echo.
