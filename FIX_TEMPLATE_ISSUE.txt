@@ -1,0 +1,101 @@
+╔══════════════════════════════════════════════════════════════════════════╗
+║                     QUICK FIX: Template Loading Issue                    ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+🔧 PROBLEM IDENTIFIED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Flask isn't configured to use the templates/ folder correctly.
+The file exists, but Flask can't find it.
+
+✅ SOLUTION: Fix app_finbert_v4_dev.py
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+METHOD 1: Download Updated Package (Easiest)
+────────────────────────────────────────────
+1. Download the new FinBERT_v4.0_Windows11_LOCALHOST.zip
+2. Extract to a NEW location (don't overwrite)
+3. Copy your venv/ folder from old to new location (to save time)
+4. Run START_FINBERT_V4.bat
+
+METHOD 2: Manual Fix (Quick - No Re-download)
+──────────────────────────────────────────────
+Edit app_finbert_v4_dev.py in a text editor:
+
+STEP 1: Find line 16 (around there):
+OLD:
+    from flask import Flask, request, jsonify
+
+NEW:
+    from flask import Flask, request, jsonify, render_template
+
+
+STEP 2: Find line 52 (around there):
+OLD:
+    app = Flask(__name__)
+    CORS(app, origins=config.CORS_ORIGINS)
+
+NEW:
+    # Initialize Flask with explicit template folder
+    app = Flask(__name__, 
+                template_folder='templates',
+                static_folder='static')
+    CORS(app, origins=config.CORS_ORIGINS)
+
+
+STEP 3: Find line 400 (@app.route('/')):
+OLD:
+    @app.route('/')
+    def index():
+        """Serve the v4.0 enhanced UI with candlestick charts and training"""
+        import os
+        ui_file = os.path.join(os.path.dirname(__file__), 'templates', 'finbert_v4_enhanced_ui.html')
+        try:
+            with open(ui_file, 'r', encoding='utf-8') as f:
+                return f.read()
+        except FileNotFoundError as e:
+            print(f"UI file not found: {ui_file} - {e}")
+            return f"""... (rest of HTML)
+
+NEW:
+    @app.route('/')
+    def index():
+        """Serve the v4.0 enhanced UI with candlestick charts and training"""
+        try:
+            return render_template('finbert_v4_enhanced_ui.html')
+        except Exception as e:
+            logger.error(f"Error rendering template: {e}")
+            return f"""... (rest of HTML)
+
+
+STEP 4: Save the file
+
+STEP 5: Restart the application
+    - Press CTRL+C to stop the server
+    - Run START_FINBERT_V4.bat again
+    - Browser should now show the proper UI!
+
+🎯 WHAT CHANGED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Added render_template import from Flask
+2. Configured Flask with explicit template_folder='templates'
+3. Changed index() to use render_template() instead of manual file reading
+
+This is the proper Flask way to serve templates.
+
+📝 EXPECTED RESULT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+After fix, opening http://127.0.0.1:5001 should show:
+- FinBERT v4.0 Enhanced - Stock Analysis System (full UI)
+- Stock symbol input field
+- Real-time charts section
+- Sentiment analysis section
+- News articles section
+
+NOT the "Development Server" info page!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Fixed in: FinBERT_v4.0_Windows11_LOCALHOST.zip (Updated Oct 31, 2025)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

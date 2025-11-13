@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📊 FinBERT Ultimate Trading Charts - Intraday & Zoom</title>
+    
+    <!-- Chart.js and plugins -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial@0.2.1/dist/chartjs-chart-financial.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.3/index.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.0/dist/chartjs-plugin-zoom.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+        
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 500px;
+        }
+        
+        .positive { color: #10b981; }
+        .negative { color: #ef4444; }
+        .neutral { color: #94a3b8; }
+        
+        .interval-btn, .timeframe-btn {
+            padding: 8px 16px;
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 0 4px;
+        }
+        
+        .interval-btn:hover, .timeframe-btn:hover {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+            color: #3b82f6;
+        }
+        
+        .interval-btn.active, .timeframe-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+        
+        .zoom-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 100;
+            display: flex;
+            gap: 8px;
+        }
+        
+        .zoom-btn {
+            width: 36px;
+            height: 36px;
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            color: #94a3b8;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        
+        .zoom-btn:hover {
+            background: rgba(59, 130, 246, 0.3);
+            border-color: #3b82f6;
+            color: #3b82f6;
+        }
+        
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 400px;
+        }
+        
+        .spinner {
+            border: 3px solid rgba(59, 130, 246, 0.1);
+            border-left-color: #3b82f6;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .intraday-indicator {
+            background: rgba(251, 191, 36, 0.2);
+            border: 1px solid #fbbf24;
+            color: #fbbf24;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mx-auto px-4 py-6 max-w-7xl">
+        <!-- Header -->
+        <div class="glass-panel p-6 mb-6">
+            <div class="flex items-center justify-between mb-6">
+                <h1 class="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                    FinBERT Ultimate Trading System v3.1
+                </h1>
+                <div class="flex items-center gap-4">
+                    <span class="text-sm text-gray-400">Real-Time Data</span>
+                    <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                </div>
+            </div>
+            
+            <!-- Symbol Input & Controls -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Stock Symbol</label>
+                    <input type="text" id="symbolInput" value="AAPL" 
+                           class="w-full px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-2">Interval</label>
+                    <div class="flex flex-wrap" id="intervalButtons">
+                        <button class="interval-btn" data-interval="1m">1m</button>
+                        <button class="interval-btn" data-interval="3m">3m</button>
+                        <button class="interval-btn" data-interval="5m">5m</button>
+                        <button class="interval-btn" data-interval="15m">15m</button>
+                        <button class="interval-btn" data-interval="60m">1h</button>
+                        <button class="interval-btn active" data-interval="1d">Daily</button>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-medium mb-2">Period</label>
+                    <div class="flex flex-wrap" id="periodButtons">
+                        <button class="timeframe-btn" data-period="1d">1D</button>
+                        <button class="timeframe-btn" data-period="5d">5D</button>
+                        <button class="timeframe-btn active" data-period="1m">1M</button>
+                        <button class="timeframe-btn" data-period="3m">3M</button>
+                        <button class="timeframe-btn" data-period="6m">6M</button>
+                        <button class="timeframe-btn" data-period="1y">1Y</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Price & Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div class="glass-panel p-4">
+                <div class="text-sm text-gray-400 mb-1">Current Price</div>
+                <div class="text-2xl font-bold" id="currentPrice">--</div>
+                <div class="text-sm mt-1" id="priceChange">--</div>
+            </div>
+            
+            <div class="glass-panel p-4">
+                <div class="text-sm text-gray-400 mb-1">Volume</div>
+                <div class="text-2xl font-bold" id="volume">--</div>
+                <div class="text-sm mt-1" id="avgVolume">Avg: --</div>
+            </div>
+            
+            <div class="glass-panel p-4">
+                <div class="text-sm text-gray-400 mb-1">Day Range</div>
+                <div class="text-lg font-semibold" id="dayRange">--</div>
+                <div class="text-sm mt-1" id="52weekRange">52W: --</div>
+            </div>
+            
+            <div class="glass-panel p-4">
+                <div class="text-sm text-gray-400 mb-1">
+                    <span id="indicatorLabel">RSI (14)</span>
+                    <span id="intradayIndicator" class="intraday-indicator hidden">INTRADAY</span>
+                </div>
+                <div class="text-2xl font-bold" id="rsiValue">--</div>
+                <div class="text-sm mt-1" id="vwapValue">VWAP: --</div>
+            </div>
+        </div>
+        
+        <!-- Main Chart -->
+        <div class="glass-panel p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold">
+                    Price Chart
+                    <span id="chartInterval" class="text-sm text-gray-400 ml-2"></span>
+                </h2>
+                <select id="chartType" class="px-4 py-2 bg-slate-800 border border-slate-600 rounded-lg">
+                    <option value="candlestick">Candlestick</option>
+                    <option value="ohlc">OHLC</option>
+                    <option value="line">Line</option>
+                </select>
+            </div>
+            
+            <div class="chart-container">
+                <div class="zoom-controls">
+                    <button class="zoom-btn" onclick="zoomIn()" title="Zoom In">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M10 5v10M5 10h10" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </button>
+                    <button class="zoom-btn" onclick="zoomOut()" title="Zoom Out">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M5 10h10" stroke="currentColor" stroke-width="2"/>
+                        </svg>
+                    </button>
+                    <button class="zoom-btn" onclick="resetZoom()" title="Reset Zoom">
+                        <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                            <path d="M4 10a6 6 0 1 1 12 0 6 6 0 0 1-12 0z" stroke="currentColor" stroke-width="2" fill="none"/>
+                        </svg>
+                    </button>
+                </div>
+                <canvas id="priceChart"></canvas>
+            </div>
+            
+            <div class="mt-4 flex gap-2 text-xs">
+                <span class="text-gray-400">Scroll: Zoom X-axis | Pinch: Zoom | Drag: Pan</span>
+            </div>
+        </div>
+        
+        <!-- Indicators -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="glass-panel p-4">
+                <div class="text-sm text-gray-400">RSI</div>
+                <div class="text-xl font-bold" id="rsi">--</div>
+            </div>
+            <div class="glass-panel p-4">
+                <div class="text-sm text-gray-400">MACD</div>
+                <div class="text-xl font-bold" id="macd">--</div>
+            </div>
+            <div class="glass-panel p-4">
+                <div class="text-sm text-gray-400">SMA 20</div>
+                <div class="text-xl font-bold" id="sma20">--</div>
+            </div>
+            <div class="glass-panel p-4">
+                <div class="text-sm text-gray-400">VWAP</div>
+                <div class="text-xl font-bold" id="vwap">--</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = '';
+        let priceChart = null;
+        let currentSymbol = 'AAPL';
+        let currentInterval = '1d';
+        let currentPeriod = '1m';
+        let chartData = [];
+        let updateTimer = null;
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            setupEventListeners();
+            loadStockData();
+            
+            // Auto-refresh for intraday
+            setInterval(() => {
+                if (currentInterval !== '1d') {
+                    loadStockData();
+                }
+            }, 30000); // 30 seconds for intraday
+        });
+        
+        function setupEventListeners() {
+            // Symbol input
+            document.getElementById('symbolInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    currentSymbol = e.target.value.toUpperCase();
+                    loadStockData();
+                }
+            });
+            
+            // Interval buttons
+            document.querySelectorAll('.interval-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.interval-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentInterval = btn.dataset.interval;
+                    
+                    // Show/hide intraday indicator
+                    const indicator = document.getElementById('intradayIndicator');
+                    if (currentInterval !== '1d') {
+                        indicator.classList.remove('hidden');
+                        document.getElementById('chartInterval').textContent = `(${currentInterval} interval)`;
+                    } else {
+                        indicator.classList.add('hidden');
+                        document.getElementById('chartInterval').textContent = '';
+                    }
+                    
+                    loadStockData();
+                });
+            });
+            
+            // Period buttons
+            document.querySelectorAll('.timeframe-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentPeriod = btn.dataset.period;
+                    loadStockData();
+                });
+            });
+            
+            // Chart type
+            document.getElementById('chartType').addEventListener('change', (e) => {
+                updateChart();
+            });
+        }
+        
+        async function loadStockData() {
+            try {
+                // Get stock data
+                const stockResponse = await fetch(`${API_BASE}/api/stock/${currentSymbol}?interval=${currentInterval}`);
+                const stockData = await stockResponse.json();
+                
+                // Get historical data
+                const histResponse = await fetch(`${API_BASE}/api/historical/${currentSymbol}?period=${currentPeriod}&interval=${currentInterval}`);
+                const histData = await histResponse.json();
+                
+                if (stockData && !stockData.error) {
+                    updatePriceDisplay(stockData);
+                    updateIndicators(stockData);
+                }
+                
+                if (histData && histData.data) {
+                    chartData = histData.data;
+                    updateChart();
+                }
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+            }
+        }
+        
+        function updatePriceDisplay(data) {
+            document.getElementById('currentPrice').textContent = `$${data.price?.toFixed(2) || '--'}`;
+            
+            const changeEl = document.getElementById('priceChange');
+            const change = data.change || 0;
+            const changePct = data.changePercent || 0;
+            changeEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%)`;
+            changeEl.className = `text-sm mt-1 ${change >= 0 ? 'positive' : 'negative'}`;
+            
+            document.getElementById('volume').textContent = formatVolume(data.volume);
+            document.getElementById('dayRange').textContent = `$${data.low?.toFixed(2) || '--'} - $${data.high?.toFixed(2) || '--'}`;
+            document.getElementById('52weekRange').textContent = `$${data.low52?.toFixed(2) || '--'} - $${data.high52?.toFixed(2) || '--'}`;
+        }
+        
+        function updateIndicators(data) {
+            if (data.indicators) {
+                document.getElementById('rsiValue').textContent = data.indicators.RSI || '--';
+                document.getElementById('rsi').textContent = data.indicators.RSI || '--';
+                document.getElementById('macd').textContent = data.indicators.MACD?.toFixed(4) || '--';
+                document.getElementById('sma20').textContent = `$${data.indicators.SMA20?.toFixed(2) || '--'}`;
+                document.getElementById('vwap').textContent = `$${data.indicators.VWAP?.toFixed(2) || '--'}`;
+                document.getElementById('vwapValue').textContent = `VWAP: $${data.indicators.VWAP?.toFixed(2) || '--'}`;
+            }
+        }
+        
+        function updateChart() {
+            if (!chartData || chartData.length === 0) return;
+            
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            const chartType = document.getElementById('chartType').value;
+            
+            // Prepare data
+            const isIntraday = currentInterval !== '1d';
+            const labels = chartData.map(d => {
+                if (isIntraday && d.timestamp) {
+                    return new Date(d.timestamp);
+                }
+                return new Date(d.date || d.Date);
+            });
+            
+            const datasets = [];
+            
+            if (chartType === 'candlestick') {
+                datasets.push({
+                    label: 'Price',
+                    type: 'candlestick',
+                    data: chartData.map((d, i) => ({
+                        x: labels[i],
+                        o: d.open || d.Open,
+                        h: d.high || d.High,
+                        l: d.low || d.Low,
+                        c: d.close || d.Close
+                    })),
+                    color: {
+                        up: '#10b981',
+                        down: '#ef4444',
+                        unchanged: '#94a3b8'
+                    }
+                });
+            } else if (chartType === 'ohlc') {
+                datasets.push({
+                    label: 'Price',
+                    type: 'ohlc',
+                    data: chartData.map((d, i) => ({
+                        x: labels[i],
+                        o: d.open || d.Open,
+                        h: d.high || d.High,
+                        l: d.low || d.Low,
+                        c: d.close || d.Close
+                    })),
+                    color: {
+                        up: '#10b981',
+                        down: '#ef4444',
+                        unchanged: '#94a3b8'
+                    }
+                });
+            } else {
+                datasets.push({
+                    label: 'Price',
+                    type: 'line',
+                    data: chartData.map((d, i) => ({
+                        x: labels[i],
+                        y: d.close || d.Close
+                    })),
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.1,
+                    fill: true
+                });
+            }
+            
+            // Destroy old chart
+            if (priceChart) {
+                priceChart.destroy();
+            }
+            
+            // Create new chart with zoom
+            priceChart = new Chart(ctx, {
+                type: chartType === 'line' ? 'line' : chartType,
+                data: { datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            callbacks: {
+                                label: function(context) {
+                                    if (context.raw && context.raw.c) {
+                                        return [
+                                            `O: ${context.raw.o.toFixed(2)}`,
+                                            `H: ${context.raw.h.toFixed(2)}`,
+                                            `L: ${context.raw.l.toFixed(2)}`,
+                                            `C: ${context.raw.c.toFixed(2)}`
+                                        ];
+                                    }
+                                    return `$${(context.parsed.y || 0).toFixed(2)}`;
+                                }
+                            }
+                        },
+                        zoom: {
+                            limits: {
+                                y: {min: 'original', max: 'original'},
+                                x: {min: 'original', max: 'original'}
+                            },
+                            pan: {
+                                enabled: true,
+                                mode: 'xy',
+                                modifierKey: 'ctrl'
+                            },
+                            zoom: {
+                                wheel: {
+                                    enabled: true,
+                                    speed: 0.1
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'xy',
+                                drag: {
+                                    enabled: true,
+                                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                                    borderColor: '#3b82f6',
+                                    borderWidth: 1
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: isIntraday ? 'minute' : 'day',
+                                displayFormats: {
+                                    minute: 'HH:mm',
+                                    hour: 'HH:mm',
+                                    day: 'MMM dd'
+                                }
+                            },
+                            grid: {
+                                display: true,
+                                color: 'rgba(148, 163, 184, 0.1)'
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                maxRotation: 0
+                            }
+                        },
+                        y: {
+                            position: 'right',
+                            grid: {
+                                display: true,
+                                color: 'rgba(148, 163, 184, 0.1)'
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                callback: function(value) {
+                                    return '$' + value.toFixed(2);
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Zoom functions
+        function zoomIn() {
+            if (priceChart) {
+                priceChart.zoom(1.1);
+            }
+        }
+        
+        function zoomOut() {
+            if (priceChart) {
+                priceChart.zoom(0.9);
+            }
+        }
+        
+        function resetZoom() {
+            if (priceChart) {
+                priceChart.resetZoom();
+            }
+        }
+        
+        // Helper functions
+        function formatVolume(vol) {
+            if (!vol) return '--';
+            if (vol >= 1e9) return (vol / 1e9).toFixed(2) + 'B';
+            if (vol >= 1e6) return (vol / 1e6).toFixed(2) + 'M';
+            if (vol >= 1e3) return (vol / 1e3).toFixed(2) + 'K';
+            return vol.toString();
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,260 @@
+================================================================================
+MANUAL FILE REPLACEMENT GUIDE
+================================================================================
+
+IF YOU WANT TO MANUALLY REPLACE FILES INSTEAD OF USING GIT PULL
+
+================================================================================
+WHAT FILES WERE CHANGED
+================================================================================
+
+ONLY 2 FILES were modified:
+  1. models/screening/stock_scanner.py
+  2. models/screening/spi_monitor.py
+
+Everything else is NEW documentation (won't overwrite anything)
+
+================================================================================
+OPTION 1: GIT PULL (RECOMMENDED - EASIEST)
+================================================================================
+
+cd C:\Users\david\AOSS
+git pull origin finbert-v4.0-development
+
+This gets everything automatically. Done!
+
+================================================================================
+OPTION 2: MANUAL REPLACEMENT (IF YOU PREFER)
+================================================================================
+
+STEP 1: Download the ZIP file
+------------------------------
+File: RATE_LIMIT_FIX_ONLY_2_FILES.zip (10 KB)
+Location: Available in the sandbox
+
+STEP 2: Extract the ZIP
+------------------------
+Extract to a temporary folder. You'll see:
+  rate_limit_fix_MANUAL/
+    ├── stock_scanner.py
+    └── spi_monitor.py
+
+STEP 3: Backup your current files (IMPORTANT!)
+-----------------------------------------------
+cd C:\Users\david\AOSS
+mkdir backup_before_fix
+
+copy models\screening\stock_scanner.py backup_before_fix\stock_scanner.py.bak
+copy models\screening\spi_monitor.py backup_before_fix\spi_monitor.py.bak
+
+STEP 4: Replace the files
+--------------------------
+Copy the 2 new files from the extracted ZIP:
+
+copy <extract_location>\rate_limit_fix_MANUAL\stock_scanner.py models\screening\stock_scanner.py
+copy <extract_location>\rate_limit_fix_MANUAL\spi_monitor.py models\screening\spi_monitor.py
+
+STEP 5: Verify replacement
+---------------------------
+Check file dates (should be Nov 7, 2025 or later):
+  dir models\screening\stock_scanner.py
+  dir models\screening\spi_monitor.py
+
+STEP 6: Test it
+---------------
+RUN_OVERNIGHT_SCREENER.bat
+
+Should NOT crash with 429 errors anymore!
+
+================================================================================
+WHAT CHANGED IN THESE FILES
+================================================================================
+
+stock_scanner.py (19 KB):
+------------------------
+✓ Added 'import time' at top
+✓ validate_stock() - Added retry loop (lines 130-189)
+✓ analyze_stock() - Added retry loop (lines 191-286)
+✓ scan_sector() - Added 0.5s throttling (line 114)
+✓ Added KeyboardInterrupt handling
+
+Changes: ~60 lines added/modified
+
+spi_monitor.py (19 KB):
+----------------------
+✓ Added 'import time' at top
+✓ _get_asx_state() - Added retry loop (lines 101-167)
+✓ _get_us_market_data() - Added retry loop (lines 169-224)
+✓ Added KeyboardInterrupt handling
+
+Changes: ~50 lines added/modified
+
+================================================================================
+SAFETY CHECK
+================================================================================
+
+Before replacement, verify these files exist in your directory:
+  C:\Users\david\AOSS\models\screening\stock_scanner.py
+  C:\Users\david\AOSS\models\screening\spi_monitor.py
+
+After replacement, verify these lines exist:
+
+In stock_scanner.py (line ~23):
+  import time
+
+In spi_monitor.py (line ~18):
+  import time
+
+If you see 'import time' in both files, replacement was successful!
+
+================================================================================
+ROLLBACK (If Something Goes Wrong)
+================================================================================
+
+If you backed up files in STEP 3, you can restore:
+
+copy backup_before_fix\stock_scanner.py.bak models\screening\stock_scanner.py
+copy backup_before_fix\spi_monitor.py.bak models\screening\spi_monitor.py
+
+================================================================================
+WHY ONLY 2 FILES?
+================================================================================
+
+The rate limit fix ONLY required changes to:
+- stock_scanner.py (fetches individual stock data)
+- spi_monitor.py (fetches market index data)
+
+These are the ONLY files that call Yahoo Finance API and were crashing.
+
+All other files:
+- models/screening/batch_predictor.py → NO CHANGES NEEDED
+- models/screening/finbert_bridge.py → NO CHANGES NEEDED
+- models/screening/opportunity_scorer.py → NO CHANGES NEEDED
+- models/screening/report_generator.py → NO CHANGES NEEDED
+- Everything else → NO CHANGES NEEDED
+
+================================================================================
+FILE COMPARISON
+================================================================================
+
+YOUR CURRENT FILES (Before Fix):
+--------------------------------
+stock_scanner.py:
+  - NO retry logic
+  - NO throttling
+  - Crashes on 429 error
+
+spi_monitor.py:
+  - NO retry logic
+  - Crashes on 429 error
+
+NEW FIXED FILES (After Replacement):
+------------------------------------
+stock_scanner.py:
+  - ✅ Retry logic (3 attempts, 2s/4s/6s delays)
+  - ✅ Throttling (0.5s between stocks)
+  - ✅ Graceful error handling
+  - ✅ KeyboardInterrupt handling
+
+spi_monitor.py:
+  - ✅ Retry logic (3 attempts, 2s/4s/6s delays)
+  - ✅ Graceful error handling
+  - ✅ KeyboardInterrupt handling
+
+================================================================================
+VERIFICATION AFTER REPLACEMENT
+================================================================================
+
+Run this command to check if fix is applied:
+
+findstr /C:"import time" models\screening\stock_scanner.py
+findstr /C:"import time" models\screening\spi_monitor.py
+
+Expected output:
+  models\screening\stock_scanner.py:import time
+  models\screening\spi_monitor.py:import time
+
+If you see both lines, fix is applied correctly!
+
+Alternative check (look for retry logic):
+
+findstr /C:"max_retries = 3" models\screening\stock_scanner.py
+findstr /C:"max_retries = 3" models\screening\spi_monitor.py
+
+Expected output:
+  models\screening\stock_scanner.py:        max_retries = 3
+  models\screening\spi_monitor.py:        max_retries = 3
+
+================================================================================
+TESTING AFTER REPLACEMENT
+================================================================================
+
+Quick Test (2-3 minutes):
+  RUN_OVERNIGHT_SCREENER.bat --test-mode
+
+Full Test (20-30 minutes):
+  RUN_OVERNIGHT_SCREENER.bat
+
+Expected:
+  ✅ Completes without crashing
+  ✅ May see "Rate limit hit, retrying" (NORMAL)
+  ✅ Report generated in reports/morning_reports/
+
+Unexpected (report if this happens):
+  ❌ Still crashes with 429 error
+  ❌ "import time" not found in files (replacement failed)
+
+================================================================================
+WHICH METHOD SHOULD YOU USE?
+================================================================================
+
+Use GIT PULL if:
+  ✅ You have git installed
+  ✅ You want all documentation files too
+  ✅ You want the easiest method
+  → Recommended for most users
+
+Use MANUAL REPLACEMENT if:
+  ✅ You don't want to use git
+  ✅ You only want the fixed code files
+  ✅ You want to see exactly what changed
+  → Good for cautious users who want control
+
+Both methods work equally well!
+
+================================================================================
+SUMMARY
+================================================================================
+
+Files Changed: 2 (stock_scanner.py, spi_monitor.py)
+Safe to Replace: ✅ YES
+Backup First: ✅ RECOMMENDED
+Method 1: git pull (easiest)
+Method 2: Manual copy (more control)
+Test After: Run screener, verify no crashes
+
+================================================================================
+QUESTIONS?
+================================================================================
+
+Q: Will this break anything?
+A: No, only adds retry logic and error handling
+
+Q: Do I need to retrain LSTM models?
+A: No, this doesn't affect trained models
+
+Q: Will FinBERT integration still work?
+A: Yes, completely unaffected
+
+Q: Can I undo this?
+A: Yes, if you backed up files (see ROLLBACK section)
+
+Q: What if I have local changes to these files?
+A: git pull might fail. Use manual replacement instead.
+
+Q: How do I know if it worked?
+A: Screener completes without 429 crashes
+
+================================================================================
+READY TO REPLACE!
+================================================================================

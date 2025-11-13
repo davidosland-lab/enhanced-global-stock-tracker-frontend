@@ -1,0 +1,268 @@
+================================================================================
+HOW TO CHECK IF TRAINING IS RUNNING
+================================================================================
+
+YOU SAID: No log files in lstm_training folder
+
+CORRECTION: The log file is in a DIFFERENT location!
+
+CORRECT LOG FILE LOCATION:
+  logs\screening\lstm_training.log
+
+NOT HERE:
+  logs\lstm_training\  ❌ (This folder might not even exist)
+
+================================================================================
+HOW TO CHECK TRAINING STATUS (While It's Running)
+================================================================================
+
+METHOD 1: Check the Log File (Best Option)
+-------------------------------------------
+Open a NEW command prompt (don't close the training one):
+
+cd C:\Users\david\AOSS
+type logs\screening\lstm_training.log
+
+This will show you everything that's happening!
+
+To watch it update live (refreshes every 2 seconds):
+  cmd /c "for /L %i in (1,0,2) do @(cls & type logs\screening\lstm_training.log & timeout /t 2 /nobreak >nul)"
+
+Or simpler (one-time check):
+  type logs\screening\lstm_training.log
+
+METHOD 2: Check Task Manager
+-----------------------------
+1. Press Ctrl+Shift+Esc
+2. Go to "Details" tab
+3. Find "python.exe" 
+4. Look at CPU column:
+   
+   IF CPU is 20-80%: ✅ Training is running!
+   IF CPU is 0-5%:   ⚠️ Might be stuck or waiting for data
+   IF no python.exe: ❌ Process crashed or finished
+
+METHOD 3: Check Process List (Command Line)
+--------------------------------------------
+Open another command prompt:
+  tasklist | findstr python
+
+If you see python.exe listed: ✅ Still running
+If you don't see it: ❌ Process finished or crashed
+
+================================================================================
+WHAT THE LOG FILE WILL SHOW
+================================================================================
+
+If Training is Running:
+-----------------------
+2025-11-08 06:16:55 - __main__ - INFO - LSTM Trainer initialized
+2025-11-08 06:16:55 - __main__ - INFO - Starting LSTM training for CBA.AX...
+2025-11-08 06:16:55 - train_lstm - INFO - Starting LSTM training for CBA.AX
+2025-11-08 06:16:56 - train_lstm - INFO - Fetching training data for CBA.AX
+2025-11-08 06:17:03 - train_lstm - INFO - Fetched 500 days of data for CBA.AX
+2025-11-08 06:17:04 - train_lstm - INFO - Training on 8 features: [...]
+
+Then you'll see training progress (this takes 5-20 minutes)
+
+If Training Completed:
+----------------------
+2025-11-08 06:25:45 - train_lstm - INFO - Training complete for CBA.AX
+2025-11-08 06:25:45 - __main__ - INFO - ✅ CBA.AX: Training completed in 512s
+2025-11-08 06:25:45 - __main__ - INFO -    Loss: 0.0045
+2025-11-08 06:25:45 - __main__ - INFO -    Val Loss: 0.0052
+
+If Training Failed:
+-------------------
+2025-11-08 06:16:55 - __main__ - ERROR - ❌ CBA.AX: Training failed
+2025-11-08 06:16:55 - __main__ - ERROR -    Error: [error message]
+
+================================================================================
+COMMANDS TO RUN RIGHT NOW
+================================================================================
+
+In a NEW command prompt (keep training window open):
+
+Command 1: Check if log file exists
+------------------------------------
+cd C:\Users\david\AOSS
+dir logs\screening\lstm_training.log
+
+Expected: Should show the file with today's date
+
+Command 2: View the log
+------------------------
+type logs\screening\lstm_training.log
+
+Expected: Shows training progress
+
+Command 3: Check if Python is running
+--------------------------------------
+tasklist | findstr python
+
+Expected: Shows "python.exe" if training is running
+
+Command 4: Check CPU usage (Task Manager)
+------------------------------------------
+Press Ctrl+Shift+Esc
+Look for python.exe in Details tab
+Check CPU percentage
+
+Expected: 20-80% CPU if training is running
+
+================================================================================
+WHAT IF LOG FILE DOESN'T EXIST?
+================================================================================
+
+If logs\screening\lstm_training.log doesn't exist:
+
+Possibility 1: Training hasn't started yet
+  - Check if python.exe is running
+  - Wait another minute
+
+Possibility 2: Wrong directory structure
+  - Check if logs folder exists: dir logs
+  - Check if screening subfolder exists: dir logs\screening
+  - If missing, training might have crashed before creating them
+
+Possibility 3: Training crashed immediately
+  - Python process is not running
+  - Error happened before logging started
+  - Check the command window for error messages
+
+Possibility 4: Training process stuck at startup
+  - Python process is running (0% CPU)
+  - Stuck downloading data or initializing
+  - Wait 2-3 more minutes, then Ctrl+C and retry
+
+================================================================================
+DIAGNOSIS FLOWCHART
+================================================================================
+
+START: Training window shows blinking cursor
+         ↓
+Q1: Does logs\screening\lstm_training.log exist?
+    ├─ YES → Read it: type logs\screening\lstm_training.log
+    │         ├─ Shows training progress → ✅ Working! Be patient.
+    │         ├─ Shows error message → ❌ Failed, read error
+    │         └─ Shows "Fetching data" → ⏳ Still downloading data
+    │
+    └─ NO → Check if python.exe is running: tasklist | findstr python
+              ├─ YES (process exists) → Check CPU usage
+              │    ├─ 20-80% CPU → ✅ Training starting, wait for log
+              │    └─ 0-5% CPU → ⚠️ Stuck, wait 2 min then Ctrl+C
+              │
+              └─ NO (process doesn't exist) → ❌ Crashed or finished
+                   Check training window for error messages
+
+================================================================================
+COMMON SCENARIOS AFTER 4 MINUTES
+================================================================================
+
+Scenario 1: Log file shows "Fetching data..."
+----------------------------------------------
+Status: ✅ NORMAL - Downloading from Yahoo Finance
+Action: Wait 2-3 more minutes
+Why: Network speed dependent, can be slow
+
+Scenario 2: Log file shows "Training on 8 features"
+----------------------------------------------------
+Status: ✅ NORMAL - Training in progress
+Action: Wait 10-15 more minutes
+Why: Training 50 epochs takes time
+
+Scenario 3: Log file shows epoch progress (Epoch X/50)
+-------------------------------------------------------
+Status: ✅ EXCELLENT - Training is working!
+Action: Wait until Epoch 50/50
+Why: This is the main training phase
+
+Scenario 4: Log file doesn't exist
+-----------------------------------
+Status: ⚠️ NEEDS INVESTIGATION
+Action: Check if python.exe is running
+Why: Process might have crashed or stuck
+
+Scenario 5: Log file shows error
+---------------------------------
+Status: ❌ FAILED
+Action: Read the error message
+Why: Something went wrong, needs fixing
+
+================================================================================
+QUICK COMMAND SUMMARY
+================================================================================
+
+To check log file:
+  cd C:\Users\david\AOSS
+  type logs\screening\lstm_training.log
+
+To watch log file continuously:
+  Open new terminal, run this loop:
+  :loop
+  cls
+  type logs\screening\lstm_training.log
+  timeout /t 5 /nobreak >nul
+  goto loop
+
+To check if running:
+  tasklist | findstr python
+
+To check CPU:
+  Press Ctrl+Shift+Esc, find python.exe
+
+To stop training:
+  In the training window, press Ctrl+C
+
+================================================================================
+EXAMPLE: What You Should See in Log File
+================================================================================
+
+At 1 minute:
+------------
+2025-11-08 06:16:55 - INFO - LSTM Trainer initialized
+2025-11-08 06:16:55 - INFO - Starting LSTM training for CBA.AX...
+2025-11-08 06:16:56 - INFO - Fetching training data for CBA.AX
+
+At 2 minutes:
+------------
+2025-11-08 06:17:03 - INFO - Fetched 500 days of data for CBA.AX
+2025-11-08 06:17:04 - INFO - Training on 8 features: [...]
+[Training epoch progress would show here]
+
+At 4 minutes (your current time):
+----------------------------------
+[Should show several epochs completed]
+Epoch 10/50 or similar
+
+At 15 minutes:
+--------------
+2025-11-08 06:25:45 - INFO - Training complete for CBA.AX
+2025-11-08 06:25:45 - INFO - ✅ CBA.AX: Training completed
+
+================================================================================
+YOUR NEXT STEP
+================================================================================
+
+RIGHT NOW, do this:
+
+1. Open a NEW command prompt (keep training window open)
+
+2. Run this command:
+   cd C:\Users\david\AOSS
+   type logs\screening\lstm_training.log
+
+3. Read the output and tell me what you see
+
+This will tell us EXACTLY what's happening!
+
+Possible results:
+  ✅ "Fetched 500 days of data" → Training is running normally
+  ✅ "Epoch X/50" → Training is working, be patient
+  ⚠️ "Fetching training data" → Still downloading, wait
+  ❌ Error message → Training failed, we'll fix it
+  ❌ File not found → Process crashed or stuck
+
+Once you check the log, you'll know exactly what's happening!
+
+================================================================================

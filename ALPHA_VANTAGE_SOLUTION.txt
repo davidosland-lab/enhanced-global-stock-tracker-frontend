@@ -1,0 +1,256 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    ALPHA VANTAGE ONLY - QUICK SOLUTION                       ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+PROBLEM: Yahoo Finance blocking all requests from your IP (JSONDecodeError)
+
+SOLUTION: Use Alpha Vantage API exclusively (already have API key in code)
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          LIMITATIONS TO KNOW                                 ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+Alpha Vantage Free Tier:
+  • 500 requests per day total
+  • 5 requests per minute maximum
+  • Only DAILY data (no intraday 5m/15m intervals)
+
+Time Estimates:
+  • Validating 30 tickers = 30 API calls × 12s = 6 minutes
+  • Fetching 30 tickers data = 30 API calls × 12s = 6 minutes
+  • Full overnight scan (240 tickers) = 240 calls × 12s = 48 minutes
+
+Daily Budget:
+  • 8 sectors × 30 tickers = 240 validation calls
+  • 240 tickers data fetch = 240 calls
+  • Total: 480 calls (within 500/day limit)
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                        RECOMMENDED APPROACH                                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+OPTION 1: Use Alpha Vantage with Caching (RECOMMENDED)
+-------------------------------------------------------
+• First run: Takes 48+ minutes (fetches all data)
+• Cached runs: Near instant (uses 4-hour cache)
+• Run overnight scanner ONCE per day
+• Cache persists for 4 hours
+
+IMPLEMENTATION:
+  File created: models/screening/alpha_vantage_fetcher.py
+  
+  Replace in run_overnight_screener.py:
+    FROM: from models.screening.data_fetcher import HybridDataFetcher
+    TO:   from models.screening.alpha_vantage_fetcher import AlphaVantageDataFetcher as HybridDataFetcher
+
+OPTION 2: Reduce Ticker Count
+------------------------------
+• Scan only 5 stocks per sector (instead of 30)
+• Total: 8 sectors × 5 = 40 tickers
+• Time: ~8 minutes validation + 8 minutes fetch = 16 minutes total
+• API calls: 80/500 per day
+
+IMPLEMENTATION:
+  Edit config/asx_sectors.json:
+    Reduce each sector's 'stocks' array to first 5 tickers only
+
+OPTION 3: Use VPN + Yah Finance (If Available)
+-----------------------------------------------
+• Connect to VPN (US/UK region)
+• Yahoo Finance might work through VPN
+• Faster (batch fetching)
+• No API limit
+
+OPTION 4: Paid API Service
+---------------------------
+• EOD Historical Data: $20/month, unlimited requests
+• Financial Modeling Prep: $15/month, 250 calls/min
+• Polygon.io: $29/month, unlimited hist data
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                       QUICK START (OPTION 1)                                 ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+STEP 1: Update run_overnight_screener.py
+-----------------------------------------
+C:\Users\david\AOSS\COMPLETE_SYSTEM_PACKAGE\scripts\run_overnight_screener.py
+
+FIND (line ~20):
+    from models.screening.data_fetcher import HybridDataFetcher
+
+REPLACE WITH:
+    from models.screening.alpha_vantage_fetcher import AlphaVantageDataFetcher as HybridDataFetcher
+
+STEP 2: Test with 3 Tickers
+----------------------------
+python -c "from models.screening.alpha_vantage_fetcher import AlphaVantageDataFetcher; f = AlphaVantageDataFetcher(); v = f.validate_by_quote(['CBA.AX', 'WBC.AX', 'ANZ.AX']); print(f'Valid: {v}')"
+
+Expected: Takes ~40 seconds (3 tickers × 12s + API processing)
+Result: Valid: ['CBA.AX', 'WBC.AX', 'ANZ.AX'] (or subset if some fail)
+
+STEP 3: Run Overnight Screener
+-------------------------------
+python scripts\run_overnight_screener.py
+
+Expected Time: 48+ minutes first run, then <1 min with cache
+Expected Result: 
+  • Validates 240 tickers (takes ~48 min)
+  • Fetches data for valid tickers (cached after first run)
+  • Generates reports
+  • NO 429 errors
+  • API usage: 480/500 calls
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    QUICK START (OPTION 2 - FASTER)                           ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+EDIT: config/asx_sectors.json
+------------------------------
+For each sector, reduce 'stocks' array to first 5 only:
+
+BEFORE:
+  "Financials": {
+    "stocks": ["CBA.AX", "WBC.AX", "ANZ.AX", "NAB.AX", "MQG.AX", ... 30 tickers],
+    "weight": 1.2
+  }
+
+AFTER:
+  "Financials": {
+    "stocks": ["CBA.AX", "WBC.AX", "ANZ.AX", "NAB.AX", "MQG.AX"],
+    "weight": 1.2
+  }
+
+RESULT:
+  • 8 sectors × 5 tickers = 40 total
+  • Validation: ~8 minutes
+  • Fetching: ~8 minutes  
+  • Total: ~16 minutes
+  • API usage: 80/500 calls per day
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                            WHAT TO EXPECT                                    ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+FIRST RUN (No Cache):
+--------------------
+2025-11-08 18:00:00 - INFO - Validating 30 tickers via Alpha Vantage...
+2025-11-08 18:00:00 - INFO - ⚠️  This will take ~6.0 minutes (rate limiting)
+2025-11-08 18:00:12 - INFO -   [1/30] ✓ CBA.AX: Valid (price=$175.91)
+2025-11-08 18:00:24 - INFO -   [2/30] ✓ WBC.AX: Valid (price=$38.98)
+...
+2025-11-08 18:06:00 - INFO - Validation complete: 28/30 passed
+2025-11-08 18:06:00 - INFO - API usage: 30/500 calls today
+
+2025-11-08 18:06:00 - INFO - Batch fetching 28 tickers...
+2025-11-08 18:06:12 - INFO -   [1/28] ✓ CBA.AX: 100 days
+...
+2025-11-08 18:12:00 - INFO - Batch fetch complete: 28/28 tickers
+2025-11-08 18:12:00 - INFO - API usage: 58/500 calls today
+
+SUBSEQUENT RUNS (With Cache):
+-----------------------------
+2025-11-08 20:00:00 - INFO - All 30 tickers loaded from cache
+2025-11-08 20:00:00 - INFO - Batch fetch complete: 30/30 tickers (cached)
+2025-11-08 20:00:00 - INFO - API usage: 58/500 calls today (no new calls)
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          TROUBLESHOOTING                                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+ERROR: "⛔ Daily API limit reached (500/500)"
+SOLUTION: Wait until midnight (resets daily), or use paid tier
+
+ERROR: "Alpha Vantage rate limit: Thank you for using Alpha Vantage!"
+SOLUTION: Increase rate_limit_delay in alpha_vantage_fetcher.py (line 45):
+          self.rate_limit_delay = 15.0  # Slower but safer
+
+ERROR: "No Alpha Vantage data for CBA.AX"
+SOLUTION: Alpha Vantage may not support all ASX stocks
+          Try without .AX suffix or use different ticker
+
+ERROR: Import error "No module named 'alpha_vantage_fetcher'"
+SOLUTION: File is at: models/screening/alpha_vantage_fetcher.py
+          Ensure you're in COMPLETE_SYSTEM_PACKAGE directory
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                        MY RECOMMENDATION                                     ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+USE OPTION 2 (Reduce to 5 stocks per sector):
+
+PROS:
+  ✓ Fast: 16 minutes total
+  ✓ Within API limits: 80/500 calls
+  ✓ Can run multiple times per day
+  ✓ Still covers all 8 sectors
+  ✓ Top 5 stocks are usually most liquid/important
+
+CONS:
+  ✗ Fewer stocks analyzed (40 vs 240)
+  ✗ Might miss some opportunities
+
+ALTERNATIVE: Use Alpha Vantage PREMIUM ($50/month)
+  • 1,200 requests per minute
+  • Unlimited daily calls
+  • Intraday data support
+  • Full overnight scan in <5 minutes
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          FILES CREATED                                       ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+1. models/screening/alpha_vantage_fetcher.py (NEW)
+   - Complete Alpha Vantage implementation
+   - Drop-in replacement for HybridDataFetcher
+   - 4-hour caching
+   - 12-second rate limiting
+
+2. This file: ALPHA_VANTAGE_SOLUTION.txt
+   - Complete guide
+   - All options explained
+   - Quick start instructions
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                          NEXT STEPS                                          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+CHOOSE YOUR PATH:
+
+[A] OPTION 1 (Alpha Vantage, Full 240 stocks, 48 min):
+    1. Update run_overnight_screener.py import (see STEP 1 above)
+    2. Run: python scripts\run_overnight_screener.py
+    3. Wait 48+ minutes for first run
+    4. Subsequent runs use cache (fast)
+
+[B] OPTION 2 (Alpha Vantage, 40 stocks, 16 min) - RECOMMENDED:
+    1. Edit config/asx_sectors.json (reduce to 5 stocks per sector)
+    2. Update run_overnight_screener.py import (see STEP 1 above)
+    3. Run: python scripts\run_overnight_screener.py
+    4. Takes only 16 minutes
+
+[C] Try VPN + Yahoo:
+    1. Connect to VPN (US/UK)
+    2. Run: python scripts\run_overnight_screener.py --test
+    3. If works, proceed with full scan
+
+[D] Wait for Yahoo unblock:
+    1. Wait 2-4 hours
+    2. Test: python -c "import yfinance as yf; print(len(yf.download('CBA.AX', period='5d')))"
+    3. If returns >0, Yahoo is unblocked
+    4. Run original screener
+
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                               STATUS                                         ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+✅ Alpha Vantage fetcher implemented (alpha_vantage_fetcher.py)
+✅ API key already in code (68ZFANK047DL0KSR)
+✅ Caching implemented (4-hour TTL)
+✅ Rate limiting implemented (12s = 5/min)
+✅ Drop-in replacement ready
+⏳ Waiting for you to choose path [A], [B], [C], or [D]
+
+═══════════════════════════════════════════════════════════════════════════════
+Generated: 2025-11-08
+Assistant: Claude Code (Sonnet 3.5)
+═══════════════════════════════════════════════════════════════════════════════

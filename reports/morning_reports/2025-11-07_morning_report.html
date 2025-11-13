@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Morning Stock Report - 2025-11-07</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <style>
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .date-info h2 {
+            font-size: 1.5em;
+            margin-bottom: 5px;
+        }
+        
+        .date-info p {
+            opacity: 0.9;
+            font-size: 0.9em;
+        }
+        
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            padding: 30px 40px;
+            background: #f8f9fa;
+        }
+        
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .card-title {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .card-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .section {
+            padding: 40px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .section h3 {
+            font-size: 1.8em;
+            margin-bottom: 25px;
+            color: #333;
+        }
+        
+        .sentiment-box {
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .sentiment-box.bullish { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); }
+        .sentiment-box.neutral-positive { background: linear-gradient(135deg, #3ca55c 0%, #b5e48c 100%); }
+        .sentiment-box.neutral { background: linear-gradient(135deg, #95a5a6 0%, #bdc3c7 100%); }
+        .sentiment-box.neutral-negative { background: linear-gradient(135deg, #ee9ca7 0%, #ffdde1 100%); }
+        .sentiment-box.bearish { background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%); }
+        
+        .sentiment-score {
+            text-align: center;
+            color: white;
+        }
+        
+        .score-label {
+            font-size: 1.1em;
+            margin-bottom: 10px;
+        }
+        
+        .score-value {
+            font-size: 3em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .score-status {
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            color: #666;
+        }
+        
+        .info-value {
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+        
+        .info-value.positive { color: #28a745; }
+        .info-value.negative { color: #dc3545; }
+        
+        .recommendation-box {
+            background: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        
+        .recommendation-content {
+            margin-top: 10px;
+        }
+        
+        .recommendation-stance {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .recommendation-details {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #ffeaa7;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+        }
+        
+        .opportunities-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .opportunities-table thead {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .opportunities-table th {
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .opportunities-table td {
+            padding: 15px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .opportunities-table tbody tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .rank {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .symbol {
+            font-size: 1.1em;
+        }
+        
+        .symbol small {
+            color: #666;
+            display: block;
+            margin-top: 3px;
+        }
+        
+        .score-high { color: #28a745; font-weight: bold; }
+        .score-medium { color: #ffc107; font-weight: bold; }
+        .score-low { color: #6c757d; }
+        
+        .prediction.buy {
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .prediction.sell {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        .prediction.hold {
+            color: #6c757d;
+        }
+        
+        .return.positive { color: #28a745; font-weight: bold; }
+        .return.negative { color: #dc3545; font-weight: bold; }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .chart-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .footer {
+            padding: 30px 40px;
+            background: #f8f9fa;
+            text-align: center;
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .footer p {
+            margin: 10px 0;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            font-size: 1.2em;
+        }
+        
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            
+            .container {
+                box-shadow: none;
+            }
+        }
+        
+    </style>
+</head>
+<body>
+    <div class="container">
+        
+        <div class="header">
+            <h1>🌅 Morning Stock Screening Report</h1>
+            <div class="date-info">
+                <h2>Friday, November 07, 2025</h2>
+                <p>Generated at 09:52 AM UTC+11:00</p>
+            </div>
+        </div>
+        
+        <div class="summary-cards">
+            <div class="card">
+                <div class="card-title">Total Opportunities</div>
+                <div class="card-value">5</div>
+            </div>
+            <div class="card">
+                <div class="card-title">High Confidence</div>
+                <div class="card-value">0</div>
+            </div>
+        </div>
+        
+        
+        <div class="section">
+            <h3>📊 Market Sentiment Analysis</h3>
+            
+            <div class="sentiment-box neutral-positive">
+                <div class="sentiment-score">
+                    <div class="score-label">Sentiment Score</div>
+                    <div class="score-value">58.7/100</div>
+                    <div class="score-status">SLIGHTLY BULLISH</div>
+                </div>
+            </div>
+            
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Expected Opening Gap:</span>
+                    <span class="info-value negative">
+                        -0.54%
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Gap Confidence:</span>
+                    <span class="info-value">90%</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Direction:</span>
+                    <span class="info-value">BEARISH</span>
+                </div>
+            </div>
+            
+            <div class="recommendation-box">
+                <h4>Trading Recommendation</h4>
+                <div class="recommendation-content">
+                    <div class="recommendation-stance">HOLD</div>
+                    <p>Cautious sentiment. Maintain current positions.</p>
+                    <div class="recommendation-details">
+                        <span>Risk Level: <strong>LOW</strong></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        
+        <div class="section">
+            <h3>🎯 Top Investment Opportunities</h3>
+            <div class="table-container">
+                <table class="opportunities-table">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Stock</th>
+                            <th>Price</th>
+                            <th>Opp Score</th>
+                            <th>Signal</th>
+                            <th>Confidence</th>
+                            <th>Expected Return</th>
+                            <th>Market Cap</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        
+            <tr>
+                <td class="rank">1</td>
+                <td class="symbol"><strong>ANZ.AX</strong><br><small>ANZ Group Holdings Limited</small></td>
+                <td class="price">$37.00</td>
+                <td class="score score-medium">72.3</td>
+                <td class="prediction hold">HOLD</td>
+                <td class="confidence">49.0%</td>
+                <td class="return positive">+2.3%</td>
+                <td class="market-cap">$110.40B</td>
+            </tr>
+            
+            <tr>
+                <td class="rank">2</td>
+                <td class="symbol"><strong>WBC.AX</strong><br><small>Westpac Banking Corporation</small></td>
+                <td class="price">$39.71</td>
+                <td class="score score-low">62.8</td>
+                <td class="prediction hold">HOLD</td>
+                <td class="confidence">49.0%</td>
+                <td class="return positive">+1.9%</td>
+                <td class="market-cap">$135.59B</td>
+            </tr>
+            
+            <tr>
+                <td class="rank">3</td>
+                <td class="symbol"><strong>CBA.AX</strong><br><small>Commonwealth Bank of Australia</small></td>
+                <td class="price">$178.57</td>
+                <td class="score score-low">61.6</td>
+                <td class="prediction hold">HOLD</td>
+                <td class="confidence">49.0%</td>
+                <td class="return positive">+1.9%</td>
+                <td class="market-cap">$298.54B</td>
+            </tr>
+            
+            <tr>
+                <td class="rank">4</td>
+                <td class="symbol"><strong>NAB.AX</strong><br><small>National Australia Bank Limite</small></td>
+                <td class="price">$43.06</td>
+                <td class="score score-low">57.9</td>
+                <td class="prediction hold">HOLD</td>
+                <td class="confidence">36.5%</td>
+                <td class="return negative">-0.8%</td>
+                <td class="market-cap">$131.54B</td>
+            </tr>
+            
+            <tr>
+                <td class="rank">5</td>
+                <td class="symbol"><strong>MQG.AX</strong><br><small>Macquarie Group Limited</small></td>
+                <td class="price">$217.25</td>
+                <td class="score score-low">53.4</td>
+                <td class="prediction hold">HOLD</td>
+                <td class="confidence">36.5%</td>
+                <td class="return negative">-0.1%</td>
+                <td class="market-cap">$83.68B</td>
+            </tr>
+            
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        
+        
+        <div class="section">
+            <h3>📈 Visual Analysis</h3>
+            
+            <div class="charts-grid">
+                <div class="chart-container">
+                    <div id="scoreDistributionChart" style="width: 100%; height: 400px;"></div>
+                </div>
+                <div class="chart-container">
+                    <div id="predictionDistributionChart" style="width: 100%; height: 400px;"></div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <div id="topOpportunitiesChart" style="width: 100%; height: 500px;"></div>
+            </div>
+        </div>
+        
+        
+        <div class="footer">
+            <p>Report generated by FinBERT Overnight Screening System</p>
+            <p>Version 1.0 | Generated at 2025-11-07 09:52 AM UTC+11:00</p>
+            <p><strong>Disclaimer:</strong> This report is for informational purposes only and does not constitute investment advice. 
+            Always conduct your own research and consult with a financial advisor before making investment decisions.</p>
+        </div>
+        
+    </div>
+    <script>
+        
+        // Score Distribution Chart
+        var scoreChart = echarts.init(document.getElementById('scoreDistributionChart'));
+        var scoreOption = {
+            title: { text: 'Opportunity Score Distribution', left: 'center' },
+            tooltip: { trigger: 'axis' },
+            xAxis: {
+                type: 'category',
+                data: ['<60', '60-70', '70-80', '80-90', '90-100']
+            },
+            yAxis: { type: 'value', name: 'Count' },
+            series: [{
+                data: [
+                    2,
+                    2,
+                    1,
+                    0,
+                    0
+                ],
+                type: 'bar',
+                itemStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                        { offset: 0, color: '#667eea' },
+                        { offset: 1, color: '#764ba2' }
+                    ])
+                }
+            }]
+        };
+        scoreChart.setOption(scoreOption);
+        
+        // Prediction Distribution Chart
+        var predChart = echarts.init(document.getElementById('predictionDistributionChart'));
+        var predOption = {
+            title: { text: 'Prediction Distribution', left: 'center' },
+            tooltip: { trigger: 'item' },
+            series: [{
+                type: 'pie',
+                radius: '60%',
+                data: [
+                    { value: 0, name: 'BUY', itemStyle: { color: '#28a745' } },
+                    { value: 0, name: 'SELL', itemStyle: { color: '#dc3545' } },
+                    { value: 5, name: 'HOLD', itemStyle: { color: '#6c757d' } }
+                ],
+                label: { formatter: '{b}: {c} ({d}%)' }
+            }]
+        };
+        predChart.setOption(predOption);
+        
+        // Top Opportunities Chart
+        var topChart = echarts.init(document.getElementById('topOpportunitiesChart'));
+        var topOption = {
+            title: { text: 'Top 10 Opportunities by Score', left: 'center' },
+            tooltip: { trigger: 'axis' },
+            xAxis: { type: 'value', max: 100 },
+            yAxis: {
+                type: 'category',
+                data: ["MQG.AX", "NAB.AX", "CBA.AX", "WBC.AX", "ANZ.AX"]
+            },
+            series: [{
+                data: [53.394999999999996, 57.894999999999996, 61.63000000000001, 62.830000000000005, 72.27],
+                type: 'bar',
+                itemStyle: {
+                    color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                        { offset: 0, color: '#667eea' },
+                        { offset: 1, color: '#764ba2' }
+                    ])
+                },
+                label: { show: true, position: 'right', formatter: '{c}' }
+            }]
+        };
+        topChart.setOption(topOption);
+        
+        // Responsive resize
+        window.addEventListener('resize', function() {
+            scoreChart.resize();
+            predChart.resize();
+            topChart.resize();
+        });
+        
+    </script>
+</body>
+</html>

@@ -1,0 +1,204 @@
+<!-- 
+    Paper Trading Platform Modal
+    Insert this before </body> tag in finbert_v4_enhanced_ui.html
+-->
+
+<!-- Paper Trading Modal -->
+<div id="tradingModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 1400px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header">
+            <h2>
+                <i class="fas fa-wallet text-green-500 mr-2"></i> Paper Trading Platform
+                <span class="text-sm text-gray-400 ml-3">Virtual $10,000 Account</span>
+            </h2>
+            <button onclick="closeTradingModal()" class="text-gray-400 hover:text-white text-2xl">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="modal-body">
+            <!-- Account Summary Panel -->
+            <div class="trading-panel">
+                <h3 class="text-lg font-bold mb-4">
+                    <i class="fas fa-chart-pie mr-2"></i> Account Summary
+                </h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="trading-stat">
+                        <div class="trading-stat-value" id="tradingTotalValue">$10,000.00</div>
+                        <div class="trading-stat-label">Total Value</div>
+                    </div>
+                    <div class="trading-stat">
+                        <div class="trading-stat-value" id="tradingCashBalance">$10,000.00</div>
+                        <div class="trading-stat-label">Cash Balance</div>
+                    </div>
+                    <div class="trading-stat">
+                        <div class="trading-stat-value" id="tradingTotalPnL">$0.00</div>
+                        <div class="trading-stat-label">Total P&L</div>
+                    </div>
+                    <div class="trading-stat">
+                        <div class="trading-stat-value" id="tradingPositionCount">0</div>
+                        <div class="trading-stat-label">Open Positions</div>
+                    </div>
+                </div>
+                <div class="mt-4 text-right">
+                    <button onclick="refreshTradingAccount()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm transition">
+                        <i class="fas fa-sync-alt mr-2"></i> Refresh
+                    </button>
+                    <button onclick="resetTradingAccount()" class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-sm transition ml-2">
+                        <i class="fas fa-redo mr-2"></i> Reset Account
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Quick Trade Panel -->
+                <div class="trading-panel">
+                    <h3 class="text-lg font-bold mb-4">
+                        <i class="fas fa-bolt mr-2"></i> Quick Trade
+                    </h3>
+                    
+                    <!-- Trade Status Messages -->
+                    <div id="tradeMessageContainer"></div>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Symbol</label>
+                            <input 
+                                type="text" 
+                                id="tradeSymbol" 
+                                placeholder="e.g., AAPL"
+                                class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                            >
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Quantity</label>
+                            <input 
+                                type="number" 
+                                id="tradeQuantity" 
+                                placeholder="10"
+                                min="1"
+                                class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                            >
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium mb-2">Order Type</label>
+                            <select 
+                                id="tradeOrderType"
+                                class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                            >
+                                <option value="MARKET">Market Order</option>
+                                <option value="LIMIT">Limit Order</option>
+                                <option value="STOP">Stop Order</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Limit/Stop Price (conditional) -->
+                        <div id="tradePriceContainer" style="display: none;">
+                            <label class="block text-sm font-medium mb-2">Price</label>
+                            <input 
+                                type="number" 
+                                id="tradePrice" 
+                                placeholder="0.00"
+                                step="0.01"
+                                class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                            >
+                        </div>
+                        
+                        <div class="flex gap-3">
+                            <button onclick="placeTrade('BUY')" class="flex-1 trading-btn-buy">
+                                <i class="fas fa-arrow-up mr-2"></i> BUY
+                            </button>
+                            <button onclick="placeTrade('SELL')" class="flex-1 trading-btn-sell">
+                                <i class="fas fa-arrow-down mr-2"></i> SELL
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FinBERT Prediction Integration -->
+                <div class="trading-panel">
+                    <h3 class="text-lg font-bold mb-4">
+                        <i class="fas fa-brain mr-2"></i> FinBERT Signal
+                    </h3>
+                    <div id="tradingPredictionPanel" class="text-center text-gray-400 py-8">
+                        Analyze a stock to see prediction
+                    </div>
+                    <div id="tradingPredictionData" style="display: none;">
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-400">Symbol:</span>
+                                <span class="font-bold" id="predSymbol">-</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-400">Signal:</span>
+                                <span class="prediction-badge" id="predSignal">-</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-400">Confidence:</span>
+                                <span class="font-bold" id="predConfidence">-</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-gray-400">Target Price:</span>
+                                <span class="font-bold text-blue-400" id="predTarget">-</span>
+                            </div>
+                            <button onclick="tradeFromPrediction()" class="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition">
+                                <i class="fas fa-rocket mr-2"></i> Trade on Signal
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Current Positions -->
+            <div class="trading-panel">
+                <h3 class="text-lg font-bold mb-4">
+                    <i class="fas fa-briefcase mr-2"></i> Current Positions
+                </h3>
+                <div id="positionsContainer">
+                    <div class="text-center text-gray-400 py-8">
+                        No open positions
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Trades -->
+            <div class="trading-panel">
+                <h3 class="text-lg font-bold mb-4">
+                    <i class="fas fa-history mr-2"></i> Recent Trades
+                </h3>
+                <div id="tradesContainer">
+                    <div class="text-center text-gray-400 py-8">
+                        No trades yet
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance Stats -->
+            <div class="trading-panel">
+                <h3 class="text-lg font-bold mb-4">
+                    <i class="fas fa-chart-bar mr-2"></i> Performance Statistics
+                </h3>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="trading-stat">
+                        <div class="trading-stat-value" id="statTotalTrades">0</div>
+                        <div class="trading-stat-label">Total Trades</div>
+                    </div>
+                    <div class="trading-stat">
+                        <div class="trading-stat-value" id="statWinRate">0%</div>
+                        <div class="trading-stat-label">Win Rate</div>
+                    </div>
+                    <div class="trading-stat">
+                        <div class="trading-stat-value" id="statProfitFactor">0.00</div>
+                        <div class="trading-stat-label">Profit Factor</div>
+                    </div>
+                    <div class="trading-stat">
+                        <div class="trading-stat-value" id="statAvgPnL">$0.00</div>
+                        <div class="trading-stat-label">Avg P&L</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

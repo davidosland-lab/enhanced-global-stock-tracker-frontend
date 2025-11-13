@@ -1,0 +1,235 @@
+╔═══════════════════════════════════════════════════════════════════════╗
+║                                                                       ║
+║         NETWORK INSTALLATION TROUBLESHOOTING GUIDE                   ║
+║                                                                       ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+Issue: Installation fails with "multitasking" dependency error
+Error: "Failed to establish a new connection"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔍 ROOT CAUSE:
+
+The error occurs when pip cannot download the "multitasking" package due to:
+- Network connectivity issues
+- Firewall or proxy blocking PyPI connections
+- DNS resolution failures
+- Temporary PyPI server issues
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ SOLUTION 1: Use INSTALL_FIXED.bat (RECOMMENDED)
+
+Run the improved installation script:
+1. Run: INSTALL_FIXED.bat
+2. This script:
+   - Installs multitasking separately first
+   - Uses increased timeout (100 seconds)
+   - Retries without timeout if needed
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ SOLUTION 2: Manual Installation
+
+If INSTALL_FIXED.bat fails, follow these manual steps:
+
+Step 1: Create and activate virtual environment
+───────────────────────────────────────────────
+python -m venv venv
+venv\Scripts\activate.bat
+
+Step 2: Upgrade pip
+───────────────────
+python -m pip install --upgrade pip
+
+Step 3: Install multitasking separately with retry
+──────────────────────────────────────────────────
+pip install --default-timeout=100 --retries 5 multitasking
+
+If above fails, try:
+pip install multitasking
+
+Step 4: Install core packages one by one
+─────────────────────────────────────────
+pip install flask>=2.3.0
+pip install flask-cors>=4.0.0
+pip install pandas>=1.5.0
+pip install numpy>=1.24.0
+pip install requests>=2.31.0
+
+Step 5: Install yfinance (after multitasking is installed)
+──────────────────────────────────────────────────────────
+pip install yfinance>=0.2.30
+
+Step 6: Install remaining packages
+───────────────────────────────────
+pip install ta>=0.11.0
+pip install scikit-learn>=1.3.0
+pip install APScheduler>=3.10.0
+pip install python-dateutil>=2.8.2
+pip install pytz>=2023.3
+pip install feedparser==6.0.10
+
+Step 7: Install ML libraries (optional but recommended)
+────────────────────────────────────────────────────────
+pip install tensorflow>=2.13.0
+pip install keras>=2.13.0
+pip install torch>=2.0.0
+pip install transformers>=4.30.0
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ SOLUTION 3: Use Alternative PyPI Mirror
+
+If your network blocks PyPI, use a mirror:
+
+China users:
+───────────
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple multitasking
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple -r requirements.txt
+
+Europe users:
+─────────────
+pip install --index-url https://pypi.org/simple multitasking
+pip install --index-url https://pypi.org/simple -r requirements.txt
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ SOLUTION 4: Download Packages Offline
+
+If you have persistent network issues:
+
+1. On a computer WITH internet, download all packages:
+   pip download -r requirements.txt -d packages/
+
+2. Transfer the "packages/" folder to your offline computer
+
+3. Install from local folder:
+   pip install --no-index --find-links=packages/ -r requirements.txt
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ SOLUTION 5: Configure Proxy (if behind corporate firewall)
+
+If behind a proxy:
+
+Set proxy environment variables:
+────────────────────────────────
+set HTTP_PROXY=http://proxy.company.com:8080
+set HTTPS_PROXY=http://proxy.company.com:8080
+
+Then run:
+pip install --proxy http://proxy.company.com:8080 multitasking
+pip install --proxy http://proxy.company.com:8080 -r requirements.txt
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ SOLUTION 6: DNS Fix
+
+If DNS resolution fails:
+
+Option A: Use Google DNS
+────────────────────────
+1. Open Network Settings
+2. Change DNS to: 8.8.8.8 and 8.8.4.4
+3. Retry installation
+
+Option B: Use hosts file
+────────────────────────
+Add to C:\Windows\System32\drivers\etc\hosts:
+151.101.0.223 pypi.org
+151.101.0.223 files.pythonhosted.org
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ SOLUTION 7: Disable Antivirus/Firewall Temporarily
+
+Some antivirus software blocks pip connections:
+
+1. Temporarily disable antivirus
+2. Run installation
+3. Re-enable antivirus after installation
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ SOLUTION 8: Use VPN
+
+If your ISP or country blocks PyPI:
+
+1. Connect to a VPN
+2. Retry installation
+3. Disconnect VPN after installation
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🔍 VERIFY INSTALLATION
+
+After successful installation, verify:
+
+1. Check virtual environment is activated:
+   - You should see (venv) in your command prompt
+
+2. Verify critical packages:
+   python -c "import flask; print('Flask OK')"
+   python -c "import yfinance; print('yfinance OK')"
+   python -c "import pandas; print('pandas OK')"
+   python -c "import numpy; print('numpy OK')"
+
+3. All should print "OK" without errors
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📦 MINIMUM REQUIRED PACKAGES
+
+If all else fails, install just the minimum to run:
+
+pip install flask flask-cors yfinance pandas numpy requests ta APScheduler python-dateutil pytz feedparser
+
+This will let you run FinBERT WITHOUT:
+- TensorFlow (no LSTM training, but prediction still works)
+- Keras (no deep learning)
+- PyTorch (no transformer models)
+- Transformers (no FinBERT sentiment, uses fallback)
+
+The system will still work with 80% of features!
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+🎯 QUICK FIX SUMMARY
+
+Try these in order:
+
+1. ✅ Run INSTALL_FIXED.bat (easiest)
+2. ✅ Install multitasking separately first
+3. ✅ Use increased timeout: pip install --default-timeout=100
+4. ✅ Try different network/VPN
+5. ✅ Use PyPI mirror
+6. ✅ Check firewall/antivirus
+7. ✅ Change DNS settings
+8. ✅ Install minimum packages only
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📞 STILL HAVING ISSUES?
+
+If none of the above work:
+
+1. Check your network connection:
+   ping pypi.org
+
+2. Check if you can access PyPI:
+   Open https://pypi.org in browser
+
+3. Try from a different network:
+   - Mobile hotspot
+   - Different WiFi
+   - Different location
+
+4. Check Python version:
+   python --version
+   (Should be 3.8 or higher)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Good luck! The installation should work with one of these solutions. 🚀

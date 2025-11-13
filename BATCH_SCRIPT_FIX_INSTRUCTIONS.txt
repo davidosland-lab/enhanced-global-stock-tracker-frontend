@@ -1,0 +1,260 @@
+================================================================================
+   BATCH SCRIPT PATH FIX - QUICK SOLUTION
+================================================================================
+
+ISSUE IDENTIFIED:
+   The error "Cannot find source configuration" occurs because the batch script
+   is running from the batch_scripts/ subdirectory but looking for files using
+   relative paths that don't work from that location.
+
+ERROR YOU SAW:
+   [WARNING] asx_sectors.json not found
+   [ERROR] Cannot find source configuration
+
+================================================================================
+SOLUTION: USE THE NEW SIMPLIFIED BATCH SCRIPTS
+================================================================================
+
+I've added 3 NEW FIXED batch scripts to your package:
+
+✅ **TRAIN_LSTM.bat** (Run from package root)
+✅ **RUN_SCREENER.bat** (Run from package root)  
+✅ **TRAIN_LSTM_MODELS_FIXED.bat** (Run from batch_scripts folder)
+
+================================================================================
+QUICK FIX - USE THESE INSTEAD
+================================================================================
+
+OPTION 1: USE THE NEW SIMPLE LAUNCHERS (RECOMMENDED)
+-----------------------------------------------------
+
+1. Open Command Prompt
+
+2. Navigate to the package root:
+   cd C:\Users\david\AOSS\COMPLETE_SYSTEM_PACKAGE
+
+3. Run the new simple batch files:
+   
+   For LSTM Training:
+   TRAIN_LSTM.bat --max-stocks 3
+   
+   For Overnight Screener:
+   RUN_SCREENER.bat
+
+THESE WORK FROM THE PACKAGE ROOT DIRECTORY!
+
+
+OPTION 2: USE THE FIXED BATCH SCRIPT
+-------------------------------------
+
+1. Navigate to batch_scripts folder:
+   cd C:\Users\david\AOSS\COMPLETE_SYSTEM_PACKAGE\batch_scripts
+
+2. Run the fixed version:
+   TRAIN_LSTM_MODELS_FIXED.bat --max-stocks 3
+
+
+OPTION 3: RUN PYTHON DIRECTLY (MOST RELIABLE)
+----------------------------------------------
+
+1. Navigate to package root:
+   cd C:\Users\david\AOSS\COMPLETE_SYSTEM_PACKAGE
+
+2. Run Python commands directly:
+   
+   For LSTM Training:
+   python models\screening\lstm_trainer.py --mode train --max-stocks 3
+   
+   For Overnight Screener:
+   python scripts\run_overnight_screener.py
+
+THIS ALWAYS WORKS!
+
+================================================================================
+WHAT I FIXED
+================================================================================
+
+PROBLEM:
+   Old batch scripts used "cd /d "%~dp0"" which changed to the batch_scripts
+   directory, then tried to access "models/screening/" using relative paths.
+   This didn't work because the models folder is one level up.
+
+SOLUTION:
+   New batch scripts either:
+   1. Stay in package root (TRAIN_LSTM.bat, RUN_SCREENER.bat)
+   2. Change to batch_scripts then cd up one level (TRAIN_LSTM_MODELS_FIXED.bat)
+
+================================================================================
+RECOMMENDED APPROACH (EASIEST)
+================================================================================
+
+From now on, ALWAYS run commands from the package root directory:
+
+C:\Users\david\AOSS\COMPLETE_SYSTEM_PACKAGE
+
+Then use these commands:
+
+LSTM TRAINING:
+   TRAIN_LSTM.bat --max-stocks 3
+
+OVERNIGHT SCREENER:
+   RUN_SCREENER.bat
+
+TEST SYSTEM:
+   python scripts\test_screening_system.py
+
+TRAIN SPECIFIC STOCKS:
+   TRAIN_LSTM.bat --symbols CBA.AX BHP.AX ANZ.AX
+
+CHECK STATUS:
+   python models\screening\lstm_trainer.py --mode status
+
+================================================================================
+STEP-BY-STEP TO FIX YOUR CURRENT ISSUE
+================================================================================
+
+1. CLOSE the current Command Prompt window
+
+2. Open a NEW Command Prompt
+
+3. Navigate to the package root:
+   cd C:\Users\david\AOSS\COMPLETE_SYSTEM_PACKAGE
+
+4. Verify you're in the right place:
+   dir
+   
+   You should see:
+   - models folder
+   - scripts folder
+   - finbert_v4.4.4 folder
+   - TRAIN_LSTM.bat
+   - RUN_SCREENER.bat
+   - README.txt
+
+5. Run training with the new script:
+   TRAIN_LSTM.bat --max-stocks 3
+
+6. The script will:
+   ✅ Check Python installation
+   ✅ Check TensorFlow installation
+   ✅ Verify configuration files
+   ✅ Create necessary directories
+   ✅ Start training
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+ERROR: "Cannot find lstm_trainer.py"
+SOLUTION: You're not in the package root directory
+   cd C:\Users\david\AOSS\COMPLETE_SYSTEM_PACKAGE
+
+ERROR: "Python not found"
+SOLUTION: Python not in PATH
+   - Reinstall Python and check "Add to PATH"
+   - Or use full path: C:\Python312\python.exe
+
+ERROR: "TensorFlow not installed"
+SOLUTION: Install dependencies
+   pip install tensorflow keras yfinance pandas numpy
+
+ERROR: "Configuration file not found"
+SOLUTION: Verify package structure
+   dir models\config\asx_sectors.json
+   
+   If missing, re-extract the ZIP file
+
+================================================================================
+VERIFICATION THAT IT'S WORKING
+================================================================================
+
+When you run TRAIN_LSTM.bat correctly, you should see:
+
+   ============================================================================
+   LSTM MODEL TRAINING - SIMPLE LAUNCHER
+   ============================================================================
+
+   Python 3.12.9
+   [INFO] Environment OK - Starting training...
+
+   2025-11-08 - INFO - LSTM Trainer initialized
+   2025-11-08 - INFO - Max models per night: 20
+   2025-11-08 - INFO - Stale threshold: 7 days
+   2025-11-08 - INFO - Using ASX sectors config fallback
+   2025-11-08 - INFO - Training queue: 3 stocks
+   2025-11-08 - INFO - Training model for CBA.AX...
+   
+   [Then training starts...]
+
+================================================================================
+SUMMARY
+================================================================================
+
+WHAT TO DO NOW:
+   1. Close current Command Prompt
+   2. Open new Command Prompt
+   3. cd C:\Users\david\AOSS\COMPLETE_SYSTEM_PACKAGE
+   4. Run: TRAIN_LSTM.bat --max-stocks 3
+
+UPDATED ZIP FILE:
+   The COMPLETE_SYSTEM_PACKAGE.zip has been updated with the 3 new fixed
+   batch scripts. If you already extracted it, you can either:
+   - Re-extract the ZIP (overwrite)
+   - Or manually create the new .bat files (see below)
+
+NEW FILES ADDED:
+   ✅ TRAIN_LSTM.bat (in package root)
+   ✅ RUN_SCREENER.bat (in package root)
+   ✅ batch_scripts\TRAIN_LSTM_MODELS_FIXED.bat
+
+OLD FILES TO AVOID:
+   ❌ batch_scripts\RUN_LSTM_TRAINING.bat (has path issue)
+   ❌ batch_scripts\RUN_OVERNIGHT_SCREENER.bat (has path issue)
+
+USE THE NEW FILES INSTEAD!
+
+================================================================================
+IF YOU NEED TO CREATE THE FILES MANUALLY
+================================================================================
+
+If you already extracted the ZIP and don't want to re-extract, you can create
+TRAIN_LSTM.bat manually:
+
+1. Open Notepad
+2. Copy the content from the detailed file listing below
+3. Save as: C:\Users\david\AOSS\COMPLETE_SYSTEM_PACKAGE\TRAIN_LSTM.bat
+4. Make sure "Save as type" is "All Files" (not .txt)
+
+[The actual batch file content is in the ZIP]
+
+================================================================================
+CONTACT / SUPPORT
+================================================================================
+
+If you still have issues after trying these solutions:
+
+1. Verify your directory structure matches:
+   C:\Users\david\AOSS\COMPLETE_SYSTEM_PACKAGE\
+   ├── models\
+   │   ├── screening\
+   │   └── config\
+   ├── scripts\
+   ├── finbert_v4.4.4\
+   ├── TRAIN_LSTM.bat (NEW)
+   └── RUN_SCREENER.bat (NEW)
+
+2. Try running Python directly (always works):
+   cd C:\Users\david\AOSS\COMPLETE_SYSTEM_PACKAGE
+   python models\screening\lstm_trainer.py --mode train --max-stocks 2
+
+3. Check the logs:
+   type logs\lstm_training\*.log
+
+================================================================================
+END OF INSTRUCTIONS
+================================================================================
+
+The fix is simple: Use the NEW batch scripts that run from the package root
+directory instead of the old ones in batch_scripts folder!
+
+TRAIN_LSTM.bat and RUN_SCREENER.bat are your friends! 🚀

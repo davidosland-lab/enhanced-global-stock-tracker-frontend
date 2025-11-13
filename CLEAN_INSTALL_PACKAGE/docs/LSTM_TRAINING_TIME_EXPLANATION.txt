@@ -1,0 +1,358 @@
+================================================================================
+LSTM TRAINING TIME - WHAT TO EXPECT
+================================================================================
+
+YOU ASKED: How long should CBA.AX take to train?
+
+QUICK ANSWER: 
+-------------
+For CBA.AX with default settings (50 epochs):
+  Best case:  5-8 minutes   (fast CPU, good data)
+  Average:    10-15 minutes (typical CPU)
+  Worst case: 15-25 minutes (slow CPU, lots of data)
+
+YOUR STATUS: 4 minutes in, cursor blinking
+  → This is NORMAL! Keep waiting.
+  → Training is running in the background
+  → It should show progress output soon
+
+================================================================================
+WHY IT TAKES THIS LONG
+================================================================================
+
+What's Happening During Training:
+----------------------------------
+1. Data Fetching (10-30 seconds)
+   - Downloads 2 years of CBA.AX price data
+   - Fetches ~500 data points from Yahoo Finance
+   - Adds technical indicators (RSI, MACD, etc.)
+
+2. Data Preparation (10-20 seconds)
+   - Creates 60-day sequences
+   - Normalizes features
+   - Splits into training/validation sets
+
+3. Model Building (5-10 seconds)
+   - Constructs 3-layer LSTM neural network
+   - 128 → 64 → 32 neurons
+   - Compiles with optimizer
+
+4. Training Loop (MAJORITY OF TIME - 5-20 minutes)
+   - Trains for 50 epochs
+   - Each epoch processes all training data
+   - Validates on separate data set
+   - Adjusts neural network weights
+   
+   Breakdown per epoch:
+   - Fast CPU: 5-10 seconds per epoch  = 4-8 minutes total
+   - Average CPU: 10-20 seconds per epoch = 8-17 minutes total
+   - Slow CPU: 15-30 seconds per epoch = 12-25 minutes total
+
+5. Final Evaluation (10-20 seconds)
+   - Test prediction on recent data
+   - Save model to disk
+   - Save metadata JSON
+
+TOTAL TIME ESTIMATE:
+  Fast machine:    5-8 minutes
+  Average machine: 10-15 minutes
+  Slow machine:    15-25 minutes
+
+================================================================================
+WHAT YOU SHOULD SEE
+================================================================================
+
+Initial Output (First 30 seconds):
+-----------------------------------
+2025-11-08 06:XX:XX - INFO - LSTM Trainer initialized (enabled: True)
+2025-11-08 06:XX:XX - INFO - Max models per night: 20
+2025-11-08 06:XX:XX - INFO - Stale threshold: 7 days
+2025-11-08 06:XX:XX - INFO - Starting LSTM training for CBA.AX...
+2025-11-08 06:XX:XX - INFO - Starting LSTM training for CBA.AX
+2025-11-08 06:XX:XX - INFO - Fetching training data for CBA.AX
+2025-11-08 06:XX:XX - INFO - Fetched 500 days of data for CBA.AX
+2025-11-08 06:XX:XX - INFO - Training on 8 features: ['close', 'volume', ...]
+
+Then Training Progress (5-20 minutes):
+---------------------------------------
+Epoch 1/50
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 0s 2ms/step - loss: 0.0234
+Epoch 2/50
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 0s 2ms/step - loss: 0.0198
+Epoch 3/50
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 0s 2ms/step - loss: 0.0175
+...
+[Progress bars for all 50 epochs]
+...
+Epoch 50/50
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 0s 2ms/step - loss: 0.0045
+
+Finally Completion (Last 20 seconds):
+--------------------------------------
+2025-11-08 06:XX:XX - INFO - Training complete for CBA.AX
+2025-11-08 06:XX:XX - INFO - Test prediction: {...}
+2025-11-08 06:XX:XX - INFO - ✅ CBA.AX: Training completed in XXXs
+2025-11-08 06:XX:XX - INFO -    Loss: 0.0045
+2025-11-08 06:XX:XX - INFO -    Val Loss: 0.0052
+
+[SUCCESS] LSTM training completed successfully
+
+================================================================================
+IF YOU SEE NOTHING (Cursor Just Blinking)
+================================================================================
+
+This Could Mean:
+----------------
+
+1. NORMAL - Data Fetching Phase (first 30-60 seconds)
+   → System is downloading stock data from Yahoo Finance
+   → Be patient, output will appear soon
+
+2. NORMAL - Python Buffering Output
+   → Output is buffered and will appear in batches
+   → Especially common on Windows
+   → Keep waiting
+
+3. POSSIBLE - Stuck on Data Download
+   → Yahoo Finance might be slow
+   → Check if you have internet connection
+   → Usually resolves itself in 1-2 minutes
+
+4. POSSIBLE - Silent Error
+   → Error happened but not displayed
+   → Check logs: logs\lstm_training\lstm_training.log
+
+================================================================================
+WHAT TO DO AFTER 4 MINUTES (YOUR CURRENT SITUATION)
+================================================================================
+
+RECOMMENDED ACTION: Keep waiting!
+----------------------------------
+✅ 4 minutes is NORMAL for the data fetching + first few epochs
+✅ Output should start appearing around 1-2 minute mark
+✅ If cursor is blinking, training IS running (not frozen)
+✅ Give it 10-15 minutes total before worrying
+
+CHECK IF IT'S FROZEN:
+---------------------
+1. Open Task Manager (Ctrl+Shift+Esc)
+2. Look for "python.exe" process
+3. Check CPU usage:
+   - 20-80% CPU = Training is running (GOOD!)
+   - 0% CPU = Might be stuck (NOT GOOD)
+
+IF CPU SHOWS ACTIVITY:
+  → Training is working! Be patient.
+
+IF CPU SHOWS 0%:
+  → Might be stuck. Check logs: logs\lstm_training\lstm_training.log
+
+HOW TO CHECK LOGS:
+------------------
+Open another command prompt:
+  cd C:\Users\david\AOSS
+  type logs\lstm_training\lstm_training.log
+
+This will show what's happening even if screen output is buffered.
+
+================================================================================
+TIMING BREAKDOWN BY PHASE
+================================================================================
+
+Phase 1: Initialization (5-10 seconds)
+  - Load configuration
+  - Initialize LSTM trainer
+  - Set up logging
+  
+Phase 2: Data Fetching (10-60 seconds)
+  - Download 2 years of CBA.AX data
+  - Can be slow if Yahoo Finance is busy
+  - Network dependent
+  
+Phase 3: Data Preprocessing (10-30 seconds)
+  - Calculate technical indicators
+  - Create sequences
+  - Normalize data
+  - Split train/validation
+  
+Phase 4: Model Building (5-10 seconds)
+  - Construct neural network
+  - Compile model
+  
+Phase 5: Training Loop (5-20 minutes) ← LONGEST PHASE
+  - 50 epochs
+  - Each epoch: 5-30 seconds
+  - Shows progress bars
+  - This is where most time is spent
+  
+Phase 6: Finalization (10-20 seconds)
+  - Test prediction
+  - Save model
+  - Save metadata
+  
+TOTAL: 5-25 minutes depending on CPU speed
+
+================================================================================
+EXPECTED TIMING FOR DIFFERENT CPUS
+================================================================================
+
+Modern High-End (Intel i7/i9, AMD Ryzen 7/9):
+  - Epoch time: 5-8 seconds
+  - Total epochs: 4-7 minutes (50 epochs)
+  - Total time: 5-8 minutes
+  
+Average Desktop (Intel i5, AMD Ryzen 5):
+  - Epoch time: 10-15 seconds
+  - Total epochs: 8-12 minutes (50 epochs)
+  - Total time: 10-15 minutes
+  
+Older/Budget CPU (Intel i3, older processors):
+  - Epoch time: 15-25 seconds
+  - Total epochs: 12-20 minutes (50 epochs)
+  - Total time: 15-25 minutes
+  
+Laptop (varies widely):
+  - Epoch time: 10-30 seconds
+  - Total epochs: 8-25 minutes (50 epochs)
+  - Total time: 10-25 minutes
+
+Your machine (Python 3.12.9, TensorFlow 2.20.0):
+  - Likely: 10-15 minutes total
+  - After 4 minutes: ~30-40% done (probably in epochs 15-20)
+
+================================================================================
+HOW TO SPEED IT UP (FOR FUTURE TRAINING)
+================================================================================
+
+Option 1: Reduce Epochs (Fastest)
+----------------------------------
+Edit: models\config\screening_config.json
+Change: "epochs": 50
+To:     "epochs": 20
+
+Result: 
+  - Training time: 2-8 minutes instead of 5-25 minutes
+  - Model quality: Slightly lower but still good
+  - Good for: Quick testing
+
+Option 2: Use Test Mode (Very Fast)
+------------------------------------
+RUN_LSTM_TRAINING_FIXED.bat --symbols CBA.AX --epochs 5
+
+Result:
+  - Training time: 1-2 minutes
+  - Model quality: Poor (for testing only)
+  - Good for: Verifying training works
+
+Option 3: Train Fewer Stocks
+-----------------------------
+RUN_LSTM_TRAINING_FIXED.bat --max-stocks 1
+
+Instead of training many stocks, train just 1 at a time.
+
+Option 4: Use Better Hardware
+------------------------------
+- Faster CPU helps significantly
+- More RAM helps (4GB+ recommended)
+- SSD instead of HDD helps with data loading
+
+================================================================================
+COMPARISON: QUICK vs NORMAL vs THOROUGH
+================================================================================
+
+QUICK (5 epochs):
+  - Time: 1-2 minutes per stock
+  - Accuracy: ~50-55% (barely better than random)
+  - Use: Testing only
+
+NORMAL (50 epochs - default):
+  - Time: 5-25 minutes per stock
+  - Accuracy: ~60-70% (good predictions)
+  - Use: Production recommended
+
+THOROUGH (100 epochs):
+  - Time: 10-50 minutes per stock
+  - Accuracy: ~65-75% (best predictions)
+  - Use: When you have time, want best results
+
+RECOMMENDATION: Stick with 50 epochs (default)
+
+================================================================================
+WHAT TO EXPECT FOR MULTIPLE STOCKS
+================================================================================
+
+1 stock (CBA.AX):
+  - Time: 5-25 minutes
+  
+3 stocks (CBA.AX, BHP.AX, CSL.AX):
+  - Time: 15-75 minutes (3x single stock)
+  - Sequential training (one after another)
+  
+10 stocks:
+  - Time: 50-250 minutes (0.8-4.2 hours)
+  - Do this overnight or when you have time
+  
+30 stocks (all sectors):
+  - Time: 150-750 minutes (2.5-12.5 hours)
+  - Definitely overnight job
+
+================================================================================
+YOUR CURRENT SITUATION - WHAT TO DO
+================================================================================
+
+Current Status:
+  - 4 minutes elapsed
+  - Cursor blinking
+  - No output yet
+
+Most Likely Scenario:
+  ✅ Training is running normally
+  ✅ Output is buffered (Windows behavior)
+  ✅ Will show progress soon (around 5-7 minute mark)
+  ✅ Will complete around 10-20 minute mark
+
+RECOMMENDED ACTION:
+  1. Keep waiting (don't press Ctrl+C)
+  2. Give it 10 more minutes (14 minutes total)
+  3. If still no output, check Task Manager for python.exe CPU usage
+  4. If CPU is active, keep waiting
+  5. If CPU is 0%, check logs
+
+HOW TO CHECK WHILE WAITING:
+  Open another terminal:
+    cd C:\Users\david\AOSS
+    type logs\lstm_training\lstm_training.log
+    
+  This shows real-time progress even if screen doesn't update.
+
+WHEN TO WORRY:
+  - After 30 minutes with no output AND no CPU activity
+  - Before that, it's just slow/buffered output
+
+================================================================================
+SUMMARY
+================================================================================
+
+Question: How long should CBA.AX take?
+Answer: 5-25 minutes depending on your CPU (probably 10-15 minutes)
+
+Your Status: 4 minutes in, cursor blinking
+Action: Keep waiting! This is normal.
+
+Expected:
+  - Output should appear around 5-7 minute mark
+  - Training bars will show progress through 50 epochs
+  - Should complete around 10-20 minute mark
+  - Success message will appear at the end
+
+Alternative Check:
+  type logs\lstm_training\lstm_training.log (in another terminal)
+
+Don't Worry Unless:
+  - 30+ minutes with no output
+  - Task Manager shows 0% CPU for python.exe
+  - Even then, check logs first
+
+Be Patient: Neural network training is genuinely slow! ⏳
+
+================================================================================
