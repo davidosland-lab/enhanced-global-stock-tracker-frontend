@@ -2,6 +2,9 @@
 REM Event Risk Guard - Run Overnight Pipeline
 REM Executes the complete overnight screening with Event Risk Guard
 
+REM Change to the directory where this batch file is located
+cd /d "%~dp0"
+
 echo ================================================================================
 echo Event Risk Guard - Overnight Screening Pipeline
 echo ================================================================================

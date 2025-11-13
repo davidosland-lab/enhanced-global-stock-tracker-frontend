@@ -2,6 +2,9 @@
 REM Event Risk Guard - Installation Script
 REM Installs all required dependencies for the Event Risk Guard system
 
+REM Change to the directory where this batch file is located
+cd /d "%~dp0"
+
 echo ================================================================================
 echo Event Risk Guard - Installation
 echo ================================================================================

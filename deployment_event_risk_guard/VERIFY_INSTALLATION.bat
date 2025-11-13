@@ -2,6 +2,9 @@
 REM Event Risk Guard - Installation Verification Script
 REM Checks if all required packages are installed correctly
 
+REM Change to the directory where this batch file is located
+cd /d "%~dp0"
+
 echo ================================================================================
 echo Event Risk Guard - Installation Verification
 echo ================================================================================

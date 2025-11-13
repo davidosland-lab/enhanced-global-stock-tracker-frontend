@@ -3,6 +3,9 @@ REM ====================================================================
 REM Install beautifulsoup4 - Standalone Installer
 REM ====================================================================
 
+REM Change to the directory where this batch file is located
+cd /d "%~dp0"
+
 echo.
 echo ========================================================================
 echo   BEAUTIFULSOUP4 INSTALLER

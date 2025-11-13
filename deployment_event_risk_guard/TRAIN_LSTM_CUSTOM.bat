@@ -5,6 +5,9 @@ REM Allows you to select which stocks to train
 REM Expected Time: 10-15 minutes per stock
 REM ====================================================================
 
+REM Change to the directory where this batch file is located
+cd /d "%~dp0"
+
 echo.
 echo ========================================================================
 echo   LSTM CUSTOM TRAINING - Interactive Mode
