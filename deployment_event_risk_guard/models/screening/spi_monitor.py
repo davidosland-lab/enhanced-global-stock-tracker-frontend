@@ -21,11 +21,7 @@ import numpy as np
 from pathlib import Path
 import pytz
 from yahooquery import Ticker
-
-try:
-    from .alpha_vantage_fetcher import AlphaVantageDataFetcher
-except ImportError:
-    from alpha_vantage_fetcher import AlphaVantageDataFetcher
+import yfinance as yf
 
 # Setup logging
 logging.basicConfig(
@@ -63,14 +59,8 @@ class SPIMonitor:
         # Timezone
         self.timezone = pytz.timezone('Australia/Sydney')
         
-        # Initialize data fetcher (use yahooquery as primary, Alpha Vantage as backup)
-        try:
-            self.data_fetcher = AlphaVantageDataFetcher(cache_ttl_minutes=240)
-            self.use_alpha_vantage = True
-        except:
-            self.data_fetcher = None
-            self.use_alpha_vantage = False
-            logger.info("Using yahooquery as primary data source (Alpha Vantage not available)")
+        # Use yfinance for all data fetching
+        logger.info("Using yfinance for data source")
         
         logger.info("SPI Monitor initialized")
     
@@ -115,7 +105,7 @@ class SPIMonitor:
     
     def _get_asx_state(self) -> Dict:
         """
-        Get current ASX 200 state using yahooquery (primary) or Alpha Vantage (backup)
+        Get current ASX 200 state using yahooquery (primary) or yfinance (backup)
         
         Returns:
             Dictionary with ASX data
@@ -152,11 +142,12 @@ class SPIMonitor:
                         'last_updated': hist.index[-1].isoformat() if hasattr(hist.index[-1], 'isoformat') else str(hist.index[-1])
                     }
             except Exception as yq_error:
-                logger.warning(f"yahooquery failed for ASX, trying Alpha Vantage: {yq_error}")
+                logger.warning(f"yahooquery failed for ASX, trying yfinance: {yq_error}")
             
-            # Fallback to Alpha Vantage if yahooquery fails
-            if self.use_alpha_vantage and self.data_fetcher:
-                hist = self.data_fetcher.fetch_daily_data(self.asx_symbol, outputsize="compact")
+            # Fallback to yfinance if yahooquery fails
+            try:
+                ticker_yf = yf.Ticker(self.asx_symbol)
+                hist = ticker_yf.history(period="1mo")
                 
                 if hist is not None and not hist.empty and len(hist) >= 2:
                     last_close = hist['Close'].iloc[-1]
@@ -168,7 +159,7 @@ class SPIMonitor:
                     else:
                         five_day_change = change_pct
                     
-                    logger.info(f"✓ ASX data fetched from Alpha Vantage: {self.asx_symbol}")
+                    logger.info(f"✓ ASX data fetched from yfinance: {self.asx_symbol}")
                     return {
                         'available': True,
                         'symbol': self.asx_symbol,
@@ -179,6 +170,8 @@ class SPIMonitor:
                         'volume': int(hist['Volume'].iloc[-1]),
                         'last_updated': hist.index[-1].isoformat()
                     }
+            except Exception as yf_error:
+                logger.warning(f"yfinance also failed: {yf_error}")
             
             logger.warning("No ASX data available from any source")
             return {'available': False}
@@ -189,7 +182,7 @@ class SPIMonitor:
     
     def _get_us_market_data(self) -> Dict:
         """
-        Get US market indices data (S&P 500, Nasdaq, Dow) using yahooquery (primary) or Alpha Vantage (backup)
+        Get US market indices data (S&P 500, Nasdaq, Dow) using yahooquery (primary) or yfinance (backup)
         
         Returns:
             Dictionary with US market data
@@ -216,14 +209,18 @@ class SPIMonitor:
                         hist.columns = [col.capitalize() for col in hist.columns]
                         logger.info(f"✓ {name_map.get(symbol, symbol)} data from yahooquery")
                 except Exception as yq_error:
-                    logger.warning(f"yahooquery failed for {symbol}, trying Alpha Vantage: {yq_error}")
+                    logger.warning(f"yahooquery failed for {symbol}, trying yfinance: {yq_error}")
                     hist = None
                 
-                # Fallback to Alpha Vantage if yahooquery fails
-                if (hist is None or hist.empty) and self.use_alpha_vantage and self.data_fetcher:
-                    hist = self.data_fetcher.fetch_daily_data(symbol, outputsize="compact")
-                    if hist is not None and not hist.empty:
-                        logger.info(f"✓ {name_map.get(symbol, symbol)} data from Alpha Vantage")
+                # Fallback to yfinance if yahooquery fails
+                if hist is None or hist.empty:
+                    try:
+                        ticker_yf = yf.Ticker(symbol)
+                        hist = ticker_yf.history(period="1mo")
+                        if hist is not None and not hist.empty:
+                            logger.info(f"✓ {name_map.get(symbol, symbol)} data from yfinance")
+                    except Exception as yf_error:
+                        logger.warning(f"yfinance also failed for {symbol}: {yf_error}")
                 
                 if hist is None or hist.empty:
                     logger.warning(f"No data for {symbol} from any source")
