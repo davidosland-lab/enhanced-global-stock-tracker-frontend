@@ -39,7 +39,7 @@ if "%~1"=="" (
     set SYMBOL=%~1
 )
 
-echo Training LSTM model for: %SYMBOL%
+echo Training LSTM model for: !SYMBOL!
 echo.
 echo Training Parameters:
 echo   - Epochs: 50
@@ -75,22 +75,22 @@ echo Starting training in 3 seconds...
 timeout /t 3 /nobreak >nul
 
 REM Train the model
-python train_lstm_custom.py --symbols %SYMBOL%
+python train_lstm_custom.py --symbols !SYMBOL!
 
 if errorlevel 1 (
     echo.
-    echo [ERROR] Training failed for %SYMBOL%
+    echo [ERROR] Training failed for !SYMBOL!
     pause
     exit /b 1
 )
 
 echo.
 echo ========================================================================
-echo   TRAINING COMPLETED FOR %SYMBOL%
+echo   TRAINING COMPLETED FOR !SYMBOL!
 echo ========================================================================
 echo.
-echo Model saved to: models\lstm_%SYMBOL%_model.keras
-echo Metadata saved to: models\lstm_%SYMBOL%_metadata.json
+echo Model saved to: models\lstm_!SYMBOL!_model.keras
+echo Metadata saved to: models\lstm_!SYMBOL!_metadata.json
 echo.
 echo You can now use this stock in predictions.
 echo.
