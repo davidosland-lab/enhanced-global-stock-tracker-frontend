@@ -367,7 +367,7 @@ class StockScanner:
         
         sector_data = self.sectors[sector_name]
         symbols = sector_data['stocks']
-        sector_weight = sector_data['weight']
+        sector_weight = sector_data.get('weight', 1.0)  # Default weight 1.0 if not specified
         
         logger.info(f"\n{'='*80}")
         logger.info(f"Scanning {sector_name} Sector ({len(symbols)} stocks)")
