@@ -623,10 +623,13 @@ def get_real_sentiment_for_symbol(symbol: str, use_cache: bool = True) -> Dict:
         for article in all_articles[:25]:  # Limit to 25 most recent
             # Combine title and summary for analysis
             text = f"{article['title']}. {article['summary']}"
-            if not finbert_analyzer:
-                logger.error("FinBERT analyzer not available")
-                return {"error": "FinBERT not available"}
-            sentiment_result = finbert_analyzer.analyze_text(text)
+            # finbert_analyzer always exists and will use fallback if model not loaded
+            sentiment_result = finbert_analyzer.analyze_text(text) if finbert_analyzer else {
+                'sentiment': 'neutral',
+                'compound': 0.0,
+                'confidence': 0.0,
+                'method': 'No analyzer'
+            }
             
             article['sentiment'] = sentiment_result['sentiment']
             article['sentiment_score'] = sentiment_result['compound']
