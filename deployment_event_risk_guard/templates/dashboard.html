@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Risk Guard - Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <h1>📊 Event Risk Guard</h1>
+                <p class="subtitle">ASX Stock Screening & Risk Management System</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="refreshDashboard()">🔄 Refresh</button>
+                <button class="btn btn-secondary" onclick="showSettings()">⚙️ Settings</button>
+            </div>
+        </header>
+
+        <!-- Status Cards -->
+        <div class="status-cards">
+            <div class="card status-card" id="system-status">
+                <div class="card-icon">🟢</div>
+                <div class="card-content">
+                    <h3>System Status</h3>
+                    <p id="status-text">Loading...</p>
+                </div>
+            </div>
+
+            <div class="card status-card" id="email-status">
+                <div class="card-icon">📧</div>
+                <div class="card-content">
+                    <h3>Email Notifications</h3>
+                    <p id="email-text">Loading...</p>
+                </div>
+            </div>
+
+            <div class="card status-card" id="lstm-status">
+                <div class="card-icon">🤖</div>
+                <div class="card-content">
+                    <h3>LSTM Training</h3>
+                    <p id="lstm-text">Loading...</p>
+                </div>
+            </div>
+
+            <div class="card status-card" id="spi-status">
+                <div class="card-icon">📈</div>
+                <div class="card-content">
+                    <h3>SPI Monitoring</h3>
+                    <p id="spi-text">Loading...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Latest Report -->
+            <div class="card latest-report">
+                <div class="card-header">
+                    <h2>📄 Latest Report</h2>
+                    <button class="btn btn-small" onclick="viewAllReports()">View All</button>
+                </div>
+                <div class="card-body" id="latest-report-content">
+                    <p class="loading">Loading latest report...</p>
+                </div>
+            </div>
+
+            <!-- Pipeline Summary -->
+            <div class="card pipeline-summary">
+                <div class="card-header">
+                    <h2>🔄 Pipeline Summary</h2>
+                </div>
+                <div class="card-body" id="pipeline-summary-content">
+                    <p class="loading">Loading pipeline data...</p>
+                </div>
+            </div>
+
+            <!-- Top Opportunities -->
+            <div class="card top-opportunities">
+                <div class="card-header">
+                    <h2>🎯 Top Opportunities</h2>
+                </div>
+                <div class="card-body">
+                    <table class="opportunities-table" id="opportunities-table">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Score</th>
+                                <th>Signal</th>
+                                <th>Confidence</th>
+                                <th>Sector</th>
+                            </tr>
+                        </thead>
+                        <tbody id="opportunities-tbody">
+                            <tr>
+                                <td colspan="5" class="loading">Loading opportunities...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- LSTM Models -->
+            <div class="card lstm-models">
+                <div class="card-header">
+                    <h2>🧠 Trained Models</h2>
+                    <button class="btn btn-small" onclick="refreshModels()">Refresh</button>
+                </div>
+                <div class="card-body">
+                    <div id="models-list" class="models-list">
+                        <p class="loading">Loading models...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Logs -->
+            <div class="card recent-logs">
+                <div class="card-header">
+                    <h2>📋 Recent Logs</h2>
+                    <button class="btn btn-small" onclick="refreshLogs()">Refresh</button>
+                </div>
+                <div class="card-body">
+                    <div id="logs-content" class="logs-content">
+                        <p class="loading">Loading logs...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>⚙️ Settings</h2>
+                    <button class="close-btn" onclick="closeSettings()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="settings-section">
+                        <h3>Email Notifications</h3>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="email-enabled"> Enable Email Notifications
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>SMTP Server</label>
+                            <input type="text" id="smtp-server" class="form-control" placeholder="smtp.gmail.com">
+                        </div>
+                        <div class="form-group">
+                            <label>SMTP Port</label>
+                            <input type="number" id="smtp-port" class="form-control" placeholder="587">
+                        </div>
+                        <div class="form-group">
+                            <label>Username</label>
+                            <input type="text" id="smtp-username" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>Password</label>
+                            <input type="password" id="smtp-password" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <button class="btn btn-primary" onclick="testEmail()">📧 Send Test Email</button>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>LSTM Training</h3>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="lstm-enabled"> Enable LSTM Training
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label>Max Models Per Night</label>
+                            <input type="number" id="max-models" class="form-control" placeholder="20">
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>SPI Monitoring</h3>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="spi-enabled"> Enable SPI Monitoring
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
+                    <button class="btn btn-primary" onclick="saveSettings()">Save Changes</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reports Modal -->
+        <div id="reports-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>📄 All Reports</h2>
+                    <button class="close-btn" onclick="closeReports()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div id="reports-list" class="reports-list">
+                        <p class="loading">Loading reports...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html>
