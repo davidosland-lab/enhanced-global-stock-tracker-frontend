@@ -432,12 +432,19 @@ def main():
 if __name__ == '__main__':
     try:
         success = main()
+        # Add pause for Windows batch files
+        if os.name == 'nt':  # Windows
+            input("\nPress Enter to close...")
         sys.exit(0 if success else 1)
     except KeyboardInterrupt:
         print("\n\n❌ Training interrupted by user")
+        if os.name == 'nt':  # Windows
+            input("\nPress Enter to close...")
         sys.exit(1)
     except Exception as e:
         print(f"\n\n❌ Unexpected error: {e}")
         import traceback
         traceback.print_exc()
+        if os.name == 'nt':  # Windows
+            input("\nPress Enter to close...")
         sys.exit(1)

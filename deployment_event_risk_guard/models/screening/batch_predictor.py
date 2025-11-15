@@ -21,11 +21,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from yahooquery import Ticker
-
-try:
-    from .alpha_vantage_fetcher import AlphaVantageDataFetcher
-except ImportError:
-    from alpha_vantage_fetcher import AlphaVantageDataFetcher
+import yfinance as yf
 
 # Import FinBERT Bridge for real LSTM and sentiment
 try:
@@ -78,12 +74,8 @@ class BatchPredictor:
         # Prediction cache
         self.prediction_cache = {}
         
-        # Initialize Alpha Vantage fetcher as backup only (kept for legacy compatibility)
-        # Primary data source is now yahooquery
-        try:
-            self.data_fetcher = AlphaVantageDataFetcher(cache_ttl_minutes=240)
-        except:
-            self.data_fetcher = None
+        # Use yfinance as data source
+        logger.info("Using yfinance for data source")
         
         # Initialize FinBERT Bridge for real LSTM and sentiment
         self.finbert_bridge = None

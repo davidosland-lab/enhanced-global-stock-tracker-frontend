@@ -2,6 +2,9 @@
 REM Event Risk Guard - Installation Verification Script
 REM Checks if all required packages are installed correctly
 
+REM Change to the directory where this batch file is located
+cd /d "%~dp0"
+
 echo ================================================================================
 echo Event Risk Guard - Installation Verification
 echo ================================================================================
@@ -138,8 +141,8 @@ echo print^(^)
 echo print^("="*80^)
 echo print^("VERIFICATION SUMMARY"^)
 echo print^("="*80^)
-echo print^(f"Installed: {len^(installed^)} packages"^)
-echo print^(f"Missing: {len^(missing^)} packages"^)
+echo print^(f"Installed: {len(installed)} packages"^)
+echo print^(f"Missing: {len(missing)} packages"^)
 echo print^(^)
 echo.
 echo if missing:

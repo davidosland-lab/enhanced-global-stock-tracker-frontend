@@ -53,26 +53,49 @@ class StockScanner:
             config_path = Path(__file__).parent.parent / "config" / "asx_sectors.json"
         
         self.config = self._load_config(config_path)
-        self.sectors = self.config['sectors']
-        self.criteria = self.config['selection_criteria']
+        
+        # Handle both old and new JSON structures
+        if 'sectors' in self.config:
+            # New structure: {"sectors": {"financials": {...}}, "selection_criteria": {...}}
+            self.sectors = self.config['sectors']
+            self.criteria = self.config.get('selection_criteria', {
+                'min_price': 0.50,
+                'max_price': 500.0,
+                'min_avg_volume': 100000
+            })
+        else:
+            # Old structure: {"financials": {...}, "materials": {...}} (current asx_sectors.json)
+            self.sectors = self.config
+            self.criteria = {
+                'min_price': 0.50,
+                'max_price': 500.0,
+                'min_avg_volume': 100000
+            }
+        
         self.logger = logger
     
     def _load_config(self, config_path: str) -> Dict:
         """Load configuration from JSON"""
         try:
             with open(config_path, 'r') as f:
-                return json.load(f)
+                config = json.load(f)
+                logger.info(f"✓ Loaded config from {config_path}")
+                
+                # Count stocks
+                if 'sectors' in config:
+                    total_stocks = sum(len(sector.get('stocks', [])) for sector in config['sectors'].values())
+                    logger.info(f"  Loaded {len(config['sectors'])} sectors with {total_stocks} stocks")
+                else:
+                    # Old format - sectors at top level
+                    total_stocks = sum(len(sector.get('stocks', [])) for sector in config.values() if isinstance(sector, dict) and 'stocks' in sector)
+                    sector_count = sum(1 for v in config.values() if isinstance(v, dict) and 'stocks' in v)
+                    logger.info(f"  Loaded {sector_count} sectors with {total_stocks} stocks")
+                
+                return config
         except Exception as e:
             logger.error(f"Error loading config: {e}")
-            # Return minimal default config
-            return {
-                'sectors': {},
-                'selection_criteria': {
-                    'min_price': 0.50,
-                    'max_price': 500.0,
-                    'min_avg_volume': 100000
-                }
-            }
+            # Return minimal default config (empty sectors)
+            return {}
     
     # ========================================================================
     # DATA FETCHING - yahooquery ONLY
@@ -344,7 +367,7 @@ class StockScanner:
         
         sector_data = self.sectors[sector_name]
         symbols = sector_data['stocks']
-        sector_weight = sector_data['weight']
+        sector_weight = sector_data.get('weight', 1.0)  # Default weight 1.0 if not specified
         
         logger.info(f"\n{'='*80}")
         logger.info(f"Scanning {sector_name} Sector ({len(symbols)} stocks)")

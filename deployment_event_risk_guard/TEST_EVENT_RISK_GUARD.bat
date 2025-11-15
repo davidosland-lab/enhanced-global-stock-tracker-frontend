@@ -2,6 +2,9 @@
 REM Event Risk Guard - Test Script
 REM Tests the Event Risk Guard module with real ASX stocks
 
+REM Change to the directory where this batch file is located
+cd /d "%~dp0"
+
 echo ================================================================================
 echo Event Risk Guard - Test Mode
 echo ================================================================================

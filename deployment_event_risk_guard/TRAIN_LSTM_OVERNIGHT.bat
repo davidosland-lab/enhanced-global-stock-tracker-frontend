@@ -5,6 +5,9 @@ REM Trains LSTM models for top ASX stocks (Event Calendar focus)
 REM Expected Time: 1.5-2 hours for 10 stocks
 REM ====================================================================
 
+REM Change to the directory where this batch file is located
+cd /d "%~dp0"
+
 echo.
 echo ========================================================================
 echo   LSTM OVERNIGHT TRAINING - Event Risk Guard ASX Stocks
@@ -129,4 +132,5 @@ echo Prediction weights: LSTM 45%%, Trend 25%%, Technical 15%%, FinBERT 15%%
 echo.
 echo ========================================================================
 echo.
+echo Press any key to close...
 pause
