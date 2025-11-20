@@ -406,16 +406,17 @@ class EventRiskGuard:
             self.regime_engine = MarketRegimeEngine()
             self.regime_available = True
             logger.info("✓ Market Regime Engine initialized successfully")
-        except ImportError:
+        except (ImportError, ModuleNotFoundError, Exception) as e:
             try:
                 from market_regime_engine import MarketRegimeEngine
                 self.regime_engine = MarketRegimeEngine()
                 self.regime_available = True
                 logger.info("✓ Market Regime Engine initialized successfully")
-            except ImportError:
+            except (ImportError, ModuleNotFoundError, Exception) as e2:
                 self.regime_engine = None
                 self.regime_available = False
-                logger.warning("  Market Regime Engine not available (optional)")
+                logger.warning(f"  Market Regime Engine not available: {e2} (optional)")
+                logger.warning("  Install hmmlearn to enable: pip install hmmlearn>=0.3.0")
         
         logger.info("Event Risk Guard initialized with %d providers", len(self.providers))
 
