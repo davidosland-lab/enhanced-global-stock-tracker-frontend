@@ -400,6 +400,23 @@ class EventRiskGuard:
         if extra_providers:
             self.providers.extend(extra_providers)
         
+        # Initialize Market Regime Engine for crash risk assessment
+        try:
+            from .market_regime_engine import MarketRegimeEngine
+            self.regime_engine = MarketRegimeEngine()
+            self.regime_available = True
+            logger.info("✓ Market Regime Engine initialized successfully")
+        except ImportError:
+            try:
+                from market_regime_engine import MarketRegimeEngine
+                self.regime_engine = MarketRegimeEngine()
+                self.regime_available = True
+                logger.info("✓ Market Regime Engine initialized successfully")
+            except ImportError:
+                self.regime_engine = None
+                self.regime_available = False
+                logger.warning("  Market Regime Engine not available (optional)")
+        
         logger.info("Event Risk Guard initialized with %d providers", len(self.providers))
 
     def _collect_events(self, ticker: str) -> List[EventInfo]:
@@ -450,6 +467,28 @@ class EventRiskGuard:
         
         title_lower = event.title.lower()
         return any(kw in title_lower for kw in REGULATORY_KEYWORDS)
+    
+    def _get_regime_crash_risk(self) -> Tuple[str, float]:
+        """
+        Get market regime and crash risk score from Market Regime Engine.
+        
+        Returns:
+            Tuple of (regime_label, crash_risk_score)
+        """
+        if not self.regime_available or self.regime_engine is None:
+            return ("UNKNOWN", 0.0)
+        
+        try:
+            regime_data = self.regime_engine.analyse()
+            regime_label = regime_data.get('regime_label', 'UNKNOWN').upper()
+            crash_risk = regime_data.get('crash_risk_score', 0.0)
+            
+            logger.info(f"Market Regime Engine: {regime_label}, Crash Risk: {crash_risk:.3f}")
+            
+            return (regime_label, crash_risk)
+        except Exception as e:
+            logger.warning(f"Market Regime Engine analysis failed: {e}")
+            return ("UNKNOWN", 0.0)
 
     def assess(self, ticker: str) -> GuardResult:
         """
@@ -568,6 +607,12 @@ class EventRiskGuard:
         Returns:
             Dictionary mapping ticker -> GuardResult
         """
+        # Get market regime once for all tickers (performance optimization)
+        regime_label, regime_crash_risk = self._get_regime_crash_risk()
+        
+        logger.info(f"Batch assessment starting for {len(tickers)} tickers")
+        logger.info(f"Market Regime: {regime_label}, Crash Risk: {regime_crash_risk:.3f}")
+        
         results = {}
         
         for ticker in tickers:

@@ -384,6 +384,31 @@ class FinBERTBridge:
             logger.error(f"Text analysis failed: {e}")
             return None
     
+    def get_trained_models_count(self) -> int:
+        """
+        Count the number of trained LSTM models available
+        
+        Returns:
+            int: Number of trained models found in finbert_v4.4.4/models/trained/
+        """
+        if not self._lstm_initialized:
+            return 0
+        
+        try:
+            trained_dir = FINBERT_PATH / 'models' / 'trained'
+            if not trained_dir.exists():
+                return 0
+            
+            # Count .h5 and .keras model files
+            h5_models = list(trained_dir.glob('*_lstm.h5'))
+            keras_models = list(trained_dir.glob('*_lstm.keras'))
+            
+            return len(h5_models) + len(keras_models)
+            
+        except Exception as e:
+            logger.error(f"Failed to count trained models: {e}")
+            return 0
+    
     def get_component_info(self) -> Dict:
         """
         Get detailed information about FinBERT components

@@ -194,7 +194,7 @@ def check_phase45_code():
             ('_train_lstm_models', '_train_lstm_models() method exists'),
             ('PHASE 4.5', 'PHASE 4.5 logging exists'),
             ('lstm_training_results = self._train_lstm_models', 'PHASE 4.5 is called in pipeline'),
-            ('Training queue created', 'Training queue creation logic exists')
+            ('Creating training queue', 'Training queue creation logic exists')
         ]
         
         all_present = True
