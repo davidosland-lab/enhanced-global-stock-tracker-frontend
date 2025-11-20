@@ -1,0 +1,349 @@
+================================================================================
+                          QUICK TEST GUIDE
+                    Generate Data for Web UI Dashboard
+================================================================================
+
+IMPORTANT: The web UI dashboard is currently empty because no fresh pipeline
+run has been completed yet. Follow this guide to generate data.
+
+================================================================================
+STEP 1: RUN TEST PIPELINE (15 MINUTES)
+================================================================================
+
+Windows:
+--------
+Double-click: RUN_PIPELINE_TEST.bat
+
+Wait for completion. You should see:
+✓ PHASE 1: Stock Scanning
+✓ PHASE 2: Technical Analysis
+✓ PHASE 2.5: Event Risk Assessment
+  - Market Regime Engine: CALM / NORMAL / HIGH_VOL (enabled)
+  - Crash Risk Multiplier: 0.7 / 1.0 / 1.5
+✓ PHASE 3: Ensemble Predictions
+✓ PHASE 4: Opportunity Scoring
+✓ PHASE 4.5: LSTM Model Training
+  - Training XX/10 models
+  - Success Rate: XX%
+✓ PHASE 5: Batch Prediction
+  - Sentiment Analysis
+  - News Scraping
+✓ PHASE 6: Report Generation
+
+Linux/Mac:
+----------
+./run_pipeline_test.sh
+
+Same expected output as above.
+
+================================================================================
+STEP 2: VERIFY FILES WERE CREATED
+================================================================================
+
+Check these locations:
+
+Reports:
+--------
+Location: models/screening/reports/morning_reports/
+Expected: 2025-11-20_market_report.html
+          2025-11-20_data.json
+
+Pipeline State:
+---------------
+Location: reports/pipeline_state/
+Expected: 2025-11-20_pipeline_state.json
+
+Logs:
+-----
+Location: models/screening/logs/
+Expected: overnight_screening_20251120.log
+
+Check with:
+-----------
+Windows: dir models\screening\reports\morning_reports\
+Linux:   ls -la models/screening/reports/morning_reports/
+
+================================================================================
+STEP 3: START/RESTART WEB UI
+================================================================================
+
+If web UI is already running:
+------------------------------
+1. Press Ctrl+C in the terminal to stop it
+2. Close the terminal window
+
+Start fresh:
+------------
+Windows: Double-click START_WEB_UI.bat
+Linux:   python3 web_ui.py
+
+Wait for: "Running on http://0.0.0.0:5000"
+
+================================================================================
+STEP 4: VIEW DASHBOARD
+================================================================================
+
+Open browser: http://localhost:5000
+
+You should now see:
+
+✓ Latest Report
+  - Shows 2025-11-20 report
+  - Click "View All" to see report
+
+✓ Pipeline Summary
+  - Shows completed phases
+  - Displays timing information
+  - Shows stocks processed
+
+✓ Top Opportunities
+  - Lists top 10 stocks by opportunity score
+  - Shows signal, confidence, sector
+
+✓ Trained Models
+  - Lists LSTM models created
+  - Shows model files and sizes
+
+✓ Recent Logs
+  - Displays last 200 log lines
+  - Shows pipeline progress
+
+================================================================================
+WHAT IF DASHBOARD IS STILL EMPTY?
+================================================================================
+
+Check 1: Files Created
+----------------------
+cd models/screening/reports/morning_reports/
+ls -la
+
+Should show files with today's date (2025-11-20)
+
+Check 2: Web UI Logs
+--------------------
+Look at the web UI terminal window
+Should NOT show errors like:
+  ✗ FileNotFoundError
+  ✗ TemplateNotFound
+  ✗ No module named
+
+Check 3: API Status
+-------------------
+Open: http://localhost:5000/api/status
+
+Should return JSON with:
+{
+  "system_active": true,
+  "latest_report": {
+    "filename": "2025-11-20_market_report.html",
+    ...
+  },
+  ...
+}
+
+Check 4: Reports API
+--------------------
+Open: http://localhost:5000/api/reports
+
+Should return JSON array with report files:
+[
+  {
+    "filename": "2025-11-20_market_report.html",
+    "date": "2025-11-20",
+    ...
+  }
+]
+
+================================================================================
+EXPECTED TEST RUN OUTPUT
+================================================================================
+
+Console Output:
+---------------
+Starting pipeline in TEST MODE...
+Processing 10 stocks from each sector...
+
+PHASE 1: STOCK SCANNING
+✓ Scanned 10 stocks
+✓ Passed filters: 8 stocks
+
+PHASE 2: TECHNICAL ANALYSIS
+✓ Calculated indicators for 8 stocks
+
+PHASE 2.5: EVENT RISK ASSESSMENT
+✓ Market Regime Engine: HIGH_VOL (enabled)
+✓ Crash Risk Multiplier: 1.5
+✓ Adjusted Crash Risk: 0.588
+
+PHASE 3: ENSEMBLE PREDICTIONS
+✓ Generated predictions for 8 stocks
+
+PHASE 4: OPPORTUNITY SCORING
+✓ Scored 8 stocks
+✓ Top opportunity: XYZ.AX (Score: 85.2)
+
+PHASE 4.5: LSTM MODEL TRAINING
+✓ Training 8 models (max 100 per night)
+✓ ABC.AX: Training completed in 42.3s
+✓ DEF.AX: Training completed in 38.7s
+...
+Trained: 7/8
+Failed: 1/8
+Success Rate: 87.5%
+
+PHASE 5: BATCH PREDICTION
+✓ Sentiment for ABC.AX: positive (72.3%), 15 articles
+✓ Sentiment for DEF.AX: neutral (45.1%), 3 articles
+...
+
+PHASE 6: REPORT GENERATION
+✓ HTML report generated
+✓ CSV export created
+✓ Pipeline state saved
+
+Pipeline completed in 14m 32s
+
+Files Created:
+--------------
+✓ models/screening/reports/morning_reports/2025-11-20_market_report.html
+✓ models/screening/reports/morning_reports/2025-11-20_data.json
+✓ reports/pipeline_state/2025-11-20_pipeline_state.json
+✓ results/overnight_screening_results_20251120.csv
+✓ models/screening/logs/overnight_screening_20251120.log
+✓ finbert_v4.4.4/models/lstm_models/*.h5 (7 new models)
+
+================================================================================
+VERIFYING REGIME ENGINE IS ENABLED
+================================================================================
+
+Check Log Output:
+-----------------
+Look for this in the console or log file:
+
+PHASE 2.5: EVENT RISK ASSESSMENT
+Market Regime Engine: HIGH_VOL (enabled)
+Crash Risk Multiplier: 1.5
+Adjusted Crash Risk: 0.588
+
+Should NOT see:
+---------------
+Market Regime Engine: DISABLED. Enable the regime engine
+
+If you see DISABLED:
+--------------------
+1. Verify you're using v1.3.20 (not older version)
+2. Check models/config/screening_config.json
+3. Should contain:
+   "regime_detector": {
+     "enabled": true,
+     ...
+   }
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Issue: Pipeline hangs or crashes
+---------------------------------
+Solution:
+1. Check internet connection (needed for news scraping)
+2. Check logs: models/screening/logs/
+3. Run with verbose output: python overnight_pipeline.py --mode test --verbose
+4. Review CHECK_LOGS.bat output
+
+Issue: "No reports available yet"
+---------------------------------
+Solution:
+1. Ensure pipeline completed all 6 phases
+2. Check models/screening/reports/morning_reports/ directory
+3. Verify files have today's date
+4. Restart web UI after pipeline completes
+
+Issue: Web UI shows old data (2025-11-07)
+------------------------------------------
+Solution:
+1. Run RUN_PIPELINE_TEST.bat to generate fresh data
+2. Refresh browser (Ctrl+R or F5)
+3. Clear browser cache if needed
+4. Check /api/reports endpoint for file list
+
+Issue: LSTM training fails
+--------------------------
+Solution:
+1. This is normal for some stocks (insufficient data)
+2. Success rate of 70-90% is expected
+3. Check logs for specific error messages
+4. Verify PyTorch and TensorFlow installed
+
+Issue: Sentiment shows 0 articles
+---------------------------------
+Solution:
+1. This is normal for some stocks (no recent news)
+2. Check internet connection
+3. Rate limiting may occur (try again later)
+4. Some stocks genuinely have no recent news
+
+================================================================================
+NEXT STEPS AFTER TEST RUN
+================================================================================
+
+1. Verify regime engine shows ENABLED ✓
+2. Check LSTM training success rate (>70%) ✓
+3. Review HTML report in browser ✓
+4. Examine web UI dashboard ✓
+5. Check trained models list ✓
+
+If all checks pass:
+-------------------
+You can now run full pipeline:
+  Windows: RUN_PIPELINE.bat
+  Linux:   ./run_pipeline.sh
+
+Full run will:
+- Process all 240 stocks
+- Take ~4 hours
+- Train up to 100 LSTM models
+- Generate comprehensive report
+
+================================================================================
+MONITORING PROGRESS
+================================================================================
+
+While pipeline runs:
+--------------------
+1. Watch console output (shows current phase)
+2. Check logs: CHECK_LOGS.bat
+3. Monitor web UI: http://localhost:5000/api/logs
+4. View latest logs in real-time
+
+Progress indicators:
+--------------------
+✓ Green text: Success
+⚠ Yellow text: Warning (non-critical)
+✗ Red text: Error (may need attention)
+ℹ Blue text: Information
+
+================================================================================
+SUCCESS CRITERIA
+================================================================================
+
+Your test run is successful if:
+
+✅ All 6 phases complete without critical errors
+✅ Regime engine shows: Market Regime Engine: [STATE] (enabled)
+✅ LSTM training shows: Success Rate >70%
+✅ Report generated: models/screening/reports/morning_reports/2025-11-20_market_report.html
+✅ Pipeline state saved: reports/pipeline_state/2025-11-20_pipeline_state.json
+✅ Web UI shows data: http://localhost:5000
+✅ Top opportunities listed with scores
+✅ Trained models count > 0
+
+================================================================================
+
+Version: 1.3.20
+Date: 2025-11-20
+Purpose: Generate fresh data for web UI dashboard testing
+
+RUN THIS FIRST: RUN_PIPELINE_TEST.bat (Windows) or ./run_pipeline_test.sh (Linux)
+
+================================================================================

@@ -1,0 +1,365 @@
+========================================
+EVENT RISK GUARD v1.3.20 - RELEASE NOTES
+========================================
+
+Release Date: 2025-11-20
+Previous Version: v1.3.19
+Status: Production Ready
+
+========================================
+CRITICAL FIX
+========================================
+
+MARKET REGIME ENGINE CONFIGURATION ENABLED
+
+Problem:
+--------
+During test runs, the pipeline showed:
+"Market Regime Engine: DISABLED. Enable the regime engine"
+
+This meant the HMM-based market state classification was not running,
+and crash risk assessment was not regime-aware.
+
+Solution:
+---------
+Added missing "regime_detector" configuration section to:
+models/config/screening_config.json
+
+Configuration Added:
+{
+  "regime_detector": {
+    "enabled": true,
+    "min_history_days": 252,
+    "n_states": 3,
+    "state_names": ["CALM", "NORMAL", "HIGH_VOL"],
+    "risk_multipliers": {
+      "CALM": 0.7,
+      "NORMAL": 1.0,
+      "HIGH_VOL": 1.5
+    },
+    "update_frequency": "daily",
+    "use_cache": true,
+    "cache_duration_hours": 24
+  }
+}
+
+Impact:
+-------
+✅ Regime engine now ENABLED during pipeline runs
+✅ Market states classified as: CALM, NORMAL, or HIGH_VOL
+✅ Crash risk multiplied by regime factor (0.7x, 1.0x, or 1.5x)
+✅ Event risk assessment now regime-aware
+
+========================================
+WHAT'S CHANGED
+========================================
+
+1. Configuration Update
+   - Added complete regime_detector configuration block
+   - Enabled HMM-based market state classification
+   - Set risk multipliers for each regime state
+
+2. Files Added
+   - START_WEB_UI.bat - Launch web interface for viewing reports
+   - web_ui.py - Flask application for report visualization
+
+3. Documentation Updated
+   - README.md updated to v1.3.20
+   - Added web UI usage instructions
+   - Updated troubleshooting section
+
+========================================
+EXPECTED BEHAVIOR CHANGES
+========================================
+
+BEFORE v1.3.20:
+---------------
+PHASE 2.5: EVENT RISK ASSESSMENT
+Market Regime Engine: DISABLED. Enable the regime engine
+Crash Risk: 0.392
+
+AFTER v1.3.20:
+--------------
+PHASE 2.5: EVENT RISK ASSESSMENT
+Market Regime Engine: HIGH_VOL (enabled)
+Crash Risk Multiplier: 1.5
+Adjusted Crash Risk: 0.588
+
+========================================
+FILES INCLUDED
+========================================
+
+Installation:
+- INSTALL.bat (Windows)
+- install.sh (Linux/Mac)
+- requirements.txt
+
+Execution:
+- RUN_PIPELINE.bat (Full production run)
+- RUN_PIPELINE_TEST.bat (Test mode)
+- run_pipeline.sh (Linux/Mac full run)
+- run_pipeline_test.sh (Linux/Mac test mode)
+
+Verification:
+- VERIFY_INSTALLATION.py
+- VERIFY_INSTALLATION.bat
+- verify_installation.sh
+
+Web UI:
+- START_WEB_UI.bat (NEW)
+- web_ui.py (NEW)
+
+Monitoring:
+- CHECK_LOGS.bat
+
+Documentation:
+- README.md (Updated)
+- RELEASE_NOTES_v1.3.20.txt (This file)
+
+Core Directories:
+- models/ (Complete screening pipeline)
+- finbert_v4.4.4/ (FinBERT integration)
+
+========================================
+INSTALLATION INSTRUCTIONS
+========================================
+
+Windows:
+--------
+1. Extract event_risk_guard_v1.3.20_COMPLETE.zip
+2. Double-click INSTALL.bat
+3. Wait 5-15 minutes for installation
+4. Double-click VERIFY_INSTALLATION.bat
+5. Check for 5 green checkmarks
+
+Linux/Mac:
+----------
+1. Extract event_risk_guard_v1.3.20_COMPLETE.zip
+2. chmod +x install.sh verify_installation.sh
+3. ./install.sh
+4. ./verify_installation.sh
+5. Check for 5 green checkmarks
+
+========================================
+RUNNING THE PIPELINE
+========================================
+
+Test Mode (Recommended First):
+-------------------------------
+Windows: Double-click RUN_PIPELINE_TEST.bat
+Linux:   ./run_pipeline_test.sh
+Time:    ~15 minutes (10 stocks)
+
+Full Production Mode:
+---------------------
+Windows: Double-click RUN_PIPELINE.bat
+Linux:   ./run_pipeline.sh
+Time:    ~4 hours (240 stocks)
+
+View Reports:
+-------------
+Windows: Double-click START_WEB_UI.bat
+Then open: http://localhost:5000
+
+========================================
+VERIFICATION CHECKLIST
+========================================
+
+After installation, VERIFY_INSTALLATION.bat should show:
+
+✓ FinBERT Package Structure: PASS
+✓ FinBERT Bridge Integration: PASS
+✓ LSTM Training (PHASE 4.5): PASS
+✓ Market Regime Engine: PASS
+✓ Event Risk Guard Integration: PASS
+
+If any check fails, DO NOT proceed with pipeline run.
+Review troubleshooting section in README.md.
+
+========================================
+WHAT TO EXPECT
+========================================
+
+PHASE 2.5 Output:
+-----------------
+✓ Market Regime Engine: CALM / NORMAL / HIGH_VOL (enabled)
+✓ Crash Risk Multiplier: 0.7 / 1.0 / 1.5
+✓ Adjusted Crash Risk: [calculated value]
+
+PHASE 4.5 Output:
+-----------------
+✓ LSTM Model Training
+✓ Success Rate: 70-90% typical
+✓ Models saved to: finbert_v4.4.4/models/lstm_models/
+
+PHASE 5 Output:
+---------------
+✓ Sentiment Analysis with article counts
+✓ News scraping results
+✓ FinBERT sentiment scores
+
+Final Output:
+-------------
+✓ HTML Report: models/screening/reports/morning_reports/
+✓ CSV Export: results/overnight_screening_results_YYYYMMDD.csv
+✓ Logs: models/screening/logs/overnight_screening_YYYYMMDD.log
+
+========================================
+VERSION UPGRADE PATH
+========================================
+
+From v1.3.19 to v1.3.20:
+------------------------
+1. Extract v1.3.20 to NEW directory (don't overwrite)
+2. Run INSTALL.bat (dependencies unchanged, fast)
+3. Run VERIFY_INSTALLATION.bat
+4. Test with RUN_PIPELINE_TEST.bat
+5. Verify regime engine shows ENABLED
+
+From v1.3.15-v1.3.18 to v1.3.20:
+---------------------------------
+1. Extract v1.3.20 to NEW directory
+2. Run INSTALL.bat (5-15 minutes)
+3. Run VERIFY_INSTALLATION.bat
+4. Test with RUN_PIPELINE_TEST.bat
+
+From v1.0-v1.3.14 to v1.3.20:
+------------------------------
+CRITICAL: Complete reinstall required
+1. Extract v1.3.20 to NEW directory
+2. Run INSTALL.bat (full installation)
+3. Run VERIFY_INSTALLATION.bat (must show 5 checks)
+4. Test with RUN_PIPELINE_TEST.bat
+
+========================================
+TROUBLESHOOTING
+========================================
+
+Issue: "Market Regime Engine: DISABLED" still showing
+Solution: Verify you're using v1.3.20 (check README version)
+          Re-extract complete ZIP file
+
+Issue: INSTALL.bat hangs
+Solution: Wait 5-15 minutes, installation shows progress
+          Check internet connection
+          Don't close window while packages scroll
+
+Issue: No reports generated
+Solution: Run CHECK_LOGS.bat
+          Check: models/screening/reports/morning_reports/
+          Ensure pipeline completed all phases
+
+Issue: Web UI won't start
+Solution: Check port 5000 is available
+          Ensure Flask is installed: pip show flask
+          Check logs for errors
+
+Issue: Import errors
+Solution: Verify __init__.py files exist:
+          - finbert_v4.4.4/__init__.py
+          - finbert_v4.4.4/models/__init__.py
+
+========================================
+CONFIGURATION
+========================================
+
+Key Settings in models/config/screening_config.json:
+
+LSTM Training:
+{
+  "lstm_training": {
+    "enabled": true,
+    "max_models_per_night": 100,
+    "stale_threshold_days": 7
+  }
+}
+
+Regime Detector (NEW):
+{
+  "regime_detector": {
+    "enabled": true,
+    "n_states": 3,
+    "state_names": ["CALM", "NORMAL", "HIGH_VOL"]
+  }
+}
+
+FinBERT Integration:
+{
+  "finbert_integration": {
+    "enabled": true,
+    "components": {
+      "lstm_prediction": {"enabled": true},
+      "sentiment_analysis": {"enabled": true},
+      "news_scraping": {"enabled": true}
+    }
+  }
+}
+
+========================================
+SYSTEM REQUIREMENTS
+========================================
+
+Minimum:
+- Python 3.8+
+- 4GB RAM
+- 5GB disk space
+- Internet connection
+
+Recommended:
+- Python 3.10+
+- 8GB RAM
+- 10GB disk space
+- Stable internet connection
+- SSD for faster training
+
+========================================
+KNOWN LIMITATIONS
+========================================
+
+1. Some LSTM training failures expected (15-30%)
+   - Insufficient historical data
+   - Data quality issues
+   - Normal behavior
+
+2. Some sentiment scores show 0 articles
+   - Rate limiting
+   - No recent news for stock
+   - Normal behavior
+
+3. Pipeline takes time
+   - Test mode: ~15 minutes
+   - Full mode: ~4 hours
+   - Cannot be significantly accelerated
+
+========================================
+SUPPORT
+========================================
+
+If issues persist after troubleshooting:
+
+1. Run VERIFY_INSTALLATION.bat
+2. Review CHECK_LOGS.bat output
+3. Ensure complete v1.3.20 extraction
+4. Check README.md troubleshooting section
+5. Verify regime engine config in:
+   models/config/screening_config.json
+
+========================================
+SUCCESS CRITERIA
+========================================
+
+Your v1.3.20 installation is successful if:
+
+✅ VERIFY_INSTALLATION.bat shows 5 green checks
+✅ RUN_PIPELINE_TEST.bat completes
+✅ Log shows: "Market Regime Engine: [STATE]" (not DISABLED)
+✅ LSTM training shows >70% success rate
+✅ Report generated in models/screening/reports/
+✅ Web UI accessible at http://localhost:5000
+
+========================================
+
+Version: 1.3.20
+Date: 2025-11-20
+Critical Fix: Market Regime Engine Configuration
+Status: Production Ready

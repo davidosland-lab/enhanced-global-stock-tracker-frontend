@@ -1,0 +1,103 @@
+================================================================================
+  FinBERT v4.4.4 - DEBUG VERSION - FIND THE CHART ISSUE
+================================================================================
+
+WHAT I ADDED:
+-------------
+✅ Console logging to trace the exact issue with chart rendering
+✅ Checks for:
+   - Is equity_curve data arriving?
+   - Is backtestEquityChart DOM element present?
+   - Is ECharts library loaded?
+   - What format is the data in?
+   - Are dates and values being extracted correctly?
+
+HOW TO DEBUG:
+-------------
+
+1. INSTALL AND RUN (same as before):
+   - Extract zip
+   - Run INSTALL.bat
+   - Run START_FINBERT.bat
+
+2. OPEN BROWSER CONSOLE:
+   - Press F12 (or right-click → Inspect)
+   - Click "Console" tab
+   - Keep this open
+
+3. RUN A BACKTEST:
+   - Navigate to Backtest tab
+   - Enter: CBA.AX
+   - Date range: 2023-01-01 to 2024-01-01
+   - Click "Run Backtest"
+
+4. CHECK CONSOLE OUTPUT:
+   Look for these messages:
+   
+   ✅ "Backtest data received:" - Shows full API response
+   ✅ "Equity curve data:" - Shows the equity_curve array
+   ✅ "Drawing equity curve with X points" - Shows how many data points
+   ✅ "drawEquityCurve called with:" - Shows the data passed to chart function
+   ✅ "Chart DOM element:" - Shows if div exists
+   ✅ "Sample equity point:" - Shows structure of first data point
+   ✅ "Dates extracted: X points" - Shows date parsing worked
+   ✅ "Values extracted: X points" - Shows equity values extracted
+   ✅ "Setting chart option..." - Chart is being configured
+   ✅ "Chart rendered successfully" - Chart should be visible
+   
+   ❌ Red errors mean something failed - copy the error message
+
+5. COPY AND SEND ME:
+   - ALL console messages (right-click in console → Save as...)
+   - Or screenshot the console output
+   - Especially any RED error messages
+
+WHAT I'M LOOKING FOR:
+---------------------
+
+Scenario A: Data Not Arriving
+   - "No equity curve data available" message
+   - equity_curve is null or empty array
+   - → Backend issue or API response format changed
+
+Scenario B: Data Format Wrong
+   - equity_curve exists but "Sample equity point" shows wrong structure
+   - Missing "timestamp" or "equity" fields
+   - → Need to adjust field name mapping
+
+Scenario C: ECharts Not Loaded
+   - "ECharts library not loaded!" error
+   - → CDN issue or script tag missing
+
+Scenario D: DOM Element Missing
+   - "backtestEquityChart element not found!" error
+   - → HTML structure issue
+
+Scenario E: Chart Initialized But Not Visible
+   - All logs succeed but chart still blank
+   - → CSS/visibility issue
+
+QUICK CHECKS:
+-------------
+
+1. Check if ECharts CDN is accessible:
+   - In console type: typeof echarts
+   - Should return: "object" (NOT "undefined")
+
+2. Check if chart div exists:
+   - In console type: document.getElementById('backtestEquityChart')
+   - Should return: <div> element (NOT null)
+
+3. Check div size:
+   - In console type: document.getElementById('backtestEquityChart').offsetHeight
+   - Should return: 300 (NOT 0)
+
+4. Check if data exists:
+   - After backtest, in console type: backtestChart
+   - Should return: ECharts instance object (NOT null)
+
+================================================================================
+
+PLEASE RUN THIS DEBUG VERSION AND SEND ME THE CONSOLE OUTPUT!
+
+================================================================================

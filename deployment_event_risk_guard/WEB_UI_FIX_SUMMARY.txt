@@ -1,0 +1,122 @@
+================================================================================
+  WEB UI FIX - UNICODE DECODE ERROR RESOLVED
+  Date: 2025-11-16
+================================================================================
+
+ERROR YOU SAW:
+--------------
+UnicodeDecodeError: 'utf-8' codec can't decode byte 0xff in position 0
+[ERROR] Web UI failed to start
+
+
+WHAT CAUSED IT:
+---------------
+Flask's debug mode automatically tries to load a .env file.
+The .env file (or absence of it) caused an encoding error.
+The 0xff byte indicates UTF-16 encoding or BOM (Byte Order Mark).
+
+
+FIX APPLIED:
+------------
+Modified: web_ui.py (line 241)
+
+Added this line BEFORE app.run():
+    os.environ['FLASK_SKIP_DOTENV'] = '1'
+
+This tells Flask: "Don't try to load .env file"
+
+
+WHY IT'S SAFE:
+--------------
+✓ We don't use .env file
+✓ All configuration is in: models/config/screening_config.json
+✓ No functionality is lost
+✓ Debug mode still works
+
+
+WHAT TO DO NOW:
+===============
+
+1. Run the web UI again:
+
+   START_WEB_UI.bat
+
+2. You should see:
+
+   [INFO] Starting Flask web server...
+   [FinBERT loading messages...]
+   ================================================================================
+   Event Risk Guard - Web UI
+   ================================================================================
+   Starting web server...
+   Access dashboard at: http://localhost:5000
+   ================================================================================
+    * Serving Flask app 'web_ui'
+    * Debug mode: on
+    * Running on http://127.0.0.1:5000
+
+3. Open browser to: http://localhost:5000
+
+4. Dashboard should load! ✓
+
+
+EXPECTED RESULT:
+================
+
+✅ No UnicodeDecodeError
+✅ Flask starts successfully
+✅ Dashboard accessible at http://localhost:5000
+✅ All features working
+
+
+IF IT STILL FAILS:
+==================
+
+Check for hidden .env file:
+
+PowerShell:
+    cd C:\Users\david\AASS\deployment_event_risk_guard
+    Get-ChildItem -Force | Where-Object { $_.Name -like "*.env*" }
+
+If found, delete it:
+    Remove-Item .env -Force
+
+Then run START_WEB_UI.bat again.
+
+
+TECHNICAL DETAILS:
+==================
+
+Flask Debug Mode → Tries to load .env → File has wrong encoding → Error
+
+Fixed by:
+    Flask Debug Mode → Skip .env loading → No error → Success
+
+
+FILES MODIFIED:
+===============
+
+web_ui.py - Added FLASK_SKIP_DOTENV environment variable
+
+
+DOCUMENTATION:
+==============
+
+See: FIX_WEB_UI_ENCODING_ERROR.md (complete technical explanation)
+
+
+QUICK REFERENCE:
+================
+
+Problem:  Unicode decode error when starting web UI
+Cause:    Flask trying to load .env file with wrong encoding
+Fix:      Disabled .env file loading (not needed)
+Action:   Run START_WEB_UI.bat again
+Result:   Should work now!
+
+
+================================================================================
+
+READY? → Run: START_WEB_UI.bat
+
+================================================================================

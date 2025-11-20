@@ -1,0 +1,140 @@
+# FinBERT v4.4.4 - FULL SYSTEM Deployment Requirements
+# Created: 2025-11-12
+# For: yahooquery Scanner + LSTM + FinBERT Sentiment + Overnight Pipeline
+
+# ============================================================
+# CRITICAL: Read This First!
+# ============================================================
+# This package includes TWO scanning modes with DIFFERENT requirements:
+#
+# MODE 1: Quick Technical Scanner (yahooquery only)
+#   Runtime: 5-10 minutes
+#   Install: Section A only (3 packages)
+#
+# MODE 2: Full Overnight Pipeline (LSTM + Sentiment)
+#   Runtime: 30-60 minutes  
+#   Install: ALL sections (A + B + C)
+
+# ============================================================
+# SECTION A: REQUIRED FOR BOTH MODES (Always Install)
+# ============================================================
+yahooquery>=2.3.0          # Yahoo Finance data (PRIMARY data source)
+pandas>=1.5.0              # Data manipulation
+numpy>=1.24.0              # Numerical operations
+
+# ============================================================
+# SECTION B: REQUIRED FOR FULL OVERNIGHT PIPELINE ONLY
+# ============================================================
+# Install these ONLY if running overnight_pipeline.py
+
+# Data Sources (Full Pipeline)
+yfinance>=0.2.30           # Backup data source for LSTM training
+requests>=2.31.0           # HTTP requests for news scraping
+
+# Technical Analysis
+ta>=0.11.0                 # Technical indicators library
+
+# Date/Time Utilities
+python-dateutil>=2.8.2     # Date parsing
+pytz>=2023.3               # Timezone handling
+
+# News Parsing
+feedparser>=6.0.10         # RSS feed parsing for Australian news
+
+# ============================================================
+# SECTION C: MACHINE LEARNING (Overnight Pipeline Only)
+# ============================================================
+# These are LARGE downloads (2-4 GB total)
+# Install ONLY if you need LSTM predictions and FinBERT sentiment
+
+# LSTM Neural Network (45% ensemble weight)
+tensorflow>=2.13.0         # ~500 MB
+keras>=2.13.0              # Neural network framework
+scikit-learn>=1.3.0        # ML utilities
+
+# FinBERT Sentiment Analysis (15% ensemble weight)
+transformers>=4.30.0       # Hugging Face transformers ~1 GB
+torch>=2.0.0               # PyTorch framework ~2 GB
+
+# ============================================================
+# INSTALLATION INSTRUCTIONS
+# ============================================================
+
+# OPTION 1: Quick Scanner Only (Recommended to Start)
+# ---------------------------------------------------
+# pip install yahooquery pandas numpy
+# 
+# Then run: RUN_ALL_SECTORS_YAHOOQUERY.bat
+# Time: 5-10 minutes
+# Output: screener_results_yahooquery_TIMESTAMP.csv
+
+
+# OPTION 2: Full System (LSTM + Sentiment)
+# -----------------------------------------
+# pip install -r DEPLOYMENT_REQUIREMENTS.txt
+#
+# Then run: RUN_OVERNIGHT_PIPELINE.bat
+# Time: 30-60 minutes
+# Output: Multiple CSVs with predictions and sentiment
+
+
+# OPTION 3: Staged Installation (Recommended for Large Systems)
+# -------------------------------------------------------------
+# Step 1 - Core (always required):
+#   pip install yahooquery pandas numpy
+#
+# Step 2 - Technical Analysis (if using overnight pipeline):
+#   pip install yfinance requests ta python-dateutil pytz feedparser
+#
+# Step 3 - Machine Learning (if you want LSTM + FinBERT):
+#   pip install tensorflow keras scikit-learn
+#   pip install transformers torch
+
+
+# ============================================================
+# PACKAGE SIZES (Approximate)
+# ============================================================
+# yahooquery:    ~500 KB
+# pandas:        ~10 MB
+# numpy:         ~20 MB
+# yfinance:      ~5 MB
+# ta:            ~1 MB
+# tensorflow:    ~500 MB
+# torch:         ~2 GB
+# transformers:  ~1 GB
+#
+# TOTAL FOR QUICK SCANNER:  ~30 MB
+# TOTAL FOR FULL SYSTEM:    ~4 GB
+
+
+# ============================================================
+# VERIFICATION
+# ============================================================
+# After installation, verify with:
+#   python test_integration_quick.py
+#
+# This will test:
+# - yahooquery connection
+# - Sector loading (8 sectors)
+# - Financial sector scanning (5 stocks)
+# Expected: 100% success rate
+
+
+# ============================================================
+# TROUBLESHOOTING
+# ============================================================
+# 
+# Issue: "No module named 'yahooquery'"
+# Fix: pip install yahooquery
+#
+# Issue: TensorFlow installation fails
+# Fix: Use conda instead: conda install tensorflow
+#
+# Issue: PyTorch installation fails  
+# Fix: Visit pytorch.org for platform-specific install command
+#
+# Issue: Unicode errors on Windows
+# Fix: Use RUN_ALL_SECTORS_YAHOOQUERY_WINDOWS.bat (ASCII version)
+#
+# Issue: Slow installation
+# Fix: Install in stages (see OPTION 3 above)

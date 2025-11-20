@@ -1,0 +1,178 @@
+================================================================================
+EVENT RISK GUARD v1.3.9 - DIAGNOSTIC PACKAGE (Windows 11)
+================================================================================
+
+This package contains the FIXED diagnostic scripts for Windows 11.
+
+WHAT WAS FIXED:
+- Removed Unicode characters (✓✗✅❌) that cause encoding errors on Windows
+- All output now uses ASCII-safe characters: [OK], [FAIL], [SUCCESS]
+- Diagnostic will now complete successfully on Windows 11
+
+
+================================================================================
+INSTALLATION INSTRUCTIONS
+================================================================================
+
+1. EXTRACT ALL FILES
+   - Extract all 4 files to your Event Risk Guard directory:
+     C:\Users\david\AASS\
+   
+   - This will REPLACE the old versions with fixed versions
+
+2. FILES INCLUDED
+   - diagnose_regime.py              (Fixed encoding - main diagnostic)
+   - RUN_DIAGNOSTIC_WITH_LOG.bat     (Recommended - saves output to file)
+   - RUN_DIAGNOSTIC_SAFE.bat         (Alternative - keeps window open)
+   - DIAGNOSE_REGIME_ENGINE.bat      (Core diagnostic - called by wrappers)
+
+
+================================================================================
+HOW TO RUN THE DIAGNOSTIC
+================================================================================
+
+OPTION 1: LOG VERSION (RECOMMENDED)
+-----------------------------------
+1. Double-click: RUN_DIAGNOSTIC_WITH_LOG.bat
+2. Wait ~30 seconds for diagnostic to complete
+3. Notepad will automatically open with diagnostic_output.txt
+4. Copy the ENTIRE contents from Notepad
+5. Paste the output in your message to me
+
+WHY RECOMMENDED:
+- Output is saved to file (diagnostic_output.txt)
+- You can review it even if window closes
+- Easy to share the complete output
+
+
+OPTION 2: SAFE VERSION (Alternative)
+------------------------------------
+1. Double-click: RUN_DIAGNOSTIC_SAFE.bat
+2. Wait ~30 seconds for diagnostic to complete
+3. Window will stay open (press any key to close)
+4. Scroll up to see all output
+5. Copy/paste the text from console window
+
+
+================================================================================
+WHAT THE DIAGNOSTIC CHECKS
+================================================================================
+
+STEP 1: Package Availability
+   - Checks Python version
+   - Checks pandas, numpy, yfinance (required)
+   - Checks hmmlearn, arch, xgboost (optional)
+
+STEP 2: Regime Engine Import
+   - Verifies MarketRegimeEngine can be imported
+   - Tests all module dependencies
+
+STEP 3: Single Ticker Test
+   - Downloads ASX 200 (^AXJO) data from Yahoo Finance
+   - Verifies data fetch works
+
+STEP 4: Multiple Ticker Test (MultiIndex)
+   - Downloads ^AXJO + AUDUSD=X together
+   - Tests MultiIndex structure handling
+   - Tests Close price extraction
+
+STEP 5: Complete Regime Analysis
+   - Runs full MarketRegimeEngine.analyse()
+   - Shows detected regime (CALM/NORMAL/HIGH_VOL)
+   - Shows volatility method (hmm/gmm/fallback)
+   - Shows volatility forecast
+   - Shows crash risk score
+
+
+================================================================================
+EXPECTED OUTPUT (If Everything Works)
+================================================================================
+
+[OK] pandas: x.x.x
+[OK] numpy: x.x.x
+[OK] yfinance: x.x.x
+[OK] MarketRegimeEngine imported successfully
+[OK] Received data: 180 rows
+[OK] MultiIndex detected with 2 levels
+[OK] Extracted Close prices: shape=(180, 2)
+[SUCCESS] REGIME ENGINE WORKING!
+  Detected Regime: HIGH_VOL
+  Volatility Method: HMM
+  Daily Volatility: 0.71%
+  Crash Risk Score: 0.61/1.0 (HIGH RISK)
+
+
+================================================================================
+IF YOU SEE ERRORS
+================================================================================
+
+Share the COMPLETE output with me, including:
+- Which step failed ([FAIL] message)
+- Any Python error messages (Traceback)
+- Any warnings or unusual output
+
+Common issues and what they mean:
+- [FAIL] at Step 1: Missing Python packages
+- [FAIL] at Step 2: Module import error (wrong directory?)
+- [FAIL] at Step 3: Internet connection or yfinance issue
+- [FAIL] at Step 4: MultiIndex extraction problem
+- [FAIL] at Step 5: Regime engine calculation error
+
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Problem: "Python not found"
+Solution: Make sure Python is installed and in PATH
+         Or edit the .bat file to use full Python path
+
+Problem: "Module not found"
+Solution: Run from the correct directory (C:\Users\david\AASS\)
+         Install missing packages: pip install -r requirements.txt
+
+Problem: "Cannot connect to Yahoo Finance"
+Solution: Check internet connection
+         Try again in a few minutes (rate limiting)
+
+Problem: Window closes immediately
+Solution: This should be FIXED now with the encoding fix
+         If still happening, use RUN_DIAGNOSTIC_WITH_LOG.bat
+         The output will be saved to diagnostic_output.txt
+
+
+================================================================================
+NEXT STEPS AFTER RUNNING DIAGNOSTIC
+================================================================================
+
+1. Share the diagnostic output with me (entire contents)
+2. I will analyze the results
+3. I will identify why regime shows UNKNOWN (if it still does)
+4. I will provide targeted fix based on diagnostic findings
+5. You test the fix in your actual deployment
+
+
+================================================================================
+QUESTIONS?
+================================================================================
+
+If you encounter any issues running these diagnostic scripts, share:
+1. What you see in the console window (if visible)
+2. Contents of diagnostic_output.txt (if created)
+3. Any error messages or screenshots
+
+I'm ready to analyze the diagnostic output as soon as you share it!
+
+
+================================================================================
+FILE VERSION INFORMATION
+================================================================================
+
+Version: v1.3.9
+Commit: 0952325
+Date: 2025-11-19
+Fixed: Windows CP1252 encoding issue (UnicodeEncodeError)
+Branch: finbert-v4.0-development
+PR: https://github.com/davidosland-lab/enhanced-global-stock-tracker-frontend/pull/8
+
+================================================================================

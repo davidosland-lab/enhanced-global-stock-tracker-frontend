@@ -1,0 +1,195 @@
+================================================================================
+  QUICK FIX GUIDE - TRAIN_LSTM_OVERNIGHT.bat
+  TensorFlow Detection Error on Windows 11
+================================================================================
+
+PROBLEM: Script says TensorFlow not installed (but it IS installed)
+
+FIX: Edit ONE LINE in the batch file
+
+
+================================================================================
+  METHOD 1: NOTEPAD (EASIEST - 2 MINUTES)
+================================================================================
+
+1. RIGHT-CLICK on "TRAIN_LSTM_OVERNIGHT.bat"
+
+2. Select "EDIT" or "Open with Notepad"
+
+3. Press Ctrl+F (Find)
+
+4. Search for: tensorflow.__version__
+
+5. You'll find this line (around line 57):
+
+   python -c "import tensorflow; print(f'TensorFlow {tensorflow.__version__} detected')" 2>nul
+
+6. REPLACE IT WITH:
+
+   python -c "import tensorflow" 2>nul
+
+7. Press Ctrl+S (Save)
+
+8. Close Notepad
+
+9. Run TRAIN_LSTM_OVERNIGHT.bat again
+
+DONE! ✓
+
+
+================================================================================
+  METHOD 2: FIND AND REPLACE (FASTEST - 1 MINUTE)
+================================================================================
+
+1. Open "TRAIN_LSTM_OVERNIGHT.bat" in Notepad
+
+2. Press Ctrl+H (Find and Replace)
+
+3. FIND WHAT (copy this):
+   python -c "import tensorflow; print(f'TensorFlow {tensorflow.__version__} detected')" 2>nul
+
+4. REPLACE WITH (copy this):
+   python -c "import tensorflow" 2>nul
+
+5. Click "Replace All"
+
+6. Press Ctrl+S (Save)
+
+7. Close Notepad
+
+8. Run TRAIN_LSTM_OVERNIGHT.bat again
+
+DONE! ✓
+
+
+================================================================================
+  WHAT YOU'LL SEE AFTER FIX
+================================================================================
+
+BEFORE FIX (BROKEN):
+--------------------
+Checking for TensorFlow installation...
+TensorFlow 2.20.0 detected
+  Run: pip install -r requirements.txt    ← ERROR (wrong!)
+  Time: ~15 minutes (downloads ~2.5 GB)
+
+After installing, run this script again.
+Press any key to continue . . .
+
+
+AFTER FIX (WORKING):
+--------------------
+Checking for TensorFlow installation...
+[OK] TensorFlow is installed               ← CORRECT!
+
+========================================================================
+  STARTING LSTM TRAINING
+========================================================================
+
+Training will begin in 5 seconds...
+Press Ctrl+C to cancel
+
+[Training proceeds...]
+
+
+================================================================================
+  VISUAL: WHAT TO CHANGE IN LINE 57
+================================================================================
+
+BEFORE (TOO COMPLEX):
+---------------------
+python -c "import tensorflow; print(f'TensorFlow {tensorflow.__version__} detected')" 2>nul
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+           All this complexity causes problems with Windows batch errorlevel
+
+
+AFTER (SIMPLE):
+---------------
+python -c "import tensorflow" 2>nul
+           ^^^^^^^^^^^^^^^^^
+           Just test if it imports - clean and reliable
+
+
+================================================================================
+  WHY THIS WORKS
+================================================================================
+
+OLD CODE: Tries to import AND print version (too complex)
+          Windows batch can't handle Python f-strings reliably
+          Exit code gets confused
+          Script thinks TensorFlow failed even when it worked
+
+NEW CODE: Just tries to import (simple)
+          If import works → exit code 0 → Continue training ✓
+          If import fails → exit code 1 → Show error message ✓
+
+
+================================================================================
+  TROUBLESHOOTING
+================================================================================
+
+Problem: "Still getting error after fix"
+Solution: Verify TensorFlow is installed:
+          python -c "import tensorflow; print(tensorflow.__version__)"
+          Should show: 2.20.0
+
+
+Problem: "Can't save the file"
+Solution: - Close any programs using the file
+          - Run Notepad as Administrator
+          - Save with different name and rename
+
+
+Problem: "File looks different"
+Solution: Make sure you're editing:
+          C:\Users\david\AASS\deployment_event_risk_guard\TRAIN_LSTM_OVERNIGHT.bat
+          Not a backup or different version
+
+
+================================================================================
+  VERIFICATION TEST
+================================================================================
+
+After applying fix, test it:
+
+1. Double-click: TRAIN_LSTM_OVERNIGHT.bat
+
+2. You should see:
+   [OK] Python detected
+   [OK] TensorFlow is installed
+   STARTING LSTM TRAINING
+
+3. Press Ctrl+C to cancel (if you want to test without full training)
+
+4. If you see this, the fix worked! ✓
+
+
+================================================================================
+  NEED MORE HELP?
+================================================================================
+
+See detailed guide: FIX_WINDOWS_LSTM_OVERNIGHT.md
+
+Contains:
+- PowerShell automated fix method
+- Step-by-step screenshots guide
+- Advanced troubleshooting
+- Backup and restore instructions
+
+
+================================================================================
+  SUMMARY
+================================================================================
+
+FILE TO EDIT:    TRAIN_LSTM_OVERNIGHT.bat
+LINE NUMBER:     57 (approximately)
+FIND TEXT:       tensorflow.__version__
+CHANGE:          Delete the print statement, keep just "import tensorflow"
+TIME REQUIRED:   1-2 minutes
+DIFFICULTY:      Easy (basic text editing)
+RISK:            None (can backup first: copy file to .backup)
+
+
+That's it! One simple line change fixes the issue. ✓
+
+================================================================================
