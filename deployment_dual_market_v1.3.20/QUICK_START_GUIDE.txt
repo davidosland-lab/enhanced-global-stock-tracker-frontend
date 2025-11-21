@@ -1,0 +1,345 @@
+================================================================================
+  EVENT RISK GUARD v1.3.20 - DUAL MARKET EDITION
+  Quick Start Guide (UI Fixes Release)
+================================================================================
+
+📦 WHAT'S NEW IN THIS RELEASE?
+--------------------------------------------------------------------------------
+✅ UI now displays Market Regime Engine output (volatility, crash risk)
+✅ UI shows US stock recommendations  
+✅ Morning reports include visual regime analysis section
+✅ Morning reports properly identify US market (S&P 500)
+✅ New API endpoints: /api/opportunities, enhanced /api/regime
+✅ Complete dual market support (ASX + US)
+
+================================================================================
+  QUICK START - GET RUNNING IN 5 MINUTES
+================================================================================
+
+STEP 1: INSTALL
+--------------------------------------------------------------------------------
+Windows:    Double-click INSTALL.bat
+Linux/Mac:  Run ./INSTALL.sh
+
+Wait 5-10 minutes for dependencies to install.
+
+STEP 2: RUN SCREENING
+--------------------------------------------------------------------------------
+Choose your market:
+
+A) ASX Market Only:
+   Windows:    RUN_ASX_MARKET.bat (or just run_screening.py)
+   Linux/Mac:  ./RUN_ASX_MARKET.sh
+
+B) US Market Only:
+   Windows:    RUN_US_MARKET.bat
+   Linux/Mac:  ./RUN_US_MARKET.sh
+   
+C) Both Markets:
+   Windows:    RUN_BOTH_MARKETS.bat
+   Linux/Mac:  ./RUN_BOTH_MARKETS.sh
+
+Processing time: 5-10 minutes per market
+
+STEP 3: VIEW RESULTS
+--------------------------------------------------------------------------------
+Option A - Web Dashboard (Recommended):
+   Windows:    START_WEB_UI.bat
+   Linux/Mac:  ./START_WEB_UI.sh
+   
+   Then open: http://localhost:5000
+   
+Option B - HTML Reports:
+   ASX Reports: reports/morning_reports/*.html
+   US Reports:  reports/us/*.html or reports/morning_reports/us/*.html
+
+================================================================================
+  WHAT YOU'LL SEE IN REPORTS
+================================================================================
+
+1. HEADER
+   - Market identification (ASX or "US (S&P 500)")
+   - Date and generation time
+
+2. MARKET OVERVIEW
+   - Expected open (ASX 200 or S&P 500)
+   - Market sentiment (⭐ rating)
+   - Related markets (US markets for ASX, VIX for US)
+   - Trading recommendation
+
+3. MARKET REGIME ANALYSIS ⭐ NEW!
+   ┌─────────────────────────────────────┐
+   │  🟢 Low Volatility                  │  Green = Stable
+   │  🟡 Medium Volatility               │  Yellow = Caution
+   │  🔴 High Volatility                 │  Red = High Risk
+   │                                     │
+   │  Crash Risk Score: 12.5%            │
+   │  Badge: [LOW] / [MEDIUM] / [HIGH]   │
+   │                                     │
+   │  Trading Recommendation:            │
+   │  "Consider accumulating quality     │
+   │   stocks" (varies by regime)        │
+   └─────────────────────────────────────┘
+
+4. TOP OPPORTUNITIES
+   - BUY signals with scores
+   - Stock analysis and predictions
+
+5. SECTOR ANALYSIS
+   - Performance by sector
+
+6. WATCHLIST & WARNINGS
+   - Stocks to monitor
+   - Risk warnings
+
+7. PERFORMANCE METRICS
+   - System statistics
+   - Processing time
+
+================================================================================
+  WEB DASHBOARD FEATURES
+================================================================================
+
+ACCESS: http://localhost:5000
+
+MAIN VIEW:
+- System status cards
+- Market regime display (both ASX and US)
+- Latest report links
+- Real-time updates
+
+API ENDPOINTS:
+
+1. Get Regime Data:
+   /api/regime?market=all       (both markets)
+   /api/regime?market=us        (US only)
+   /api/regime?market=asx       (ASX only)
+
+2. Get Stock Opportunities:
+   /api/opportunities?market=us&limit=10
+   /api/opportunities?market=all
+
+3. Get Reports List:
+   /api/reports?market=all
+   /api/reports?market=us
+
+4. Get Latest Status:
+   /api/status
+
+================================================================================
+  UNDERSTANDING REGIME ANALYSIS
+================================================================================
+
+VOLATILITY STATES:
+🟢 Low Volatility
+   - Stable market conditions
+   - Low crash risk (typically <15%)
+   - Recommendation: Accumulate quality stocks
+   - Trading: Favorable for long positions
+
+🟡 Medium Volatility
+   - Moderate market conditions
+   - Medium crash risk (15-30%)
+   - Recommendation: Monitor positions, use stop-losses
+   - Trading: Increased caution advised
+
+🔴 High Volatility
+   - High volatility environment
+   - High crash risk (>30%)
+   - Recommendation: Reduce exposure, protect capital
+   - Trading: Consider defensive positions
+
+CRASH RISK SCORE:
+- Percentage indicating probability of market crash
+- Based on HMM (Hidden Markov Model) analysis
+- Uses historical volatility patterns
+- Updates with each screening run
+
+================================================================================
+  COMMON TASKS
+================================================================================
+
+VIEW US MARKET REGIME:
+1. Run: RUN_US_MARKET.bat (or .sh)
+2. Wait for completion
+3. Open report in reports/us/*.html
+4. Look for "Market Regime Analysis" section
+5. Or check web UI: http://localhost:5000
+
+VIEW US STOCK OPPORTUNITIES:
+1. Run screening (as above)
+2. Open web UI: http://localhost:5000
+3. Or query API: 
+   curl http://localhost:5000/api/opportunities?market=us&limit=10
+
+CHECK IF EVERYTHING IS WORKING:
+Windows:    RUN_QUICK_TEST.bat
+Linux/Mac:  ./RUN_QUICK_TEST.sh
+
+Or run: python -c "import setup_paths; print('✓ Imports OK')"
+
+DIAGNOSE IMPORT ISSUES:
+Windows:    CHECK_INSTALLATION.bat
+Linux/Mac:  python CHECK_INSTALLATION.bat
+
+Read: TROUBLESHOOTING_IMPORTS.md (comprehensive guide)
+
+================================================================================
+  FILE LOCATIONS
+================================================================================
+
+REPORTS:
+  ASX:  reports/morning_reports/*.html
+        reports/html/*.html
+        
+  US:   reports/us/*.html
+        reports/morning_reports/us/*.html
+        reports/html/us/*.html
+
+DATA:
+  ASX:  data/*.json
+  US:   data/us/*.json
+
+LOGS:
+  ASX:  logs/screening/*.log
+  US:   logs/screening/us/*.log
+
+CONFIGURATION:
+  Main:         models/config/screening_config.json
+  ASX Sectors:  models/config/asx_sectors.json
+  US Sectors:   models/config/us_sectors.json
+
+================================================================================
+  CUSTOMIZATION
+================================================================================
+
+ENABLE/DISABLE REGIME ENGINE:
+Edit: models/config/screening_config.json
+
+{
+  "event_risk": {
+    "enabled": true,
+    "regime_detection_enabled": true
+  }
+}
+
+CHANGE REPORT SETTINGS:
+Edit: models/config/screening_config.json
+
+{
+  "reporting": {
+    "max_stocks_in_report": 20,
+    "include_charts": true
+  }
+}
+
+ADJUST SCREENING CRITERIA:
+Edit: models/config/screening_config.json
+
+For US market specifically:
+Edit: models/config/us_sectors.json
+
+================================================================================
+  TROUBLESHOOTING
+================================================================================
+
+PROBLEM: "Module not found" errors
+SOLUTION: 
+1. Run CHECK_INSTALLATION.bat
+2. Ensure setup_paths.py is in root directory
+3. Read TROUBLESHOOTING_IMPORTS.md
+
+PROBLEM: Reports don't show regime section
+SOLUTION:
+1. Check screening_config.json has regime_detection_enabled: true
+2. Run pipeline at least once
+3. Check logs for regime detection errors
+
+PROBLEM: Web UI shows "not available"
+SOLUTION:
+1. Run screening first to generate data
+2. Check reports directory has JSON files
+3. Check web UI logs for errors
+
+PROBLEM: Import warnings about LSTM/FinBERT
+SOLUTION:
+- These are EXPECTED warnings for optional components
+- System works fine without them
+- Read TROUBLESHOOTING_IMPORTS.md for details
+
+PROBLEM: US market not working
+SOLUTION:
+1. Check us_sectors.json exists
+2. Run: python run_screening.py --market us --verbose
+3. Check logs/screening/us/*.log
+4. Ensure internet connection for data fetching
+
+================================================================================
+  NEXT STEPS
+================================================================================
+
+1. ✅ Installation complete
+2. ✅ Run your first screening
+3. ✅ Check the HTML report
+4. ✅ View regime analysis
+5. ✅ Start web UI
+6. ✅ Explore API endpoints
+7. ✅ Customize configuration
+8. ✅ Schedule automated runs
+
+AUTOMATED SCHEDULING (Optional):
+- Windows: Use Task Scheduler
+- Linux/Mac: Use cron
+- Recommended: Daily at market close
+
+ADVANCED FEATURES:
+- Email notifications (configure in screening_config.json)
+- LSTM training (separate guide)
+- FinBERT sentiment integration (optional)
+
+================================================================================
+  SUPPORT & RESOURCES
+================================================================================
+
+DOCUMENTATION:
+✓ CHANGELOG_v1.3.20_UI_FIXES.md - Complete changelog
+✓ DEPLOYMENT_README.md - Full deployment guide
+✓ TROUBLESHOOTING_IMPORTS.md - Import troubleshooting (5,300 words)
+✓ US_PIPELINE_DEPLOYMENT_SUMMARY.md - US market details
+
+GITHUB:
+Repository: github.com/davidosland-lab/enhanced-global-stock-tracker-frontend
+Pull Request #8: Latest changes and discussions
+
+DIAGNOSTIC TOOLS:
+- CHECK_INSTALLATION.bat - Verify dependencies
+- RUN_QUICK_TEST.bat - Quick validation test
+- setup_paths.py - Import path configuration
+
+================================================================================
+  VERSION INFORMATION
+================================================================================
+
+Version:    v1.3.20 (UI Fixes Release)
+Build Date: 2025-11-21
+Package:    Dual_Market_Screening_v1.3.20_COMPLETE_UI_FIXES.zip
+Markets:    ASX (240 stocks) + US S&P 500 (240 stocks)
+Total:      480 stocks monitored
+
+Key Features:
+✓ Dual market screening (ASX + US)
+✓ Market regime engine with HMM
+✓ Crash risk detection
+✓ Visual regime indicators in reports
+✓ Web dashboard with API
+✓ Complete documentation
+
+================================================================================
+
+🎉 YOU'RE READY TO GO!
+
+Run RUN_US_MARKET.bat or RUN_BOTH_MARKETS.bat to start screening!
+
+Questions? Check TROUBLESHOOTING_IMPORTS.md or GitHub issues.
+
+================================================================================
