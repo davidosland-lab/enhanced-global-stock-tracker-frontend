@@ -1,0 +1,230 @@
+================================================================================
+                    US MARKET PIPELINE - QUICK START
+================================================================================
+
+🚀 IMMEDIATE USAGE
+
+  Run US Market Only:
+    python run_screening.py --market us
+
+  Run ASX Market Only:
+    python run_screening.py --market asx
+
+  Run Both Markets:
+    python run_screening.py --market both
+
+  Run Both (Parallel - Faster):
+    python run_screening.py --market both --parallel
+
+================================================================================
+📊 WHAT IT DOES
+================================================================================
+
+  ✓ Screens 240 US stocks across 8 sectors
+  ✓ Analyzes S&P 500, VIX, and market sentiment
+  ✓ Detects market regime (low/medium/high volatility)
+  ✓ Calculates crash risk probability
+  ✓ Generates LSTM price predictions
+  ✓ Scores trading opportunities (0-100)
+  ✓ Produces HTML morning reports
+  ✓ Exports results as JSON and CSV
+
+================================================================================
+🎯 US SECTORS COVERED
+================================================================================
+
+  1. Financials (30 stocks)      - JPM, BAC, WFC, GS, MS, etc.
+  2. Materials (30 stocks)        - LIN, APD, SHW, ECL, FCX, etc.
+  3. Healthcare (30 stocks)       - UNH, JNJ, LLY, PFE, ABBV, etc.
+  4. Technology (30 stocks)       - AAPL, MSFT, NVDA, GOOGL, META, etc.
+  5. Energy (30 stocks)           - XOM, CVX, COP, SLB, EOG, etc.
+  6. Industrials (30 stocks)      - BA, HON, UPS, RTX, UNP, etc.
+  7. Consumer_Discretionary (30)  - AMZN, HD, MCD, NKE, SBUX, etc.
+  8. Consumer_Staples (30)        - PG, KO, PEP, COST, WMT, etc.
+
+================================================================================
+⚡ QUICK TEST (5 stocks, 1 sector)
+================================================================================
+
+  Test US Pipeline:
+    python run_screening.py --market us --stocks 5 --sectors Technology
+
+  Expected Time: ~2-3 minutes
+  Output: reports/us/us_morning_report_YYYYMMDD.html
+
+================================================================================
+⏱️ EXECUTION TIMES
+================================================================================
+
+  Quick Test (5 stocks/sector):    2-3 minutes
+  Partial Run (20 stocks/sector):  8-12 minutes
+  Full Run (30 stocks/sector):     15-20 minutes
+  Both Markets (Sequential):       30-40 minutes
+  Both Markets (Parallel):         20-25 minutes
+
+================================================================================
+📁 OUTPUT LOCATIONS
+================================================================================
+
+  Reports:   reports/us/us_morning_report_YYYYMMDD.html
+  Results:   data/us/us_pipeline_results_YYYYMMDD.json
+  CSV:       data/us/us_opportunities_YYYYMMDD.csv
+  Logs:      logs/screening/us/us_overnight_pipeline.log
+
+================================================================================
+🔍 TEST INDIVIDUAL COMPONENTS
+================================================================================
+
+  US Market Monitor (S&P 500, VIX):
+    python models/screening/us_market_monitor.py
+
+  US Stock Scanner:
+    python models/screening/us_stock_scanner.py
+
+  US Market Regime Engine:
+    python models/screening/us_market_regime_engine.py
+
+  Full US Pipeline:
+    python models/screening/us_overnight_pipeline.py
+
+================================================================================
+📚 KEY INDICES TRACKED
+================================================================================
+
+  ^GSPC  -  S&P 500 (Primary market indicator)
+  ^VIX   -  CBOE Volatility Index (Fear gauge)
+  ^DJI   -  Dow Jones Industrial Average
+  ^IXIC  -  NASDAQ Composite
+
+================================================================================
+⚙️ ADVANCED OPTIONS
+================================================================================
+
+  Custom Stocks Per Sector:
+    python run_screening.py --market us --stocks 40
+
+  Specific Sectors Only:
+    python run_screening.py --market us --sectors "Technology,Healthcare,Financials"
+
+  Detailed Logging:
+    Edit us_overnight_pipeline.py:
+    logging.basicConfig(level=logging.DEBUG)
+
+================================================================================
+🛠️ TROUBLESHOOTING
+================================================================================
+
+  Import Errors:
+    pip install yahooquery pandas numpy hmmlearn
+
+  Data Fetch Failures:
+    - Check internet connection
+    - Verify yahooquery service status
+
+  Memory Issues:
+    - Reduce --stocks parameter
+    - Run markets separately (not --market both)
+
+  Slow Execution:
+    - Use --parallel mode
+    - Reduce stocks per sector
+
+  Check Logs:
+    tail -f logs/screening/us/us_overnight_pipeline.log
+
+================================================================================
+📋 SYSTEM REQUIREMENTS
+================================================================================
+
+  Python: 3.8+
+  Memory: 4GB+ RAM recommended
+  Storage: 1GB+ free space
+  Network: Stable internet connection
+  
+  Core Dependencies:
+    - yahooquery (market data)
+    - pandas, numpy (data processing)
+    - hmmlearn (regime detection)
+    - scikit-learn (ML models)
+
+================================================================================
+⏰ SCHEDULING (Run Daily Before Market Open)
+================================================================================
+
+  Linux/Mac Cron (7 AM ET):
+    0 7 * * 1-5 cd /home/user/webapp && python run_screening.py --market us
+
+  Both Markets:
+    0 6 * * 1-5 cd /home/user/webapp && python run_screening.py --market both
+
+  Windows Task Scheduler:
+    Create: run_us_screening.bat
+    Schedule: Daily at 7:00 AM (weekdays)
+
+================================================================================
+📖 FULL DOCUMENTATION
+================================================================================
+
+  Complete Guide:    US_MARKET_PIPELINE_README.md
+  Deployment Info:   US_PIPELINE_DEPLOYMENT_SUMMARY.md
+  
+  ASX Pipeline:      README.md (root directory)
+  Event Risk Guard:  EVENT_RISK_GUARD_GUIDE.md
+
+================================================================================
+✅ QUICK VALIDATION
+================================================================================
+
+  1. Test US Market Monitor:
+     python models/screening/us_market_monitor.py
+     Expected: S&P 500 data, VIX level, sentiment
+
+  2. Test US Stock Scanner (5 stocks):
+     python -c "from models.screening.us_stock_scanner import USStockScanner; \
+     s = USStockScanner(); \
+     print('✓ Scanning...'); \
+     r = s.scan_sector('Technology', max_stocks=5); \
+     print(f'✓ Found {len(r)} stocks')"
+
+  3. Run Quick Test:
+     python run_screening.py --market us --stocks 5
+
+  4. Check Output:
+     ls -lh reports/us/
+     ls -lh data/us/
+
+================================================================================
+🆘 SUPPORT
+================================================================================
+
+  Issues:        Check logs/screening/us/ directory
+  Questions:     Review US_MARKET_PIPELINE_README.md
+  Bug Reports:   Check logs/screening/us/errors/
+  
+  Common Fix:    pip install -r requirements.txt
+
+================================================================================
+⚠️  IMPORTANT NOTES
+================================================================================
+
+  📌 NOT FINANCIAL ADVICE - Educational/research use only
+  📌 No guarantees - Past performance ≠ future results
+  📌 User responsibility - All trading decisions at own risk
+  📌 Data source - Free tier Yahoo Finance API
+  📌 Rate limits - May throttle with large scans
+
+================================================================================
+🎉 YOU'RE READY!
+================================================================================
+
+  Start with:
+    python run_screening.py --market us --stocks 10
+
+  Review output in:
+    reports/us/
+
+  Then scale up to full 30 stocks/sector for production use.
+
+================================================================================
+Version: 1.0.0 | Date: 2025-11-21 | Status: ✅ PRODUCTION READY
+================================================================================

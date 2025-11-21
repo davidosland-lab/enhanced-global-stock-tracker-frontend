@@ -1,0 +1,170 @@
+================================================================================
+EVENT RISK GUARD v1.3.20 - TROUBLESHOOTING PIPELINE CRASHES
+================================================================================
+
+OVERVIEW
+--------
+If the pipeline crashes "just after regime engine" during PHASE 2.5, 3, 4, or 4.5,
+use this guide to diagnose and fix the issue.
+
+
+STEP 1: RUN DIAGNOSTIC TEST
+----------------------------
+Before running the full pipeline, run the diagnostic script:
+
+    python DIAGNOSE_CRASH.py
+
+This will test each component individually:
+  ✓ hmmlearn package installation
+  ✓ regime_detector import
+  ✓ market_regime_engine import
+  ✓ MarketRegimeEngine initialization
+  ✓ Market data fetch (^AXJO)
+  ✓ Regime analysis execution
+  ✓ EventRiskGuard initialization
+  ✓ Event risk batch assessment
+
+If any test fails, review the error message and fix before proceeding.
+
+
+STEP 2: RUN DEBUG PIPELINE TEST
+--------------------------------
+If diagnostics pass but pipeline still crashes, run the debug version:
+
+    RUN_PIPELINE_TEST_DEBUG.bat
+
+This captures the FULL error output (stdout + stderr) to a log file:
+    logs\pipeline_test_debug_YYYYMMDD_HHMMSS.log
+
+The last 50 lines will be displayed automatically if a crash occurs.
+
+
+STEP 3: IDENTIFY CRASH LOCATION
+--------------------------------
+Review the debug log to find WHERE the crash occurs:
+
+Common crash points AFTER regime engine (PHASE 2.5):
+
+  PHASE 3: BATCH PREDICTION
+  - Location: models\screening\overnight_pipeline.py, line ~223
+  - Method: _generate_predictions()
+  - Common errors:
+    * AttributeError: 'BatchPredictor' object has no attribute 'max_workers'
+    * RuntimeError: BatchPredictor not initialized
+    * KeyError: missing stock data fields
+
+  PHASE 4: OPPORTUNITY SCORING
+  - Location: models\screening\overnight_pipeline.py, line ~232
+  - Method: _score_opportunities()
+  - Common errors:
+    * KeyError: missing prediction fields
+    * ValueError: invalid score calculation
+
+  PHASE 4.5: LSTM MODEL TRAINING
+  - Location: models\screening\overnight_pipeline.py, line ~240
+  - Method: _train_lstm_models()
+  - Common errors:
+    * ImportError: FinBERT components not found
+    * AttributeError: missing methods in FinBERTBridge
+    * OSError: model directory not found
+
+
+STEP 4: COMMON FIXES
+---------------------
+
+FIX A: Missing hmmlearn package
+--------------------------------
+Error: "No module named 'hmmlearn'"
+Solution:
+    pip install hmmlearn>=0.3.0
+
+
+FIX B: BatchPredictor not initialized
+--------------------------------------
+Error: "RuntimeError: BatchPredictor not initialized"
+Location: overnight_pipeline.py, _generate_predictions()
+Solution: Check if self.predictor exists in __init__() method
+
+
+FIX C: FinBERTBridge missing method
+------------------------------------
+Error: "AttributeError: 'FinBERTBridge' object has no attribute 'get_trained_models_count'"
+Location: models\screening\finbert_bridge.py
+Solution: Add get_trained_models_count() method (see CRASH_FIX_SUMMARY_v1.3.20.txt)
+
+
+FIX D: Market Regime Engine import failed
+------------------------------------------
+Error: "ImportError: cannot import name 'MarketRegimeEngine'"
+Location: models\screening\event_risk_guard.py
+Solution: Check if market_regime_engine.py exists in models\screening\
+
+
+FIX E: Event Risk Guard missing regime code
+--------------------------------------------
+Error: Various errors in PHASE 2.5
+Location: models\screening\event_risk_guard.py
+Solution: Restore missing ~45 lines from v1.3.19 (see CRASH_FIX_SUMMARY_v1.3.20.txt)
+
+
+STEP 5: LOG FILE LOCATIONS
+---------------------------
+Pipeline logs are saved to multiple locations:
+
+1. Debug logs:
+   logs\pipeline_test_debug_YYYYMMDD_HHMMSS.log
+
+2. Pipeline logs:
+   logs\overnight_pipeline_YYYYMMDD_HHMMSS.log
+
+3. Screening logs:
+   models\screening\logs\*.log
+
+4. FinBERT logs:
+   finbert_v4.4.4\logs\*.log
+
+
+STEP 6: VERIFICATION
+--------------------
+After applying fixes, verify the installation:
+
+    python VERIFY_INSTALLATION.py
+
+This checks:
+  ✓ FinBERT Bridge - get_trained_models_count() method exists
+  ✓ Configuration - max_models_per_night = 100
+  ✓ PHASE 4.5 Code - training queue creation logic
+  ✓ Regime Engine Integration - regime engine initialization
+
+
+STEP 7: RE-TEST PIPELINE
+-------------------------
+After fixing issues, re-run the pipeline test:
+
+    RUN_PIPELINE_TEST.bat
+
+Or use debug mode to capture detailed output:
+
+    RUN_PIPELINE_TEST_DEBUG.bat
+
+
+GETTING HELP
+------------
+If issues persist, provide the following information:
+
+1. Full debug log from RUN_PIPELINE_TEST_DEBUG.bat
+2. Output from DIAGNOSE_CRASH.py
+3. Output from VERIFY_INSTALLATION.py
+4. Python version: python --version
+5. Operating system: Windows 11
+6. Any error messages or tracebacks
+
+
+REFERENCE DOCUMENTATION
+-----------------------
+- CRASH_FIX_SUMMARY_v1.3.20.txt - Summary of all fixes applied
+- CRITICAL_FIXES_v1.3.20_FINAL.txt - Critical fixes for v1.3.20
+- VERIFICATION_ERRORS_TROUBLESHOOTING.md - Verification error solutions
+- DEPLOYMENT_COMPLETE_v1.3.20.txt - Deployment checklist
+
+================================================================================

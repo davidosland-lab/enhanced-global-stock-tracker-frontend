@@ -401,22 +401,31 @@ class EventRiskGuard:
             self.providers.extend(extra_providers)
         
         # Initialize Market Regime Engine for crash risk assessment
+        self.regime_engine = None
+        self.regime_available = False
+        
         try:
-            from .market_regime_engine import MarketRegimeEngine
+            # Try multiple import strategies
+            try:
+                from .market_regime_engine import MarketRegimeEngine
+            except (ImportError, ValueError):
+                # If relative import fails, try absolute import
+                import sys
+                from pathlib import Path
+                current_dir = Path(__file__).parent
+                if str(current_dir) not in sys.path:
+                    sys.path.insert(0, str(current_dir))
+                from market_regime_engine import MarketRegimeEngine
+            
             self.regime_engine = MarketRegimeEngine()
             self.regime_available = True
             logger.info("✓ Market Regime Engine initialized successfully")
-        except (ImportError, ModuleNotFoundError, Exception) as e:
-            try:
-                from market_regime_engine import MarketRegimeEngine
-                self.regime_engine = MarketRegimeEngine()
-                self.regime_available = True
-                logger.info("✓ Market Regime Engine initialized successfully")
-            except (ImportError, ModuleNotFoundError, Exception) as e2:
-                self.regime_engine = None
-                self.regime_available = False
-                logger.warning(f"  Market Regime Engine not available: {e2} (optional)")
-                logger.warning("  Install hmmlearn to enable: pip install hmmlearn>=0.3.0")
+        except (ImportError, ModuleNotFoundError) as e:
+            logger.info("  Market Regime Engine not available (optional)")
+            logger.debug(f"  Import error: {e}")
+        except Exception as e:
+            logger.warning(f"  Market Regime Engine initialization failed: {e} (optional)")
+            logger.debug(f"  Error details: {type(e).__name__}: {e}")
         
         logger.info("Event Risk Guard initialized with %d providers", len(self.providers))
 
@@ -490,6 +499,24 @@ class EventRiskGuard:
         except Exception as e:
             logger.warning(f"Market Regime Engine analysis failed: {e}")
             return ("UNKNOWN", 0.0)
+    
+    def _get_full_regime_data(self) -> Optional[Dict]:
+        """
+        Get complete market regime data from Market Regime Engine.
+        
+        Returns:
+            Full regime data dictionary or None if not available
+        """
+        if not self.regime_available or self.regime_engine is None:
+            return None
+        
+        try:
+            regime_data = self.regime_engine.analyse()
+            logger.info(f"Market Regime: {regime_data.get('regime_label', 'unknown')} | Crash Risk: {regime_data.get('crash_risk_score', 0):.3f}")
+            return regime_data
+        except Exception as e:
+            logger.warning(f"Market Regime Engine analysis failed: {e}")
+            return None
 
     def assess(self, ticker: str) -> GuardResult:
         """
@@ -598,7 +625,7 @@ class EventRiskGuard:
             warning_message=warning
         )
 
-    def assess_batch(self, tickers: List[str]) -> Dict[str, GuardResult]:
+    def assess_batch(self, tickers: List[str]) -> Dict:
         """
         Assess event risk for multiple tickers.
         
@@ -606,23 +633,26 @@ class EventRiskGuard:
             tickers: List of ticker symbols
             
         Returns:
-            Dictionary mapping ticker -> GuardResult
+            Dictionary with:
+                - ticker results: mapping ticker -> GuardResult
+                - market_regime: complete regime data (if available)
         """
         # Get market regime once for all tickers (performance optimization)
         regime_label, regime_crash_risk = self._get_regime_crash_risk()
+        full_regime_data = self._get_full_regime_data()
         
         logger.info(f"Batch assessment starting for {len(tickers)} tickers")
         logger.info(f"Market Regime: {regime_label}, Crash Risk: {regime_crash_risk:.3f}")
         
-        results = {}
+        ticker_results = {}
         
         for ticker in tickers:
             try:
-                results[ticker] = self.assess(ticker)
+                ticker_results[ticker] = self.assess(ticker)
             except Exception as e:
                 logger.error(f"Event risk assessment failed for {ticker}: {e}")
                 # Return safe default
-                results[ticker] = GuardResult(
+                ticker_results[ticker] = GuardResult(
                     ticker=ticker,
                     has_upcoming_event=False,
                     days_to_event=None,
@@ -639,7 +669,12 @@ class EventRiskGuard:
                     warning_message="Assessment failed"
                 )
         
-        return results
+        # Return both ticker results and market regime data
+        result = dict(ticker_results)  # Keep ticker->GuardResult for backward compatibility
+        if full_regime_data:
+            result['market_regime'] = full_regime_data
+        
+        return result
 
 
 # -----------------------------

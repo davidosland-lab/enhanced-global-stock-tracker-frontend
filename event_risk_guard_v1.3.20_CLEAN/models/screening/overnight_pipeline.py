@@ -124,6 +124,31 @@ class OvernightPipeline:
             'warnings': []
         }
         
+        # Load configuration
+        config_path = Path(__file__).parent.parent / 'config' / 'screening_config.json'
+        try:
+            with open(config_path, 'r') as f:
+                self.config = json.load(f)
+            logger.info(f"✓ Configuration loaded from {config_path}")
+        except FileNotFoundError:
+            logger.warning(f"Configuration file not found: {config_path}, using defaults")
+            self.config = {
+                'lstm_training': {
+                    'enabled': True,
+                    'max_models_per_night': 100,
+                    'stale_threshold_days': 7
+                }
+            }
+        except Exception as e:
+            logger.error(f"Failed to load configuration: {e}, using defaults")
+            self.config = {
+                'lstm_training': {
+                    'enabled': True,
+                    'max_models_per_night': 100,
+                    'stale_threshold_days': 7
+                }
+            }
+        
         # Initialize components
         logger.info("="*80)
         logger.info("OVERNIGHT STOCK SCREENING PIPELINE - STARTING")
@@ -246,7 +271,7 @@ class OvernightPipeline:
             self.status['phase'] = 'report_generation'
             self.status['progress'] = 85
             
-            report_path = self._generate_report(scored_stocks, spi_sentiment)
+            report_path = self._generate_report(scored_stocks, spi_sentiment, event_risk_data)
             
             # Phase 6: Finalization
             logger.info("\n" + "="*80)
@@ -418,11 +443,14 @@ class OvernightPipeline:
             # Batch assess
             results = self.event_guard.assess_batch(tickers)
             
+            # Extract ticker results (filter out market_regime key)
+            ticker_results = {k: v for k, v in results.items() if k != 'market_regime' and hasattr(v, 'has_upcoming_event')}
+            
             # Summary stats
-            total_events = sum(1 for r in results.values() if r.has_upcoming_event)
-            sit_outs = sum(1 for r in results.values() if r.skip_trading)
-            high_risk = sum(1 for r in results.values() if r.risk_score >= 0.7)
-            regulatory = sum(1 for r in results.values() if r.event_type in ['basel_iii', 'regulatory', 'pillar_3'])
+            total_events = sum(1 for r in ticker_results.values() if r.has_upcoming_event)
+            sit_outs = sum(1 for r in ticker_results.values() if r.skip_trading)
+            high_risk = sum(1 for r in ticker_results.values() if r.risk_score >= 0.7)
+            regulatory = sum(1 for r in ticker_results.values() if r.event_type in ['basel_iii', 'regulatory', 'pillar_3'])
             
             logger.info(f"✓ Event Risk Assessment Complete:")
             logger.info(f"  Upcoming Events: {total_events}")
@@ -430,9 +458,14 @@ class OvernightPipeline:
             logger.info(f"  ⚠️  Sit-Out Recommendations: {sit_outs}")
             logger.info(f"  ⚡ High Risk Stocks (≥0.7): {high_risk}")
             
+            # Log market regime if available
+            if 'market_regime' in results:
+                regime = results['market_regime']
+                logger.info(f"  📊 Market Regime: {regime.get('regime_label', 'unknown')} | Crash Risk: {regime.get('crash_risk_score', 0)*100:.1f}%")
+            
             # Log specific warnings
             warnings = [
-                (ticker, r) for ticker, r in results.items()
+                (ticker, r) for ticker, r in ticker_results.items()
                 if r.warning_message and r.risk_score >= 0.5
             ]
             
@@ -458,7 +491,17 @@ class OvernightPipeline:
             event_risk_data: Event risk assessment results (optional)
         """
         logger.info(f"Generating predictions for {len(stocks)} stocks...")
-        logger.info(f"Using {self.predictor.max_workers} parallel workers")
+        
+        # Safety check for predictor
+        if not hasattr(self, 'predictor') or self.predictor is None:
+            logger.error("BatchPredictor not initialized - cannot generate predictions")
+            raise RuntimeError("BatchPredictor not initialized")
+        
+        try:
+            max_workers = getattr(self.predictor, 'max_workers', 4)
+            logger.info(f"Using {max_workers} parallel workers")
+        except Exception as e:
+            logger.warning(f"Could not get max_workers: {e}, using default")
         
         try:
             predicted_stocks = self.predictor.predict_batch(stocks, spi_sentiment)
@@ -620,7 +663,7 @@ class OvernightPipeline:
             self.status['warnings'].append(f"LSTM training failed: {str(e)}")
             return {'status': 'failed', 'trained_count': 0, 'error': str(e)}
     
-    def _generate_report(self, stocks: List[Dict], spi_sentiment: Dict) -> str:
+    def _generate_report(self, stocks: List[Dict], spi_sentiment: Dict, event_risk_data: Dict = None) -> str:
         """Generate morning report"""
         logger.info("Generating morning report...")
         
@@ -654,7 +697,8 @@ class OvernightPipeline:
                 opportunities=stocks,
                 spi_sentiment=spi_sentiment,
                 sector_summary=sector_summary,
-                system_stats=system_stats
+                system_stats=system_stats,
+                event_risk_data=event_risk_data
             )
             
             logger.info(f"✓ Report Generated: {report_path}")

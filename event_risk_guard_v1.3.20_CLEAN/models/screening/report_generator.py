@@ -70,7 +70,8 @@ class ReportGenerator:
         opportunities: List[Dict],
         spi_sentiment: Dict,
         sector_summary: Dict,
-        system_stats: Dict
+        system_stats: Dict,
+        event_risk_data: Dict = None
     ) -> str:
         """
         Generate complete morning report
@@ -80,6 +81,7 @@ class ReportGenerator:
             spi_sentiment: SPI market sentiment data
             sector_summary: Sector performance summary
             system_stats: System performance statistics
+            event_risk_data: Event risk assessment data including market regime (optional)
             
         Returns:
             Path to generated HTML report
@@ -98,7 +100,8 @@ class ReportGenerator:
             opportunities=opportunities,
             spi_sentiment=spi_sentiment,
             sector_summary=sector_summary,
-            system_stats=system_stats
+            system_stats=system_stats,
+            event_risk_data=event_risk_data
         )
         
         # Save report
@@ -117,7 +120,8 @@ class ReportGenerator:
                 opportunities=opportunities,
                 spi_sentiment=spi_sentiment,
                 sector_summary=sector_summary,
-                system_stats=system_stats
+                system_stats=system_stats,
+                event_risk_data=event_risk_data
             )
         
         return str(report_path)
@@ -129,7 +133,8 @@ class ReportGenerator:
         opportunities: List[Dict],
         spi_sentiment: Dict,
         sector_summary: Dict,
-        system_stats: Dict
+        system_stats: Dict,
+        event_risk_data: Dict = None
     ) -> str:
         """Build complete HTML report"""
         
@@ -139,6 +144,7 @@ class ReportGenerator:
         # Build sections
         header_html = self._build_header(report_date, report_time)
         market_overview_html = self._build_market_overview(spi_sentiment)
+        regime_html = self._build_market_regime_section(event_risk_data)
         opportunities_html = self._build_opportunities_section(top_opportunities)
         sector_html = self._build_sector_section(sector_summary)
         watchlist_html = self._build_watchlist_section(opportunities)
@@ -160,6 +166,7 @@ class ReportGenerator:
 <body>
     {header_html}
     {market_overview_html}
+    {regime_html}
     {opportunities_html}
     {sector_html}
     {watchlist_html}
@@ -819,6 +826,133 @@ class ReportGenerator:
     </div>
 """
     
+    def _build_market_regime_section(self, event_risk_data: Dict = None) -> str:
+        """Build market regime analysis section"""
+        if not event_risk_data or 'market_regime' not in event_risk_data:
+            return ""
+        
+        regime = event_risk_data.get('market_regime', {})
+        if not regime:
+            return ""
+        
+        regime_label = regime.get('regime_label', 'unknown')
+        crash_risk = regime.get('crash_risk_score', 0) * 100  # Convert to percentage
+        vol_1d = regime.get('vol_1d', 0) * 100  # Convert to percentage
+        vol_annual = regime.get('vol_annual', 0) * 100  # Convert to percentage
+        regime_probs = regime.get('regime_probabilities', {})
+        data_window = regime.get('data_window', {})
+        
+        # Determine regime display name and emoji
+        regime_names = {
+            'low_vol': {'name': 'Low Volatility', 'emoji': '🟢', 'color': '#10b981'},
+            'medium_vol': {'name': 'Medium Volatility', 'emoji': '🟡', 'color': '#f59e0b'},
+            'high_vol': {'name': 'High Volatility', 'emoji': '🔴', 'color': '#ef4444'}
+        }
+        
+        regime_info = regime_names.get(regime_label, {'name': regime_label.title(), 'emoji': '⚪', 'color': '#6b7280'})
+        
+        # Determine crash risk level and color
+        if crash_risk >= 70:
+            risk_level = 'CRITICAL'
+            risk_color = '#dc2626'
+            risk_badge = 'badge-danger'
+        elif crash_risk >= 50:
+            risk_level = 'HIGH'
+            risk_color = '#ef4444'
+            risk_badge = 'badge-warning'
+        elif crash_risk >= 30:
+            risk_level = 'MODERATE'
+            risk_color = '#f59e0b'
+            risk_badge = 'badge-warning'
+        else:
+            risk_level = 'LOW'
+            risk_color = '#10b981'
+            risk_badge = 'badge-success'
+        
+        # Build regime probabilities display
+        prob_rows = ""
+        regime_state_names = {0: 'Low Volatility', 1: 'Medium Volatility', 2: 'High Volatility'}
+        for state, prob in sorted(regime_probs.items()):
+            state_name = regime_state_names.get(state, f'State {state}')
+            prob_pct = prob * 100
+            prob_rows += f"""
+                <tr>
+                    <td><strong>{state_name}</strong></td>
+                    <td>{prob_pct:.2f}%</td>
+                    <td>
+                        <div style="background: #e5e7eb; border-radius: 10px; overflow: hidden; height: 20px;">
+                            <div style="background: {regime_info['color']}; width: {prob_pct:.1f}%; height: 100%; transition: width 0.3s;"></div>
+                        </div>
+                    </td>
+                </tr>
+"""
+        
+        # Data window display
+        window_start = data_window.get('start', 'N/A')
+        window_end = data_window.get('end', 'N/A')
+        
+        return f"""
+    <div class="section">
+        <h2><span class="emoji">🎯</span> Market Regime Analysis</h2>
+        
+        <div class="market-overview-grid">
+            <div class="metric-card" style="border-left-color: {regime_info['color']};">
+                <div class="metric-label">Current Market Regime</div>
+                <div class="metric-value" style="color: {regime_info['color']};">
+                    {regime_info['emoji']} {regime_info['name']}
+                </div>
+                <div class="metric-change">HMM-based classification</div>
+            </div>
+            
+            <div class="metric-card" style="border-left-color: {risk_color};">
+                <div class="metric-label">Crash Risk Score</div>
+                <div class="metric-value" style="color: {risk_color};">
+                    {crash_risk:.1f}%
+                </div>
+                <div class="metric-change">
+                    <span class="badge {risk_badge}">{risk_level} RISK</span>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-label">Daily Volatility</div>
+                <div class="metric-value">{vol_1d:.2f}%</div>
+                <div class="metric-change">1-day volatility</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-label">Annual Volatility</div>
+                <div class="metric-value">{vol_annual:.2f}%</div>
+                <div class="metric-change">Annualized estimate</div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 25px;">
+            <h3 style="color: #1e3a8a; margin-bottom: 15px; font-size: 1.3em;">Regime State Probabilities</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>State</th>
+                        <th>Probability</th>
+                        <th>Confidence</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {prob_rows}
+                </tbody>
+            </table>
+        </div>
+        
+        <div style="margin-top: 20px; padding: 15px; background: #f1f5f9; border-radius: 5px;">
+            <p style="margin: 0; font-size: 0.9em; color: #475569;">
+                <strong>Analysis Window:</strong> {window_start} to {window_end}<br>
+                <strong>Method:</strong> Hidden Markov Model (HMM) with 3-state regime classification<br>
+                <strong>Note:</strong> Higher crash risk scores indicate increased probability of significant market downturns.
+            </p>
+        </div>
+    </div>
+"""
+    
     def _build_footer(self) -> str:
         """Build report footer"""
         return """
@@ -838,7 +972,8 @@ class ReportGenerator:
         opportunities: List[Dict],
         spi_sentiment: Dict,
         sector_summary: Dict,
-        system_stats: Dict
+        system_stats: Dict,
+        event_risk_data: Dict = None
     ):
         """Save JSON data for programmatic access"""
         data = {
@@ -847,7 +982,8 @@ class ReportGenerator:
             'opportunities': opportunities,
             'spi_sentiment': spi_sentiment,
             'sector_summary': sector_summary,
-            'system_stats': system_stats
+            'system_stats': system_stats,
+            'event_risk_data': event_risk_data
         }
         
         json_filename = f"{report_date}_data.json"

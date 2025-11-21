@@ -317,6 +317,77 @@ def get_logs():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/regime')
+def get_regime():
+    """Get market regime data from latest pipeline state or JSON data"""
+    try:
+        # Try to get regime data from latest JSON report data
+        report_locations = [
+            REPORTS_PATH / 'morning_reports',
+            REPORTS_PATH / 'html',
+            BASE_PATH / 'reports' / 'html',
+            BASE_PATH / 'reports'
+        ]
+        
+        # Find the latest JSON data file
+        all_json_files = []
+        for report_dir in report_locations:
+            if report_dir.exists():
+                all_json_files.extend(report_dir.glob('*_data.json'))
+        
+        if all_json_files:
+            # Get the most recent JSON file
+            latest_json = max(all_json_files, key=lambda p: p.stat().st_mtime)
+            try:
+                with open(latest_json, 'r') as f:
+                    data = json.load(f)
+                    event_risk_data = data.get('event_risk_data', {})
+                    if event_risk_data and 'market_regime' in event_risk_data:
+                        regime = event_risk_data['market_regime']
+                        return jsonify({
+                            'available': True,
+                            'regime': regime,
+                            'source': 'report_data',
+                            'timestamp': data.get('generated_at', 'unknown')
+                        })
+            except:
+                pass
+        
+        # If not found in JSON, try pipeline state files
+        state_locations = [
+            REPORTS_PATH / 'pipeline_state',
+            BASE_PATH / 'reports' / 'pipeline_state',
+            BASE_PATH / 'models' / 'screening' / 'reports' / 'pipeline_state'
+        ]
+        
+        for state_dir in state_locations:
+            if state_dir.exists():
+                state_files = sorted(state_dir.glob('*.json'), reverse=True)
+                if state_files:
+                    try:
+                        with open(state_files[0], 'r') as f:
+                            state = json.load(f)
+                            event_risk_data = state.get('event_risk_data', {})
+                            if event_risk_data and 'market_regime' in event_risk_data:
+                                regime = event_risk_data['market_regime']
+                                return jsonify({
+                                    'available': True,
+                                    'regime': regime,
+                                    'source': 'pipeline_state',
+                                    'timestamp': state.get('timestamp', 'unknown')
+                                })
+                    except:
+                        pass
+        
+        # No regime data found
+        return jsonify({
+            'available': False,
+            'message': 'No market regime data available. Run the pipeline to generate regime analysis.'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     print("=" * 80)
     print("Event Risk Guard - Web UI")

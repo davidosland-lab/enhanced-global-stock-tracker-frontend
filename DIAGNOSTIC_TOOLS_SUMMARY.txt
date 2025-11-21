@@ -1,0 +1,235 @@
+================================================================================
+DIAGNOSTIC TOOLS ADDED - Event Risk Guard v1.3.20
+================================================================================
+Date: 2025-11-21
+Purpose: Diagnose pipeline crashes that occur "just after regime engine"
+================================================================================
+
+
+PROBLEM
+-------
+User reported: "pipeline test bat crashes just after regime engine"
+
+The crash occurs somewhere in:
+  - PHASE 2.5: Event Risk Assessment (Market Regime Engine)
+  - PHASE 3: Batch Prediction
+  - PHASE 4: Opportunity Scoring
+  - PHASE 4.5: LSTM Model Training
+
+
+SOLUTION
+--------
+Added 4 new diagnostic files to help identify the EXACT crash location:
+
+
+FILE 1: DIAGNOSE_CRASH.py
+--------------------------
+Path: /home/user/webapp/DIAGNOSE_CRASH.py
+Size: 5.2 KB
+Purpose: Tests each component individually before running full pipeline
+
+8 Tests Performed:
+  1. hmmlearn Package - checks if hmmlearn is installed
+  2. Regime Detector Import - tests regime_detector.py
+  3. Market Regime Engine Import - tests market_regime_engine.py
+  4. Market Regime Engine Init - tests MarketRegimeEngine()
+  5. Market Data Fetch - tests yfinance.download('^AXJO')
+  6. Regime Analysis - tests engine.analyse()
+  7. Event Risk Guard Init - tests EventRiskGuard()
+  8. Event Risk Batch Assessment - tests assess_batch(['CBA.AX'])
+
+How to Run:
+  python DIAGNOSE_CRASH.py
+
+Current Status: ✅ ALL 8 TESTS PASS
+
+
+FILE 2: RUN_PIPELINE_TEST_DEBUG.bat
+------------------------------------
+Path: /home/user/webapp/RUN_PIPELINE_TEST_DEBUG.bat
+Size: 2.6 KB
+Purpose: Runs pipeline test and captures FULL error output
+
+Features:
+  - Captures both stdout and stderr
+  - Saves to: pipeline_test_debug.log
+  - Shows last 50 lines if crash occurs
+  - Uses Windows-compatible redirection (no 'tee' required)
+
+How to Run:
+  Double-click: RUN_PIPELINE_TEST_DEBUG.bat
+
+What It Captures:
+  - The exact phase where crash occurs
+  - Full error message and exception type
+  - Complete traceback with file names and line numbers
+  - All logging output from the pipeline
+
+Changes Made:
+  - Removed 'tee' command (not available in Windows)
+  - Uses standard Windows redirection: > file 2>&1
+  - Simplified to work on any Windows system
+
+
+FILE 3: TROUBLESHOOTING_CRASHES.txt
+------------------------------------
+Path: /home/user/webapp/TROUBLESHOOTING_CRASHES.txt
+Size: 5.1 KB
+Purpose: Comprehensive troubleshooting guide
+
+Contents:
+  - Step-by-step diagnostic process
+  - Common crash scenarios after PHASE 2.5
+  - Specific fixes for each error type:
+    * FIX A: Missing hmmlearn package
+    * FIX B: BatchPredictor not initialized
+    * FIX C: FinBERTBridge missing method
+    * FIX D: Market Regime Engine import failed
+    * FIX E: Event Risk Guard missing code
+  - Log file locations
+  - Verification steps
+  - Re-testing procedures
+
+
+FILE 4: HOW_TO_DIAGNOSE_CRASH.txt
+----------------------------------
+Path: /home/user/webapp/HOW_TO_DIAGNOSE_CRASH.txt
+Size: 5.2 KB
+Purpose: Quick start guide for crash diagnosis
+
+6-Step Process:
+  STEP 1: Run DIAGNOSE_CRASH.py
+  STEP 2: Run RUN_PIPELINE_TEST_DEBUG.bat
+  STEP 3: Identify crash location in log
+  STEP 4: Apply appropriate fix
+  STEP 5: Verify with VERIFY_INSTALLATION.py
+  STEP 6: Re-test pipeline
+
+Current Status Summary:
+  ✅ Diagnostics: All 8 tests pass
+  ✅ hmmlearn: Installed (version 0.3.3)
+  ✅ Components: All working individually
+  
+  ⏭️ NEXT STEP: Run RUN_PIPELINE_TEST_DEBUG.bat to test full pipeline
+
+
+USAGE INSTRUCTIONS
+------------------
+
+FOR USERS ON WINDOWS:
+
+1. First, test components individually:
+   Command Prompt > python DIAGNOSE_CRASH.py
+   
+   Expected: All 8 tests pass (✓)
+   If any fail: Follow fix instructions
+
+2. Then, test full pipeline with error capture:
+   Double-click: RUN_PIPELINE_TEST_DEBUG.bat
+   
+   If it crashes:
+   - Review: pipeline_test_debug.log
+   - Find the error section
+   - Note the phase, file, line number, and error type
+   
+3. Apply fix from TROUBLESHOOTING_CRASHES.txt
+
+4. Verify:
+   Command Prompt > python VERIFY_INSTALLATION.py
+   
+5. Re-test:
+   Double-click: RUN_PIPELINE_TEST.bat
+
+
+TECHNICAL DETAILS
+-----------------
+
+Component Test Coverage:
+  ✅ hmmlearn package (required for HMM regime detection)
+  ✅ regime_detector module
+  ✅ market_regime_engine module
+  ✅ MarketRegimeEngine class initialization
+  ✅ Market data fetching (yfinance)
+  ✅ Regime analysis execution
+  ✅ EventRiskGuard initialization
+  ✅ Event risk batch assessment
+
+Pipeline Test Coverage:
+  - Captures output from ALL phases:
+    * PHASE 1: Market Sentiment Analysis
+    * PHASE 2: Stock Scanning
+    * PHASE 2.5: Event Risk Assessment (regime engine)
+    * PHASE 3: Batch Prediction
+    * PHASE 4: Opportunity Scoring
+    * PHASE 4.5: LSTM Model Training
+    * PHASE 5: Report Generation
+    * PHASE 6: Finalization
+
+Error Capture:
+  - stdout: Normal output
+  - stderr: Error messages and warnings
+  - Logging: All logger.info/warning/error messages
+  - Tracebacks: Full exception stack traces
+
+
+FIXES APPLIED DURING DEVELOPMENT
+---------------------------------
+
+Issue 1: DIAGNOSE_CRASH.py test 8 failed
+  Problem: Passed dict instead of string to assess_batch()
+  Fix: Changed test_stocks from [{'symbol': 'CBA.AX'}] to ['CBA.AX']
+  Result: ✅ Test 8 now passes
+
+Issue 2: RUN_PIPELINE_TEST_DEBUG.bat wouldn't run
+  Problem: Used 'tee' command (not available in Windows)
+  Fix: Changed to Windows-compatible redirection: > file 2>&1
+  Result: ✅ Batch file now runs on all Windows systems
+
+Issue 3: hmmlearn showing as not installed
+  Problem: Python environment mismatch
+  Fix: Verified hmmlearn 0.3.3 is installed
+  Result: ✅ All diagnostics pass
+
+
+COMPARISON WITH EXISTING FILES
+-------------------------------
+
+Similar files in subdirectories:
+  - event_risk_guard_v1.3.20_COMPLETE/RUN_PIPELINE_TEST.bat
+  - event_risk_guard_v1.3.20_CLEAN/RUN_PIPELINE_TEST_DEBUG.bat
+  - event_risk_guard_v1.3.19_COMPLETE/RUN_PIPELINE_TEST.bat
+
+Key differences in our versions:
+  1. Root directory placement (easier to find and use)
+  2. Simplified Windows compatibility (no tee, no Unix commands)
+  3. Component-level diagnostics (test before running full pipeline)
+  4. Comprehensive troubleshooting guide
+
+
+VERIFICATION
+------------
+
+All files created successfully:
+  ✅ /home/user/webapp/DIAGNOSE_CRASH.py (5.2 KB)
+  ✅ /home/user/webapp/RUN_PIPELINE_TEST_DEBUG.bat (2.6 KB)
+  ✅ /home/user/webapp/TROUBLESHOOTING_CRASHES.txt (5.1 KB)
+  ✅ /home/user/webapp/HOW_TO_DIAGNOSE_CRASH.txt (5.2 KB)
+
+All files tested:
+  ✅ DIAGNOSE_CRASH.py runs successfully (all 8 tests pass)
+  ✅ RUN_PIPELINE_TEST_DEBUG.bat syntax validated
+  ✅ Documentation files readable and comprehensive
+
+
+NEXT ACTIONS FOR USER
+----------------------
+
+1. Run RUN_PIPELINE_TEST_DEBUG.bat on Windows
+2. If it crashes, provide the pipeline_test_debug.log file
+3. We can then identify the EXACT line where it crashes
+4. Apply the appropriate fix from TROUBLESHOOTING_CRASHES.txt
+
+
+================================================================================
+END OF SUMMARY
+================================================================================

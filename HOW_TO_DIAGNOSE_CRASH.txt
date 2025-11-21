@@ -1,0 +1,168 @@
+================================================================================
+HOW TO DIAGNOSE AND FIX PIPELINE CRASHES
+Event Risk Guard v1.3.20
+================================================================================
+
+ISSUE: Pipeline crashes "just after regime engine" during test
+
+SOLUTION: Use the diagnostic tools provided
+================================================================================
+
+
+STEP 1: RUN DIAGNOSTIC TEST (Windows)
+--------------------------------------
+This tests each component individually to find the problem.
+
+Open Command Prompt in the package root and run:
+
+    python DIAGNOSE_CRASH.py
+
+This will run 8 tests:
+  1. hmmlearn package check
+  2. regime_detector import test
+  3. market_regime_engine import test
+  4. MarketRegimeEngine initialization
+  5. Market data fetch test
+  6. Regime analysis execution
+  7. EventRiskGuard initialization
+  8. Event risk batch assessment
+
+EXPECTED RESULT: All 8 tests should pass (✓)
+
+If any test fails (✗):
+  - Read the error message
+  - Follow the fix instructions in TROUBLESHOOTING_CRASHES.txt
+  - Re-run DIAGNOSE_CRASH.py until all tests pass
+
+
+STEP 2: RUN DEBUG PIPELINE TEST (Windows)
+------------------------------------------
+If diagnostics pass but pipeline still crashes, capture the full error:
+
+Double-click:
+
+    RUN_PIPELINE_TEST_DEBUG.bat
+
+This will:
+  - Run the full pipeline test
+  - Capture ALL output (stdout + stderr) to: pipeline_test_debug.log
+  - Show the last 50 lines if a crash occurs
+
+WHAT TO LOOK FOR in the log:
+  - The exact phase where it crashed (PHASE 2.5, 3, 4, or 4.5)
+  - The error message (Exception type and message)
+  - The traceback (shows which file and line number)
+
+
+STEP 3: IDENTIFY THE CRASH LOCATION
+------------------------------------
+Review pipeline_test_debug.log and find:
+
+1. Which PHASE crashed:
+   - PHASE 2.5: EVENT RISK ASSESSMENT (Market Regime Engine)
+   - PHASE 3: BATCH PREDICTION (BatchPredictor)
+   - PHASE 4: OPPORTUNITY SCORING
+   - PHASE 4.5: LSTM MODEL TRAINING (FinBERT Bridge)
+
+2. The error type:
+   - ImportError: Missing module or package
+   - AttributeError: Missing method or property
+   - KeyError: Missing data field
+   - RuntimeError: Component not initialized
+   - TypeError: Wrong data type passed
+
+3. The file and line number:
+   - Example: "File 'overnight_pipeline.py', line 223"
+
+
+STEP 4: APPLY THE FIX
+----------------------
+Once you know WHERE and WHAT the error is, apply the appropriate fix:
+
+Common Fixes:
+  A. Missing hmmlearn → pip install hmmlearn>=0.3.0
+  B. BatchPredictor not initialized → Check overnight_pipeline.py __init__()
+  C. FinBERTBridge missing method → Add get_trained_models_count() method
+  D. Market Regime Engine import failed → Check market_regime_engine.py exists
+  E. Event Risk Guard missing code → Restore from v1.3.19
+
+See TROUBLESHOOTING_CRASHES.txt for detailed fix instructions.
+
+
+STEP 5: VERIFY THE FIX
+-----------------------
+After applying fixes, verify everything works:
+
+    python VERIFY_INSTALLATION.py
+
+This checks:
+  ✓ FinBERT Bridge - get_trained_models_count() method
+  ✓ Configuration - max_models_per_night = 100
+  ✓ PHASE 4.5 Code - training queue creation
+  ✓ Regime Engine Integration - all checks pass
+
+
+STEP 6: RE-TEST PIPELINE
+-------------------------
+Finally, run the pipeline test again:
+
+    RUN_PIPELINE_TEST.bat
+
+Or use debug mode:
+
+    RUN_PIPELINE_TEST_DEBUG.bat
+
+
+================================================================================
+CURRENT STATUS
+================================================================================
+
+✅ DIAGNOSE_CRASH.py - ALL 8 TESTS PASS
+   - hmmlearn installed: version 0.3.3
+   - All imports successful
+   - All initializations successful
+   - All executions successful
+
+This means the components work individually.
+
+NEXT STEP: Run RUN_PIPELINE_TEST_DEBUG.bat to see if the full pipeline works.
+
+If it crashes, the debug log will show EXACTLY where and why.
+
+
+================================================================================
+FILES ADDED
+================================================================================
+
+1. DIAGNOSE_CRASH.py
+   - Diagnostic script that tests each component
+   - Path: /home/user/webapp/DIAGNOSE_CRASH.py
+
+2. RUN_PIPELINE_TEST_DEBUG.bat
+   - Batch file that captures full error output
+   - Path: /home/user/webapp/RUN_PIPELINE_TEST_DEBUG.bat
+
+3. TROUBLESHOOTING_CRASHES.txt
+   - Comprehensive troubleshooting guide
+   - Path: /home/user/webapp/TROUBLESHOOTING_CRASHES.txt
+
+4. HOW_TO_DIAGNOSE_CRASH.txt (this file)
+   - Quick start guide for diagnosis
+   - Path: /home/user/webapp/HOW_TO_DIAGNOSE_CRASH.txt
+
+
+================================================================================
+GETTING HELP
+================================================================================
+
+If the issue persists after following these steps, provide:
+
+1. Output from: python DIAGNOSE_CRASH.py
+2. Full log from: RUN_PIPELINE_TEST_DEBUG.bat (pipeline_test_debug.log)
+3. Output from: python VERIFY_INSTALLATION.py
+4. Python version: python --version
+5. Operating system version
+
+With this information, we can identify and fix the exact issue.
+
+================================================================================
