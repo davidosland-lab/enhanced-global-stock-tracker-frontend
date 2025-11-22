@@ -1,0 +1,168 @@
+================================================================================
+CRITICAL FIXES APPLIED - DEPLOYMENT v1.3.20 HOTFIX BUILD
+================================================================================
+Date: 2025-11-22
+Build: CLEAN DEPLOYMENT WITH ALL CRITICAL HOTFIXES
+
+================================================================================
+ISSUES FIXED IN THIS BUILD
+================================================================================
+
+1. ✅ US PIPELINE - BatchPredictor Parameter Mismatch
+   File: models/screening/us_overnight_pipeline.py (Line 369)
+   Fixed: market_sentiment → spi_sentiment
+   
+2. ✅ US PIPELINE - OpportunityScorer Method Name
+   File: models/screening/us_overnight_pipeline.py (Line 387)
+   Fixed: score_batch() → score_opportunities()
+   
+3. ✅ US PIPELINE - CSVExporter Method Name
+   File: models/screening/us_overnight_pipeline.py (Line 519)
+   Fixed: export_opportunities() → export_screening_results()
+   
+4. ✅ US PIPELINE - ReportGenerator Parameter Mismatch
+   File: models/screening/us_overnight_pipeline.py (Line 451-456)
+   OLD (BROKEN):
+     generate_morning_report(
+         stocks=stocks,
+         market_sentiment=sentiment,
+         regime_data=regime_data,
+         event_risk_data=event_risk_data,
+         market="US"
+     )
+   
+   NEW (FIXED):
+     generate_morning_report(
+         opportunities=stocks,
+         spi_sentiment=sentiment,
+         sector_summary=sector_summary,
+         system_stats=system_stats
+     )
+   
+5. ✅ US PIPELINE - Regime Data Dictionary Keys
+   File: models/screening/us_overnight_pipeline.py (Line 446-447)
+   Fixed: 'current_state' → 'regime_label'
+   Fixed: 'crash_risk' → 'crash_risk_score'
+   
+6. ✅ US REGIME ENGINE - Datetime Comparison Error
+   File: models/screening/us_market_regime_engine.py (Line 88-90)
+   Added: DatetimeIndex conversion after MultiIndex handling
+   
+7. ✅ ASX PIPELINE - Email Notification Boolean Callable
+   File: models/screening/overnight_pipeline.py (Line 280, 289, 308)
+   Fixed: Removed redundant boolean checks before method calls
+
+================================================================================
+VERIFICATION CHECKLIST
+================================================================================
+
+Before deploying, verify these signatures match:
+
+[ ] ReportGenerator.generate_morning_report() signature:
+    - opportunities: List[Dict]
+    - spi_sentiment: Dict
+    - sector_summary: Dict
+    - system_stats: Dict
+
+[ ] US pipeline calls generate_morning_report() with:
+    - opportunities=stocks
+    - spi_sentiment=sentiment
+    - sector_summary=sector_summary
+    - system_stats=system_stats
+
+[ ] BatchPredictor.predict_batch() called with:
+    - stocks=stocks
+    - spi_sentiment=sentiment (NOT market_sentiment)
+
+[ ] OpportunityScorer.score_opportunities() called (NOT score_batch)
+
+[ ] CSVExporter.export_screening_results() called (NOT export_opportunities)
+
+[ ] US regime engine returns:
+    - regime_label (NOT current_state)
+    - crash_risk_score (NOT crash_risk)
+
+[ ] Email notifier checks only self.notifier.enabled before calling methods
+
+================================================================================
+TESTING RECOMMENDATIONS
+================================================================================
+
+1. Clear all Python cache before running:
+   find . -type d -name "__pycache__" -exec rm -rf {} +
+   find . -name "*.pyc" -delete
+
+2. Run US pipeline standalone:
+   python run_screening.py --us-only
+
+3. Run ASX pipeline standalone:
+   python run_screening.py --asx-only
+
+4. Run dual market:
+   python run_screening.py --both
+
+5. Verify reports are generated:
+   - Check reports/us/ for HTML files
+   - Check reports/asx/ for HTML files
+   - Verify regime data appears in reports
+
+6. Verify CSV exports:
+   - Check reports/us/ for CSV files
+   - Check reports/asx/ for CSV files
+
+================================================================================
+KNOWN LIMITATIONS
+================================================================================
+
+1. yfinance 401 "Invalid Crumb" Errors:
+   - These are Yahoo Finance API issues (external)
+   - NOT a code bug or DNS error
+   - Errors are intermittent and self-resolving
+   - System has fallback mechanisms
+
+2. Optional Components:
+   - FinBERT Sentiment: Falls back to keyword-based analysis
+   - LSTM Predictor: Falls back to technical analysis only
+
+================================================================================
+ROLLBACK INSTRUCTIONS
+================================================================================
+
+If you encounter issues with this deployment:
+
+1. Stop all running processes
+2. Extract the previous working backup:
+   - event_risk_guard_v1.3.20_REGIME_FINAL_20251121_040018.zip
+
+3. Clear Python cache
+4. Restart pipelines
+
+================================================================================
+SUPPORT & TROUBLESHOOTING
+================================================================================
+
+Error: "got an unexpected keyword argument 'stocks'"
+→ This means old cached bytecode is being used
+→ Solution: Clear __pycache__ directories and *.pyc files
+
+Error: "AttributeError: 'OpportunityScorer' object has no attribute 'score_batch'"
+→ This means the old deployment is being used
+→ Solution: Extract this CLEAN deployment package
+
+Error: "can't compare datetime.datetime to datetime.date"
+→ This is fixed in this build
+→ If still occurring, check you're using this deployment
+
+================================================================================
+VERSION INFORMATION
+================================================================================
+
+Package: Dual_Market_Screening_v1.3.20_HOTFIX_CLEAN
+Date: 2025-11-22
+Git Commit: eb110fe
+Branch: finbert-v4.0-development
+Previous Working: v1.3.20 REGIME_FINAL (before UI fixes introduced bugs)
+
+================================================================================
+END OF CRITICAL FIXES DOCUMENT
+================================================================================
