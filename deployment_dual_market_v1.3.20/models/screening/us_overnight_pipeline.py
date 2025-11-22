@@ -366,10 +366,10 @@ class USOvernightPipeline:
         logger.info(f"Generating predictions for {len(stocks)} stocks...")
         
         try:
+            # Use spi_sentiment parameter name (same as ASX pipeline)
             predicted = self.predictor.predict_batch(
                 stocks=stocks,
-                market_sentiment=sentiment,
-                event_risk_data=event_risk_data
+                spi_sentiment=sentiment
             )
             
             logger.info(f"✓ Predictions Generated: {len(predicted)} stocks")
@@ -384,10 +384,10 @@ class USOvernightPipeline:
         logger.info(f"Scoring opportunities for {len(stocks)} stocks...")
         
         try:
-            scored = self.scorer.score_batch(
+            # Use score_opportunities method (same as ASX pipeline)
+            scored = self.scorer.score_opportunities(
                 stocks=stocks,
-                market_sentiment=sentiment,
-                regime_data=regime_data
+                market_sentiment=sentiment
             )
             
             # Sort by score
@@ -408,12 +408,51 @@ class USOvernightPipeline:
         logger.info("Generating US market morning report...")
         
         try:
+            # Prepare sector summary (group stocks by sector)
+            sector_summary = {}
+            
+            # Group stocks by sector based on scanner's sector configuration
+            for sector_name in self.scanner.sectors.keys():
+                # Get stocks for this sector
+                sector_stocks = [
+                    s for s in stocks 
+                    if s.get('symbol', '') in self.scanner.sectors[sector_name].get('stocks', [])
+                ]
+                
+                # Calculate sector statistics
+                if sector_stocks:
+                    scores = [s['score'] for s in sector_stocks if 'score' in s]
+                    sector_summary[sector_name] = {
+                        'total_stocks': len(sector_stocks),
+                        'avg_score': sum(scores) / len(scores) if scores else 0,
+                        'top_score': max(scores) if scores else 0,
+                        'bottom_score': min(scores) if scores else 0,
+                        'score_range': (min(scores), max(scores)) if scores else (0, 0),
+                        'high_quality_count': len([s for s in scores if s >= 75]),
+                        'medium_quality_count': len([s for s in scores if 50 <= s < 75]),
+                        'low_quality_count': len([s for s in scores if s < 50])
+                    }
+            
+            # Prepare system stats
+            elapsed_time = time.time() - self.start_time
+            pred_summary = self.predictor.get_prediction_summary(stocks)
+            
+            system_stats = {
+                'total_scanned': len(stocks),
+                'buy_signals': pred_summary.get('buy_count', 0),
+                'sell_signals': pred_summary.get('sell_count', 0),
+                'processing_time_seconds': int(elapsed_time),
+                'lstm_status': 'Available' if self.predictor.lstm_available else 'Not Available',
+                'market_regime': regime_data.get('current_state', 'Unknown'),
+                'crash_risk': regime_data.get('crash_risk', 'Unknown')
+            }
+            
+            # Generate report with correct parameters
             report_path = self.reporter.generate_morning_report(
-                stocks=stocks,
-                market_sentiment=sentiment,
-                regime_data=regime_data,
-                event_risk_data=event_risk_data,
-                market="US"
+                opportunities=stocks,
+                spi_sentiment=sentiment,  # US market sentiment
+                sector_summary=sector_summary,
+                system_stats=system_stats
             )
             
             logger.info(f"✓ Report generated: {report_path}")
@@ -421,12 +460,26 @@ class USOvernightPipeline:
             
         except Exception as e:
             logger.error(f"Report generation failed: {e}")
-            # Create minimal report
+            logger.error(f"Full error: {traceback.format_exc()}")
+            
+            # Create minimal fallback report
             report_dir = BASE_PATH / 'reports' / 'us'
             report_dir.mkdir(parents=True, exist_ok=True)
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             fallback_path = report_dir / f'us_report_{timestamp}_error.txt'
-            fallback_path.write_text(f"Report generation failed: {e}")
+            
+            error_content = f"""US Market Report Generation Error
+Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+Error: {e}
+
+Stocks processed: {len(stocks)}
+Sentiment: {sentiment}
+Regime: {regime_data}
+
+Full traceback:
+{traceback.format_exc()}
+"""
+            fallback_path.write_text(error_content)
             return fallback_path
     
     def _finalize_pipeline(self, scored_stocks: List[Dict], us_sentiment: Dict, 
@@ -463,7 +516,7 @@ class USOvernightPipeline:
         # Export CSV if available
         if self.csv_exporter is not None:
             try:
-                csv_path = self.csv_exporter.export_opportunities(scored_stocks, market="US")
+                csv_path = self.csv_exporter.export_screening_results(scored_stocks, sentiment)
                 logger.info(f"✓ CSV exported: {csv_path}")
             except Exception as e:
                 logger.warning(f"CSV export failed: {e}")

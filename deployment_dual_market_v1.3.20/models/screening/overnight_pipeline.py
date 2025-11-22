@@ -276,8 +276,8 @@ class OvernightPipeline:
                 if self.notifier is None:
                     logger.info("  Email notifications disabled (module not available)")
                 else:
-                    # Send morning report
-                    if self.notifier.enabled and self.notifier.send_morning_report:
+                    # Send morning report (method already checks if enabled)
+                    if self.notifier.enabled:
                         logger.info("Sending morning report email...")
                         self.notifier.send_morning_report(
                             report_path=str(report_path),
@@ -285,8 +285,8 @@ class OvernightPipeline:
                             top_opportunities=results.get('top_opportunities', [])
                         )
                     
-                    # Send alerts for high-confidence opportunities
-                    if self.notifier.enabled and self.notifier.send_alerts:
+                    # Send alerts for high-confidence opportunities (method already checks if enabled)
+                    if self.notifier.enabled:
                         logger.info("Checking for high-confidence opportunities...")
                         self.notifier.send_alert(results.get('top_opportunities', []))
                     
@@ -305,7 +305,7 @@ class OvernightPipeline:
             
             # Send error notification
             try:
-                if self.notifier is not None and self.notifier.enabled and self.notifier.send_errors:
+                if self.notifier is not None and self.notifier.enabled:
                     logger.info("Sending error notification...")
                     self.notifier.send_error(
                         error_message=str(e),

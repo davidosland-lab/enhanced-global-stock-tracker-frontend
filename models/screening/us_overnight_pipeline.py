@@ -366,10 +366,10 @@ class USOvernightPipeline:
         logger.info(f"Generating predictions for {len(stocks)} stocks...")
         
         try:
+            # Use spi_sentiment parameter name (same as ASX pipeline)
             predicted = self.predictor.predict_batch(
                 stocks=stocks,
-                market_sentiment=sentiment,
-                event_risk_data=event_risk_data
+                spi_sentiment=sentiment
             )
             
             logger.info(f"✓ Predictions Generated: {len(predicted)} stocks")
@@ -384,10 +384,10 @@ class USOvernightPipeline:
         logger.info(f"Scoring opportunities for {len(stocks)} stocks...")
         
         try:
-            scored = self.scorer.score_batch(
+            # Use score_opportunities method (same as ASX pipeline)
+            scored = self.scorer.score_opportunities(
                 stocks=stocks,
-                market_sentiment=sentiment,
-                regime_data=regime_data
+                market_sentiment=sentiment
             )
             
             # Sort by score
@@ -516,7 +516,7 @@ Full traceback:
         # Export CSV if available
         if self.csv_exporter is not None:
             try:
-                csv_path = self.csv_exporter.export_opportunities(scored_stocks, market="US")
+                csv_path = self.csv_exporter.export_screening_results(scored_stocks, sentiment)
                 logger.info(f"✓ CSV exported: {csv_path}")
             except Exception as e:
                 logger.warning(f"CSV export failed: {e}")

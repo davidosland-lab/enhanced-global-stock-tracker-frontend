@@ -84,6 +84,10 @@ class USMarketRegimeEngine:
                     hist = hist.reset_index()
                     hist = hist.set_index('date')
                 
+                # Ensure index is DatetimeIndex
+                if not isinstance(hist.index, pd.DatetimeIndex):
+                    hist.index = pd.to_datetime(hist.index)
+                
                 # Standardize column names
                 hist.columns = [col.capitalize() for col in hist.columns]
                 logger.info(f"Fetched {len(hist)} days of S&P 500 data")
