@@ -443,8 +443,8 @@ class USOvernightPipeline:
                 'sell_signals': pred_summary.get('sell_count', 0),
                 'processing_time_seconds': int(elapsed_time),
                 'lstm_status': 'Available' if self.predictor.lstm_available else 'Not Available',
-                'market_regime': regime_data.get('current_state', 'Unknown'),
-                'crash_risk': regime_data.get('crash_risk', 'Unknown')
+                'market_regime': regime_data.get('regime_label', 'Unknown'),
+                'crash_risk': regime_data.get('crash_risk_score', 'Unknown')
             }
             
             # Generate report with correct parameters
