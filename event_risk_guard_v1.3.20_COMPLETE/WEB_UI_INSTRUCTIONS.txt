@@ -1,0 +1,323 @@
+================================================================================
+                        WEB UI QUICK START GUIDE
+================================================================================
+
+The web UI was missing templates and static files in the initial v1.3.20 release.
+This has been FIXED in the updated package.
+
+================================================================================
+HOW TO START THE WEB UI
+================================================================================
+
+Windows:
+--------
+1. Double-click: START_WEB_UI.bat
+2. Wait for "Running on http://0.0.0.0:5000" message
+3. Open browser: http://localhost:5000
+
+Linux/Mac:
+----------
+1. Open terminal in package directory
+2. Run: python3 web_ui.py
+3. Wait for "Running on http://0.0.0.0:5000" message
+4. Open browser: http://localhost:5000
+
+================================================================================
+WHAT THE WEB UI SHOWS
+================================================================================
+
+Dashboard Page (http://localhost:5000):
+---------------------------------------
+✓ System Status
+  - Scanner availability
+  - LSTM training status
+  - Email notifications status
+  - SPI monitoring status
+
+✓ Latest Report
+  - Most recent screening results
+  - Date and time of last run
+  - Link to view full HTML report
+
+✓ Configuration Overview
+  - Current settings
+  - Regime detector status
+  - FinBERT integration status
+
+✓ Recent Logs
+  - Last 200 lines from pipeline logs
+  - Real-time log viewer
+  - Error highlighting
+
+✓ Trained Models
+  - List of LSTM models
+  - Model file sizes
+  - Last modified dates
+
+================================================================================
+API ENDPOINTS
+================================================================================
+
+The web UI provides these API endpoints:
+
+GET /api/status
+- Returns system status and latest report info
+
+GET /api/config
+- Returns current configuration (passwords masked)
+
+POST /api/config
+- Update configuration settings
+
+GET /api/reports
+- List all available HTML reports
+
+GET /api/reports/<filename>
+- Download specific report
+
+GET /api/models
+- List all trained LSTM models
+
+GET /api/logs
+- Get recent log entries (last 200 lines)
+
+GET /api/sectors
+- Get ASX sectors configuration
+
+POST /api/test-email
+- Send test email notification
+
+================================================================================
+WHERE REPORTS ARE STORED
+================================================================================
+
+HTML Reports:
+-------------
+Location: models/screening/reports/morning_reports/
+Format: YYYY-MM-DD_market_report.html
+View in: Browser or Web UI
+
+Pipeline State:
+---------------
+Location: models/screening/reports/pipeline_state/
+Format: YYYY-MM-DD_pipeline_state.json
+Contains: Phase completion status, timing, stocks processed
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Error: "TemplateNotFound: dashboard.html"
+-----------------------------------------
+Solution: Re-extract the complete v1.3.20 package
+The updated package includes:
+- templates/dashboard.html
+- static/css/dashboard.css
+- static/js/dashboard.js
+
+Error: "Port 5000 is already in use"
+------------------------------------
+Solution 1: Kill existing process using port 5000
+  Windows: netstat -ano | findstr :5000
+           taskkill /PID <PID> /F
+  Linux:   lsof -ti:5000 | xargs kill -9
+
+Solution 2: Change port in web_ui.py
+  Line 293: app.run(host='0.0.0.0', port=5001, debug=True)
+
+Error: "No module named 'flask'"
+--------------------------------
+Solution: Install Flask
+  pip install flask flask-cors
+
+Error: "Cannot import name 'StockScanner'"
+------------------------------------------
+Solution: This is a warning, not an error
+  The web UI will work without scanner modules
+  Some features may be limited
+
+Error: "No reports found"
+-------------------------
+Solution: Run the pipeline first
+  Windows: RUN_PIPELINE_TEST.bat
+  Linux:   ./run_pipeline_test.sh
+  Reports will be generated in models/screening/reports/
+
+================================================================================
+FEATURES OVERVIEW
+================================================================================
+
+1. DASHBOARD VIEW
+   - Real-time system status
+   - Latest report preview
+   - Quick access to logs
+   - Configuration summary
+
+2. REPORTS BROWSER
+   - View all historical reports
+   - Filter by date
+   - Download reports
+   - Preview in web UI
+
+3. CONFIGURATION EDITOR
+   - Edit screening_config.json
+   - Change LSTM training settings
+   - Modify regime detector parameters
+   - Update email settings
+
+4. LOG VIEWER
+   - Real-time log streaming
+   - Search and filter logs
+   - Error highlighting
+   - Download log files
+
+5. MODEL MANAGER
+   - View trained LSTM models
+   - Check model metadata
+   - See training dates
+   - Model performance metrics
+
+6. EMAIL TESTER
+   - Send test emails
+   - Verify SMTP settings
+   - Check notification delivery
+
+================================================================================
+SECURITY NOTES
+================================================================================
+
+1. The web UI runs on http://0.0.0.0:5000
+   - Accessible from any network interface
+   - NOT secured with HTTPS
+   - Suitable for local development only
+
+2. For production use:
+   - Use a reverse proxy (nginx, Apache)
+   - Enable HTTPS with SSL certificate
+   - Add authentication (Flask-Login)
+   - Restrict access by IP
+
+3. Configuration passwords:
+   - Displayed as ******** in web UI
+   - Not sent in API responses
+   - Stored in screening_config.json
+
+================================================================================
+UPDATING CONFIGURATION VIA WEB UI
+================================================================================
+
+1. Navigate to http://localhost:5000/api/config
+2. View current configuration (JSON format)
+3. Make changes via POST request or dashboard
+4. Changes saved to models/config/screening_config.json
+5. Restart pipeline for changes to take effect
+
+Example using curl:
+-------------------
+curl -X POST http://localhost:5000/api/config \
+  -H "Content-Type: application/json" \
+  -d '{"lstm_training": {"max_models_per_night": 50}}'
+
+================================================================================
+REQUIRED FILES FOR WEB UI
+================================================================================
+
+Main Files:
+-----------
+✓ web_ui.py                      - Flask application
+✓ START_WEB_UI.bat               - Windows launcher
+✓ templates/dashboard.html       - Main dashboard template
+✓ static/css/dashboard.css       - Dashboard styling
+✓ static/js/dashboard.js         - Dashboard JavaScript
+
+Dependencies:
+-------------
+✓ Flask                          - Web framework
+✓ Flask-CORS                     - Cross-origin support
+✓ pytz                           - Timezone handling
+✓ json (built-in)                - JSON parsing
+✓ pathlib (built-in)             - Path handling
+
+Configuration:
+--------------
+✓ models/config/screening_config.json  - Main configuration
+✓ models/config/asx_sectors.json       - Sector definitions
+
+Reports:
+--------
+✓ models/screening/reports/morning_reports/   - HTML reports
+✓ models/screening/reports/pipeline_state/    - Pipeline state
+
+Logs:
+-----
+✓ models/screening/logs/                      - Pipeline logs
+
+================================================================================
+STOPPING THE WEB UI
+================================================================================
+
+Method 1: Close Terminal Window
+--------------------------------
+Simply close the command prompt or terminal where web UI is running
+
+Method 2: Keyboard Interrupt
+-----------------------------
+Press: Ctrl+C in the terminal window
+
+Method 3: Kill Process
+----------------------
+Windows:
+  tasklist | findstr python
+  taskkill /PID <PID> /F
+
+Linux/Mac:
+  ps aux | grep web_ui.py
+  kill <PID>
+
+================================================================================
+ADVANCED USAGE
+================================================================================
+
+Running on Different Port:
+--------------------------
+Edit web_ui.py line 293:
+  app.run(host='0.0.0.0', port=8080, debug=True)
+
+Running in Production Mode:
+---------------------------
+Edit web_ui.py line 293:
+  app.run(host='0.0.0.0', port=5000, debug=False)
+
+Accessing from Other Computers:
+--------------------------------
+1. Find your IP address:
+   Windows: ipconfig
+   Linux:   ifconfig or ip addr
+
+2. Open firewall port 5000:
+   Windows: Windows Defender Firewall
+   Linux:   sudo ufw allow 5000
+
+3. Access from other computer:
+   http://<YOUR_IP>:5000
+
+================================================================================
+TESTING THE WEB UI
+================================================================================
+
+1. Start web UI: START_WEB_UI.bat
+2. Check console output for errors
+3. Verify "Running on http://0.0.0.0:5000" message
+4. Open browser: http://localhost:5000
+5. Check dashboard loads without errors
+6. Navigate to: http://localhost:5000/api/status
+7. Should see JSON response with system status
+8. If all works: Web UI is properly configured
+
+================================================================================
+
+Version: 1.3.20
+Last Updated: 2025-11-20
+Status: Web UI Fixed - Templates Included
+
+================================================================================

@@ -1,0 +1,79 @@
+{
+  "version": "1.0.0",
+  "enabled": true,
+  "schedule": {
+    "start_time": "22:00",
+    "end_time": "07:00",
+    "timezone": "Australia/Sydney",
+    "run_days": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Sunday"]
+  },
+  "screening": {
+    "stocks_per_sector": 30,
+    "min_confidence": 0.6,
+    "ensemble_weights": {
+      "lstm": 0.45,
+      "trend": 0.25,
+      "technical": 0.15,
+      "sentiment": 0.15
+    },
+    "opportunity_threshold": 65,
+    "top_picks_count": 10,
+    "watch_list_count": 5
+  },
+  "lstm_training": {
+    "enabled": true,
+    "max_models_per_night": 20,
+    "stale_threshold_days": 7,
+    "epochs": 50,
+    "batch_size": 32,
+    "priority_stocks": ["CBA.AX", "BHP.AX", "CSL.AX", "WBC.AX", "ANZ.AX"]
+  },
+  "spi_monitoring": {
+    "enabled": true,
+    "check_interval_minutes": 30,
+    "gap_threshold_pct": 0.3,
+    "correlation_weight": 0.85
+  },
+  "risk_assessment": {
+    "enabled": true,
+    "volatility_window": 30,
+    "max_drawdown_window": 90,
+    "sharpe_lookback": 252
+  },
+  "report": {
+    "format": ["html", "json"],
+    "save_location": "reports/morning_reports",
+    "email_enabled": false,
+    "email_recipients": [],
+    "email_time": "07:00",
+    "include_charts": true,
+    "include_technical_analysis": true,
+    "include_sentiment_scores": true
+  },
+  "data_sources": {
+    "primary": "yfinance",
+    "backup": "alpha_vantage",
+    "news_sources": ["abc_news_au", "afr", "asx_announcements"],
+    "cache_enabled": true,
+    "cache_expiry_hours": 4
+  },
+  "logging": {
+    "level": "INFO",
+    "file": "logs/screening/screener_{date}.log",
+    "console_output": true,
+    "save_progress": true,
+    "progress_file": "reports/screener_progress.json"
+  },
+  "performance": {
+    "max_concurrent_predictions": 5,
+    "timeout_per_stock_seconds": 120,
+    "retry_failed_stocks": true,
+    "max_retries": 3
+  },
+  "alerts": {
+    "email_on_error": false,
+    "email_on_completion": false,
+    "log_warnings": true,
+    "notify_stale_models": true
+  }
+}

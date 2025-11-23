@@ -1,0 +1,360 @@
+================================================================================
+        DUAL MARKET SCREENING SYSTEM - DEPLOYMENT MANIFEST
+================================================================================
+
+📦 PACKAGE INFORMATION
+================================================================================
+
+  Package Name:    Dual_Market_Screening_v1.3.20_20251121.zip
+  Package Size:    1.1 MB
+  Creation Date:   2025-11-21
+  Version:         ASX v1.3.20 + US v1.0.0
+  Status:          ✅ PRODUCTION READY
+
+================================================================================
+📋 PACKAGE CONTENTS
+================================================================================
+
+✅ ASX Market Pipeline (Event Risk Guard v1.3.20)
+   - 240 ASX stocks across 8 sectors
+   - ^AXJO (ASX 200) sentiment analysis
+   - Market regime engine with crash risk detection
+   - Event risk guard (Basel III, earnings protection)
+   - Complete overnight workflow
+
+✅ US Market Pipeline (v1.0.0)
+   - 240 US stocks across 8 sectors
+   - ^GSPC (S&P 500) and ^VIX analysis
+   - US market regime engine (HMM-based)
+   - NYSE/NASDAQ screening infrastructure
+   - Complete overnight workflow
+
+✅ Unified System
+   - Single launcher (run_screening.py)
+   - Parallel and sequential execution
+   - Shared prediction/scoring engines
+   - Comprehensive reporting
+
+================================================================================
+📊 SYSTEM SPECIFICATIONS
+================================================================================
+
+Total Market Coverage:    480 stocks (240 ASX + 240 US)
+Total Sectors:            16 sectors (8 ASX + 8 US)
+Primary Indices:          ^AXJO (ASX 200), ^GSPC (S&P 500)
+Volatility Tracking:      ^VIX (US only)
+Execution Modes:          Sequential, Parallel
+Report Formats:           HTML, JSON, CSV
+
+ASX Sectors:
+  1. Financials (30)          5. Energy (30)
+  2. Materials (30)           6. Industrials (30)
+  3. Healthcare (30)          7. Consumer_Staples (30)
+  4. Technology (30)          8. Real_Estate (30)
+
+US Sectors:
+  1. Financials (30)          5. Energy (30)
+  2. Materials (30)           6. Industrials (30)
+  3. Healthcare (30)          7. Consumer_Discretionary (30)
+  4. Technology (30)          8. Consumer_Staples (30)
+
+================================================================================
+🗂️ FILE STRUCTURE
+================================================================================
+
+deployment_dual_market_v1.3.20/
+├── models/
+│   ├── config/
+│   │   ├── asx_sectors.json                    ASX configuration
+│   │   ├── us_sectors.json                     US configuration
+│   │   └── us_market_config.py                 US parameters
+│   └── screening/
+│       ├── overnight_pipeline.py               ASX pipeline
+│       ├── us_overnight_pipeline.py            US pipeline
+│       ├── spi_monitor.py                      ASX sentiment
+│       ├── us_market_monitor.py                US sentiment
+│       ├── market_regime_engine.py             ASX regime
+│       ├── us_market_regime_engine.py          US regime
+│       ├── stock_scanner.py                    ASX scanner
+│       ├── us_stock_scanner.py                 US scanner
+│       ├── batch_predictor.py                  Shared predictor
+│       ├── opportunity_scorer.py               Shared scorer
+│       ├── report_generator.py                 Shared reporter
+│       ├── event_risk_guard.py                 Event protection
+│       └── [additional modules...]
+├── run_screening.py                            Unified launcher
+├── requirements.txt                            Dependencies
+├── DEPLOYMENT_README.md                        Main guide
+├── US_MARKET_PIPELINE_README.md                US docs
+├── US_PIPELINE_DEPLOYMENT_SUMMARY.md           Deployment info
+├── QUICK_START_US_PIPELINE.txt                 Quick reference
+└── ROLLBACK_POINT_v1.3.20_REGIME_FINAL.md      ASX docs
+
+================================================================================
+⚙️ SYSTEM REQUIREMENTS
+================================================================================
+
+Software:
+  - Python 3.8 or higher
+  - pip (Python package manager)
+
+Hardware:
+  - CPU: 2+ cores recommended
+  - RAM: 4GB+ recommended
+  - Disk: 2GB+ free space
+  - Network: Stable internet connection
+
+Dependencies:
+  - yahooquery>=2.3.0         Market data API
+  - pandas>=1.3.0             Data processing
+  - numpy>=1.21.0             Numerical computing
+  - hmmlearn>=0.2.7           HMM regime detection
+  - scikit-learn>=1.0.0       Machine learning
+  - [See requirements.txt for complete list]
+
+================================================================================
+🚀 INSTALLATION INSTRUCTIONS
+================================================================================
+
+Step 1: Extract Package
+  unzip Dual_Market_Screening_v1.3.20_20251121.zip
+  cd deployment_dual_market_v1.3.20
+
+Step 2: Install Dependencies
+  pip install -r requirements.txt
+
+Step 3: Verify Installation
+  python -c "from models.screening.us_stock_scanner import USStockScanner; print('✓ Ready')"
+
+Step 4: Run Test
+  python run_screening.py --market both --stocks 5
+
+================================================================================
+📖 USAGE GUIDE
+================================================================================
+
+Basic Commands:
+  python run_screening.py --market us          Run US only
+  python run_screening.py --market asx         Run ASX only
+  python run_screening.py --market both        Run both (sequential)
+  python run_screening.py --market both --parallel   Run both (parallel)
+
+Advanced Options:
+  --stocks NUM              Stocks per sector (default: 30)
+  --sectors "Sector1,..."   Specific sectors only
+  --parallel                Enable parallel execution
+
+Examples:
+  # Quick test with 10 stocks
+  python run_screening.py --market both --stocks 10
+
+  # US Technology and Healthcare only
+  python run_screening.py --market us --sectors "Technology,Healthcare"
+
+  # Full production run (parallel)
+  python run_screening.py --market both --parallel
+
+================================================================================
+⏱️ EXECUTION TIMES
+================================================================================
+
+Configuration                         Approximate Duration
+--------------------------------------------------------------------
+Quick test (5 stocks/sector)         2-3 minutes
+Partial run (20 stocks/sector)       8-12 minutes per market
+Full run (30 stocks/sector)          15-20 minutes per market
+Both markets (sequential)            30-40 minutes total
+Both markets (parallel)              20-25 minutes total
+
+================================================================================
+📊 OUTPUT LOCATIONS
+================================================================================
+
+Reports (HTML):
+  ASX:  reports/morning_report_YYYYMMDD.html
+  US:   reports/us/us_morning_report_YYYYMMDD.html
+
+Results (JSON):
+  ASX:  data/pipeline_results_YYYYMMDD.json
+  US:   data/us/us_pipeline_results_YYYYMMDD.json
+
+Exports (CSV):
+  ASX:  data/opportunities_YYYYMMDD.csv
+  US:   data/us/us_opportunities_YYYYMMDD.csv
+
+Logs:
+  ASX:  logs/screening/overnight_pipeline.log
+  US:   logs/screening/us/us_overnight_pipeline.log
+
+================================================================================
+✅ VERIFICATION CHECKLIST
+================================================================================
+
+Pre-Deployment:
+  [ ] Python 3.8+ installed
+  [ ] pip package manager available
+  [ ] Sufficient disk space (2GB+)
+  [ ] Internet connection stable
+
+Post-Installation:
+  [ ] Dependencies installed successfully
+  [ ] Import test passes
+  [ ] Quick test runs without errors
+  [ ] Output files generated correctly
+  [ ] Logs show no critical errors
+
+Component Tests:
+  [ ] python models/screening/us_market_monitor.py
+  [ ] python models/screening/us_stock_scanner.py
+  [ ] python models/screening/us_market_regime_engine.py
+
+Integration Test:
+  [ ] python run_screening.py --market both --stocks 5
+
+================================================================================
+🔄 SCHEDULING (OPTIONAL)
+================================================================================
+
+Linux/Mac Cron Jobs:
+
+  # Both markets daily at 6 AM ET (before US market open)
+  0 6 * * 1-5 cd /path/to/deployment_dual_market_v1.3.20 && python run_screening.py --market both
+
+  # Or separately
+  0 6 * * 1-5 cd /path/to/deployment_dual_market_v1.3.20 && python run_screening.py --market asx
+  0 7 * * 1-5 cd /path/to/deployment_dual_market_v1.3.20 && python run_screening.py --market us
+
+Windows Task Scheduler:
+  Create: run_dual_market.bat
+  Content: 
+    @echo off
+    cd C:\path\to\deployment_dual_market_v1.3.20
+    python run_screening.py --market both
+    pause
+  Schedule: Daily at 6:00 AM (weekdays only)
+
+================================================================================
+🆘 TROUBLESHOOTING
+================================================================================
+
+Issue: Import Errors
+  Solution: pip install -r requirements.txt
+
+Issue: Data Fetch Failures
+  Solution: Check internet connection, verify yahooquery service
+
+Issue: Memory Errors
+  Solution: Reduce --stocks parameter, run markets separately
+
+Issue: Slow Execution
+  Solution: Use --parallel mode, optimize system resources
+
+Issue: Report Not Generated
+  Solution: Check logs/ directory for errors
+
+Detailed Logs:
+  ASX:  logs/screening/overnight_pipeline.log
+  US:   logs/screening/us/us_overnight_pipeline.log
+  Error states: logs/screening/us/errors/
+
+================================================================================
+📚 DOCUMENTATION FILES
+================================================================================
+
+Main Documentation:
+  DEPLOYMENT_README.md          Complete deployment guide
+  US_MARKET_PIPELINE_README.md  US pipeline documentation
+  QUICK_START_US_PIPELINE.txt   Quick reference guide
+
+Technical Documentation:
+  US_PIPELINE_DEPLOYMENT_SUMMARY.md    Technical specifications
+  ROLLBACK_POINT_v1.3.20_REGIME_FINAL.md   ASX pipeline reference
+
+================================================================================
+🔐 IMPORTANT DISCLAIMERS
+================================================================================
+
+⚠️ NOT FINANCIAL ADVICE
+   This system is for educational and research purposes only.
+   All trading decisions are made at your own risk.
+
+⚠️ NO GUARANTEES
+   Past performance does not guarantee future results.
+   Market conditions change and models may not predict accurately.
+
+⚠️ USER RESPONSIBILITY
+   Users are solely responsible for:
+   - Verifying data accuracy
+   - Making trading decisions
+   - Managing risk exposure
+   - Complying with regulations
+
+⚠️ DATA DISCLAIMER
+   Uses free-tier Yahoo Finance API (yahooquery)
+   Data may be delayed, incomplete, or inaccurate
+   Always verify critical data with official sources
+
+================================================================================
+📝 VERSION HISTORY
+================================================================================
+
+v1.3.20 + v1.0.0 (2025-11-21) - CURRENT
+  ✅ Complete dual market system
+  ✅ ASX Event Risk Guard v1.3.20
+  ✅ US Market Pipeline v1.0.0
+  ✅ Unified launcher
+  ✅ 480 total stocks across 16 sectors
+  ✅ Parallel execution support
+  ✅ Complete documentation
+
+v1.3.20 (2025-11-21) - Previous
+  ✅ ASX Market Regime Engine
+  ✅ Market regime UI integration
+  ✅ Crash risk detection
+  ✅ Event risk guard (Basel III)
+
+================================================================================
+📞 SUPPORT & CONTACT
+================================================================================
+
+Issues:
+  - Check logs in logs/screening/ directory
+  - Review documentation files
+  - Verify system requirements
+
+Resources:
+  - DEPLOYMENT_README.md for complete guide
+  - QUICK_START_US_PIPELINE.txt for quick help
+  - US_PIPELINE_DEPLOYMENT_SUMMARY.md for technical details
+
+Maintenance:
+  - Maintained by Event Risk Guard Team
+  - Regular updates for market conditions
+  - Community-driven improvements
+
+================================================================================
+✅ DEPLOYMENT READY
+================================================================================
+
+This package is PRODUCTION READY and can be deployed immediately.
+
+Recommended First Steps:
+  1. Extract package
+  2. Install dependencies
+  3. Run verification tests
+  4. Execute quick test (5 stocks)
+  5. Review generated reports
+  6. Scale to full production (30 stocks)
+  7. Schedule daily execution
+
+Package Status:     ✅ COMPLETE
+Testing Status:     ✅ VERIFIED
+Documentation:      ✅ COMPREHENSIVE
+Support:            ✅ AVAILABLE
+
+================================================================================
+End of Deployment Manifest
+Package: Dual_Market_Screening_v1.3.20_20251121.zip
+Date: 2025-11-21
+Maintainer: Event Risk Guard Team
+================================================================================

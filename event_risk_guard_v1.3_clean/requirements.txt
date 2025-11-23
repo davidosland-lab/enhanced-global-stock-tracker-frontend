@@ -1,0 +1,201 @@
+# Event Risk Guard v1.0 - Complete Requirements
+# Python: 3.8+
+# Last Updated: 2025-11-12
+#
+# IMPORTANT: These versions are tested and confirmed working together.
+# The lxml version is specifically <5.0.0 to be compatible with yahooquery 2.3.7
+
+# ==============================================================================
+# CORE DATA FETCHING (CRITICAL - REQUIRED)
+# ==============================================================================
+
+# yfinance - Yahoo Finance API wrapper (PRIMARY data source)
+# CRITICAL: Must be 0.2.x+ for curl_cffi support
+yfinance>=0.2.66
+
+# yahooquery - Yahoo Finance alternative API (FALLBACK data source)
+# IMPORTANT: Requires lxml<5.0.0
+yahooquery>=2.3.7
+
+# curl_cffi - Required by yfinance 0.2.x+ for Yahoo Finance compatibility
+curl_cffi>=0.13.0
+
+# requests - HTTP library
+requests>=2.31.0
+
+# ==============================================================================
+# DATA PROCESSING (REQUIRED)
+# ==============================================================================
+
+# pandas - Data manipulation and analysis
+pandas>=2.0.0
+
+# pandas-ta - Technical analysis indicators
+pandas-ta>=0.4.0
+
+# numpy - Numerical computing
+numpy>=1.24.0
+
+# python-dateutil - Date/time utilities
+python-dateutil>=2.8.2
+
+# pytz - Timezone handling
+pytz>=2023.3
+
+# ==============================================================================
+# WEB SCRAPING & PARSING (REQUIRED)
+# ==============================================================================
+
+# beautifulsoup4 - HTML parsing for web scraping
+beautifulsoup4>=4.12.0
+
+# lxml - XML/HTML parser
+# CRITICAL: Must be <5.0.0 for yahooquery compatibility
+lxml>=4.9.3,<5.0.0
+
+# feedparser - RSS/Atom feed parsing for news
+feedparser>=6.0.10
+
+# ==============================================================================
+# MACHINE LEARNING - FINBERT (REQUIRED FOR SENTIMENT ANALYSIS)
+# ==============================================================================
+
+# PyTorch - Deep learning framework (required for FinBERT)
+# Note: This installs the full version. For CPU-only (smaller), see notes below.
+torch>=2.0.0
+
+# transformers - Hugging Face transformers (required for FinBERT sentiment)
+transformers>=4.30.0
+
+# ==============================================================================
+# MACHINE LEARNING - LSTM (OPTIONAL BUT RECOMMENDED)
+# ==============================================================================
+
+# TensorFlow - Deep learning framework (for LSTM models)
+# Comment out if not using LSTM predictions
+tensorflow>=2.13.0
+
+# Keras - High-level neural networks API (bundled with TensorFlow 2.x)
+# Usually auto-installed with TensorFlow, but listed for clarity
+keras>=2.13.0
+
+# ==============================================================================
+# MACHINE LEARNING - COMMON (REQUIRED)
+# ==============================================================================
+
+# scikit-learn - Traditional ML algorithms and preprocessing
+scikit-learn>=1.3.0
+
+# ==============================================================================
+# TECHNICAL ANALYSIS (REQUIRED)
+# ==============================================================================
+
+# ta - Technical analysis library
+ta>=0.11.0
+
+# ==============================================================================
+# WEB FRAMEWORK & SCHEDULING (OPTIONAL)
+# ==============================================================================
+
+# Flask - Web framework (optional, for API endpoints)
+flask>=2.3.0
+
+# flask-cors - CORS support for Flask
+flask-cors>=4.0.0
+
+# APScheduler - Job scheduling (optional, for automated runs)
+APScheduler>=3.10.0
+
+# ==============================================================================
+# MARKET REGIME ENGINE (OPTIONAL - v1.3)
+# ==============================================================================
+
+# hmmlearn - Hidden Markov Models for regime detection
+# OPTIONAL: System falls back to GaussianMixture if not installed
+hmmlearn>=0.3.0
+
+# arch - GARCH volatility forecasting
+# OPTIONAL: System falls back to EWMA if not installed
+arch>=5.3.0
+
+# xgboost - Gradient boosting for meta-model
+# OPTIONAL: Only needed if using meta_boost_model.py
+xgboost>=1.7.0
+
+# ==============================================================================
+# INSTALLATION INSTRUCTIONS
+# ==============================================================================
+#
+# STANDARD INSTALLATION (Includes everything):
+# -------------------------------------------
+# Windows:
+#   python -m pip install --upgrade pip
+#   python -m pip install "yahooquery>=2.3.7"
+#   python -m pip install -r requirements.txt
+#
+# Linux/Mac:
+#   pip3 install --upgrade pip
+#   pip3 install "yahooquery>=2.3.7"
+#   pip3 install -r requirements.txt
+#
+# MINIMAL INSTALLATION (FinBERT only, no LSTM):
+# ---------------------------------------------
+# 1. Comment out TensorFlow and Keras lines above
+# 2. Install as usual
+# Note: System will work with FinBERT sentiment only
+#
+# CPU-ONLY PYTORCH (Smaller download, faster install):
+# ----------------------------------------------------
+# pip install torch --index-url https://download.pytorch.org/whl/cpu
+# Then: pip install -r requirements.txt
+#
+# GPU-ACCELERATED PYTORCH (Faster inference, requires CUDA):
+# ----------------------------------------------------------
+# See: https://pytorch.org/get-started/locally/
+# Then: pip install -r requirements.txt
+#
+# TROUBLESHOOTING:
+# ---------------
+# If lxml conflicts occur:
+#   1. Install yahooquery first: pip install yahooquery==2.3.7
+#   2. Verify lxml version: pip show lxml (should be 4.9.x, NOT 5.0+)
+#   3. Install remaining: pip install -r requirements.txt
+#
+# If TensorFlow fails to install on older systems:
+#   - Try: pip install tensorflow-cpu>=2.13.0 (CPU-only version)
+#   - Or comment out TensorFlow/Keras (system will use FinBERT only)
+#
+# ==============================================================================
+# WHAT EACH ML COMPONENT DOES:
+# ==============================================================================
+#
+# PyTorch + transformers (REQUIRED):
+#   - FinBERT sentiment analysis on news headlines
+#   - Event Risk Guard sentiment analysis (72-hour window)
+#   - Market sentiment analysis
+#   - Size: ~1-2 GB download (full version)
+#
+# TensorFlow + Keras (OPTIONAL):
+#   - LSTM price prediction models (when trained)
+#   - Ensemble predictions (LSTM 45% weight)
+#   - Fallback to FinBERT-only if not installed
+#   - Size: ~400-500 MB download
+#
+# Market Regime Engine (OPTIONAL - v1.3):
+#   - hmmlearn: Hidden Markov Models for regime detection (calm/normal/high_vol)
+#   - arch: GARCH(1,1) volatility forecasting
+#   - xgboost: Meta-model ensemble predictions
+#   - System works without these (falls back to simpler methods)
+#   - Size: ~50-100 MB total
+#
+# Without TensorFlow:
+#   - System works perfectly with FinBERT sentiment only
+#   - No LSTM predictions (FinBERT provides ~70% of value)
+#   - Lighter installation, faster setup
+#
+# Without Regime Engine:
+#   - System works with standard factor analysis only
+#   - No market regime detection or volatility forecasting
+#   - No crash risk scoring
+#
+# ==============================================================================

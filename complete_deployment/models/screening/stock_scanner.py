@@ -17,6 +17,7 @@ from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
 import time
 import yfinance as yf
+from yahooquery import Ticker as YQTicker
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -27,6 +28,62 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+
+def fetch_history_with_fallback(symbol, start_date=None, end_date=None, period='1mo'):
+    """
+    Fetch stock history with yfinance, fallback to yahooquery if blocked.
+    
+    This function implements the dual-library strategy used by successful
+    production scanners to avoid Yahoo Finance blocking.
+    
+    Args:
+        symbol: Stock ticker symbol
+        start_date: Start date for history (datetime or string)
+        end_date: End date for history (datetime or string)
+        period: Period string like '1mo', '3mo' if not using dates
+        
+    Returns:
+        tuple: (DataFrame with OHLCV data, source string 'yfinance' or 'yahooquery')
+        
+    Raises:
+        Exception: If both yfinance and yahooquery fail
+    """
+    
+    # Try yfinance first (primary method)
+    try:
+        ticker = yf.Ticker(symbol)
+        
+        if start_date and end_date:
+            hist = ticker.history(start=start_date, end=end_date)
+        else:
+            hist = ticker.history(period=period)
+            
+        if isinstance(hist, pd.DataFrame) and not hist.empty:
+            return hist, 'yfinance'
+    except Exception as e:
+        logger.debug(f"[FALLBACK] yfinance failed for {symbol}: {str(e)[:100]}")
+    
+    # Fallback to yahooquery
+    try:
+        logger.info(f"[FALLBACK] Trying yahooquery for {symbol}...")
+        ticker = YQTicker(symbol)
+        
+        if start_date and end_date:
+            hist = ticker.history(start=start_date, end=end_date)
+        else:
+            hist = ticker.history(period=period)
+        
+        if isinstance(hist, pd.DataFrame) and not hist.empty:
+            # Normalize column names to match yfinance (capitalize first letter)
+            hist.columns = [col.capitalize() for col in hist.columns]
+            logger.info(f"[FALLBACK] ✅ yahooquery succeeded for {symbol}")
+            return hist, 'yahooquery'
+    except Exception as e:
+        logger.debug(f"[FALLBACK] yahooquery also failed for {symbol}: {str(e)[:100]}")
+    
+    # Both methods failed
+    raise Exception(f"Both yfinance and yahooquery failed to fetch data for {symbol}")
 
 
 class StockScanner:
@@ -152,15 +209,15 @@ class StockScanner:
         
         for attempt in range(max_retries):
             try:
-                stock = yf.Ticker(symbol)
-                
                 # Add delay between requests to avoid rate limiting
                 if attempt > 0:
                     time.sleep(retry_delay * (attempt + 1))
                 
-                # FIX: Use ONLY ticker.history() - NO .info call
-                # Fetch recent data to validate stock
-                hist = stock.history(period='1mo')
+                # Use fallback function (tries yfinance, falls back to yahooquery)
+                hist, source = fetch_history_with_fallback(symbol, period='1mo')
+                
+                if source == 'yahooquery':
+                    logger.info(f"Using yahooquery fallback for validation of {symbol}")
                 
                 if hist.empty:
                     logger.debug(f"No history data for {symbol}")
@@ -221,17 +278,21 @@ class StockScanner:
         
         for attempt in range(max_retries):
             try:
-                stock = yf.Ticker(symbol)
-                
                 # Add delay between requests to avoid rate limiting
                 if attempt > 0:
                     time.sleep(retry_delay * (attempt + 1))
                 
-                # FIX: Use ONLY ticker.history() - NO .info call
-                # This matches FinBERT v4.0 working pattern
+                # Use fallback function (tries yfinance, falls back to yahooquery)
                 end_date = datetime.now()
                 start_date = end_date - timedelta(days=90)
-                hist = stock.history(start=start_date, end=end_date)
+                hist, source = fetch_history_with_fallback(
+                    symbol,
+                    start_date=start_date,
+                    end_date=end_date
+                )
+                
+                if source == 'yahooquery':
+                    logger.info(f"Using yahooquery fallback for analysis of {symbol}")
                 
                 if hist.empty or len(hist) < 20:
                     logger.debug(f"Insufficient data for {symbol}")

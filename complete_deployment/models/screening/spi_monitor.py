@@ -37,6 +37,7 @@ from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
 import time
 import yfinance as yf
+from yahooquery import Ticker as YQTicker
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -52,6 +53,47 @@ yf.set_tz_cache_location("/tmp/yf_cache")
 # Market indices (^AXJO, ^GSPC, ^IXIC, ^DJI) are the same for all stocks in a run
 _MARKET_INDICES_CACHE = {}  # {symbol: {'data': DataFrame, 'timestamp': float}}
 _CACHE_TTL_SECONDS = 3600  # 1 hour - market indices don't change much during a screening run
+
+def fetch_history_with_fallback_spi(symbol, period="6mo", interval="1d"):
+    """
+    Fetch market index history with yfinance, fallback to yahooquery if blocked.
+    
+    Args:
+        symbol: Market index symbol (e.g., ^AXJO, ^GSPC)
+        period: Period string like '6mo'
+        interval: Interval string like '1d'
+        
+    Returns:
+        tuple: (DataFrame with OHLCV data, source string)
+    """
+    logger = logging.getLogger(__name__)
+    
+    # Try yfinance first
+    try:
+        ticker = yf.Ticker(symbol)
+        df = ticker.history(period=period, interval=interval)
+        
+        if isinstance(df, pd.DataFrame) and not df.empty:
+            return df, 'yfinance'
+    except Exception as e:
+        logger.debug(f"[FALLBACK] yfinance failed for {symbol}: {str(e)[:100]}")
+    
+    # Fallback to yahooquery
+    try:
+        logger.info(f"[FALLBACK] Trying yahooquery for index {symbol}...")
+        ticker = YQTicker(symbol)
+        df = ticker.history(period=period, interval=interval)
+        
+        if isinstance(df, pd.DataFrame) and not df.empty:
+            # Normalize column names
+            df.columns = [col.capitalize() for col in df.columns]
+            logger.info(f"[FALLBACK] ✅ yahooquery succeeded for {symbol}")
+            return df, 'yahooquery'
+    except Exception as e:
+        logger.debug(f"[FALLBACK] yahooquery also failed for {symbol}: {str(e)[:100]}")
+    
+    raise Exception(f"Both yfinance and yahooquery failed for {symbol}")
+
 
 # Fix 1: Relative import fallback for script/package mode
 try:
@@ -151,10 +193,12 @@ class SPIMonitor:
                     if elapsed < 1.0:  # Minimum 1 second between requests
                         time.sleep(1.0 - elapsed)
                 
-                # Cache miss - fetch from yfinance
-                # NOTE: Do NOT pass session parameter - yfinance handles curl_cffi internally
-                logger.debug(f"Fetching {symbol} from yfinance (index)")
-                df = yf.Ticker(symbol).history(period="6mo", interval="1d")
+                # Cache miss - fetch with fallback (yfinance → yahooquery)
+                logger.debug(f"Fetching {symbol} from data source (index)")
+                df, source = fetch_history_with_fallback_spi(symbol, period="6mo", interval="1d")
+                
+                if source == 'yahooquery':
+                    logger.info(f"Using yahooquery fallback for index {symbol}")
                 
                 # RATE LIMIT FIX: Track last request time
                 self._last_request_time = time.time()
