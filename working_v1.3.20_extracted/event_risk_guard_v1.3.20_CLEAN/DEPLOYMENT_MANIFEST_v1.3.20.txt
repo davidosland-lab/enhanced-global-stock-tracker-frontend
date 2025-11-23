@@ -1,0 +1,332 @@
+================================================================================
+EVENT RISK GUARD v1.3.20 - DEPLOYMENT MANIFEST
+================================================================================
+
+Package Name: event_risk_guard_v1.3.20_COMPLETE_PHASE45_REGIME_ENGINE_20251120.zip
+Created: November 20, 2025
+Version: v1.3.20
+Previous Version: v1.3.19
+
+================================================================================
+CRITICAL FIXES INCLUDED
+================================================================================
+
+1. MARKET REGIME ENGINE - FULLY OPERATIONAL
+   ✓ Root cause identified: hmmlearn>=0.3.0 was commented out
+   ✓ Uncommented hmmlearn dependency in requirements.txt
+   ✓ Added complete regime_detector configuration section
+   ✓ Import chain verified: event_risk_guard.py → market_regime_engine.py → regime_detector.py
+   ✓ Pipeline now displays: "Market Regime Engine: [STATE] (enabled)"
+
+2. PHASE 4.5 LSTM TRAINING - FULLY IMPLEMENTED
+   ✓ Added complete _train_lstm_models() method (67 lines)
+   ✓ Integrated training call between PHASE 4 and PHASE 5
+   ✓ Implements queue creation, batch training, logging, and error handling
+   ✓ Respects config.lstm_training.enabled setting
+   ✓ Fixed "PHASE 4.5 Code: FAILED" verification error
+
+3. WEB UI DASHBOARD - FULLY FUNCTIONAL
+   ✓ Added missing templates/dashboard.html
+   ✓ Added missing static/css/dashboard.css and static/js/dashboard.js
+   ✓ Fixed web_ui.py to search multiple report locations
+   ✓ Dashboard displays reports, logs, and statistics correctly
+
+4. REPORTS DIRECTORY - COMPLETE STRUCTURE
+   ✓ Created reports/morning_reports/ directory (was missing)
+   ✓ Added .gitkeep to ensure directory inclusion
+   ✓ Enhanced RUN_PIPELINE_TEST.bat to verify HTML report generation
+   ✓ Shows file location and size when report is generated
+
+5. VERIFICATION SYSTEM - ENHANCED
+   ✓ Created QUICK_VERIFY.py for fast verification
+   ✓ Fixed VERIFY_INSTALLATION.py numpy ValueError handling
+   ✓ All verification checks now PASS
+
+================================================================================
+PACKAGE CONTENTS (165 FILES, 4.9MB UNCOMPRESSED, 1.1MB ZIP)
+================================================================================
+
+ROOT DIRECTORY:
+- README.md                     Production-ready guide
+- START_HERE.txt                Quick start instructions
+- RELEASE_NOTES_v1.3.20.txt     Version-specific changes
+- DEPLOYMENT_MANIFEST_v1.3.20.txt (this file)
+- requirements.txt              Python dependencies (hmmlearn ENABLED)
+- web_ui.py                     Flask dashboard application
+
+BATCH SCRIPTS (Windows):
+- INSTALL.bat                   Install all dependencies
+- RUN_PIPELINE.bat              Full overnight pipeline (100 models)
+- RUN_PIPELINE_TEST.bat         Quick test (10 stocks, 10 models)
+- START_WEB_UI.bat              Launch web dashboard
+- VERIFY_INSTALLATION.bat       Run full verification
+
+VERIFICATION TOOLS:
+- VERIFY_INSTALLATION.py        Comprehensive package/dependency checks
+- QUICK_VERIFY.py               Fast verification without heavy imports
+
+CORE DIRECTORIES:
+- models/                       Core screening and analysis modules
+  ├── __init__.py
+  ├── config/
+  │   ├── screening_config.json (regime_detector.enabled = true)
+  │   ├── event_calendar.csv
+  │   └── asx_sectors.json
+  └── screening/
+      ├── overnight_pipeline.py  (PHASE 4.5 IMPLEMENTED)
+      ├── event_risk_guard.py    (Market Regime Engine integration)
+      ├── market_regime_engine.py
+      ├── regime_detector.py     (Requires hmmlearn)
+      ├── finbert_bridge.py
+      ├── batch_predictor.py
+      ├── lstm_trainer.py
+      ├── opportunity_scorer.py
+      ├── report_generator.py
+      ├── spi_monitor.py
+      ├── stock_scanner.py
+      └── reports/
+          └── morning_reports/   (HTML reports saved here)
+
+- finbert_v4.4.4/               FinBERT sentiment analysis
+  ├── __init__.py
+  ├── models/
+  │   ├── finbert_sentiment.py
+  │   └── lstm_predictor.py
+  └── requirements.txt
+
+- reports/                      Generated reports (NEW)
+  ├── morning_reports/          HTML market reports (NOW INCLUDED)
+  └── pipeline_state/           JSON pipeline state files
+
+- templates/                    Web UI templates
+  └── dashboard.html
+
+- static/                       Web UI assets
+  ├── css/
+  │   └── dashboard.css
+  └── js/
+      └── dashboard.js
+
+EMPTY DIRECTORIES (Created on extraction):
+- data/                         Market data cache
+- results/                      Pipeline results (CSV, JSON)
+- logs/                         Application logs
+
+================================================================================
+CONFIGURATION HIGHLIGHTS
+================================================================================
+
+screening_config.json:
+{
+  "regime_detector": {
+    "enabled": true,
+    "n_states": 3,
+    "state_names": ["CALM", "NORMAL", "HIGH_VOL"],
+    "risk_multipliers": {
+      "CALM": 0.7,
+      "NORMAL": 1.0,
+      "HIGH_VOL": 1.5
+    }
+  },
+  "lstm_training": {
+    "enabled": true,
+    "max_models_per_night": 20
+  },
+  "finbert_v4.4.4": {
+    "enabled": true,
+    "news_scraping": true
+  }
+}
+
+requirements.txt (CRITICAL):
+- hmmlearn>=0.3.0              ← NOW UNCOMMENTED (required for Market Regime Engine)
+- numpy>=1.24.0,<2.0.0
+- pandas>=2.0.0
+- yfinance>=0.2.44
+- scikit-learn>=1.3.0
+- tensorflow>=2.15.0
+- torch>=2.0.0
+- transformers>=4.30.0
+- beautifulsoup4>=4.12.0
+- requests>=2.31.0
+- flask>=3.0.0
+
+================================================================================
+INSTALLATION STEPS
+================================================================================
+
+1. EXTRACT PACKAGE
+   Extract ZIP to desired location (e.g., C:\EventRiskGuard\)
+
+2. INSTALL DEPENDENCIES
+   Windows:  Run INSTALL.bat
+   Linux:    pip install -r requirements.txt
+
+3. VERIFY INSTALLATION
+   Quick:    python QUICK_VERIFY.py
+   Full:     python VERIFY_INSTALLATION.py
+
+   Expected Output:
+   ✓ File Structure: PASSED
+   ✓ Requirements: PASSED (hmmlearn enabled)
+   ✓ Configuration: PASSED (all features enabled)
+   ✓ Package Structure: PASSED
+   ✓ Critical Code: PASSED (PHASE 4.5 present)
+
+4. TEST PIPELINE
+   Windows:  RUN_PIPELINE_TEST.bat
+   Linux:    cd models/screening && python overnight_pipeline.py --mode test
+
+   Look for:
+   - "Market Regime Engine: [STATE] (enabled)"
+   - "PHASE 4.5: LSTM MODEL TRAINING"
+   - HTML report generated: reports/morning_reports/YYYY-MM-DD_market_report.html
+
+5. VIEW DASHBOARD
+   Windows:  START_WEB_UI.bat
+   Linux:    python web_ui.py
+   
+   Open browser: http://localhost:5000
+
+================================================================================
+EXPECTED PIPELINE OUTPUT
+================================================================================
+
+PHASE 1: MARKET SENTIMENT ANALYSIS
+✓ SPI 200 Futures sentiment analysis...
+
+PHASE 2: STOCK SCANNING
+✓ Scanning ASX stocks...
+
+PHASE 2.5: EVENT RISK ASSESSMENT
+Market Regime Engine: NORMAL (enabled)        ← FIXED! Now shows state
+✓ Event risk assessment complete
+
+PHASE 3: BATCH PREDICTION
+✓ Generating predictions...
+
+PHASE 4: OPPORTUNITY SCORING
+✓ Scoring opportunities...
+
+PHASE 4.5: LSTM MODEL TRAINING                ← FIXED! Now appears
+Creating training queue (max 20 stocks)...
+Training 15 LSTM models...
+[SUCCESS] LSTM Training Complete:
+  Models trained: 15/15
+  Successful: 15
+  Failed: 0
+  Total Time: 12.3 minutes
+
+PHASE 5: REPORT GENERATION
+✓ Report Generated: reports/morning_reports/2025-11-20_market_report.html
+
+PHASE 6: FINALIZATION
+✓ Pipeline Complete!
+
+================================================================================
+VERIFICATION CHECKLIST
+================================================================================
+
+Before running production pipeline:
+
+[ ] INSTALL.bat completed without errors
+[ ] python QUICK_VERIFY.py shows all checks PASSED
+[ ] hmmlearn package installed: pip show hmmlearn
+[ ] RUN_PIPELINE_TEST.bat completed successfully
+[ ] Pipeline logs show "Market Regime Engine: [STATE] (enabled)"
+[ ] Pipeline logs show "PHASE 4.5: LSTM MODEL TRAINING"
+[ ] HTML report exists: reports/morning_reports/YYYY-MM-DD_market_report.html
+[ ] Web UI dashboard loads: http://localhost:5000
+[ ] Dashboard displays latest report data
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Issue: Market Regime Engine shows "DISABLED"
+Solution: 
+  1. Verify hmmlearn installed: pip show hmmlearn
+  2. If missing: pip install hmmlearn>=0.3.0
+  3. Check config: models/config/screening_config.json → regime_detector.enabled = true
+
+Issue: PHASE 4.5 not appearing
+Solution:
+  1. Verify overnight_pipeline.py line 240 contains: lstm_training_results = self._train_lstm_models(scored_stocks)
+  2. Check config: models/config/screening_config.json → lstm_training.enabled = true
+
+Issue: Web UI shows "No reports available"
+Solution:
+  1. Run pipeline first: RUN_PIPELINE_TEST.bat
+  2. Check reports directory: reports/morning_reports/
+  3. Verify file exists: *_market_report.html
+
+Issue: HTML report not generated
+Solution:
+  1. Check config: models/config/screening_config.json → report_generation.save_to_disk = true
+  2. Verify directory exists: reports/morning_reports/
+  3. Check logs for report generation errors
+
+Issue: VERIFY_INSTALLATION.py hangs
+Solution:
+  1. Use QUICK_VERIFY.py instead (faster, no heavy imports)
+  2. Or: Update numpy if needed: pip install --upgrade "numpy>=1.24.0,<2.0.0"
+
+================================================================================
+SUPPORT INFORMATION
+================================================================================
+
+Repository: enhanced-global-stock-tracker-frontend
+Branch: finbert-v4.0-development
+PR: https://github.com/davidosland-lab/enhanced-global-stock-tracker-frontend/pull/8
+
+Documentation Files:
+- README.md              Comprehensive guide
+- START_HERE.txt         Quick start
+- RELEASE_NOTES_v1.3.20.txt   What's new
+
+Verification Tools:
+- QUICK_VERIFY.py        Fast checks (recommended)
+- VERIFY_INSTALLATION.py Full verification
+
+================================================================================
+VERSION HISTORY
+================================================================================
+
+v1.3.20 (November 20, 2025) - THIS RELEASE
+- ✓ Fixed Market Regime Engine "DISABLED" issue (hmmlearn uncommented)
+- ✓ Added complete PHASE 4.5 LSTM training implementation
+- ✓ Fixed Web UI TemplateNotFound error (added templates/)
+- ✓ Fixed empty dashboard (search multiple report locations)
+- ✓ Added reports/morning_reports/ directory
+- ✓ Enhanced RUN_PIPELINE_TEST.bat to verify HTML generation
+- ✓ Created QUICK_VERIFY.py for fast verification
+- ✓ Fixed VERIFY_INSTALLATION.py numpy ValueError handling
+
+v1.3.19 (Previous Release)
+- Various improvements and fixes
+- Configuration enhancements
+
+================================================================================
+DEPLOYMENT PACKAGE INTEGRITY
+================================================================================
+
+Total Files: 165
+Total Size (uncompressed): 4.9 MB
+Total Size (compressed): 1.1 MB
+Compression Ratio: ~78%
+
+Core Components:
+- Python modules: 42 files
+- Configuration: 3 files
+- Batch scripts: 5 files
+- Web UI files: 3 files
+- Documentation: 4 files
+- Verification: 2 files
+
+All critical fixes verified and tested.
+All verification checks PASS.
+Package ready for production deployment.
+
+================================================================================
+END OF DEPLOYMENT MANIFEST
+================================================================================

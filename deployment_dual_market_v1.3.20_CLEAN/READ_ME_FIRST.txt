@@ -1,8 +1,15 @@
 ================================================================================
-   DUAL MARKET SCREENING SYSTEM v1.3.20 - HOTFIX CLEAN BUILD
+   DUAL MARKET SCREENING SYSTEM v1.3.20.1 - LATEST FIXES
 ================================================================================
 
 ** READ THIS FIRST BEFORE EXTRACTION/INSTALLATION **
+
+UPDATE NOTICE: This is v1.3.20.1 with additional critical fixes for:
+- US Pipeline CSV export error
+- HMM covariance matrix error
+- Python cache issues causing recurring errors
+
+See CRITICAL_DEPLOYMENT_FIXES_v1.3.20.1.txt for details.
 
 ================================================================================
 WHAT'S IN THIS PACKAGE
@@ -72,28 +79,41 @@ INSTALLATION INSTRUCTIONS
 
 3. CLEAR PYTHON CACHE (CRITICAL!)
    
+   ** THIS IS THE MOST IMPORTANT STEP **
+   
+   Use the provided scripts:
+   
    Windows:
    ```
-   for /d /r . %d in (__pycache__) do @if exist "%d" rd /s /q "%d"
-   del /s /q *.pyc
+   CLEAR_PYTHON_CACHE.bat
    ```
    
    Linux/Mac:
    ```
-   find . -type d -name "__pycache__" -exec rm -rf {} +
-   find . -name "*.pyc" -delete
+   ./CLEAR_PYTHON_CACHE.sh
    ```
    
-   ⚠️ IMPORTANT: Not clearing cache will cause old code to run!
+   Or manually:
+   Windows: for /d /r . %d in (__pycache__) do @if exist "%d" rd /s /q "%d"
+   Linux/Mac: find . -type d -name "__pycache__" -exec rm -rf {} +
+   
+   ⚠️ CRITICAL: Not clearing cache WILL cause old code to run and errors to persist!
 
-4. VERIFY INSTALLATION
+4. VERIFY CODE VERSION (NEW!)
    
-   Run the verification script:
+   Run the code verification script:
+   
+   Windows:
    ```
-   python VERIFY.py
+   VERIFY_CODE_VERSION.bat
    ```
    
-   This will check all critical files are present and correct.
+   Linux/Mac:
+   ```
+   ./VERIFY_CODE_VERSION.sh
+   ```
+   
+   This will verify you're running v1.3.20.1 with all latest fixes.
 
 5. CONFIGURE (if first-time install)
    
@@ -269,33 +289,35 @@ For runtime errors:
 VERSION INFORMATION
 ================================================================================
 
-Package: Dual_Market_Screening_v1.3.20_HOTFIX_CLEAN
-Build Date: 2025-11-22
-Git Commit: eb110fe
+Package: Dual_Market_Screening_v1.3.20.1_FINAL_FIXES
+Build Date: 2025-11-23
 Branch: finbert-v4.0-development
 Status: PRODUCTION READY
 
-Previous Versions:
-- v1.3.20 REGIME_FINAL: Last stable before UI fixes (working, no new features)
+Version History:
+- v1.3.20 REGIME_FINAL: Last stable before UI fixes (working)
 - v1.3.20 UI_FIXES: BROKEN - had parameter mismatch bugs
-- v1.3.20 HOTFIX_CLEAN: THIS VERSION - all bugs fixed
+- v1.3.20 HOTFIX_CLEAN: Fixed parameter bugs, but had CSV/HMM errors
+- v1.3.20.1 FINAL_FIXES: THIS VERSION - all known bugs fixed
 
 ================================================================================
 QUICK START (after extraction)
 ================================================================================
 
-1. Clear cache:
-   Windows: for /d /r . %d in (__pycache__) do @if exist "%d" rd /s /q "%d"
-   Linux/Mac: find . -type d -name "__pycache__" -exec rm -rf {} +
+1. Clear cache (CRITICAL!):
+   Windows: CLEAR_PYTHON_CACHE.bat
+   Linux/Mac: ./CLEAR_PYTHON_CACHE.sh
 
-2. Install dependencies:
+2. Verify code version:
+   Windows: VERIFY_CODE_VERSION.bat
+   Linux/Mac: ./VERIFY_CODE_VERSION.sh
+
+3. Install dependencies:
    pip install -r requirements.txt
 
-3. Run verification:
-   python VERIFY.py
-
 4. Test system:
-   python run_screening.py --both
+   Windows: "QUICK TEST.bat"
+   Linux/Mac: ./QUICK_TEST.sh
 
 5. Start web UI:
    Windows: START_WEB_UI.bat
