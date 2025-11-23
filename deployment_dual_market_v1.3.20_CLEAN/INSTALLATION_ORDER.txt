@@ -1,0 +1,402 @@
+================================================================================
+INSTALLATION ORDER - CRITICAL STEPS
+================================================================================
+
+Dual Market Screening System v1.3.20.1
+Date: 2025-11-23
+
+================================================================================
+OVERVIEW
+================================================================================
+
+This guide explains the CORRECT ORDER for installing and running the Dual
+Market Screening System. Following these steps prevents common errors.
+
+================================================================================
+STEP-BY-STEP INSTALLATION
+================================================================================
+
+STEP 1: EXTRACT THE PACKAGE
+----------------------------
+
+Extract `Dual_Market_Screening_v1.3.20.1_FINAL_FIXES_20251123.zip` to a
+clean directory.
+
+Location examples:
+- Windows: C:\Trading\DualMarketScreening\
+- Linux/Mac: ~/trading/dual-market-screening/
+
+IMPORTANT: Use a NEW directory, not over an old installation.
+
+----------------------------
+
+STEP 2: RUN INSTALL SCRIPT (REQUIRED!)
+----------------------------
+
+This is THE FIRST THING you must do after extraction.
+
+Windows:
+```
+cd C:\Trading\DualMarketScreening\deployment_dual_market_v1.3.20_CLEAN
+INSTALL.bat
+```
+
+Linux/Mac:
+```
+cd ~/trading/dual-market-screening/deployment_dual_market_v1.3.20_CLEAN
+chmod +x INSTALL.sh
+./INSTALL.sh
+```
+
+What this does:
+✓ Checks Python version (requires 3.8+)
+✓ Installs ALL required dependencies from requirements.txt
+✓ Creates necessary directories (logs/, reports/, data/)
+✓ Verifies imports work correctly
+✓ Runs quick connectivity test
+
+Expected duration: 5-10 minutes (depending on internet speed)
+
+IMPORTANT: Wait for "INSTALLATION COMPLETE" message before proceeding!
+
+----------------------------
+
+STEP 3: CLEAR PYTHON CACHE
+----------------------------
+
+This prevents old code from running.
+
+Windows:
+```
+CLEAR_PYTHON_CACHE.bat
+```
+
+Linux/Mac:
+```
+chmod +x CLEAR_PYTHON_CACHE.sh
+./CLEAR_PYTHON_CACHE.sh
+```
+
+What this does:
+✓ Removes all __pycache__ directories
+✓ Deletes all .pyc files
+✓ Deletes all .pyo files
+
+Expected duration: 5-10 seconds
+
+WHY THIS MATTERS:
+Python caches compiled bytecode in .pyc files. If you update the source
+code but don't clear cache, Python will run the OLD bytecode instead of
+your new code. This causes "fixed" bugs to reappear.
+
+----------------------------
+
+STEP 4: VERIFY CODE VERSION
+----------------------------
+
+Confirm you're running v1.3.20.1 with all fixes.
+
+Windows:
+```
+VERIFY_CODE_VERSION.bat
+```
+
+Linux/Mac:
+```
+chmod +x VERIFY_CODE_VERSION.sh
+./VERIFY_CODE_VERSION.sh
+```
+
+Expected output:
+```
+[CHECK 1/4] Verifying US Pipeline CSV Export Fix...
+  ✓ PASS: US Pipeline CSV export fix verified
+
+[CHECK 2/4] Verifying HMM Covariance Fix...
+  ✓ PASS: HMM covariance fix verified
+
+[CHECK 3/4] Checking for Python cache files...
+  ✓ PASS: No Python cache files found
+
+[CHECK 4/4] Verifying ASX Email Notification...
+  ✓ PASS: Email notification code looks correct
+
+✅ ALL CHECKS PASSED
+```
+
+If ANY check fails, DO NOT PROCEED. Re-extract package and start over.
+
+----------------------------
+
+STEP 5: RUN FAST TEST (OPTIONAL BUT RECOMMENDED)
+----------------------------
+
+Quick validation test (1-2 minutes) to verify system works.
+
+Windows:
+```
+RUN_FAST_TEST.bat
+```
+
+Linux/Mac:
+```
+chmod +x RUN_FAST_TEST.sh
+./RUN_FAST_TEST.sh
+```
+
+What this tests:
+- ASX: Financials sector only (5 stocks)
+- US: Technology sector only (5 stocks)
+
+Expected duration: 1-2 minutes
+
+Expected results:
+✓ Both sectors complete successfully
+✓ Reports generated
+✓ CSV files created
+✓ No critical errors
+
+----------------------------
+
+STEP 6: RUN FULL TEST (OPTIONAL)
+----------------------------
+
+Full screening of all sectors (both markets).
+
+Windows:
+```
+RUN_QUICK_TEST.bat
+```
+
+Linux/Mac:
+```
+chmod +x RUN_QUICK_TEST.sh
+./RUN_QUICK_TEST.sh
+```
+
+What this tests:
+- ASX: All 8 sectors (40 stocks total, top 5 per sector)
+- US: All 8 sectors (40 stocks total, top 5 per sector)
+
+Expected duration: 15-25 minutes
+
+CLARIFICATION ON "QUICK TEST":
+The name is misleading. This is the FULL screening suite, not a quick demo.
+It processes ALL sectors and validates ALL stocks (30 per sector) before
+selecting the top 5 per sector for prediction.
+
+For a truly quick test, use RUN_FAST_TEST instead.
+
+----------------------------
+
+STEP 7: START WEB UI
+----------------------------
+
+Launch the web dashboard.
+
+Windows:
+```
+START_WEB_UI.bat
+```
+
+Linux/Mac:
+```
+chmod +x START_WEB_UI.sh
+./START_WEB_UI.sh
+```
+
+Access at: http://localhost:5000
+
+The UI will display:
+- Latest reports for both markets
+- Market regime analysis
+- Top opportunities
+- System status
+
+----------------------------
+
+================================================================================
+COMMON MISTAKES TO AVOID
+================================================================================
+
+❌ MISTAKE #1: Not running INSTALL.bat first
+   SYMPTOM: "No module named X" errors
+   FIX: Run INSTALL.bat to install dependencies
+
+❌ MISTAKE #2: Not clearing Python cache
+   SYMPTOM: Old errors reappear, fixed bugs still broken
+   FIX: Run CLEAR_PYTHON_CACHE.bat EVERY time you update code
+
+❌ MISTAKE #3: Running from wrong directory
+   SYMPTOM: "File not found" errors
+   FIX: Ensure you're in deployment_dual_market_v1.3.20_CLEAN/ directory
+
+❌ MISTAKE #4: Expecting QUICK TEST to be quick
+   SYMPTOM: Waiting 20 minutes for "quick" test
+   FIX: Use RUN_FAST_TEST.bat for actual quick validation (1-2 min)
+
+❌ MISTAKE #5: Running old deployment package
+   SYMPTOM: Parameter mismatch errors, CSV export errors
+   FIX: Extract v1.3.20.1 package, run VERIFY_CODE_VERSION.bat
+
+================================================================================
+TESTING OPTIONS EXPLAINED
+================================================================================
+
+1. RUN_FAST_TEST.bat/sh
+   Duration: 1-2 minutes
+   Coverage: 2 sectors (1 ASX, 1 US)
+   Use for: Quick validation after installation
+   Stocks: 5 per sector
+
+2. RUN_QUICK_TEST.bat/sh
+   Duration: 15-25 minutes
+   Coverage: 16 sectors (8 ASX, 8 US)
+   Use for: Full system validation
+   Stocks: Top 5 per sector (after validating 30)
+   NOTE: Despite name, this is NOT quick!
+
+3. RUN_BOTH_MARKETS.bat/sh
+   Duration: 25-35 minutes
+   Coverage: 16 sectors (8 ASX, 8 US)
+   Use for: Production screening
+   Stocks: 30 per sector (full lists)
+
+4. Direct Python commands:
+   - Single sector: python run_screening.py --market asx --sectors Financials --stocks 5
+   - Single market: python run_screening.py --market asx --stocks 5
+   - Both markets: python run_screening.py --market both --stocks 5
+
+================================================================================
+UNDERSTANDING STOCK COUNTS
+================================================================================
+
+When you see "This will test with 5 stocks per sector", here's what actually happens:
+
+1. System loads 30 stocks per sector from asx_sectors.json / us_sectors.json
+2. System validates ALL 30 stocks (checks data availability, liquidity, etc.)
+3. System selects TOP 5 stocks based on validation scores
+4. System generates predictions for those TOP 5 stocks
+
+So you'll see logs like:
+```
+[1/8] Scanning Financials...
+Scanning Financials Sector (30 stocks)  <-- Loading all 30
+[1/30] Processing CBA.AX...              <-- Validating each
+...
+[30/30] Processing ASX.AX...
+Sector Summary: 30 stocks validated      <-- All validated
+✓ Found 5 valid stocks                   <-- Top 5 selected
+```
+
+This is NORMAL behavior and ensures you get the BEST 5 stocks, not just
+the first 5 stocks.
+
+================================================================================
+VERIFICATION CHECKLIST
+================================================================================
+
+Before considering installation complete, verify ALL of these:
+
+[ ] Python 3.8+ installed (python --version)
+[ ] INSTALL.bat completed successfully
+[ ] No "pip install" errors during installation
+[ ] CLEAR_PYTHON_CACHE.bat completed
+[ ] VERIFY_CODE_VERSION.bat shows "ALL CHECKS PASSED"
+[ ] No __pycache__ directories exist
+[ ] RUN_FAST_TEST.bat completed without errors
+[ ] Reports generated in reports/ directory
+[ ] CSV files created in data/ directory
+[ ] No critical errors in console output
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Problem: "pip: command not found"
+Solution: Install pip or use: python -m pip install -r requirements.txt
+
+Problem: "Permission denied" on scripts
+Solution (Linux/Mac): chmod +x *.sh
+
+Problem: INSTALL.bat fails with import errors
+Solution: 
+  1. Check Python version (must be 3.8+)
+  2. Try: python -m pip install --upgrade pip
+  3. Try: pip install -r requirements.txt --no-cache-dir
+
+Problem: VERIFY_CODE_VERSION shows "OLD CODE detected"
+Solution:
+  1. Delete current directory
+  2. Re-extract ZIP to new location
+  3. Run INSTALL.bat
+  4. Run CLEAR_PYTHON_CACHE.bat
+  5. Try verification again
+
+Problem: Tests run but show old errors
+Solution:
+  1. Close ALL Python processes
+  2. Run CLEAR_PYTHON_CACHE.bat
+  3. Restart computer
+  4. Try again
+
+================================================================================
+PRODUCTION DEPLOYMENT
+================================================================================
+
+Once installation is verified:
+
+1. Configure email notifications (optional)
+   Edit: models/config/screening_config.json
+   Set: email_notifications.enabled = true
+   Add: your SMTP credentials
+
+2. Schedule automated runs
+   Windows: Use Task Scheduler
+   Linux: Use cron
+
+3. Monitor logs
+   Location: logs/screening/ and logs/screening/us/
+
+4. Review reports
+   Location: reports/morning_reports/ and reports/us/
+
+================================================================================
+SUMMARY: CORRECT INSTALLATION ORDER
+================================================================================
+
+1. Extract package to clean directory
+2. Run INSTALL.bat (REQUIRED FIRST!)
+3. Run CLEAR_PYTHON_CACHE.bat
+4. Run VERIFY_CODE_VERSION.bat
+5. Run RUN_FAST_TEST.bat (recommended)
+6. Run RUN_QUICK_TEST.bat (optional)
+7. Start web UI with START_WEB_UI.bat
+
+NEVER skip steps 1-4!
+
+================================================================================
+SUPPORT
+================================================================================
+
+If you follow all steps and still have issues:
+
+1. Collect diagnostic information:
+   - Python version: python --version
+   - Pip version: pip --version
+   - OS: Windows/Linux/Mac version
+   - Full console output from failed step
+
+2. Check log files:
+   - logs/screening/errors/
+   - Look for .json error files with details
+
+3. Verify environment:
+   - Correct directory: deployment_dual_market_v1.3.20_CLEAN/
+   - No __pycache__ directories
+   - VERIFY_CODE_VERSION passed
+   - INSTALL completed successfully
+
+================================================================================
+END OF INSTALLATION GUIDE
+================================================================================

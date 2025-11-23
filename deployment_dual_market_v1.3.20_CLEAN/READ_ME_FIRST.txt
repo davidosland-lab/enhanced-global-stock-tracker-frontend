@@ -69,6 +69,8 @@ Use this package if you're experiencing:
 INSTALLATION INSTRUCTIONS
 ================================================================================
 
+** IMPORTANT: Follow these steps IN ORDER **
+
 1. BACKUP YOUR CURRENT INSTALLATION
    - If you have a working system, keep a backup before upgrading
    - Previous working version: event_risk_guard_v1.3.20_REGIME_FINAL
@@ -77,7 +79,26 @@ INSTALLATION INSTRUCTIONS
    - Extract to a NEW directory (recommended)
    - OR extract over existing installation after backup
 
-3. CLEAR PYTHON CACHE (CRITICAL!)
+3. RUN INSTALL SCRIPT (REQUIRED FIRST TIME!)
+   
+   Windows:
+   ```
+   INSTALL.bat
+   ```
+   
+   Linux/Mac:
+   ```
+   chmod +x INSTALL.sh
+   ./INSTALL.sh
+   ```
+   
+   This will:
+   - Check Python version
+   - Install all dependencies
+   - Create required directories
+   - Verify installation
+
+4. CLEAR PYTHON CACHE (CRITICAL!)
    
    ** THIS IS THE MOST IMPORTANT STEP **
    
@@ -304,27 +325,42 @@ Version History:
 QUICK START (after extraction)
 ================================================================================
 
-1. Clear cache (CRITICAL!):
+** FIRST TIME INSTALLATION **
+
+1. Run install script (REQUIRED):
+   Windows: INSTALL.bat
+   Linux/Mac: ./INSTALL.sh
+
+2. Clear cache (CRITICAL!):
    Windows: CLEAR_PYTHON_CACHE.bat
    Linux/Mac: ./CLEAR_PYTHON_CACHE.sh
 
-2. Verify code version:
+3. Verify code version:
    Windows: VERIFY_CODE_VERSION.bat
    Linux/Mac: ./VERIFY_CODE_VERSION.sh
 
-3. Install dependencies:
-   pip install -r requirements.txt
+4. Run FAST test (1-2 minutes):
+   Windows: RUN_FAST_TEST.bat
+   Linux/Mac: ./RUN_FAST_TEST.sh
 
-4. Test system:
-   Windows: "QUICK TEST.bat"
-   Linux/Mac: ./QUICK_TEST.sh
+** SUBSEQUENT RUNS **
 
-5. Start web UI:
+5. Run QUICK TEST (full suite, 20 minutes):
+   Windows: RUN_QUICK_TEST.bat
+   Linux/Mac: ./RUN_QUICK_TEST.sh
+
+6. Or start web UI:
    Windows: START_WEB_UI.bat
    Linux/Mac: ./START_WEB_UI.sh
 
-6. Access dashboard:
+7. Access dashboard:
    http://localhost:5000
+
+** TESTING OPTIONS **
+
+- RUN_FAST_TEST.bat/sh: Quick validation (1-2 sectors, 1-2 min)
+- RUN_QUICK_TEST.bat/sh: Full suite (all sectors, 20 min)
+- RUN_BOTH_MARKETS.bat/sh: Production run (all sectors, 30 min)
 
 ================================================================================
 END OF QUICK START GUIDE
