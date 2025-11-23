@@ -70,7 +70,8 @@ class ReportGenerator:
         opportunities: List[Dict],
         spi_sentiment: Dict,
         sector_summary: Dict,
-        system_stats: Dict
+        system_stats: Dict,
+        event_risk_data: Dict = None
     ) -> str:
         """
         Generate complete morning report
@@ -80,6 +81,7 @@ class ReportGenerator:
             spi_sentiment: SPI market sentiment data
             sector_summary: Sector performance summary
             system_stats: System performance statistics
+            event_risk_data: Event risk assessment data including market regime (optional)
             
         Returns:
             Path to generated HTML report
@@ -98,7 +100,8 @@ class ReportGenerator:
             opportunities=opportunities,
             spi_sentiment=spi_sentiment,
             sector_summary=sector_summary,
-            system_stats=system_stats
+            system_stats=system_stats,
+            event_risk_data=event_risk_data
         )
         
         # Save report
@@ -117,7 +120,8 @@ class ReportGenerator:
                 opportunities=opportunities,
                 spi_sentiment=spi_sentiment,
                 sector_summary=sector_summary,
-                system_stats=system_stats
+                system_stats=system_stats,
+                event_risk_data=event_risk_data
             )
         
         return str(report_path)
@@ -129,7 +133,8 @@ class ReportGenerator:
         opportunities: List[Dict],
         spi_sentiment: Dict,
         sector_summary: Dict,
-        system_stats: Dict
+        system_stats: Dict,
+        event_risk_data: Dict = None
     ) -> str:
         """Build complete HTML report"""
         
@@ -143,7 +148,7 @@ class ReportGenerator:
         # Build sections
         header_html = self._build_header(report_date, report_time, market_name)
         market_overview_html = self._build_market_overview(spi_sentiment, market_name)
-        regime_html = self._build_regime_section(system_stats)
+        regime_html = self._build_regime_section(system_stats, event_risk_data)
         opportunities_html = self._build_opportunities_section(top_opportunities)
         sector_html = self._build_sector_section(sector_summary)
         watchlist_html = self._build_watchlist_section(opportunities)
@@ -671,11 +676,19 @@ class ReportGenerator:
     </div>
 """
     
-    def _build_regime_section(self, system_stats: Dict) -> str:
+    def _build_regime_section(self, system_stats: Dict, event_risk_data: Dict = None) -> str:
         """Build market regime section"""
-        # Check if regime data is available
-        market_regime = system_stats.get('market_regime')
-        crash_risk = system_stats.get('crash_risk')
+        # Prefer event_risk_data if available (US pipeline), fallback to system_stats (ASX pipeline)
+        if event_risk_data and 'market_regime' in event_risk_data:
+            regime_data = event_risk_data.get('market_regime', {})
+            market_regime = regime_data.get('regime_label', 'Unknown')
+            crash_risk = regime_data.get('crash_risk_score', 0)
+            if isinstance(crash_risk, float):
+                crash_risk = f"{crash_risk * 100:.1f}%"  # Convert to percentage string
+        else:
+            # Fallback to system_stats (ASX pipeline format)
+            market_regime = system_stats.get('market_regime')
+            crash_risk = system_stats.get('crash_risk')
         
         if not market_regime or market_regime == 'Unknown':
             # No regime data available
@@ -1095,7 +1108,8 @@ class ReportGenerator:
         opportunities: List[Dict],
         spi_sentiment: Dict,
         sector_summary: Dict,
-        system_stats: Dict
+        system_stats: Dict,
+        event_risk_data: Dict = None
     ):
         """Save JSON data for programmatic access"""
         data = {
@@ -1106,6 +1120,10 @@ class ReportGenerator:
             'sector_summary': sector_summary,
             'system_stats': system_stats
         }
+        
+        # Add event_risk_data if available
+        if event_risk_data:
+            data['event_risk_data'] = event_risk_data
         
         json_filename = f"{report_date}_data.json"
         json_path = self.report_dir / json_filename
