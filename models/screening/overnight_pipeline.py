@@ -124,6 +124,31 @@ class OvernightPipeline:
             'warnings': []
         }
         
+        # Load configuration
+        config_path = Path(__file__).parent.parent / 'config' / 'screening_config.json'
+        try:
+            with open(config_path, 'r') as f:
+                self.config = json.load(f)
+            logger.info(f"✓ Configuration loaded from {config_path}")
+        except FileNotFoundError:
+            logger.warning(f"Configuration file not found: {config_path}, using defaults")
+            self.config = {
+                'lstm_training': {
+                    'enabled': True,
+                    'max_models_per_night': 100,
+                    'stale_threshold_days': 7
+                }
+            }
+        except Exception as e:
+            logger.error(f"Failed to load configuration: {e}, using defaults")
+            self.config = {
+                'lstm_training': {
+                    'enabled': True,
+                    'max_models_per_night': 100,
+                    'stale_threshold_days': 7
+                }
+            }
+        
         # Initialize components
         logger.info("="*80)
         logger.info("OVERNIGHT STOCK SCREENING PIPELINE - STARTING")
@@ -236,6 +261,9 @@ class OvernightPipeline:
             
             scored_stocks = self._score_opportunities(predicted_stocks, spi_sentiment)
             
+            # Phase 4.5: LSTM Model Training (Optional)
+            lstm_training_results = self._train_lstm_models(scored_stocks)
+            
             # Phase 5: Report Generation
             logger.info("\n" + "="*80)
             logger.info("PHASE 5: REPORT GENERATION")
@@ -243,7 +271,7 @@ class OvernightPipeline:
             self.status['phase'] = 'report_generation'
             self.status['progress'] = 85
             
-            report_path = self._generate_report(scored_stocks, spi_sentiment)
+            report_path = self._generate_report(scored_stocks, spi_sentiment, event_risk_data)
             
             # Phase 6: Finalization
             logger.info("\n" + "="*80)
@@ -276,8 +304,8 @@ class OvernightPipeline:
                 if self.notifier is None:
                     logger.info("  Email notifications disabled (module not available)")
                 else:
-                    # Send morning report (method already checks if enabled)
-                    if self.notifier.enabled:
+                    # Send morning report
+                    if self.notifier.enabled and self.notifier.send_morning_report:
                         logger.info("Sending morning report email...")
                         self.notifier.send_morning_report(
                             report_path=str(report_path),
@@ -285,8 +313,8 @@ class OvernightPipeline:
                             top_opportunities=results.get('top_opportunities', [])
                         )
                     
-                    # Send alerts for high-confidence opportunities (method already checks if enabled)
-                    if self.notifier.enabled:
+                    # Send alerts for high-confidence opportunities
+                    if self.notifier.enabled and self.notifier.send_alerts:
                         logger.info("Checking for high-confidence opportunities...")
                         self.notifier.send_alert(results.get('top_opportunities', []))
                     
@@ -305,7 +333,7 @@ class OvernightPipeline:
             
             # Send error notification
             try:
-                if self.notifier is not None and self.notifier.enabled:
+                if self.notifier is not None and self.notifier.enabled and self.notifier.send_errors:
                     logger.info("Sending error notification...")
                     self.notifier.send_error(
                         error_message=str(e),
@@ -415,11 +443,14 @@ class OvernightPipeline:
             # Batch assess
             results = self.event_guard.assess_batch(tickers)
             
+            # Extract ticker results (filter out market_regime key)
+            ticker_results = {k: v for k, v in results.items() if k != 'market_regime' and hasattr(v, 'has_upcoming_event')}
+            
             # Summary stats
-            total_events = sum(1 for r in results.values() if r.has_upcoming_event)
-            sit_outs = sum(1 for r in results.values() if r.skip_trading)
-            high_risk = sum(1 for r in results.values() if r.risk_score >= 0.7)
-            regulatory = sum(1 for r in results.values() if r.event_type in ['basel_iii', 'regulatory', 'pillar_3'])
+            total_events = sum(1 for r in ticker_results.values() if r.has_upcoming_event)
+            sit_outs = sum(1 for r in ticker_results.values() if r.skip_trading)
+            high_risk = sum(1 for r in ticker_results.values() if r.risk_score >= 0.7)
+            regulatory = sum(1 for r in ticker_results.values() if r.event_type in ['basel_iii', 'regulatory', 'pillar_3'])
             
             logger.info(f"✓ Event Risk Assessment Complete:")
             logger.info(f"  Upcoming Events: {total_events}")
@@ -427,9 +458,14 @@ class OvernightPipeline:
             logger.info(f"  ⚠️  Sit-Out Recommendations: {sit_outs}")
             logger.info(f"  ⚡ High Risk Stocks (≥0.7): {high_risk}")
             
+            # Log market regime if available
+            if 'market_regime' in results:
+                regime = results['market_regime']
+                logger.info(f"  📊 Market Regime: {regime.get('regime_label', 'unknown')} | Crash Risk: {regime.get('crash_risk_score', 0)*100:.1f}%")
+            
             # Log specific warnings
             warnings = [
-                (ticker, r) for ticker, r in results.items()
+                (ticker, r) for ticker, r in ticker_results.items()
                 if r.warning_message and r.risk_score >= 0.5
             ]
             
@@ -455,7 +491,17 @@ class OvernightPipeline:
             event_risk_data: Event risk assessment results (optional)
         """
         logger.info(f"Generating predictions for {len(stocks)} stocks...")
-        logger.info(f"Using {self.predictor.max_workers} parallel workers")
+        
+        # Safety check for predictor
+        if not hasattr(self, 'predictor') or self.predictor is None:
+            logger.error("BatchPredictor not initialized - cannot generate predictions")
+            raise RuntimeError("BatchPredictor not initialized")
+        
+        try:
+            max_workers = getattr(self.predictor, 'max_workers', 4)
+            logger.info(f"Using {max_workers} parallel workers")
+        except Exception as e:
+            logger.warning(f"Could not get max_workers: {e}, using default")
         
         try:
             predicted_stocks = self.predictor.predict_batch(stocks, spi_sentiment)
@@ -549,7 +595,75 @@ class OvernightPipeline:
             logger.error(f"✗ Opportunity scoring failed: {e}")
             raise
     
-    def _generate_report(self, stocks: List[Dict], spi_sentiment: Dict) -> str:
+    def _train_lstm_models(self, scored_stocks: List[Dict]) -> Dict:
+        """
+        Train LSTM models for top opportunity stocks
+        
+        Args:
+            scored_stocks: List of scored stocks
+            
+        Returns:
+            Dictionary with training results
+        """
+        if self.trainer is None:
+            logger.info("  LSTM trainer not available - skipping training")
+            return {'status': 'disabled', 'trained_count': 0}
+        
+        # Check if training is enabled in config
+        lstm_config = self.config.get('lstm_training', {})
+        training_enabled = lstm_config.get('enabled', True)
+        
+        logger.info(f"[DEBUG] LSTM Training Check:")
+        logger.info(f"  self.trainer = {self.trainer}")
+        logger.info(f"  config.lstm_training.enabled = {training_enabled}")
+        logger.info(f"  config.lstm_training = {lstm_config}")
+        
+        if not training_enabled:
+            logger.info("  LSTM training disabled in configuration")
+            return {'status': 'disabled', 'trained_count': 0}
+        
+        logger.info("\n" + "="*80)
+        logger.info("PHASE 4.5: LSTM MODEL TRAINING")
+        logger.info("="*80)
+        self.status['phase'] = 'lstm_training'
+        self.status['progress'] = 75
+        
+        try:
+            # Create training queue from scored stocks
+            max_models = lstm_config.get('max_models_per_night', 100)
+            logger.info(f"Creating training queue (max {max_models} stocks)...")
+            
+            training_queue = self.trainer.create_training_queue(
+                opportunities=scored_stocks,
+                max_stocks=max_models
+            )
+            
+            # Train the models
+            if training_queue:
+                logger.info(f"Training {len(training_queue)} LSTM models...")
+                training_results = self.trainer.train_batch(
+                    training_queue=training_queue,
+                    max_stocks=max_models
+                )
+                
+                logger.info(f"[SUCCESS] LSTM Training Complete:")
+                logger.info(f"  Models trained: {training_results.get('trained_count', 0)}/{training_results.get('total_stocks', 0)}")
+                logger.info(f"  Successful: {training_results.get('trained_count', 0)}")
+                logger.info(f"  Failed: {training_results.get('failed_count', 0)}")
+                logger.info(f"  Total Time: {training_results.get('total_time', 0)/60:.1f} minutes")
+                
+                return training_results
+            else:
+                logger.info("No stocks queued for training (all models are fresh)")
+                return {'status': 'no_training_needed', 'trained_count': 0}
+                
+        except Exception as e:
+            logger.error(f"✗ LSTM training failed: {e}")
+            logger.error(traceback.format_exc())
+            self.status['warnings'].append(f"LSTM training failed: {str(e)}")
+            return {'status': 'failed', 'trained_count': 0, 'error': str(e)}
+    
+    def _generate_report(self, stocks: List[Dict], spi_sentiment: Dict, event_risk_data: Dict = None) -> str:
         """Generate morning report"""
         logger.info("Generating morning report...")
         
@@ -583,7 +697,8 @@ class OvernightPipeline:
                 opportunities=stocks,
                 spi_sentiment=spi_sentiment,
                 sector_summary=sector_summary,
-                system_stats=system_stats
+                system_stats=system_stats,
+                event_risk_data=event_risk_data
             )
             
             logger.info(f"✓ Report Generated: {report_path}")
