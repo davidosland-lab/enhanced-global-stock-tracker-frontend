@@ -143,9 +143,10 @@ def get_reports():
     
     # Check multiple possible report locations
     report_locations = [
-        REPORTS_PATH / 'morning_reports',
+        REPORTS_PATH / 'morning_reports',  # ASX reports
         REPORTS_PATH / 'html',
         BASE_PATH / 'reports' / 'html',
+        BASE_PATH / 'reports' / 'us',      # US market reports
         BASE_PATH / 'reports'
     ]
     
@@ -168,9 +169,10 @@ def get_report(filename):
     """Get specific report"""
     # Check multiple possible locations
     report_locations = [
-        REPORTS_PATH / 'morning_reports' / filename,
+        REPORTS_PATH / 'morning_reports' / filename,  # ASX reports
         REPORTS_PATH / 'html' / filename,
         BASE_PATH / 'reports' / 'html' / filename,
+        BASE_PATH / 'reports' / 'us' / filename,      # US market reports
         BASE_PATH / 'reports' / filename
     ]
     
@@ -184,9 +186,10 @@ def get_latest_report():
     """Get latest report information"""
     # Check multiple possible locations
     report_locations = [
-        REPORTS_PATH / 'morning_reports',
+        REPORTS_PATH / 'morning_reports',  # ASX reports
         REPORTS_PATH / 'html',
         BASE_PATH / 'reports' / 'html',
+        BASE_PATH / 'reports' / 'us',      # US market reports
         BASE_PATH / 'reports'
     ]
     
