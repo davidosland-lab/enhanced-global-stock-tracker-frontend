@@ -220,6 +220,55 @@ class USStockScanner:
         except:
             return 0.0
     
+    def _fetch_fundamentals(self, symbol: str) -> Dict:
+        """
+        Fetch fundamental data (market cap, beta, sector, name) using yahooquery
+        
+        Args:
+            symbol: Stock ticker symbol
+            
+        Returns:
+            Dictionary with fundamental data (with safe defaults)
+        """
+        fundamentals = {
+            'name': symbol,  # Default to ticker if name not found
+            'market_cap': 0,
+            'beta': 1.0,
+            'sector_name': 'Unknown'
+        }
+        
+        try:
+            ticker = Ticker(symbol)
+            
+            # Get price info for company name
+            price_info = ticker.price
+            if isinstance(price_info, dict) and symbol in price_info:
+                data = price_info[symbol]
+                if isinstance(data, dict):
+                    fundamentals['name'] = data.get('shortName', data.get('longName', symbol))
+            
+            # Get summary detail for market cap and beta
+            summary_detail = ticker.summary_detail
+            if isinstance(summary_detail, dict) and symbol in summary_detail:
+                data = summary_detail[symbol]
+                if isinstance(data, dict):
+                    fundamentals['market_cap'] = data.get('marketCap', 0)
+                    fundamentals['beta'] = data.get('beta', 1.0)
+            
+            # Get asset profile for sector
+            asset_profile = ticker.asset_profile
+            if isinstance(asset_profile, dict) and symbol in asset_profile:
+                data = asset_profile[symbol]
+                if isinstance(data, dict):
+                    fundamentals['sector_name'] = data.get('sector', 'Unknown')
+            
+            logger.debug(f"{symbol}: {fundamentals['name']} - MCap: ${fundamentals['market_cap']/1e9:.1f}B, Beta: {fundamentals['beta']:.2f}, Sector: {fundamentals['sector_name']}")
+            
+        except Exception as e:
+            logger.debug(f"{symbol}: Could not fetch fundamentals: {e}")
+        
+        return fundamentals
+    
     def analyze_stock(self, symbol: str, sector_weight: float) -> Optional[Dict]:
         """
         Perform complete analysis on a US stock
@@ -250,6 +299,9 @@ class USStockScanner:
             ma_data = self._calculate_moving_averages(hist['Close'])
             volatility = self._calculate_volatility(hist['Close'])
             
+            # Fetch fundamental data (market cap, beta, sector)
+            fundamentals = self._fetch_fundamentals(symbol)
+            
             # Calculate price change
             price_change = ((current_price - prev_close) / prev_close) * 100
             
@@ -265,18 +317,26 @@ class USStockScanner:
             
             return {
                 'symbol': symbol,
+                'name': fundamentals['name'],
                 'price': float(current_price),
                 'price_change': float(price_change),
                 'volume': int(volume),
                 'avg_volume': int(avg_volume),
-                'rsi': float(rsi),
-                'ma20': float(ma_data['ma20']),
-                'ma50': float(ma_data['ma50']),
-                'volatility': float(volatility),
                 'score': float(score),
-                'above_ma20': ma_data['above_ma20'],
-                'above_ma50': ma_data['above_ma50'],
-                'scan_time': datetime.now().isoformat()
+                'scan_time': datetime.now().isoformat(),
+                # Fundamental data
+                'market_cap': fundamentals['market_cap'],
+                'beta': fundamentals['beta'],
+                'sector_name': fundamentals['sector_name'],
+                # Nested technical dictionary for batch_predictor compatibility
+                'technical': {
+                    'rsi': float(rsi),
+                    'ma_20': float(ma_data['ma20']),
+                    'ma_50': float(ma_data['ma50']),
+                    'volatility': float(volatility),
+                    'above_ma20': ma_data['above_ma20'],
+                    'above_ma50': ma_data['above_ma50']
+                }
             }
             
         except Exception as e:
