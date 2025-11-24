@@ -1,0 +1,84 @@
+================================================================================
+  FinBERT v4.4.4 - BACKTEST GRAPHING FIX
+================================================================================
+
+PROBLEM IDENTIFIED:
+-------------------
+The backtest graphing was NOT working because the JavaScript frontend and
+Python backend had MISMATCHED data structures.
+
+Frontend Expected:          Backend Actually Returned:
+--------------------        --------------------------
+data.success                (no success field)
+data.results.final_value    performance.final_equity
+data.results.equity_curve   equity_curve (top level)
+point.date                  point.timestamp
+point.value                 point.equity
+
+WHAT WAS FIXED:
+---------------
+✅ Single Stock Backtest (/api/backtest/run):
+   - Removed data.success check - API returns data directly
+   - Mapped performance.final_equity → backtestFinalValue
+   - Mapped performance.total_return_pct → backtestTotalReturn
+   - Mapped performance.win_rate (already %) → backtestWinRate
+   - Mapped performance.sharpe_ratio → backtestSharpe
+   - Mapped performance.max_drawdown_pct → backtestMaxDrawdown
+   - Fixed equity_curve mapping: point.timestamp + point.equity
+
+✅ Portfolio Backtest (/api/backtest/portfolio):
+   - Removed data.success check - API returns data directly
+   - Mapped portfolio_metrics.final_equity → portfolioFinalValue
+   - Mapped portfolio_metrics.total_return_pct → portfolioTotalReturn
+   - Mapped portfolio_metrics.annualized_return → portfolioAnnualReturn
+   - Mapped portfolio_metrics.sharpe_ratio → portfolioSharpe
+   - Fixed equity_curve mapping: point.timestamp + point.equity
+
+✅ ECharts Graphing:
+   - Already loaded via CDN (line 7)
+   - drawEquityCurve() function already existed (line 1605)
+   - backtestEquityChart div already in HTML (line 3156)
+   - ONLY needed to fix data field mapping
+
+WHAT WAS NOT CHANGED:
+---------------------
+❌ requirements.txt - UNCHANGED
+❌ INSTALL.bat - UNCHANGED  
+❌ START_FINBERT.bat - UNCHANGED
+❌ app_finbert_v4_dev.py - UNCHANGED
+❌ All Python backend - UNCHANGED
+❌ All backtesting modules - UNCHANGED
+❌ ECharts library - UNCHANGED (was already working)
+
+TECHNICAL DETAILS:
+------------------
+The backtesting backend has ALWAYS been working correctly and returning
+proper data including equity_curve arrays. The ONLY problem was the 
+JavaScript frontend was looking for the wrong field names.
+
+This was a simple data mapping issue, not a network issue, not a 
+dependency issue, and not a backend problem.
+
+FILES MODIFIED:
+---------------
+1. templates/finbert_v4_enhanced_ui.html
+   - Line ~1563: Fixed backtest response handling
+   - Line ~1577: Fixed displayBacktestResults() data mapping
+   - Line ~1611: Fixed drawEquityCurve() to use timestamp/equity
+   - Line ~1792: Fixed portfolio response handling  
+   - Line ~1808: Fixed displayPortfolioResults() data mapping
+   - Line ~1846: Fixed drawPortfolioEquityCurve() to use timestamp/equity
+
+TESTING:
+--------
+1. Run START_FINBERT.bat
+2. Navigate to Backtest tab
+3. Enter a symbol (e.g., CBA.AX)
+4. Click "Run Backtest"
+5. VERIFY: ECharts equity curve graph appears (not plain alert)
+6. Navigate to Portfolio Backtest tab
+7. Enter multiple symbols
+8. Click "Run Portfolio Backtest"
+9. VERIFY: ECharts equity curve graph appears
+
+================================================================================

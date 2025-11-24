@@ -70,7 +70,8 @@ class ReportGenerator:
         opportunities: List[Dict],
         spi_sentiment: Dict,
         sector_summary: Dict,
-        system_stats: Dict
+        system_stats: Dict,
+        event_risk_data: Dict = None
     ) -> str:
         """
         Generate complete morning report
@@ -80,6 +81,7 @@ class ReportGenerator:
             spi_sentiment: SPI market sentiment data
             sector_summary: Sector performance summary
             system_stats: System performance statistics
+            event_risk_data: Event risk assessment data including market regime (optional)
             
         Returns:
             Path to generated HTML report
@@ -98,7 +100,8 @@ class ReportGenerator:
             opportunities=opportunities,
             spi_sentiment=spi_sentiment,
             sector_summary=sector_summary,
-            system_stats=system_stats
+            system_stats=system_stats,
+            event_risk_data=event_risk_data
         )
         
         # Save report
@@ -117,7 +120,8 @@ class ReportGenerator:
                 opportunities=opportunities,
                 spi_sentiment=spi_sentiment,
                 sector_summary=sector_summary,
-                system_stats=system_stats
+                system_stats=system_stats,
+                event_risk_data=event_risk_data
             )
         
         return str(report_path)
@@ -129,21 +133,18 @@ class ReportGenerator:
         opportunities: List[Dict],
         spi_sentiment: Dict,
         sector_summary: Dict,
-        system_stats: Dict
+        system_stats: Dict,
+        event_risk_data: Dict = None
     ) -> str:
         """Build complete HTML report"""
-        
-        # Detect market (US if report_dir contains 'us', otherwise ASX)
-        is_us_market = 'us' in str(self.report_dir).lower() or '/us/' in str(self.report_dir)
-        market_name = "US (S&P 500)" if is_us_market else "ASX"
         
         # Get top opportunities
         top_opportunities = opportunities[:self.report_config['max_stocks_in_report']]
         
         # Build sections
-        header_html = self._build_header(report_date, report_time, market_name)
-        market_overview_html = self._build_market_overview(spi_sentiment, market_name)
-        regime_html = self._build_regime_section(system_stats)
+        header_html = self._build_header(report_date, report_time)
+        market_overview_html = self._build_market_overview(spi_sentiment)
+        regime_html = self._build_market_regime_section(event_risk_data)
         opportunities_html = self._build_opportunities_section(top_opportunities)
         sector_html = self._build_sector_section(sector_summary)
         watchlist_html = self._build_watchlist_section(opportunities)
@@ -157,7 +158,7 @@ class ReportGenerator:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{market_name} Morning Report - {report_date}</title>
+    <title>ASX Morning Report - {report_date}</title>
     <style>
         {self._get_css_styles()}
     </style>
@@ -441,140 +442,6 @@ class ReportGenerator:
             font-size: 1.2em;
         }
         
-        /* Regime Section Styles */
-        .regime-section {
-            background: linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%);
-            border-left: 5px solid #3b82f6;
-        }
-        
-        .regime-overview {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin-bottom: 20px;
-        }
-        
-        .regime-primary {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-        }
-        
-        .regime-badge-large {
-            display: inline-flex;
-            align-items: center;
-            gap: 15px;
-            padding: 20px 40px;
-            border-radius: 15px;
-            color: white;
-            font-size: 1.5em;
-            font-weight: bold;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        }
-        
-        .regime-emoji {
-            font-size: 2em;
-        }
-        
-        .regime-name {
-            font-size: 1.2em;
-        }
-        
-        .regime-description {
-            color: #4b5563;
-            font-size: 1.1em;
-            line-height: 1.6;
-            max-width: 400px;
-        }
-        
-        .regime-metrics {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-        
-        .regime-metric-card {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
-        }
-        
-        .regime-metric-card .metric-label {
-            font-size: 0.9em;
-            color: #6b7280;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .regime-metric-card .metric-value {
-            font-size: 1.8em;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        
-        .regime-metric-card .metric-badge {
-            display: inline-block;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.85em;
-            font-weight: bold;
-        }
-        
-        .low-risk {
-            color: #10b981;
-        }
-        
-        .medium-risk {
-            color: #f59e0b;
-        }
-        
-        .high-risk {
-            color: #ef4444;
-        }
-        
-        .regime-metric-card .metric-badge.low-risk {
-            background: #d1fae5;
-            color: #065f46;
-        }
-        
-        .regime-metric-card .metric-badge.medium-risk {
-            background: #fef3c7;
-            color: #92400e;
-        }
-        
-        .regime-metric-card .metric-badge.high-risk {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-        
-        .regime-notice {
-            background: #fffbeb;
-            border: 1px solid #fbbf24;
-            border-radius: 8px;
-            padding: 15px;
-            color: #92400e;
-            font-size: 0.95em;
-            margin-top: 20px;
-        }
-        
-        .info-box {
-            background: #f3f4f6;
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-        }
-        
-        @media (max-width: 768px) {
-            .regime-overview {
-                grid-template-columns: 1fr;
-            }
-        }
-        
         @media print {
             body {
                 background: white;
@@ -587,17 +454,17 @@ class ReportGenerator:
         }
         """
     
-    def _build_header(self, report_date: str, report_time: str, market_name: str = "ASX") -> str:
+    def _build_header(self, report_date: str, report_time: str) -> str:
         """Build report header"""
         return f"""
     <div class="header">
-        <h1><span class="emoji">📊</span> {market_name} Morning Report</h1>
+        <h1><span class="emoji">📊</span> ASX Morning Report</h1>
         <p>{report_date} | Generated at {report_time}</p>
     </div>
     <div class="container">
 """
     
-    def _build_market_overview(self, spi_sentiment: Dict, market_name: str = "ASX") -> str:
+    def _build_market_overview(self, spi_sentiment: Dict) -> str:
         """Build market overview section"""
         gap = spi_sentiment.get('gap_prediction', {})
         predicted_gap = gap.get('predicted_gap_pct', 0)
@@ -618,25 +485,14 @@ class ReportGenerator:
             gap_text = "FLAT"
             gap_class = "neutral"
         
-        # Market-specific labels
-        is_us = "US" in market_name or "S&P" in market_name
-        index_label = "S&P 500" if is_us else "ASX 200"
-        related_markets_label = "Related Markets" if is_us else "Overnight US Markets"
-        
-        # Related markets data (US for ASX, or other indices for US)
-        if is_us:
-            # For US market, show VIX and other indices
-            vix = spi_sentiment.get('vix', {})
-            related_text = f"VIX: {vix.get('value', 'N/A')}"
-        else:
-            # For ASX, show US markets
-            us_markets = spi_sentiment.get('us_markets', {})
-            us_summary = []
-            for market, data in us_markets.items():
-                change = data.get('change_pct', 0)
-                sign = '+' if change >= 0 else ''
-                us_summary.append(f"{market}: {sign}{change:.2f}%")
-            related_text = " | ".join(us_summary) if us_summary else "N/A"
+        # US markets data
+        us_markets = spi_sentiment.get('us_markets', {})
+        us_summary = []
+        for market, data in us_markets.items():
+            change = data.get('change_pct', 0)
+            sign = '+' if change >= 0 else ''
+            us_summary.append(f"{market}: {sign}{change:.2f}%")
+        us_text = " | ".join(us_summary) if us_summary else "N/A"
         
         # Sentiment stars
         stars = "⭐" * int(sentiment_score / 20)
@@ -646,7 +502,7 @@ class ReportGenerator:
         <h2><span class="emoji">📈</span> Market Overview</h2>
         <div class="market-overview-grid">
             <div class="metric-card">
-                <div class="metric-label">Expected {index_label} Open</div>
+                <div class="metric-label">Expected ASX 200 Open</div>
                 <div class="metric-value {gap_class}">{gap_emoji} {gap_text}</div>
                 <div class="metric-change">Confidence: {gap.get('confidence', 0)}%</div>
             </div>
@@ -658,8 +514,8 @@ class ReportGenerator:
             </div>
             
             <div class="metric-card">
-                <div class="metric-label">{related_markets_label}</div>
-                <div class="metric-value" style="font-size: 1.2em;">{related_text}</div>
+                <div class="metric-label">Overnight US Markets</div>
+                <div class="metric-value" style="font-size: 1.2em;">{us_text}</div>
             </div>
             
             <div class="metric-card">
@@ -667,112 +523,6 @@ class ReportGenerator:
                 <div class="metric-value" style="font-size: 1.2em;">{recommendation.get('message', 'N/A')}</div>
                 <div class="metric-change">Risk: {recommendation.get('risk_level', 'MEDIUM')}</div>
             </div>
-        </div>
-    </div>
-"""
-    
-    def _build_regime_section(self, system_stats: Dict) -> str:
-        """Build market regime section"""
-        # Check if regime data is available
-        market_regime = system_stats.get('market_regime')
-        crash_risk = system_stats.get('crash_risk')
-        
-        if not market_regime or market_regime == 'Unknown':
-            # No regime data available
-            return """
-    <div class="section">
-        <h2><span class="emoji">🎯</span> Market Regime Analysis</h2>
-        <div class="info-box">
-            <p style="color: #6b7280;">Market regime data not available. This feature requires the Market Regime Engine to be enabled.</p>
-        </div>
-    </div>
-"""
-        
-        # Determine regime properties
-        regime_configs = {
-            'Low Volatility': {
-                'emoji': '🟢',
-                'color': '#10b981',
-                'description': 'Stable market conditions with low volatility. Favorable for long positions.',
-                'recommendation': 'Consider accumulating quality stocks.'
-            },
-            'Medium Volatility': {
-                'emoji': '🟡',
-                'color': '#f59e0b',
-                'description': 'Moderate market conditions. Increased caution advised.',
-                'recommendation': 'Monitor positions closely and use stop-losses.'
-            },
-            'High Volatility': {
-                'emoji': '🔴',
-                'color': '#ef4444',
-                'description': 'High volatility environment. Elevated risk levels.',
-                'recommendation': 'Reduce exposure and protect capital.'
-            }
-        }
-        
-        # Get regime config (default to Medium if not found)
-        regime_config = regime_configs.get(market_regime, regime_configs['Medium Volatility'])
-        
-        # Crash risk formatting
-        crash_risk_value = crash_risk
-        crash_risk_class = 'low-risk'
-        crash_risk_badge = 'LOW'
-        
-        if isinstance(crash_risk, str):
-            if '%' in crash_risk:
-                try:
-                    crash_risk_pct = float(crash_risk.replace('%', ''))
-                    if crash_risk_pct > 30:
-                        crash_risk_class = 'high-risk'
-                        crash_risk_badge = 'HIGH'
-                    elif crash_risk_pct > 15:
-                        crash_risk_class = 'medium-risk'
-                        crash_risk_badge = 'MEDIUM'
-                except:
-                    pass
-        elif isinstance(crash_risk, (int, float)):
-            if crash_risk > 30:
-                crash_risk_class = 'high-risk'
-                crash_risk_badge = 'HIGH'
-                crash_risk_value = f"{crash_risk:.1f}%"
-            elif crash_risk > 15:
-                crash_risk_class = 'medium-risk'
-                crash_risk_badge = 'MEDIUM'
-                crash_risk_value = f"{crash_risk:.1f}%"
-            else:
-                crash_risk_value = f"{crash_risk:.1f}%"
-        
-        return f"""
-    <div class="section regime-section">
-        <h2><span class="emoji">🎯</span> Market Regime Analysis</h2>
-        <div class="regime-overview">
-            <div class="regime-primary">
-                <div class="regime-badge-large" style="background: {regime_config['color']};">
-                    <span class="regime-emoji">{regime_config['emoji']}</span>
-                    <span class="regime-name">{market_regime}</span>
-                </div>
-                <p class="regime-description">{regime_config['description']}</p>
-            </div>
-            
-            <div class="regime-metrics">
-                <div class="regime-metric-card">
-                    <div class="metric-label">Crash Risk Score</div>
-                    <div class="metric-value {crash_risk_class}">{crash_risk_value}</div>
-                    <div class="metric-badge {crash_risk_class}">{crash_risk_badge}</div>
-                </div>
-                
-                <div class="regime-metric-card">
-                    <div class="metric-label">Recommendation</div>
-                    <div class="metric-value" style="font-size: 1em; color: #4b5563;">
-                        {regime_config['recommendation']}
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="regime-notice">
-            <strong>📌 Note:</strong> Regime analysis is based on Hidden Markov Model (HMM) with historical volatility patterns.
-            Past regime classifications do not guarantee future market behavior.
         </div>
     </div>
 """
@@ -1076,6 +826,133 @@ class ReportGenerator:
     </div>
 """
     
+    def _build_market_regime_section(self, event_risk_data: Dict = None) -> str:
+        """Build market regime analysis section"""
+        if not event_risk_data or 'market_regime' not in event_risk_data:
+            return ""
+        
+        regime = event_risk_data.get('market_regime', {})
+        if not regime:
+            return ""
+        
+        regime_label = regime.get('regime_label', 'unknown')
+        crash_risk = regime.get('crash_risk_score', 0) * 100  # Convert to percentage
+        vol_1d = regime.get('vol_1d', 0) * 100  # Convert to percentage
+        vol_annual = regime.get('vol_annual', 0) * 100  # Convert to percentage
+        regime_probs = regime.get('regime_probabilities', {})
+        data_window = regime.get('data_window', {})
+        
+        # Determine regime display name and emoji
+        regime_names = {
+            'low_vol': {'name': 'Low Volatility', 'emoji': '🟢', 'color': '#10b981'},
+            'medium_vol': {'name': 'Medium Volatility', 'emoji': '🟡', 'color': '#f59e0b'},
+            'high_vol': {'name': 'High Volatility', 'emoji': '🔴', 'color': '#ef4444'}
+        }
+        
+        regime_info = regime_names.get(regime_label, {'name': regime_label.title(), 'emoji': '⚪', 'color': '#6b7280'})
+        
+        # Determine crash risk level and color
+        if crash_risk >= 70:
+            risk_level = 'CRITICAL'
+            risk_color = '#dc2626'
+            risk_badge = 'badge-danger'
+        elif crash_risk >= 50:
+            risk_level = 'HIGH'
+            risk_color = '#ef4444'
+            risk_badge = 'badge-warning'
+        elif crash_risk >= 30:
+            risk_level = 'MODERATE'
+            risk_color = '#f59e0b'
+            risk_badge = 'badge-warning'
+        else:
+            risk_level = 'LOW'
+            risk_color = '#10b981'
+            risk_badge = 'badge-success'
+        
+        # Build regime probabilities display
+        prob_rows = ""
+        regime_state_names = {0: 'Low Volatility', 1: 'Medium Volatility', 2: 'High Volatility'}
+        for state, prob in sorted(regime_probs.items()):
+            state_name = regime_state_names.get(state, f'State {state}')
+            prob_pct = prob * 100
+            prob_rows += f"""
+                <tr>
+                    <td><strong>{state_name}</strong></td>
+                    <td>{prob_pct:.2f}%</td>
+                    <td>
+                        <div style="background: #e5e7eb; border-radius: 10px; overflow: hidden; height: 20px;">
+                            <div style="background: {regime_info['color']}; width: {prob_pct:.1f}%; height: 100%; transition: width 0.3s;"></div>
+                        </div>
+                    </td>
+                </tr>
+"""
+        
+        # Data window display
+        window_start = data_window.get('start', 'N/A')
+        window_end = data_window.get('end', 'N/A')
+        
+        return f"""
+    <div class="section">
+        <h2><span class="emoji">🎯</span> Market Regime Analysis</h2>
+        
+        <div class="market-overview-grid">
+            <div class="metric-card" style="border-left-color: {regime_info['color']};">
+                <div class="metric-label">Current Market Regime</div>
+                <div class="metric-value" style="color: {regime_info['color']};">
+                    {regime_info['emoji']} {regime_info['name']}
+                </div>
+                <div class="metric-change">HMM-based classification</div>
+            </div>
+            
+            <div class="metric-card" style="border-left-color: {risk_color};">
+                <div class="metric-label">Crash Risk Score</div>
+                <div class="metric-value" style="color: {risk_color};">
+                    {crash_risk:.1f}%
+                </div>
+                <div class="metric-change">
+                    <span class="badge {risk_badge}">{risk_level} RISK</span>
+                </div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-label">Daily Volatility</div>
+                <div class="metric-value">{vol_1d:.2f}%</div>
+                <div class="metric-change">1-day volatility</div>
+            </div>
+            
+            <div class="metric-card">
+                <div class="metric-label">Annual Volatility</div>
+                <div class="metric-value">{vol_annual:.2f}%</div>
+                <div class="metric-change">Annualized estimate</div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 25px;">
+            <h3 style="color: #1e3a8a; margin-bottom: 15px; font-size: 1.3em;">Regime State Probabilities</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>State</th>
+                        <th>Probability</th>
+                        <th>Confidence</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {prob_rows}
+                </tbody>
+            </table>
+        </div>
+        
+        <div style="margin-top: 20px; padding: 15px; background: #f1f5f9; border-radius: 5px;">
+            <p style="margin: 0; font-size: 0.9em; color: #475569;">
+                <strong>Analysis Window:</strong> {window_start} to {window_end}<br>
+                <strong>Method:</strong> Hidden Markov Model (HMM) with 3-state regime classification<br>
+                <strong>Note:</strong> Higher crash risk scores indicate increased probability of significant market downturns.
+            </p>
+        </div>
+    </div>
+"""
+    
     def _build_footer(self) -> str:
         """Build report footer"""
         return """
@@ -1095,7 +972,8 @@ class ReportGenerator:
         opportunities: List[Dict],
         spi_sentiment: Dict,
         sector_summary: Dict,
-        system_stats: Dict
+        system_stats: Dict,
+        event_risk_data: Dict = None
     ):
         """Save JSON data for programmatic access"""
         data = {
@@ -1104,7 +982,8 @@ class ReportGenerator:
             'opportunities': opportunities,
             'spi_sentiment': spi_sentiment,
             'sector_summary': sector_summary,
-            'system_stats': system_stats
+            'system_stats': system_stats,
+            'event_risk_data': event_risk_data
         }
         
         json_filename = f"{report_date}_data.json"

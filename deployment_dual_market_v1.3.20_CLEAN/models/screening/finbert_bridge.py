@@ -37,33 +37,21 @@ from datetime import datetime
 # Setup logging
 logger = logging.getLogger(__name__)
 
-# Calculate paths for module imports
-# In deployment: modules are at models/lstm_predictor.py, models/finbert_sentiment.py, etc.
-# In development with finbert_v4.4.4: try that path first, fall back to models/
-BASE_PATH = Path(__file__).parent.parent  # Points to models/
-FINBERT_PATH = BASE_PATH.parent / 'finbert_v4.4.4'  # Optional separate FinBERT installation
+# Calculate FinBERT path relative to this file
+FINBERT_PATH = Path(__file__).parent.parent.parent / 'finbert_v4.4.4'
+FINBERT_MODELS_PATH = FINBERT_PATH / 'models'
 
-# Try to add FinBERT path if it exists (development setup)
+# Add FinBERT to Python path (read-only access)
 if FINBERT_PATH.exists():
     sys.path.insert(0, str(FINBERT_PATH))
-    sys.path.insert(0, str(FINBERT_PATH / 'models'))
+    sys.path.insert(0, str(FINBERT_MODELS_PATH))
     logger.info(f"✓ Added FinBERT path to sys.path: {FINBERT_PATH}")
 else:
-    # Deployment setup - modules are in models/ directory
-    # Add parent directory to path so we can import from models
-    if str(BASE_PATH) not in sys.path:
-        sys.path.insert(0, str(BASE_PATH))
-    logger.info(f"✓ Using models directory: {BASE_PATH}")
+    logger.warning(f"⚠ FinBERT path not found: {FINBERT_PATH}")
 
-# Import modules (with error handling)
-# Try direct import first (deployment), then from models package
+# Import FinBERT modules (with error handling)
 try:
-    try:
-        # Try direct import (if finbert_v4.4.4 is in path)
-        from lstm_predictor import StockLSTMPredictor
-    except ImportError:
-        # Try from models package (deployment structure)
-        from models.lstm_predictor import StockLSTMPredictor
+    from lstm_predictor import StockLSTMPredictor
     LSTM_AVAILABLE = True
     logger.info("✓ LSTM predictor imported successfully")
 except ImportError as e:
@@ -72,10 +60,7 @@ except ImportError as e:
     StockLSTMPredictor = None
 
 try:
-    try:
-        from finbert_sentiment import FinBERTSentimentAnalyzer
-    except ImportError:
-        from models.finbert_sentiment import FinBERTSentimentAnalyzer
+    from finbert_sentiment import FinBERTSentimentAnalyzer
     SENTIMENT_ANALYZER_AVAILABLE = True
     logger.info("✓ FinBERT sentiment analyzer imported successfully")
 except ImportError as e:
@@ -84,10 +69,7 @@ except ImportError as e:
     FinBERTSentimentAnalyzer = None
 
 try:
-    try:
-        from news_sentiment_real import get_sentiment_sync
-    except ImportError:
-        from models.news_sentiment_real import get_sentiment_sync
+    from news_sentiment_real import get_sentiment_sync
     NEWS_SENTIMENT_AVAILABLE = True
     logger.info("✓ News sentiment module imported successfully")
 except ImportError as e:
@@ -401,6 +383,31 @@ class FinBERTBridge:
         except Exception as e:
             logger.error(f"Text analysis failed: {e}")
             return None
+    
+    def get_trained_models_count(self) -> int:
+        """
+        Count the number of trained LSTM models available
+        
+        Returns:
+            int: Number of trained models found in finbert_v4.4.4/models/trained/
+        """
+        if not self._lstm_initialized:
+            return 0
+        
+        try:
+            trained_dir = FINBERT_PATH / 'models' / 'trained'
+            if not trained_dir.exists():
+                return 0
+            
+            # Count .h5 and .keras model files
+            h5_models = list(trained_dir.glob('*_lstm.h5'))
+            keras_models = list(trained_dir.glob('*_lstm.keras'))
+            
+            return len(h5_models) + len(keras_models)
+            
+        except Exception as e:
+            logger.error(f"Failed to count trained models: {e}")
+            return 0
     
     def get_component_info(self) -> Dict:
         """

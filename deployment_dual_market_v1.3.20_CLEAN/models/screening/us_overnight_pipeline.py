@@ -520,7 +520,7 @@ Full traceback:
         # Export CSV if available
         if self.csv_exporter is not None:
             try:
-                csv_path = self.csv_exporter.export_screening_results(scored_stocks, sentiment)
+                csv_path = self.csv_exporter.export_screening_results(scored_stocks, us_sentiment)
                 logger.info(f"✓ CSV exported: {csv_path}")
             except Exception as e:
                 logger.warning(f"CSV export failed: {e}")

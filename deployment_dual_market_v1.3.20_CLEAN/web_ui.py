@@ -36,24 +36,8 @@ CORS(app)
 
 # Configuration
 CONFIG_PATH = BASE_PATH / 'models' / 'config' / 'screening_config.json'
-REPORTS_PATH = BASE_PATH / 'reports'
+REPORTS_PATH = BASE_PATH / 'models' / 'screening' / 'reports'
 TIMEZONE = pytz.timezone('Australia/Sydney')
-
-# Market configurations
-MARKETS = {
-    'asx': {
-        'name': 'ASX (Australian)',
-        'timezone': 'Australia/Sydney',
-        'reports_path': REPORTS_PATH,
-        'logs_path': BASE_PATH / 'logs' / 'screening'
-    },
-    'us': {
-        'name': 'US (S&P 500)',
-        'timezone': 'America/New_York',
-        'reports_path': REPORTS_PATH / 'us',
-        'logs_path': BASE_PATH / 'logs' / 'screening' / 'us'
-    }
-}
 
 # Load configuration
 def load_config():
@@ -85,13 +69,27 @@ def get_status():
     """Get system status"""
     config = load_config()
     
-    # Get latest reports for both markets
-    latest_report_asx = get_latest_report('asx')
-    latest_report_us = get_latest_report('us')
+    # Get latest report
+    latest_report = get_latest_report()
     
-    # Get pipeline states for both markets
-    latest_state_asx = get_latest_pipeline_state('asx')
-    latest_state_us = get_latest_pipeline_state('us')
+    # Get pipeline state - check multiple locations
+    state_locations = [
+        REPORTS_PATH / 'pipeline_state',
+        BASE_PATH / 'reports' / 'pipeline_state',
+        BASE_PATH / 'models' / 'screening' / 'reports' / 'pipeline_state'
+    ]
+    
+    latest_state = None
+    for state_dir in state_locations:
+        if state_dir.exists():
+            state_files = sorted(state_dir.glob('*.json'), reverse=True)
+            if state_files:
+                try:
+                    with open(state_files[0], 'r') as f:
+                        latest_state = json.load(f)
+                        break  # Found it, stop searching
+                except:
+                    pass
     
     status = {
         'system_active': True,
@@ -99,44 +97,13 @@ def get_status():
         'email_enabled': config.get('email_notifications', {}).get('enabled', False),
         'lstm_training_enabled': config.get('lstm_training', {}).get('enabled', False),
         'spi_monitoring_enabled': config.get('spi_monitoring', {}).get('enabled', False),
-        'markets': {
-            'asx': {
-                'latest_report': latest_report_asx,
-                'latest_state': latest_state_asx
-            },
-            'us': {
-                'latest_report': latest_report_us,
-                'latest_state': latest_state_us
-            }
-        },
+        'latest_report': latest_report,
+        'latest_state': latest_state,
         'current_time': datetime.now(TIMEZONE).isoformat(),
         'timezone': str(TIMEZONE)
     }
     
     return jsonify(status)
-
-def get_latest_pipeline_state(market='asx'):
-    """Get latest pipeline state for a specific market"""
-    market_info = MARKETS.get(market, MARKETS['asx'])
-    
-    state_locations = [
-        market_info['reports_path'] / 'pipeline_state',
-        BASE_PATH / 'reports' / 'pipeline_state',
-    ]
-    
-    if market == 'us':
-        state_locations.append(BASE_PATH / 'reports' / 'pipeline_state' / 'us')
-    
-    for state_dir in state_locations:
-        if state_dir.exists():
-            state_files = sorted(state_dir.glob('*.json'), reverse=True)
-            if state_files:
-                try:
-                    with open(state_files[0], 'r') as f:
-                        return json.load(f)
-                except:
-                    pass
-    return None
 
 @app.route('/api/config')
 def get_config():
@@ -171,52 +138,30 @@ def update_config():
 
 @app.route('/api/reports')
 def get_reports():
-    """Get list of available reports for both markets"""
-    market = request.args.get('market', 'all')  # 'asx', 'us', or 'all'
-    
-    reports = {
-        'asx': [],
-        'us': []
-    }
-    
-    # Get ASX reports if requested
-    if market in ['asx', 'all']:
-        reports['asx'] = get_market_reports('asx')
-    
-    # Get US reports if requested
-    if market in ['us', 'all']:
-        reports['us'] = get_market_reports('us')
-    
-    if market == 'all':
-        return jsonify(reports)
-    else:
-        return jsonify(reports.get(market, []))
-
-def get_market_reports(market='asx'):
-    """Get reports for a specific market"""
+    """Get list of available reports"""
     reports = []
-    market_info = MARKETS.get(market, MARKETS['asx'])
     
+    # Check multiple possible report locations
     report_locations = [
-        market_info['reports_path'] / 'html',
-        market_info['reports_path'] / 'morning_reports',
-        BASE_PATH / 'reports' / 'html' / (market if market == 'us' else ''),
+        REPORTS_PATH / 'morning_reports',
+        REPORTS_PATH / 'html',
+        BASE_PATH / 'reports' / 'html',
+        BASE_PATH / 'reports'
     ]
     
     for html_dir in report_locations:
         if html_dir.exists():
             for report_file in sorted(html_dir.glob('*.html'), reverse=True):
+                # Avoid duplicates
                 if not any(r['filename'] == report_file.name for r in reports):
-                    tz = pytz.timezone(market_info['timezone'])
                     reports.append({
                         'filename': report_file.name,
-                        'market': market.upper(),
                         'date': report_file.stem.split('_')[0] if '_' in report_file.stem else report_file.stem,
                         'size': report_file.stat().st_size,
-                        'modified': datetime.fromtimestamp(report_file.stat().st_mtime, tz=tz).isoformat()
+                        'modified': datetime.fromtimestamp(report_file.stat().st_mtime, tz=TIMEZONE).isoformat()
                     })
     
-    return reports[:50]  # Limit to 50 most recent
+    return jsonify(reports[:50])  # Limit to 50 most recent
 
 @app.route('/api/reports/<filename>')
 def get_report(filename):
@@ -235,15 +180,14 @@ def get_report(filename):
     
     return jsonify({'error': 'Report not found'}), 404
 
-def get_latest_report(market='asx'):
-    """Get latest report information for a specific market"""
-    market_info = MARKETS.get(market, MARKETS['asx'])
-    tz = pytz.timezone(market_info['timezone'])
-    
+def get_latest_report():
+    """Get latest report information"""
+    # Check multiple possible locations
     report_locations = [
-        market_info['reports_path'] / 'html',
-        market_info['reports_path'] / 'morning_reports',
-        BASE_PATH / 'reports' / 'html' / (market if market == 'us' else ''),
+        REPORTS_PATH / 'morning_reports',
+        REPORTS_PATH / 'html',
+        BASE_PATH / 'reports' / 'html',
+        BASE_PATH / 'reports'
     ]
     
     all_reports = []
@@ -252,51 +196,24 @@ def get_latest_report(market='asx'):
             all_reports.extend(html_dir.glob('*.html'))
     
     if all_reports:
+        # Get the most recent report
         latest = max(all_reports, key=lambda p: p.stat().st_mtime)
         return {
             'filename': latest.name,
-            'market': market.upper(),
             'date': latest.stem.split('_')[0] if '_' in latest.stem else latest.stem,
             'size': latest.stat().st_size,
-            'modified': datetime.fromtimestamp(latest.stat().st_mtime, tz=tz).isoformat()
+            'modified': datetime.fromtimestamp(latest.stat().st_mtime, tz=TIMEZONE).isoformat()
         }
     return None
 
-@app.route('/api/markets')
-def get_markets():
-    """Get available markets configuration"""
-    markets_info = {}
-    for market_id, market_data in MARKETS.items():
-        markets_info[market_id] = {
-            'name': market_data['name'],
-            'timezone': market_data['timezone']
-        }
-    return jsonify(markets_info)
-
 @app.route('/api/sectors')
 def get_sectors():
-    """Get sectors configuration for both markets"""
-    market = request.args.get('market', 'all')  # 'asx', 'us', or 'all'
-    
+    """Get ASX sectors configuration"""
     try:
-        sectors_data = {}
-        
-        if market in ['asx', 'all']:
-            asx_path = BASE_PATH / 'models' / 'config' / 'asx_sectors.json'
-            if asx_path.exists():
-                with open(asx_path, 'r') as f:
-                    sectors_data['asx'] = json.load(f)
-        
-        if market in ['us', 'all']:
-            us_path = BASE_PATH / 'models' / 'config' / 'us_sectors.json'
-            if us_path.exists():
-                with open(us_path, 'r') as f:
-                    sectors_data['us'] = json.load(f)
-        
-        if market == 'all':
-            return jsonify(sectors_data)
-        else:
-            return jsonify(sectors_data.get(market, {}))
+        sectors_path = BASE_PATH / 'models' / 'config' / 'asx_sectors.json'
+        with open(sectors_path, 'r') as f:
+            sectors = json.load(f)
+        return jsonify(sectors)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -361,282 +278,120 @@ def get_models():
 
 @app.route('/api/logs')
 def get_logs():
-    """Get recent log entries for both markets"""
-    market = request.args.get('market', 'all')  # 'asx', 'us', or 'all'
-    
+    """Get recent log entries"""
     try:
-        logs_data = {}
+        # Try multiple log file locations
+        log_paths = [
+            BASE_PATH / 'logs' / 'screening' / 'overnight_pipeline.log',
+            BASE_PATH / 'overnight_pipeline.log',
+            BASE_PATH / 'logs' / 'overnight_pipeline.log'
+        ]
         
-        if market in ['asx', 'all']:
-            logs_data['asx'] = get_market_logs('asx')
-        
-        if market in ['us', 'all']:
-            logs_data['us'] = get_market_logs('us')
-        
-        if market == 'all':
-            return jsonify(logs_data)
-        else:
-            return jsonify(logs_data.get(market, {'logs': [], 'total_lines': 0}))
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-def get_market_logs(market='asx'):
-    """Get logs for a specific market"""
-    market_info = MARKETS.get(market, MARKETS['asx'])
-    
-    log_file_names = [
-        'overnight_pipeline.log',
-        f'{market}_overnight_pipeline.log',
-        'us_overnight_pipeline.log' if market == 'us' else 'overnight_pipeline.log'
-    ]
-    
-    log_paths = [market_info['logs_path'] / fname for fname in log_file_names]
-    log_paths.append(BASE_PATH / 'overnight_pipeline.log')
-    
-    all_lines = []
-    for log_file in log_paths:
-        if log_file.exists() and log_file.stat().st_size > 0:
-            try:
+        all_lines = []
+        for log_file in log_paths:
+            if log_file.exists() and log_file.stat().st_size > 0:
                 with open(log_file, 'r', encoding='utf-8', errors='ignore') as f:
                     lines = f.readlines()
                     all_lines.extend(lines)
-            except:
-                pass
-    
-    if all_lines:
-        return {
-            'logs': all_lines[-200:],
-            'total_lines': len(all_lines),
-            'market': market.upper()
-        }
-    else:
-        return {
-            'logs': [f'No log files found for {market.upper()} market. Run the pipeline to generate logs.\n'],
-            'total_lines': 0,
-            'market': market.upper()
-        }
-
-@app.route('/api/opportunities')
-def get_opportunities():
-    """Get top stock opportunities for both markets"""
-    market = request.args.get('market', 'all')  # 'asx', 'us', or 'all'
-    limit = int(request.args.get('limit', 10))  # Number of opportunities to return
-    
-    try:
-        opportunities_data = {}
         
-        if market in ['asx', 'all']:
-            opportunities_data['asx'] = get_market_opportunities('asx', limit)
-        
-        if market in ['us', 'all']:
-            opportunities_data['us'] = get_market_opportunities('us', limit)
-        
-        if market == 'all':
-            return jsonify(opportunities_data)
+        if all_lines:
+            # Return last 200 lines (increased from 100)
+            return jsonify({
+                'logs': all_lines[-200:],
+                'total_lines': len(all_lines)
+            })
         else:
-            return jsonify(opportunities_data.get(market, {
-                'available': False,
-                'opportunities': [],
-                'message': f'No opportunities data available for {market.upper()} market.'
-            }))
-        
+            # Check if log file exists but is empty
+            for log_file in log_paths:
+                if log_file.exists():
+                    return jsonify({
+                        'logs': [f"Log file exists but is empty: {log_file}\n"],
+                        'total_lines': 0,
+                        'info': 'Run the pipeline to generate logs'
+                    })
+            
+            return jsonify({
+                'logs': ['No log files found. Run the pipeline to generate logs.\n'],
+                'total_lines': 0
+            })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-def get_market_opportunities(market='asx', limit=10):
-    """Get top opportunities for a specific market"""
-    market_info = MARKETS.get(market, MARKETS['asx'])
-    
-    # Try to get opportunities from latest JSON report data
-    report_locations = [
-        market_info['reports_path'] / 'morning_reports',
-        market_info['reports_path'] / 'html',
-        BASE_PATH / 'reports' / 'html' / (market if market == 'us' else ''),
-        BASE_PATH / 'reports' / 'morning_reports' / (market if market == 'us' else ''),
-        BASE_PATH / 'data' / (market if market == 'us' else ''),
-    ]
-    
-    # Find the latest JSON data file
-    all_json_files = []
-    for report_dir in report_locations:
-        if report_dir.exists():
-            all_json_files.extend(report_dir.glob('*_data.json'))
-            all_json_files.extend(report_dir.glob('*_pipeline_results_*.json'))
-    
-    if all_json_files:
-        # Get the most recent JSON file
-        latest_json = max(all_json_files, key=lambda p: p.stat().st_mtime)
-        try:
-            with open(latest_json, 'r') as f:
-                data = json.load(f)
-                # Get opportunities (could be in 'opportunities', 'stocks', or 'top_opportunities')
-                opportunities = (data.get('opportunities') or 
-                               data.get('top_opportunities') or 
-                               data.get('stocks', []))
-                
-                if opportunities:
-                    # Filter for BUY signals and sort by score
-                    buy_opportunities = [
-                        opp for opp in opportunities 
-                        if opp.get('prediction') == 'BUY' or opp.get('opportunity_score', 0) >= 70
-                    ]
-                    
-                    # Sort by opportunity_score or score
-                    buy_opportunities.sort(
-                        key=lambda x: x.get('opportunity_score', x.get('score', 0)), 
-                        reverse=True
-                    )
-                    
-                    return {
-                        'available': True,
-                        'opportunities': buy_opportunities[:limit],
-                        'total_count': len(opportunities),
-                        'buy_count': len(buy_opportunities),
-                        'market': market.upper(),
-                        'timestamp': data.get('generated_at') or data.get('timestamp', 'unknown')
-                    }
-        except Exception as e:
-            logger.warning(f"Error reading opportunities from JSON: {e}")
-            pass
-    
-    return {
-        'available': False,
-        'opportunities': [],
-        'total_count': 0,
-        'buy_count': 0,
-        'market': market.upper(),
-        'message': f'No opportunities data available for {market.upper()}. Run the pipeline to generate opportunities.'
-    }
 
 @app.route('/api/regime')
 def get_regime():
-    """Get market regime data from latest pipeline state or JSON data for both markets"""
-    market = request.args.get('market', 'all')  # 'asx', 'us', or 'all'
-    
+    """Get market regime data from latest pipeline state or JSON data"""
     try:
-        regime_data = {}
+        # Try to get regime data from latest JSON report data
+        report_locations = [
+            REPORTS_PATH / 'morning_reports',
+            REPORTS_PATH / 'html',
+            BASE_PATH / 'reports' / 'html',
+            BASE_PATH / 'reports'
+        ]
         
-        # Get ASX regime if requested
-        if market in ['asx', 'all']:
-            regime_data['asx'] = get_market_regime('asx')
+        # Find the latest JSON data file
+        all_json_files = []
+        for report_dir in report_locations:
+            if report_dir.exists():
+                all_json_files.extend(report_dir.glob('*_data.json'))
         
-        # Get US regime if requested  
-        if market in ['us', 'all']:
-            regime_data['us'] = get_market_regime('us')
+        if all_json_files:
+            # Get the most recent JSON file
+            latest_json = max(all_json_files, key=lambda p: p.stat().st_mtime)
+            try:
+                with open(latest_json, 'r') as f:
+                    data = json.load(f)
+                    event_risk_data = data.get('event_risk_data', {})
+                    if event_risk_data and 'market_regime' in event_risk_data:
+                        regime = event_risk_data['market_regime']
+                        return jsonify({
+                            'available': True,
+                            'regime': regime,
+                            'source': 'report_data',
+                            'timestamp': data.get('generated_at', 'unknown')
+                        })
+            except:
+                pass
         
-        if market == 'all':
-            return jsonify(regime_data)
-        else:
-            return jsonify(regime_data.get(market, {
-                'available': False,
-                'message': f'No regime data available for {market.upper()} market.'
-            }))
+        # If not found in JSON, try pipeline state files
+        state_locations = [
+            REPORTS_PATH / 'pipeline_state',
+            BASE_PATH / 'reports' / 'pipeline_state',
+            BASE_PATH / 'models' / 'screening' / 'reports' / 'pipeline_state'
+        ]
+        
+        for state_dir in state_locations:
+            if state_dir.exists():
+                state_files = sorted(state_dir.glob('*.json'), reverse=True)
+                if state_files:
+                    try:
+                        with open(state_files[0], 'r') as f:
+                            state = json.load(f)
+                            event_risk_data = state.get('event_risk_data', {})
+                            if event_risk_data and 'market_regime' in event_risk_data:
+                                regime = event_risk_data['market_regime']
+                                return jsonify({
+                                    'available': True,
+                                    'regime': regime,
+                                    'source': 'pipeline_state',
+                                    'timestamp': state.get('timestamp', 'unknown')
+                                })
+                    except:
+                        pass
+        
+        # No regime data found
+        return jsonify({
+            'available': False,
+            'message': 'No market regime data available. Run the pipeline to generate regime analysis.'
+        })
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-def get_market_regime(market='asx'):
-    """Get regime data for a specific market"""
-    market_info = MARKETS.get(market, MARKETS['asx'])
-    
-    # Try to get regime data from latest JSON report data
-    report_locations = [
-        market_info['reports_path'] / 'morning_reports',
-        market_info['reports_path'] / 'html',
-        BASE_PATH / 'reports' / 'html' / (market if market == 'us' else ''),
-        BASE_PATH / 'reports' / 'morning_reports' / (market if market == 'us' else ''),
-    ]
-    
-    # Find the latest JSON data file
-    all_json_files = []
-    for report_dir in report_locations:
-        if report_dir.exists():
-            all_json_files.extend(report_dir.glob('*_data.json'))
-    
-    if all_json_files:
-        # Get the most recent JSON file
-        latest_json = max(all_json_files, key=lambda p: p.stat().st_mtime)
-        try:
-            with open(latest_json, 'r') as f:
-                data = json.load(f)
-                # Check system_stats for regime data (new location)
-                system_stats = data.get('system_stats', {})
-                if system_stats and ('market_regime' in system_stats or 'crash_risk' in system_stats):
-                    return {
-                        'available': True,
-                        'current_state': system_stats.get('market_regime', 'Unknown'),
-                        'crash_risk': system_stats.get('crash_risk', 'Unknown'),
-                        'market': market.upper(),
-                        'source': 'report_data',
-                        'timestamp': data.get('generated_at', 'unknown')
-                    }
-                # Fallback: check old event_risk_data location
-                event_risk_data = data.get('event_risk_data', {})
-                if event_risk_data and 'market_regime' in event_risk_data:
-                    regime = event_risk_data['market_regime']
-                    return {
-                        'available': True,
-                        'regime': regime,
-                        'market': market.upper(),
-                        'source': 'report_data',
-                        'timestamp': data.get('generated_at', 'unknown')
-                    }
-        except Exception as e:
-            logger.warning(f"Error reading regime from JSON: {e}")
-            pass
-    
-    # If not found in JSON, try pipeline state files
-    state_locations = [
-        market_info['reports_path'] / 'pipeline_state',
-        BASE_PATH / 'reports' / 'pipeline_state' / (market if market == 'us' else ''),
-        BASE_PATH / 'models' / 'screening' / 'reports' / 'pipeline_state'
-    ]
-    
-    for state_dir in state_locations:
-        if state_dir.exists():
-            state_files = sorted(state_dir.glob('*.json'), reverse=True)
-            if state_files:
-                try:
-                    with open(state_files[0], 'r') as f:
-                        state = json.load(f)
-                        # Check for regime data in state
-                        regime_data = state.get('regime', {})
-                        if regime_data and 'current_state' in regime_data:
-                            return {
-                                'available': True,
-                                'current_state': regime_data.get('current_state', 'Unknown'),
-                                'crash_risk': regime_data.get('crash_risk', 'Unknown'),
-                                'market': market.upper(),
-                                'source': 'pipeline_state',
-                                'timestamp': state.get('timestamp', 'unknown')
-                            }
-                        # Fallback: old format
-                        event_risk_data = state.get('event_risk_data', {})
-                        if event_risk_data and 'market_regime' in event_risk_data:
-                            regime = event_risk_data['market_regime']
-                            return {
-                                'available': True,
-                                'regime': regime,
-                                'market': market.upper(),
-                                'source': 'pipeline_state',
-                                'timestamp': state.get('timestamp', 'unknown')
-                            }
-                except Exception as e:
-                    logger.warning(f"Error reading regime from state: {e}")
-                    pass
-    
-    # No regime data found
-    return {
-        'available': False,
-        'market': market.upper(),
-        'message': f'No market regime data available for {market.upper()}. Run the pipeline to generate regime analysis.'
-    }
-
 if __name__ == '__main__':
     print("=" * 80)
-    print("Event Risk Guard - Dual Market Web UI")
+    print("Event Risk Guard - Web UI")
     print("=" * 80)
-    print(f"Markets: ASX (Australian) + US (S&P 500)")
     print(f"Starting web server...")
     print(f"Access dashboard at: http://localhost:5000")
     print("=" * 80)

@@ -18,8 +18,12 @@ import numpy as np
 import pandas as pd
 import yfinance as yf
 
-from .regime_detector import RegimeDetector, RegimeConfig
-from .volatility_forecaster import VolatilityForecaster, VolForecastConfig
+try:
+    from .regime_detector import RegimeDetector, RegimeConfig
+    from .volatility_forecaster import VolatilityForecaster, VolForecastConfig
+except ImportError:
+    from regime_detector import RegimeDetector, RegimeConfig
+    from volatility_forecaster import VolatilityForecaster, VolForecastConfig
 
 logger = logging.getLogger(__name__)
 
