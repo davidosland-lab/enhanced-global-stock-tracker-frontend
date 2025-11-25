@@ -158,7 +158,7 @@ class OvernightPipeline:
         try:
             self.scanner = StockScanner()
             self.spi_monitor = SPIMonitor()
-            self.predictor = BatchPredictor()
+            self.predictor = BatchPredictor(market='ASX')
             self.scorer = OpportunityScorer()
             self.reporter = ReportGenerator()
             

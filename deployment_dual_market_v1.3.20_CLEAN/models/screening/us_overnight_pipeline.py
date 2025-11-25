@@ -103,7 +103,7 @@ class USOvernightPipeline:
             self.scanner = USStockScanner()
             self.market_monitor = USMarketMonitor()
             self.regime_engine = USMarketRegimeEngine()
-            self.predictor = BatchPredictor()
+            self.predictor = BatchPredictor(market='US')
             self.scorer = OpportunityScorer()
             self.reporter = ReportGenerator()
             
