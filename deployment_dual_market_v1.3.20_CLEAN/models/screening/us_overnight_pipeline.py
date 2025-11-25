@@ -59,6 +59,11 @@ try:
 except ImportError:
     CSVExporter = None
 
+try:
+    from .lstm_trainer import LSTMTrainer
+except ImportError:
+    LSTMTrainer = None
+
 # Setup logging
 BASE_PATH = Path(__file__).parent.parent.parent
 log_dir = BASE_PATH / 'logs' / 'screening' / 'us'
@@ -130,6 +135,16 @@ class USOvernightPipeline:
             else:
                 self.csv_exporter = None
                 logger.info("  CSV Exporter disabled")
+            
+            # Optional: LSTM Training
+            if LSTMTrainer is not None:
+                self.trainer = LSTMTrainer()
+                logger.info("✓ LSTM Trainer enabled")
+                logger.info(f"  Training enabled: {self.config.get('lstm_training', {}).get('enabled', True)}")
+                logger.info(f"  Max models per night: {self.config.get('lstm_training', {}).get('max_models_per_night', 100)}")
+            else:
+                self.trainer = None
+                logger.info("  LSTM Trainer disabled (module not available)")
             
             logger.info("✓ All required US market components initialized successfully")
         except Exception as e:
@@ -211,6 +226,12 @@ class USOvernightPipeline:
             self.status['progress'] = 70
             
             scored_stocks = self._score_opportunities(predicted_stocks, us_sentiment, regime_data)
+            
+            # Phase 4.5: LSTM Model Training (Optional)
+            logger.info("\n" + "="*80)
+            logger.info("PHASE 4.5: US LSTM MODEL TRAINING (OPTIONAL)")
+            logger.info("="*80)
+            training_results = self._train_lstm_models(scored_stocks)
             
             # Phase 5: Report Generation
             logger.info("\n" + "="*80)
@@ -405,6 +426,74 @@ class USOvernightPipeline:
             logger.error(f"Opportunity scoring failed: {e}")
             return stocks
     
+    def _train_lstm_models(self, scored_stocks: List[Dict]) -> Dict:
+        """
+        Train LSTM models for top opportunity US stocks
+        
+        Args:
+            scored_stocks: List of scored stocks
+            
+        Returns:
+            Dictionary with training results
+        """
+        if self.trainer is None:
+            logger.info("  LSTM trainer not available - skipping training")
+            return {'status': 'disabled', 'trained_count': 0}
+        
+        # Check if training is enabled in config
+        lstm_config = self.config.get('lstm_training', {})
+        training_enabled = lstm_config.get('enabled', True)
+        
+        logger.info(f"[DEBUG] US LSTM Training Check:")
+        logger.info(f"  self.trainer = {self.trainer}")
+        logger.info(f"  config.lstm_training.enabled = {training_enabled}")
+        logger.info(f"  config.lstm_training = {lstm_config}")
+        
+        if not training_enabled:
+            logger.info("  LSTM training disabled in configuration")
+            return {'status': 'disabled', 'trained_count': 0}
+        
+        logger.info("\n" + "="*80)
+        logger.info("PHASE 4.5: US LSTM MODEL TRAINING")
+        logger.info("="*80)
+        self.status['phase'] = 'lstm_training'
+        self.status['progress'] = 75
+        
+        try:
+            # Create training queue from scored stocks
+            max_models = lstm_config.get('max_models_per_night', 100)
+            logger.info(f"Creating US training queue (max {max_models} stocks)...")
+            
+            training_queue = self.trainer.create_training_queue(
+                opportunities=scored_stocks,
+                max_stocks=max_models
+            )
+            
+            # Train the models
+            if training_queue:
+                logger.info(f"Training {len(training_queue)} US LSTM models...")
+                training_results = self.trainer.train_batch(
+                    training_queue=training_queue,
+                    max_stocks=max_models
+                )
+                
+                logger.info(f"[SUCCESS] US LSTM Training Complete:")
+                logger.info(f"  Models trained: {training_results.get('trained_count', 0)}/{training_results.get('total_stocks', 0)}")
+                logger.info(f"  Successful: {training_results.get('trained_count', 0)}")
+                logger.info(f"  Failed: {training_results.get('failed_count', 0)}")
+                logger.info(f"  Total Time: {training_results.get('total_time', 0)/60:.1f} minutes")
+                
+                return training_results
+            else:
+                logger.info("No US stocks queued for training (all models are fresh)")
+                return {'status': 'no_training_needed', 'trained_count': 0}
+                
+        except Exception as e:
+            logger.error(f"✗ US LSTM training failed: {e}")
+            logger.error(traceback.format_exc())
+            self.status['warnings'].append(f"US LSTM training failed: {str(e)}")
+            return {'status': 'failed', 'trained_count': 0, 'error': str(e)}
+    
     def _generate_us_report(self, stocks: List[Dict], sentiment: Dict, 
                            regime_data: Dict, event_risk_data: Dict = None) -> Path:
         """Generate US market morning report"""
@@ -517,6 +606,12 @@ Full traceback:
         
         logger.info(f"✓ Results saved: {results_file}")
         
+        # Save pipeline state for tracking
+        try:
+            self._save_pipeline_state(results)
+        except Exception as e:
+            logger.warning(f"Pipeline state save failed: {e}")
+        
         # Export CSV if available
         if self.csv_exporter is not None:
             try:
@@ -546,6 +641,23 @@ Full traceback:
             json.dump(error_data, f, indent=2)
         
         logger.info(f"Error state saved: {error_file}")
+    
+    def _save_pipeline_state(self, results: Dict):
+        """Save US pipeline execution state to JSON"""
+        state_dir = BASE_PATH / 'reports' / 'us' / 'pipeline_state'
+        state_dir.mkdir(parents=True, exist_ok=True)
+        
+        date_str = datetime.now(self.timezone).strftime('%Y-%m-%d')
+        state_file = state_dir / f"{date_str}_us_pipeline_state.json"
+        
+        with open(state_file, 'w') as f:
+            json.dump(results, f, indent=2, default=str)
+        
+        logger.info(f"US Pipeline state saved: {state_file}")
+    
+    def get_status(self) -> Dict:
+        """Get current US pipeline status"""
+        return self.status
 
 
 def main():
