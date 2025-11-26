@@ -81,6 +81,16 @@ except ImportError:
     except ImportError:
         CSVExporter = None
 
+# 🆕 ChatGPT Research (optional)
+try:
+    from .chatgpt_research import run_chatgpt_research, save_markdown
+except ImportError:
+    try:
+        from chatgpt_research import run_chatgpt_research, save_markdown
+    except ImportError:
+        run_chatgpt_research = None
+        save_markdown = None
+
 # Setup logging with proper path handling
 import sys
 import os
@@ -178,6 +188,15 @@ class OvernightPipeline:
                 self.trainer = None
                 logger.info("  LSTM training disabled (lstm_trainer module not found)")
             
+            # Optional: ChatGPT Research
+            self.research_config = self.config.get('research', {})
+            if run_chatgpt_research is not None and self.research_config.get('enabled', False):
+                logger.info("✓ ChatGPT research enabled")
+                logger.info(f"  Model: {self.research_config.get('model', 'gpt-4o-mini')}")
+                logger.info(f"  Max stocks: {self.research_config.get('max_stocks', 5)}")
+            else:
+                logger.info("  ChatGPT research disabled")
+            
             # 🆕 Optional: Event Risk Guard
             if EventRiskGuard is not None:
                 self.event_guard = EventRiskGuard()
@@ -264,6 +283,9 @@ class OvernightPipeline:
             # Phase 4.5: LSTM Model Training (Optional)
             lstm_training_results = self._train_lstm_models(scored_stocks)
             
+            # Phase 4.7: ChatGPT Research (Optional)
+            research_data = self._run_chatgpt_research(scored_stocks)
+            
             # Phase 5: Report Generation
             logger.info("\n" + "="*80)
             logger.info("PHASE 5: REPORT GENERATION")
@@ -271,7 +293,12 @@ class OvernightPipeline:
             self.status['phase'] = 'report_generation'
             self.status['progress'] = 85
             
-            report_path = self._generate_report(scored_stocks, spi_sentiment, event_risk_data)
+            report_path = self._generate_report(
+                scored_stocks, 
+                spi_sentiment, 
+                event_risk_data,
+                research_data=research_data
+            )
             
             # Phase 6: Finalization
             logger.info("\n" + "="*80)
@@ -663,7 +690,93 @@ class OvernightPipeline:
             self.status['warnings'].append(f"LSTM training failed: {str(e)}")
             return {'status': 'failed', 'trained_count': 0, 'error': str(e)}
     
-    def _generate_report(self, stocks: List[Dict], spi_sentiment: Dict, event_risk_data: Dict = None) -> str:
+    def _run_chatgpt_research(self, scored_stocks: List[Dict]) -> Dict:
+        """
+        Run ChatGPT research on top opportunity stocks
+        
+        Args:
+            scored_stocks: List of scored stocks
+            
+        Returns:
+            Dictionary with research results and markdown path
+        """
+        if run_chatgpt_research is None:
+            logger.info("  ChatGPT research module not available - skipping research")
+            return {'status': 'disabled', 'research_count': 0}
+        
+        # Check if research is enabled in config
+        research_config = self.research_config
+        research_enabled = research_config.get('enabled', False)
+        
+        if not research_enabled:
+            logger.info("  ChatGPT research disabled in configuration")
+            return {'status': 'disabled', 'research_count': 0}
+        
+        logger.info("\n" + "="*80)
+        logger.info("PHASE 4.7: CHATGPT RESEARCH")
+        logger.info("="*80)
+        self.status['phase'] = 'chatgpt_research'
+        self.status['progress'] = 78
+        
+        try:
+            # Extract config parameters
+            model = research_config.get('model', 'gpt-4o-mini')
+            max_stocks = research_config.get('max_stocks', 5)
+            output_path_template = research_config.get('output_path', 'reports/chatgpt_research')
+            
+            logger.info(f"Running ChatGPT research for top {max_stocks} opportunities...")
+            logger.info(f"  Model: {model}")
+            logger.info(f"  Market: ASX")
+            
+            # Run research
+            research_results = run_chatgpt_research(
+                opportunities=scored_stocks,
+                model=model,
+                max_stocks=max_stocks,
+                market='ASX'
+            )
+            
+            if research_results:
+                # Save markdown report
+                date_str = datetime.now(self.timezone).strftime("%Y%m%d")
+                output_dir = BASE_PATH / output_path_template
+                output_file = output_dir / f"asx_research_{date_str}.md"
+                
+                # Prepare pipeline metadata
+                pipeline_metadata = {
+                    'run_id': date_str,
+                    'total_opportunities': len(scored_stocks),
+                    'market': 'ASX'
+                }
+                
+                markdown_path = save_markdown(
+                    research_results=research_results,
+                    output_path=output_file,
+                    market='ASX',
+                    pipeline_metadata=pipeline_metadata
+                )
+                
+                logger.info(f"[SUCCESS] ChatGPT Research Complete:")
+                logger.info(f"  Stocks researched: {len(research_results)}/{max_stocks}")
+                logger.info(f"  Report saved: {markdown_path}")
+                
+                return {
+                    'status': 'success',
+                    'research_count': len(research_results),
+                    'markdown_path': str(markdown_path),
+                    'research_results': research_results
+                }
+            else:
+                logger.warning("  No research results generated")
+                return {'status': 'no_results', 'research_count': 0}
+                
+        except Exception as e:
+            logger.error(f"✗ ChatGPT research failed: {e}")
+            logger.error(traceback.format_exc())
+            self.status['warnings'].append(f"ChatGPT research failed: {str(e)}")
+            return {'status': 'failed', 'research_count': 0, 'error': str(e)}
+    
+    def _generate_report(self, stocks: List[Dict], spi_sentiment: Dict, event_risk_data: Dict = None, research_data: Dict = None) -> str:
         """Generate morning report"""
         logger.info("Generating morning report...")
         
@@ -698,7 +811,8 @@ class OvernightPipeline:
                 spi_sentiment=spi_sentiment,
                 sector_summary=sector_summary,
                 system_stats=system_stats,
-                event_risk_data=event_risk_data
+                event_risk_data=event_risk_data,
+                research_data=research_data
             )
             
             logger.info(f"✓ Report Generated: {report_path}")

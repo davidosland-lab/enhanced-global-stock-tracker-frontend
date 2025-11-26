@@ -71,7 +71,8 @@ class ReportGenerator:
         spi_sentiment: Dict,
         sector_summary: Dict,
         system_stats: Dict,
-        event_risk_data: Dict = None
+        event_risk_data: Dict = None,
+        research_data: Dict = None
     ) -> str:
         """
         Generate complete morning report
@@ -82,6 +83,7 @@ class ReportGenerator:
             sector_summary: Sector performance summary
             system_stats: System performance statistics
             event_risk_data: Event risk assessment data including market regime (optional)
+            research_data: ChatGPT research results (optional)
             
         Returns:
             Path to generated HTML report
@@ -101,7 +103,8 @@ class ReportGenerator:
             spi_sentiment=spi_sentiment,
             sector_summary=sector_summary,
             system_stats=system_stats,
-            event_risk_data=event_risk_data
+            event_risk_data=event_risk_data,
+            research_data=research_data
         )
         
         # Save report
@@ -134,7 +137,8 @@ class ReportGenerator:
         spi_sentiment: Dict,
         sector_summary: Dict,
         system_stats: Dict,
-        event_risk_data: Dict = None
+        event_risk_data: Dict = None,
+        research_data: Dict = None
     ) -> str:
         """Build complete HTML report"""
         
@@ -145,6 +149,7 @@ class ReportGenerator:
         header_html = self._build_header(report_date, report_time)
         market_overview_html = self._build_market_overview(spi_sentiment)
         regime_html = self._build_market_regime_section(event_risk_data)
+        research_html = self._build_research_section(research_data)
         opportunities_html = self._build_opportunities_section(top_opportunities)
         sector_html = self._build_sector_section(sector_summary)
         watchlist_html = self._build_watchlist_section(opportunities)
@@ -167,6 +172,7 @@ class ReportGenerator:
     {header_html}
     {market_overview_html}
     {regime_html}
+    {research_html}
     {opportunities_html}
     {sector_html}
     {watchlist_html}
@@ -952,6 +958,75 @@ class ReportGenerator:
         </div>
     </div>
 """
+    
+    def _build_research_section(self, research_data: Dict = None) -> str:
+        """Build ChatGPT research analysis section"""
+        if not research_data or research_data.get('status') != 'success':
+            return ""
+        
+        research_count = research_data.get('research_count', 0)
+        markdown_path = research_data.get('markdown_path', '')
+        
+        if research_count == 0:
+            return ""
+        
+        # Build summary card
+        html = f"""
+    <div class="section">
+        <h2><span class="emoji">🔬</span> ChatGPT Research Analysis</h2>
+        
+        <div class="market-overview-grid">
+            <div class="metric-card" style="border-left-color: #8b5cf6;">
+                <div class="metric-label">AI Research Complete</div>
+                <div class="metric-value" style="color: #8b5cf6;">
+                    {research_count} Stocks
+                </div>
+                <div class="metric-change">Deep fundamental analysis</div>
+            </div>
+            
+            <div class="metric-card" style="border-left-color: #06b6d4;">
+                <div class="metric-label">Research Model</div>
+                <div class="metric-value" style="font-size: 1.2em;">
+                    GPT-4o Mini
+                </div>
+                <div class="metric-change">OpenAI ChatGPT</div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 20px; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; color: white;">
+            <h3 style="color: white; margin-bottom: 15px; font-size: 1.3em;">
+                📊 Comprehensive Stock Research Available
+            </h3>
+            <p style="margin-bottom: 15px; font-size: 1.05em;">
+                ChatGPT has performed deep research analysis on your top {research_count} opportunities, covering:
+            </p>
+            <ul style="margin-left: 20px; margin-bottom: 15px;">
+                <li><strong>Company Overview:</strong> Business model, competitive position, revenue streams</li>
+                <li><strong>Fundamental Analysis:</strong> Financial performance, key metrics, growth drivers</li>
+                <li><strong>Technical Context:</strong> Price action, support/resistance, volume analysis</li>
+                <li><strong>Market Context:</strong> Sector trends, market conditions, competitive landscape</li>
+                <li><strong>Risk Assessment:</strong> Key risks, volatility considerations, downside scenarios</li>
+                <li><strong>Investment Thesis:</strong> Bull/bear cases, price targets, recommendations</li>
+            </ul>
+            <p style="margin-bottom: 0; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 5px; font-size: 1.05em;">
+                <strong>📄 Full Research Report:</strong><br>
+                <code style="background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 3px; display: inline-block; margin-top: 5px;">
+                    {markdown_path}
+                </code>
+            </p>
+        </div>
+        
+        <div style="margin-top: 20px; padding: 15px; background: #f1f5f9; border-radius: 5px;">
+            <p style="margin: 0; font-size: 0.9em; color: #475569;">
+                <strong>Note:</strong> The research report is saved in markdown format for easy reading. 
+                Open the file in any text editor or markdown viewer for the full analysis.
+                Each stock includes a comprehensive 2000-word research report with actionable insights.
+            </p>
+        </div>
+    </div>
+"""
+        
+        return html
     
     def _build_footer(self) -> str:
         """Build report footer"""
