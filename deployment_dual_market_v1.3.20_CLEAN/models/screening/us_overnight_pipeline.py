@@ -64,15 +64,30 @@ try:
 except ImportError:
     LSTMTrainer = None
 
-# 🆕 ChatGPT Research (optional)
+# 🆕 ChatGPT Research + AI Integration (optional)
 try:
-    from .chatgpt_research import run_chatgpt_research, save_markdown
+    from .chatgpt_research import (
+        run_chatgpt_research, 
+        save_markdown,
+        ai_quick_filter,
+        ai_score_opportunity,
+        ai_rerank_opportunities
+    )
 except ImportError:
     try:
-        from chatgpt_research import run_chatgpt_research, save_markdown
+        from chatgpt_research import (
+            run_chatgpt_research,
+            save_markdown,
+            ai_quick_filter,
+            ai_score_opportunity,
+            ai_rerank_opportunities
+        )
     except ImportError:
         run_chatgpt_research = None
         save_markdown = None
+        ai_quick_filter = None
+        ai_score_opportunity = None
+        ai_rerank_opportunities = None
 
 # Setup logging
 BASE_PATH = Path(__file__).parent.parent.parent
@@ -156,6 +171,17 @@ class USOvernightPipeline:
                 self.trainer = None
                 logger.info("  LSTM Trainer disabled (module not available)")
             
+            # Optional: AI Integration (Full AI Pipeline)
+            self.ai_config = self.config.get('ai_integration', {})
+            if ai_quick_filter is not None and self.ai_config.get('enabled', False):
+                logger.info("✓ AI Integration enabled (Full AI Pipeline)")
+                stages = self.ai_config.get('stages', {})
+                logger.info(f"  Quick Filter: {stages.get('quick_filter', {}).get('enabled', False)}")
+                logger.info(f"  AI Scoring: {stages.get('ai_scoring', {}).get('enabled', False)}")
+                logger.info(f"  AI Re-Ranking: {stages.get('ai_reranking', {}).get('enabled', False)}")
+            else:
+                logger.info("  AI Integration disabled")
+            
             # Optional: ChatGPT Research
             self.research_config = self.config.get('research', {})
             if run_chatgpt_research is not None and self.research_config.get('enabled', False):
@@ -214,6 +240,9 @@ class USOvernightPipeline:
             if not scanned_stocks:
                 raise Exception("No valid US stocks found during scanning")
             
+            # 🤖 Phase 2.3: AI Quick Filter (Optional)
+            ai_filter_results = self._run_ai_quick_filter(scanned_stocks)
+            
             # Phase 2.5: Event Risk Assessment (optional)
             event_risk_data = {}
             if self.event_guard is not None:
@@ -237,6 +266,9 @@ class USOvernightPipeline:
             
             predicted_stocks = self._generate_predictions(scanned_stocks, us_sentiment, event_risk_data)
             
+            # 🤖 Phase 3.5: AI Scoring (Optional)
+            ai_scores = self._run_ai_scoring(predicted_stocks)
+            
             # Phase 4: Opportunity Scoring
             logger.info("\n" + "="*80)
             logger.info("PHASE 4: OPPORTUNITY SCORING")
@@ -244,13 +276,16 @@ class USOvernightPipeline:
             self.status['phase'] = 'scoring'
             self.status['progress'] = 70
             
-            scored_stocks = self._score_opportunities(predicted_stocks, us_sentiment, regime_data)
+            scored_stocks = self._score_opportunities(predicted_stocks, us_sentiment, ai_scores)
             
             # Phase 4.5: LSTM Model Training (Optional)
             logger.info("\n" + "="*80)
             logger.info("PHASE 4.5: US LSTM MODEL TRAINING (OPTIONAL)")
             logger.info("="*80)
             training_results = self._train_lstm_models(scored_stocks)
+            
+            # 🤖 Phase 4.6: AI Re-Ranking (Optional)
+            scored_stocks = self._run_ai_reranking(scored_stocks)
             
             # Phase 4.7: ChatGPT Research (Optional)
             research_data = self._run_chatgpt_research(scored_stocks)
@@ -431,7 +466,7 @@ class USOvernightPipeline:
             logger.error(f"Prediction generation failed: {e}")
             return stocks  # Return stocks without predictions
     
-    def _score_opportunities(self, stocks: List[Dict], sentiment: Dict, regime_data: Dict) -> List[Dict]:
+    def _score_opportunities(self, stocks: List[Dict], sentiment: Dict, ai_scores: Dict = None) -> List[Dict]:
         """Score trading opportunities"""
         logger.info(f"Scoring opportunities for {len(stocks)} stocks...")
         
@@ -439,7 +474,8 @@ class USOvernightPipeline:
             # Use score_opportunities method (same as ASX pipeline)
             scored = self.scorer.score_opportunities(
                 stocks=stocks,
-                market_sentiment=sentiment
+                market_sentiment=sentiment,
+                ai_scores=ai_scores
             )
             
             # Sort by score
@@ -521,6 +557,194 @@ class USOvernightPipeline:
             logger.error(traceback.format_exc())
             self.status['warnings'].append(f"US LSTM training failed: {str(e)}")
             return {'status': 'failed', 'trained_count': 0, 'error': str(e)}
+    
+    def _run_ai_quick_filter(self, scanned_stocks: List[Dict]) -> Dict:
+        """
+        Run AI quick filter on all scanned stocks (Stage 1)
+        
+        Args:
+            scanned_stocks: List of scanned stocks
+            
+        Returns:
+            Dictionary with filter results {symbol: {risk_flag, opportunity_flag, quick_score}}
+        """
+        if ai_quick_filter is None:
+            return {}
+        
+        # Check if AI integration is enabled
+        ai_config = self.ai_config.get('stages', {}).get('quick_filter', {})
+        if not ai_config.get('enabled', False):
+            return {}
+        
+        logger.info("\n" + "="*80)
+        logger.info("PHASE 2.3: AI QUICK FILTER")
+        logger.info("="*80)
+        self.status['phase'] = 'ai_quick_filter'
+        self.status['progress'] = 28
+        
+        try:
+            model = self.ai_config.get('model', 'gpt-4o-mini')
+            
+            logger.info(f"Running AI Quick Filter on {len(scanned_stocks)} stocks...")
+            logger.info(f"  Model: {model}")
+            logger.info(f"  Market: US")
+            
+            filter_results = ai_quick_filter(
+                stocks=scanned_stocks,
+                model=model,
+                market='US'
+            )
+            
+            if filter_results:
+                high_risk_count = sum(1 for v in filter_results.values() if v.get('risk_flag') == 'high')
+                high_opp_count = sum(1 for v in filter_results.values() if v.get('opportunity_flag') == 'high')
+                
+                logger.info(f"[SUCCESS] AI Quick Filter Complete:")
+                logger.info(f"  Stocks analyzed: {len(filter_results)}")
+                logger.info(f"  High risk flags: {high_risk_count}")
+                logger.info(f"  High opportunity flags: {high_opp_count}")
+                
+                # Add filter results to stocks
+                for stock in scanned_stocks:
+                    symbol = stock.get('symbol', '')
+                    if symbol in filter_results:
+                        stock['ai_filter'] = filter_results[symbol]
+                
+                return filter_results
+            else:
+                logger.warning("  No filter results generated")
+                return {}
+                
+        except Exception as e:
+            logger.error(f"✗ AI Quick Filter failed: {e}")
+            logger.error(traceback.format_exc())
+            self.status['warnings'].append(f"AI Quick Filter failed: {str(e)}")
+            return {}
+    
+    def _run_ai_scoring(self, predicted_stocks: List[Dict]) -> Dict:
+        """
+        Run AI scoring on top predicted stocks (Stage 2)
+        
+        Args:
+            predicted_stocks: List of stocks with predictions
+            
+        Returns:
+            Dictionary with AI scores {symbol: {fundamental_score, risk_score, etc}}
+        """
+        if ai_score_opportunity is None:
+            return {}
+        
+        # Check if AI scoring is enabled
+        ai_config = self.ai_config.get('stages', {}).get('ai_scoring', {})
+        if not ai_config.get('enabled', False):
+            return {}
+        
+        logger.info("\n" + "="*80)
+        logger.info("PHASE 3.5: AI SCORING")
+        logger.info("="*80)
+        self.status['phase'] = 'ai_scoring'
+        self.status['progress'] = 60
+        
+        try:
+            model = self.ai_config.get('model', 'gpt-4o-mini')
+            score_top_n = ai_config.get('score_top_n', 50)
+            
+            # Sort by prediction confidence to get top candidates
+            top_stocks = sorted(predicted_stocks, key=lambda x: x.get('confidence', 0), reverse=True)[:score_top_n]
+            
+            logger.info(f"Running AI Scoring on top {len(top_stocks)} stocks...")
+            logger.info(f"  Model: {model}")
+            logger.info(f"  Market: US")
+            
+            ai_scores = {}
+            
+            for i, stock in enumerate(top_stocks, 1):
+                symbol = stock.get('symbol', 'N/A')
+                
+                try:
+                    score_data = ai_score_opportunity(
+                        opportunity=stock,
+                        model=model,
+                        market='US'
+                    )
+                    
+                    if score_data:
+                        ai_scores[symbol] = score_data
+                        logger.info(f"  ✓ {symbol}: AI Score = {score_data.get('overall_ai_score', 0)}/100 ({i}/{len(top_stocks)})")
+                    
+                except Exception as e:
+                    logger.error(f"  ✗ AI scoring failed for {symbol}: {e}")
+                    continue
+            
+            logger.info(f"[SUCCESS] AI Scoring Complete:")
+            logger.info(f"  Stocks scored: {len(ai_scores)}/{len(top_stocks)}")
+            
+            return ai_scores
+            
+        except Exception as e:
+            logger.error(f"✗ AI Scoring failed: {e}")
+            logger.error(traceback.format_exc())
+            self.status['warnings'].append(f"AI Scoring failed: {str(e)}")
+            return {}
+    
+    def _run_ai_reranking(self, scored_stocks: List[Dict]) -> List[Dict]:
+        """
+        Run AI re-ranking on top opportunities (Stage 3)
+        
+        Args:
+            scored_stocks: List of scored stocks
+            
+        Returns:
+            Re-ranked list of top opportunities
+        """
+        if ai_rerank_opportunities is None:
+            return scored_stocks
+        
+        # Check if AI re-ranking is enabled
+        ai_config = self.ai_config.get('stages', {}).get('ai_reranking', {})
+        if not ai_config.get('enabled', False):
+            return scored_stocks
+        
+        logger.info("\n" + "="*80)
+        logger.info("PHASE 4.6: AI RE-RANKING")
+        logger.info("="*80)
+        self.status['phase'] = 'ai_reranking'
+        self.status['progress'] = 77
+        
+        try:
+            model = self.ai_config.get('model', 'gpt-4o-mini')
+            rerank_top_n = ai_config.get('rerank_top_n', 20)
+            final_picks = ai_config.get('final_picks', 10)
+            
+            # Get top N for re-ranking
+            top_opportunities = scored_stocks[:rerank_top_n]
+            
+            logger.info(f"Running AI Re-Ranking on top {len(top_opportunities)} opportunities...")
+            logger.info(f"  Model: {model}")
+            logger.info(f"  Market: US")
+            logger.info(f"  Final picks: {final_picks}")
+            
+            reranked = ai_rerank_opportunities(
+                opportunities=top_opportunities,
+                model=model,
+                market='US',
+                top_n=final_picks
+            )
+            
+            logger.info(f"[SUCCESS] AI Re-Ranking Complete:")
+            logger.info(f"  Final top picks: {len(reranked)}")
+            
+            # Combine reranked top picks with remaining stocks
+            remaining = scored_stocks[rerank_top_n:]
+            final_list = reranked + remaining
+            
+            return final_list
+            
+        except Exception as e:
+            logger.error(f"✗ AI Re-Ranking failed: {e}")
+            logger.error(traceback.format_exc())
+            self.status['warnings'].append(f"AI Re-Ranking failed: {str(e)}")
+            return scored_stocks
     
     def _run_chatgpt_research(self, scored_stocks: List[Dict]) -> Dict:
         """
