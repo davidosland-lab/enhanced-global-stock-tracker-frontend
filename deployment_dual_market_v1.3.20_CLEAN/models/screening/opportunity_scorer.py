@@ -65,7 +65,8 @@ class OpportunityScorer:
     def score_opportunities(
         self,
         stocks_with_predictions: List[Dict],
-        spi_sentiment: Dict = None
+        spi_sentiment: Dict = None,
+        ai_scores: Dict = None
     ) -> List[Dict]:
         """
         Calculate opportunity scores for all stocks
@@ -73,18 +74,34 @@ class OpportunityScorer:
         Args:
             stocks_with_predictions: List of stocks with prediction data
             spi_sentiment: Market sentiment data
+            ai_scores: Optional AI scoring data {symbol: {scores}}
             
         Returns:
             List of stocks with opportunity_score added, sorted by score
         """
         logger.info(f"Scoring {len(stocks_with_predictions)} opportunities...")
         
+        # Check if AI scoring is enabled
+        ai_enabled = ai_scores is not None and len(ai_scores) > 0
+        if ai_enabled:
+            logger.info(f"  🤖 AI-enhanced scoring enabled ({len(ai_scores)} stocks have AI scores)")
+        
         scored_stocks = []
         
         for stock in stocks_with_predictions:
             try:
-                # Calculate opportunity score
+                # Calculate base opportunity score
                 score = self._calculate_opportunity_score(stock, spi_sentiment)
+                
+                # Add AI score if available
+                symbol = stock.get('symbol', '')
+                if ai_enabled and symbol in ai_scores:
+                    ai_data = ai_scores[symbol]
+                    score = self._integrate_ai_score(score, ai_data)
+                    stock['ai_enhanced'] = True
+                    stock['ai_score_data'] = ai_data
+                else:
+                    stock['ai_enhanced'] = False
                 
                 # Add score to stock data
                 stock['opportunity_score'] = score['total_score']
@@ -102,9 +119,74 @@ class OpportunityScorer:
         # Sort by opportunity score (descending)
         scored_stocks.sort(key=lambda x: x['opportunity_score'], reverse=True)
         
-        logger.info(f"Scoring complete. Top score: {scored_stocks[0]['opportunity_score']:.1f}")
+        if scored_stocks:
+            logger.info(f"Scoring complete. Top score: {scored_stocks[0]['opportunity_score']:.1f}")
+            if ai_enabled:
+                ai_enhanced_count = sum(1 for s in scored_stocks if s.get('ai_enhanced', False))
+                logger.info(f"  🤖 {ai_enhanced_count} stocks enhanced with AI scores")
         
         return scored_stocks
+    
+    def _integrate_ai_score(self, base_score: Dict, ai_data: Dict) -> Dict:
+        """
+        Integrate AI scores into the base opportunity score.
+        
+        Args:
+            base_score: Base scoring result
+            ai_data: AI scoring data
+            
+        Returns:
+            Updated score with AI component
+        """
+        # Extract AI scores (0-100)
+        ai_overall = ai_data.get('overall_ai_score', 50)
+        
+        # Original weights (without AI): total 100%
+        # - prediction_confidence: 30%
+        # - technical_strength: 20%
+        # - spi_alignment: 15%
+        # - liquidity: 15%
+        # - volatility: 10%
+        # - sector_momentum: 10%
+        
+        # New weights (with AI at 15%): reduce others proportionally
+        # - prediction_confidence: 25% (was 30%)
+        # - technical_strength: 20%
+        # - spi_alignment: 15%
+        # - liquidity: 15%
+        # - volatility: 10%
+        # - AI_score: 15% (NEW)
+        
+        # Recalculate with AI component
+        breakdown = base_score['breakdown']
+        factors = base_score['factors']
+        
+        # Adjust weights to make room for AI (15%)
+        adjusted_total = (
+            breakdown.get('prediction_confidence', 0) * 0.25 +  # reduced from 30%
+            breakdown.get('technical_strength', 0) * 0.20 +
+            breakdown.get('spi_alignment', 0) * 0.15 +
+            breakdown.get('liquidity', 0) * 0.15 +
+            breakdown.get('volatility', 0) * 0.10 +
+            ai_overall * 0.15  # NEW AI component
+        )
+        
+        # Update breakdown with AI component
+        breakdown['ai_score'] = ai_overall
+        
+        # Update factors with AI details
+        factors['ai_fundamental'] = ai_data.get('fundamental_score', 50)
+        factors['ai_risk'] = ai_data.get('risk_score', 50)
+        factors['ai_recommendation'] = ai_data.get('recommendation_score', 50)
+        factors['ai_confidence'] = ai_data.get('confidence', 50)
+        factors['ai_recommendation_text'] = ai_data.get('recommendation', 'Hold')
+        
+        # Return updated score
+        return {
+            'total_score': adjusted_total,
+            'breakdown': breakdown,
+            'factors': factors
+        }
     
     def _calculate_opportunity_score(
         self,

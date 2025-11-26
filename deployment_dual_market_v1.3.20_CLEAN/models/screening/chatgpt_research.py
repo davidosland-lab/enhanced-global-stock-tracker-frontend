@@ -125,6 +125,337 @@ def get_client():
         return None
 
 
+def ai_quick_filter(
+    stocks: List[Dict],
+    model: str = "gpt-4o-mini",
+    market: str = "ASX"
+) -> Dict[str, Dict]:
+    """
+    Quick AI filter to flag high-risk stocks and identify hidden gems.
+    Uses batch processing for efficiency.
+    
+    Args:
+        stocks: List of stock dictionaries to filter
+        model: OpenAI model to use
+        market: Market identifier ("ASX" or "US")
+        
+    Returns:
+        Dictionary mapping symbols to filter results:
+        {
+            'AAPL': {
+                'risk_flag': 'low',  # low, medium, high
+                'opportunity_flag': 'high',  # low, medium, high
+                'quick_score': 75,  # 0-100
+                'reason': 'Strong fundamentals...'
+            }
+        }
+    """
+    logger.info(f"🔍 AI Quick Filter: Analyzing {len(stocks)} {market} stocks...")
+    
+    client = get_client()
+    if not client:
+        logger.warning("⚠️ AI Quick Filter unavailable - returning empty results")
+        return {}
+    
+    # Process in batches of 20 for efficiency
+    batch_size = 20
+    filter_results = {}
+    
+    for i in range(0, len(stocks), batch_size):
+        batch = stocks[i:i + batch_size]
+        batch_symbols = [s.get('symbol', 'N/A') for s in batch]
+        
+        # Build concise batch prompt
+        stock_summaries = []
+        for stock in batch:
+            symbol = stock.get('symbol', 'N/A')
+            sector = stock.get('sector', 'Unknown')
+            prediction = stock.get('prediction', 0)
+            confidence = stock.get('confidence', 0)
+            
+            stock_summaries.append(
+                f"{symbol} ({sector}): Prediction {prediction:+.2f}, Confidence {confidence:.1f}%"
+            )
+        
+        prompt = f"""Analyze these {market} stocks for risk and opportunity. Provide quick assessment.
+
+Stocks:
+{chr(10).join(stock_summaries)}
+
+For EACH stock, provide:
+1. Risk level (low/medium/high)
+2. Opportunity level (low/medium/high)  
+3. Score (0-100)
+4. Brief reason (max 15 words)
+
+Format: SYMBOL|risk|opportunity|score|reason
+Example: AAPL|low|high|85|Strong earnings, sector leader, low debt
+
+Be concise. Focus on fundamental red flags and hidden strengths."""
+        
+        try:
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": "You are a stock screening AI. Provide concise risk/opportunity assessments."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                max_tokens=500
+            )
+            
+            # Parse response
+            content = response.choices[0].message.content
+            for line in content.strip().split('\n'):
+                if '|' in line:
+                    parts = line.split('|')
+                    if len(parts) >= 5:
+                        symbol = parts[0].strip()
+                        filter_results[symbol] = {
+                            'risk_flag': parts[1].strip().lower(),
+                            'opportunity_flag': parts[2].strip().lower(),
+                            'quick_score': int(parts[3].strip()) if parts[3].strip().isdigit() else 50,
+                            'reason': parts[4].strip()
+                        }
+            
+            logger.info(f"  ✓ Batch {i//batch_size + 1}: {len(batch)} stocks filtered")
+            
+        except Exception as e:
+            logger.error(f"  ✗ Batch {i//batch_size + 1} failed: {e}")
+            continue
+    
+    logger.info(f"✅ AI Quick Filter complete: {len(filter_results)} stocks analyzed")
+    return filter_results
+
+
+def ai_score_opportunity(
+    opportunity: Dict,
+    model: str = "gpt-4o-mini",
+    market: str = "ASX"
+) -> Dict:
+    """
+    Get detailed AI scoring for a stock opportunity.
+    
+    Args:
+        opportunity: Stock opportunity dictionary
+        model: OpenAI model to use
+        market: Market identifier ("ASX" or "US")
+        
+    Returns:
+        Dictionary with AI scores:
+        {
+            'fundamental_score': 85,  # 0-100
+            'risk_score': 75,  # 0-100 (higher = lower risk)
+            'recommendation_score': 90,  # 0-100
+            'overall_ai_score': 83,  # weighted average
+            'recommendation': 'Strong Buy',
+            'confidence': 88,  # 0-100
+            'key_points': ['Strong earnings', 'Low debt', ...]
+        }
+    """
+    client = get_client()
+    if not client:
+        return None
+    
+    symbol = opportunity.get('symbol', 'N/A')
+    company = opportunity.get('company_name', 'Unknown')
+    sector = opportunity.get('sector', 'Unknown')
+    
+    prompt = f"""Provide numeric scores for this stock opportunity:
+
+Stock: {symbol} - {company}
+Market: {market}
+Sector: {sector}
+Current Prediction: {opportunity.get('prediction', 0):+.2f}
+Confidence: {opportunity.get('confidence', 0):.1f}%
+
+Analyze and provide scores (0-100):
+
+1. FUNDAMENTAL_SCORE: Financial health, earnings, growth (0-100)
+2. RISK_SCORE: Safety level, bankruptcy risk, volatility (0-100, higher=safer)
+3. RECOMMENDATION_SCORE: Buy/Hold/Sell strength (0-100)
+4. Overall recommendation (Strong Buy/Buy/Hold/Sell/Strong Sell)
+5. Confidence in recommendation (0-100)
+6. Top 3 key points (brief)
+
+Format:
+FUNDAMENTAL: [score]
+RISK: [score]
+RECOMMENDATION: [score]
+OVERALL: [recommendation]
+CONFIDENCE: [score]
+POINTS: [point1] | [point2] | [point3]
+
+Be precise with numeric scores."""
+    
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": "You are a quantitative stock analyst. Provide precise numeric scores."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,
+            max_tokens=300
+        )
+        
+        content = response.choices[0].message.content
+        
+        # Parse scores
+        scores = {
+            'fundamental_score': 50,
+            'risk_score': 50,
+            'recommendation_score': 50,
+            'overall_ai_score': 50,
+            'recommendation': 'Hold',
+            'confidence': 50,
+            'key_points': []
+        }
+        
+        for line in content.split('\n'):
+            line = line.strip()
+            if line.startswith('FUNDAMENTAL:'):
+                scores['fundamental_score'] = int(''.join(filter(str.isdigit, line.split(':')[1])))
+            elif line.startswith('RISK:'):
+                scores['risk_score'] = int(''.join(filter(str.isdigit, line.split(':')[1])))
+            elif line.startswith('RECOMMENDATION:'):
+                scores['recommendation_score'] = int(''.join(filter(str.isdigit, line.split(':')[1])))
+            elif line.startswith('OVERALL:'):
+                scores['recommendation'] = line.split(':')[1].strip()
+            elif line.startswith('CONFIDENCE:'):
+                scores['confidence'] = int(''.join(filter(str.isdigit, line.split(':')[1])))
+            elif line.startswith('POINTS:'):
+                points = line.split(':')[1].split('|')
+                scores['key_points'] = [p.strip() for p in points if p.strip()]
+        
+        # Calculate overall AI score (weighted average)
+        scores['overall_ai_score'] = int(
+            scores['fundamental_score'] * 0.4 +
+            scores['risk_score'] * 0.3 +
+            scores['recommendation_score'] * 0.3
+        )
+        
+        return scores
+        
+    except Exception as e:
+        logger.error(f"AI scoring failed for {symbol}: {e}")
+        return None
+
+
+def ai_rerank_opportunities(
+    opportunities: List[Dict],
+    model: str = "gpt-4o-mini",
+    market: str = "ASX",
+    top_n: int = 10
+) -> List[Dict]:
+    """
+    Use AI to re-rank top opportunities based on qualitative factors.
+    
+    Args:
+        opportunities: List of scored opportunities (should be top 20-30)
+        model: OpenAI model to use
+        market: Market identifier ("ASX" or "US")
+        top_n: Number of stocks to return
+        
+    Returns:
+        Re-ranked list of opportunities with AI adjustments
+    """
+    logger.info(f"🎯 AI Re-Ranking: Analyzing top {len(opportunities)} {market} opportunities...")
+    
+    client = get_client()
+    if not client:
+        logger.warning("⚠️ AI Re-Ranking unavailable - returning original order")
+        return opportunities[:top_n]
+    
+    # Build comparison prompt
+    stock_summaries = []
+    for i, opp in enumerate(opportunities, 1):
+        symbol = opp.get('symbol', 'N/A')
+        score = opp.get('opportunity_score', 0)
+        prediction = opp.get('prediction', 0)
+        sector = opp.get('sector', 'Unknown')
+        
+        stock_summaries.append(
+            f"{i}. {symbol} (Score: {score:.1f}, Pred: {prediction:+.2f}, Sector: {sector})"
+        )
+    
+    prompt = f"""Re-rank these top {market} stock opportunities considering qualitative factors:
+
+{chr(10).join(stock_summaries)}
+
+Consider:
+- Sector momentum and outlook
+- Recent news and catalysts
+- Competitive advantages
+- Management quality
+- Market conditions
+
+Provide re-ranked order (top {top_n}) with brief justification.
+
+Format:
+1. SYMBOL - adjustment (+5 / -3 / 0) - reason
+2. SYMBOL - adjustment - reason
+...
+
+Be concise but precise."""
+    
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": "You are an expert portfolio manager. Re-rank stocks considering qualitative factors."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.4,
+            max_tokens=500
+        )
+        
+        content = response.choices[0].message.content
+        
+        # Parse AI adjustments
+        adjustments = {}
+        for line in content.split('\n'):
+            if '. ' in line and ('(' in line or '+' in line or '-' in line):
+                parts = line.split('-')
+                if len(parts) >= 2:
+                    symbol_part = parts[0].split('.')[1].strip() if '.' in parts[0] else parts[0].strip()
+                    symbol = symbol_part.split()[0].strip()
+                    
+                    adjustment_str = parts[1].strip()
+                    adjustment = 0
+                    if '+' in adjustment_str:
+                        adjustment = int(''.join(filter(str.isdigit, adjustment_str.split('+')[1].split()[0])))
+                    elif '-' in adjustment_str:
+                        adjustment = -int(''.join(filter(str.isdigit, adjustment_str.split('-')[1].split()[0])))
+                    
+                    reason = parts[2].strip() if len(parts) > 2 else "AI adjustment"
+                    adjustments[symbol] = {'adjustment': adjustment, 'reason': reason}
+        
+        # Apply AI adjustments
+        for opp in opportunities:
+            symbol = opp.get('symbol', '')
+            if symbol in adjustments:
+                old_score = opp.get('opportunity_score', 0)
+                adjustment = adjustments[symbol]['adjustment']
+                new_score = max(0, min(100, old_score + adjustment))
+                
+                opp['opportunity_score'] = new_score
+                opp['ai_adjustment'] = adjustment
+                opp['ai_reason'] = adjustments[symbol]['reason']
+                
+                logger.info(f"  {symbol}: {old_score:.1f} → {new_score:.1f} ({adjustment:+d}) - {adjustments[symbol]['reason']}")
+        
+        # Re-sort by adjusted scores
+        opportunities.sort(key=lambda x: x.get('opportunity_score', 0), reverse=True)
+        
+        logger.info(f"✅ AI Re-Ranking complete: {len(adjustments)} stocks adjusted")
+        return opportunities[:top_n]
+        
+    except Exception as e:
+        logger.error(f"AI re-ranking failed: {e}")
+        return opportunities[:top_n]
+
+
 def build_prompt(opportunity: Dict, market: str = "ASX") -> str:
     """
     Build a comprehensive research prompt for ChatGPT.
