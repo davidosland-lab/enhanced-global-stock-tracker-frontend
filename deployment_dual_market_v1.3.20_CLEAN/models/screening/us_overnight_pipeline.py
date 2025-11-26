@@ -123,6 +123,43 @@ class USOvernightPipeline:
             'warnings': []
         }
         
+        # Load configuration
+        config_path = Path(__file__).parent.parent / 'config' / 'screening_config.json'
+        try:
+            with open(config_path, 'r') as f:
+                self.config = json.load(f)
+            logger.info(f"✓ Configuration loaded from {config_path}")
+        except FileNotFoundError:
+            logger.warning(f"Configuration file not found: {config_path}, using defaults")
+            self.config = {
+                'lstm_training': {
+                    'enabled': True,
+                    'max_models_per_night': 100,
+                    'stale_threshold_days': 7
+                },
+                'ai_integration': {
+                    'enabled': False
+                },
+                'research': {
+                    'enabled': False
+                }
+            }
+        except Exception as e:
+            logger.error(f"Failed to load configuration: {e}, using defaults")
+            self.config = {
+                'lstm_training': {
+                    'enabled': True,
+                    'max_models_per_night': 100,
+                    'stale_threshold_days': 7
+                },
+                'ai_integration': {
+                    'enabled': False
+                },
+                'research': {
+                    'enabled': False
+                }
+            }
+        
         # Initialize components
         logger.info("="*80)
         logger.info("US OVERNIGHT STOCK SCREENING PIPELINE - STARTING")
