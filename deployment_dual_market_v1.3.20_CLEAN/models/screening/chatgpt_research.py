@@ -34,16 +34,83 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 
+def _load_api_key_from_file() -> Optional[str]:
+    """
+    Load API key from configuration file.
+    Searches multiple locations for API key file.
+    
+    Returns:
+        API key string if found, None otherwise
+    """
+    # Get the base path (project root)
+    base_path = Path(__file__).parent.parent.parent
+    
+    # Possible file locations (in order of priority)
+    possible_locations = [
+        base_path / "config" / "api_keys.env",
+        base_path / "models" / "config" / "api_keys.env",
+        base_path / ".env",
+        base_path / "api_keys.env",
+    ]
+    
+    for file_path in possible_locations:
+        if file_path.exists():
+            try:
+                with open(file_path, 'r') as f:
+                    for line in f:
+                        line = line.strip()
+                        # Skip comments and empty lines
+                        if not line or line.startswith('#'):
+                            continue
+                        # Parse KEY=value format
+                        if '=' in line and line.startswith('OPENAI_API_KEY'):
+                            key = line.split('=', 1)[1].strip()
+                            # Remove quotes if present
+                            key = key.strip('"').strip("'")
+                            if key and not key.startswith('sk-your'):
+                                logger.info(f"✓ API key loaded from: {file_path.name}")
+                                return key
+            except Exception as e:
+                logger.warning(f"Failed to read API key from {file_path}: {e}")
+                continue
+    
+    return None
+
+
 def get_client():
     """
     Get OpenAI client instance.
     
+    Attempts to load API key from multiple sources (in order):
+    1. Environment variable: OPENAI_API_KEY
+    2. Config file: config/api_keys.env
+    3. Config file: models/config/api_keys.env
+    4. Config file: .env
+    5. Config file: api_keys.env
+    
     Returns:
         OpenAI client if API key is available, None otherwise
     """
+    # Try environment variable first
     api_key = os.getenv("OPENAI_API_KEY")
+    
+    # If not in environment, try loading from file
     if not api_key:
-        logger.error("❌ OPENAI_API_KEY environment variable not set")
+        api_key = _load_api_key_from_file()
+    
+    if not api_key:
+        logger.error("❌ OPENAI_API_KEY not found")
+        logger.error("   Searched locations:")
+        logger.error("   1. Environment variable: OPENAI_API_KEY")
+        logger.error("   2. Config file: config/api_keys.env")
+        logger.error("   3. Config file: models/config/api_keys.env")
+        logger.error("   4. Config file: .env")
+        logger.error("   5. Config file: api_keys.env")
+        logger.error("")
+        logger.error("   To set up:")
+        logger.error("   1. Copy config/.env.example to config/api_keys.env")
+        logger.error("   2. Edit config/api_keys.env and add your key")
+        logger.error("   3. Or set environment variable: $env:OPENAI_API_KEY='your-key'")
         return None
     
     if not OPENAI_AVAILABLE:

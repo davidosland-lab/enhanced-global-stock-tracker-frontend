@@ -78,22 +78,57 @@ ChatGPT performs comprehensive analysis on your top opportunities, covering:
 
 ### Step 1: Set OpenAI API Key
 
-The system requires an OpenAI API key to function.
+The system requires an OpenAI API key to function. **Three easy options:**
+
+#### **Option 1: Config File (RECOMMENDED - Easiest)**
+
+1. Navigate to config folder:
+   ```powershell
+   cd deployment_dual_market_v1.3.20_CLEAN\config
+   ```
+
+2. Copy the example file:
+   ```powershell
+   copy .env.example api_keys.env
+   ```
+
+3. Edit `config\api_keys.env` and add your key:
+   ```env
+   OPENAI_API_KEY=sk-proj-your-actual-api-key-here
+   ```
+
+4. Save and close. Done! ✅
+
+**The system automatically loads from this file.** No environment variables needed!
+
+See `SETUP_OPENAI_API_KEY.md` for detailed instructions.
+
+#### **Option 2: Environment Variable (Permanent)**
 
 **Windows PowerShell:**
 ```powershell
-$env:OPENAI_API_KEY="sk-your-api-key-here"
+[System.Environment]::SetEnvironmentVariable('OPENAI_API_KEY', 'sk-proj-your-key', 'User')
 ```
 
 **Linux/Mac:**
 ```bash
-export OPENAI_API_KEY="sk-your-api-key-here"
+echo 'export OPENAI_API_KEY="sk-proj-your-key"' >> ~/.bashrc
+source ~/.bashrc
 ```
 
-**Permanent (Windows - User Environment Variable):**
+#### **Option 3: Environment Variable (Temporary)**
+
+**Windows PowerShell:**
 ```powershell
-[System.Environment]::SetEnvironmentVariable('OPENAI_API_KEY', 'sk-your-api-key-here', 'User')
+$env:OPENAI_API_KEY="sk-proj-your-api-key-here"
 ```
+
+**Linux/Mac:**
+```bash
+export OPENAI_API_KEY="sk-proj-your-api-key-here"
+```
+
+**Note:** For complete setup instructions, see `SETUP_OPENAI_API_KEY.md`
 
 ### Step 2: Update `screening_config.json`
 
