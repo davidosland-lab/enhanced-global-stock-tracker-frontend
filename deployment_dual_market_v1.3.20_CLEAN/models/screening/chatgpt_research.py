@@ -170,8 +170,17 @@ def ai_quick_filter(
         for stock in batch:
             symbol = stock.get('symbol', 'N/A')
             sector = stock.get('sector', 'Unknown')
-            prediction = stock.get('prediction', 0)
-            confidence = stock.get('confidence', 0)
+            
+            # Convert to float (might be strings)
+            try:
+                prediction = float(stock.get('prediction', 0))
+            except (ValueError, TypeError):
+                prediction = 0.0
+            
+            try:
+                confidence = float(stock.get('confidence', 0))
+            except (ValueError, TypeError):
+                confidence = 0.0
             
             stock_summaries.append(
                 f"{symbol} ({sector}): Prediction {prediction:+.2f}, Confidence {confidence:.1f}%"
@@ -261,13 +270,24 @@ def ai_score_opportunity(
     company = opportunity.get('company_name', 'Unknown')
     sector = opportunity.get('sector', 'Unknown')
     
+    # Convert prediction and confidence to float (they might be strings)
+    try:
+        prediction = float(opportunity.get('prediction', 0))
+    except (ValueError, TypeError):
+        prediction = 0.0
+    
+    try:
+        confidence = float(opportunity.get('confidence', 0))
+    except (ValueError, TypeError):
+        confidence = 0.0
+    
     prompt = f"""Provide numeric scores for this stock opportunity:
 
 Stock: {symbol} - {company}
 Market: {market}
 Sector: {sector}
-Current Prediction: {opportunity.get('prediction', 0):+.2f}
-Confidence: {opportunity.get('confidence', 0):.1f}%
+Current Prediction: {prediction:+.2f}
+Confidence: {confidence:.1f}%
 
 Analyze and provide scores (0-100):
 
@@ -371,8 +391,18 @@ def ai_rerank_opportunities(
     stock_summaries = []
     for i, opp in enumerate(opportunities, 1):
         symbol = opp.get('symbol', 'N/A')
-        score = opp.get('opportunity_score', 0)
-        prediction = opp.get('prediction', 0)
+        
+        # Convert to float (might be strings)
+        try:
+            score = float(opp.get('opportunity_score', 0))
+        except (ValueError, TypeError):
+            score = 0.0
+        
+        try:
+            prediction = float(opp.get('prediction', 0))
+        except (ValueError, TypeError):
+            prediction = 0.0
+        
         sector = opp.get('sector', 'Unknown')
         
         stock_summaries.append(
@@ -435,7 +465,12 @@ Be concise but precise."""
         for opp in opportunities:
             symbol = opp.get('symbol', '')
             if symbol in adjustments:
-                old_score = opp.get('opportunity_score', 0)
+                # Convert to float (might be strings)
+                try:
+                    old_score = float(opp.get('opportunity_score', 0))
+                except (ValueError, TypeError):
+                    old_score = 0.0
+                
                 adjustment = adjustments[symbol]['adjustment']
                 new_score = max(0, min(100, old_score + adjustment))
                 
@@ -470,9 +505,22 @@ def build_prompt(opportunity: Dict, market: str = "ASX") -> str:
     symbol = opportunity.get('symbol', 'N/A')
     company = opportunity.get('company_name', 'Unknown')
     sector = opportunity.get('sector', 'Unknown')
-    opp_score = opportunity.get('opportunity_score', 0)
-    prediction = opportunity.get('prediction', 0)
-    confidence = opportunity.get('confidence', 0)
+    
+    # Convert numeric fields to float (might be strings)
+    try:
+        opp_score = float(opportunity.get('opportunity_score', 0))
+    except (ValueError, TypeError):
+        opp_score = 0.0
+    
+    try:
+        prediction = float(opportunity.get('prediction', 0))
+    except (ValueError, TypeError):
+        prediction = 0.0
+    
+    try:
+        confidence = float(opportunity.get('confidence', 0))
+    except (ValueError, TypeError):
+        confidence = 0.0
     
     # Extract technical indicators
     technical = opportunity.get('technical', {})
@@ -483,7 +531,11 @@ def build_prompt(opportunity: Dict, market: str = "ASX") -> str:
     # Extract sentiment
     sentiment = opportunity.get('sentiment', {})
     sent_direction = sentiment.get('direction', 'neutral')
-    sent_confidence = sentiment.get('confidence', 0)
+    
+    try:
+        sent_confidence = float(sentiment.get('confidence', 0))
+    except (ValueError, TypeError):
+        sent_confidence = 0.0
     
     # Market-specific context
     market_context = ""
