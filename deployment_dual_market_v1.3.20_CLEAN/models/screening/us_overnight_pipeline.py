@@ -972,7 +972,8 @@ class USOvernightPipeline:
                 
                 # Calculate sector statistics
                 if sector_stocks:
-                    scores = [s['score'] for s in sector_stocks if 'score' in s]
+                    # Use opportunity_score (from scorer), not score (from scanner)
+                    scores = [s.get('opportunity_score', 0) for s in sector_stocks]
                     sector_summary[sector_name] = {
                         'total_stocks': len(sector_stocks),
                         'avg_score': sum(scores) / len(scores) if scores else 0,
