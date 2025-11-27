@@ -92,7 +92,7 @@ class USStockScanner:
     # DATA FETCHING - yahooquery ONLY
     # ========================================================================
     
-    def fetch_stock_history(self, symbol: str, start_date=None, end_date=None, period='1mo'):
+    def fetch_stock_history(self, symbol: str, start_date=None, end_date=None, period='1mo', interval='1d'):
         """
         Fetch US stock history using yahooquery
         
@@ -101,6 +101,7 @@ class USStockScanner:
             start_date: Start date (optional)
             end_date: End date (optional)
             period: Period string if not using dates
+            interval: Data interval ('1d', '1m', '5m', '15m', '1h')
             
         Returns:
             DataFrame with OHLCV data, or None on error
@@ -109,9 +110,9 @@ class USStockScanner:
             ticker = Ticker(symbol)
             
             if start_date and end_date:
-                hist = ticker.history(start=start_date, end=end_date)
+                hist = ticker.history(start=start_date, end=end_date, interval=interval)
             else:
-                hist = ticker.history(period=period)
+                hist = ticker.history(period=period, interval=interval)
             
             if isinstance(hist, pd.DataFrame) and not hist.empty:
                 # Normalize column names
@@ -122,6 +123,68 @@ class USStockScanner:
                 
         except Exception as e:
             logger.debug(f"Error fetching {symbol}: {e}")
+            return None
+    
+    def fetch_intraday_data(self, symbol: str) -> Optional[Dict]:
+        """
+        Fetch intraday data for momentum analysis (1-minute bars)
+        
+        Args:
+            symbol: US stock ticker (no suffix)
+            
+        Returns:
+            Dictionary with intraday data or None
+        """
+        try:
+            # Fetch 1-minute bars for today
+            intraday_hist = self.fetch_stock_history(symbol, period='1d', interval='1m')
+            
+            if intraday_hist is None or intraday_hist.empty:
+                logger.debug(f"No intraday data for {symbol}")
+                return None
+            
+            # Calculate intraday metrics
+            current_price = float(intraday_hist['Close'].iloc[-1])
+            open_price = float(intraday_hist['Open'].iloc[0])
+            high_price = float(intraday_hist['High'].max())
+            low_price = float(intraday_hist['Low'].min())
+            current_volume = int(intraday_hist['Volume'].sum())
+            
+            # Extract price series for momentum calculations
+            prices = intraday_hist['Close'].values
+            
+            # Calculate momentum metrics
+            session_change_pct = ((current_price - open_price) / open_price) * 100 if open_price > 0 else 0
+            intraday_range_pct = ((high_price - low_price) / open_price) * 100 if open_price > 0 else 0
+            
+            # 15-minute momentum (if enough data)
+            mom_15m = 0
+            if len(prices) >= 15:
+                price_15m_ago = float(prices[-15])
+                mom_15m = ((current_price - price_15m_ago) / price_15m_ago) * 100 if price_15m_ago > 0 else 0
+            
+            # 60-minute momentum (if enough data)
+            mom_60m = 0
+            if len(prices) >= 60:
+                price_60m_ago = float(prices[-60])
+                mom_60m = ((current_price - price_60m_ago) / price_60m_ago) * 100 if price_60m_ago > 0 else 0
+            
+            return {
+                'current_price': current_price,
+                'open_price': open_price,
+                'high_price': high_price,
+                'low_price': low_price,
+                'current_volume': current_volume,
+                'session_change_pct': session_change_pct,
+                'intraday_range_pct': intraday_range_pct,
+                'momentum_15m': mom_15m,
+                'momentum_60m': mom_60m,
+                'prices': prices.tolist(),  # For advanced calculations
+                'data_points': len(prices)
+            }
+            
+        except Exception as e:
+            logger.debug(f"Error fetching intraday data for {symbol}: {e}")
             return None
     
     # ========================================================================
@@ -269,13 +332,14 @@ class USStockScanner:
         
         return fundamentals
     
-    def analyze_stock(self, symbol: str, sector_weight: float) -> Optional[Dict]:
+    def analyze_stock(self, symbol: str, sector_weight: float, include_intraday: bool = False) -> Optional[Dict]:
         """
         Perform complete analysis on a US stock
         
         Args:
             symbol: Stock ticker symbol
             sector_weight: Sector importance weight
+            include_intraday: If True, fetch intraday data for momentum analysis
             
         Returns:
             Dictionary with analysis results, or None if analysis fails
@@ -315,7 +379,7 @@ class USStockScanner:
                 sector_weight=sector_weight
             )
             
-            return {
+            result = {
                 'symbol': symbol,
                 'name': fundamentals['name'],
                 'price': float(current_price),
@@ -338,6 +402,19 @@ class USStockScanner:
                     'above_ma50': ma_data['above_ma50']
                 }
             }
+            
+            # Fetch intraday data if requested (for intraday mode)
+            if include_intraday:
+                intraday_data = self.fetch_intraday_data(symbol)
+                if intraday_data:
+                    result['intraday_data'] = intraday_data
+                    # Update current price with intraday price if available
+                    result['price'] = intraday_data['current_price']
+                    logger.debug(f"{symbol}: Intraday data included ({intraday_data['data_points']} points)")
+                else:
+                    logger.debug(f"{symbol}: No intraday data available")
+            
+            return result
             
         except Exception as e:
             logger.debug(f"Analysis error for {symbol}: {e}")
@@ -402,13 +479,14 @@ class USStockScanner:
     # SECTOR SCANNING
     # ========================================================================
     
-    def scan_sector(self, sector_name: str, max_stocks: int = 30) -> List[Dict]:
+    def scan_sector(self, sector_name: str, max_stocks: int = 30, include_intraday: bool = False) -> List[Dict]:
         """
         Scan all stocks in a US sector
         
         Args:
             sector_name: Name of the sector to scan
             max_stocks: Maximum number of stocks to analyze
+            include_intraday: If True, fetch intraday data for momentum analysis
             
         Returns:
             List of analyzed stocks, sorted by score
@@ -421,7 +499,8 @@ class USStockScanner:
         sector_weight = sector_data.get('weight', 1.0)
         stocks = sector_data.get('stocks', [])[:max_stocks]
         
-        logger.info(f"Scanning {sector_name}: {len(stocks)} stocks")
+        mode_indicator = "📈 INTRADAY" if include_intraday else "🌙 OVERNIGHT"
+        logger.info(f"Scanning {sector_name}: {len(stocks)} stocks - {mode_indicator}")
         
         results = []
         for i, symbol in enumerate(stocks, 1):
@@ -431,12 +510,18 @@ class USStockScanner:
                     logger.debug(f"{symbol}: Failed validation")
                     continue
                 
-                # Analyze stock
-                analysis = self.analyze_stock(symbol, sector_weight)
+                # Analyze stock (with or without intraday data)
+                analysis = self.analyze_stock(symbol, sector_weight, include_intraday=include_intraday)
                 if analysis:
                     analysis['sector'] = sector_name
                     results.append(analysis)
-                    logger.debug(f"{i}/{len(stocks)}: {symbol} - Score: {analysis['score']:.1f}")
+                    
+                    intraday_info = ""
+                    if include_intraday and 'intraday_data' in analysis:
+                        intraday_data = analysis['intraday_data']
+                        intraday_info = f" | Mom: {intraday_data['session_change_pct']:+.2f}%"
+                    
+                    logger.debug(f"{i}/{len(stocks)}: {symbol} - Score: {analysis['score']:.1f}{intraday_info}")
                 
                 # Rate limiting
                 time.sleep(0.1)
@@ -449,6 +534,10 @@ class USStockScanner:
         results.sort(key=lambda x: x['score'], reverse=True)
         
         logger.info(f"✓ {sector_name}: {len(results)}/{len(stocks)} stocks analyzed")
+        if include_intraday:
+            intraday_count = sum(1 for s in results if 'intraday_data' in s)
+            logger.info(f"  📈 Intraday data: {intraday_count}/{len(results)} stocks")
+        
         return results
     
     def scan_all_sectors(self, stocks_per_sector: int = 30) -> Dict[str, List[Dict]]:

@@ -64,6 +64,15 @@ try:
 except ImportError:
     LSTMTrainer = None
 
+# Market Hours Detector (optional)
+try:
+    from .market_hours_detector import MarketHoursDetector
+except ImportError:
+    try:
+        from market_hours_detector import MarketHoursDetector
+    except ImportError:
+        MarketHoursDetector = None
+
 # 🆕 ChatGPT Research + AI Integration (optional)
 try:
     from .chatgpt_research import (
@@ -122,6 +131,20 @@ class USOvernightPipeline:
             'errors': [],
             'warnings': []
         }
+        
+        # Initialize market hours detector (for intraday awareness)
+        if MarketHoursDetector is not None:
+            self.market_detector = MarketHoursDetector()
+            logger.info("✓ Market Hours Detector initialized")
+        else:
+            self.market_detector = None
+            logger.info("  Market Hours Detector disabled")
+        
+        # Add market hours tracking
+        self.status.update({
+            'market_hours': None,
+            'pipeline_mode': 'overnight'  # or 'intraday'
+        })
         
         # Load configuration
         config_path = Path(__file__).parent.parent / 'config' / 'screening_config.json'
@@ -247,6 +270,36 @@ class USOvernightPipeline:
         self.start_time = time.time()
         
         try:
+            # Phase 0: Market Hours Detection (NEW)
+            logger.info("\n" + "="*80)
+            logger.info("PHASE 0: MARKET HOURS DETECTION")
+            logger.info("="*80)
+            
+            if self.market_detector is not None:
+                market_status = self.market_detector.is_market_open('US')
+                self.status['market_hours'] = market_status
+                
+                # Log market status
+                logger.info(self.market_detector.get_market_status_summary('US'))
+                logger.info("")
+                
+                # Determine pipeline mode
+                if market_status['is_open']:
+                    self.status['pipeline_mode'] = 'intraday'
+                    logger.warning("\u26a0\ufe0f  INTRADAY MODE ACTIVE")
+                    logger.warning("    \u2022 US Market is currently open")
+                    logger.warning("    \u2022 Using recent/live prices")
+                    logger.warning("    \u2022 Consider running after market close for best results")
+                else:
+                    self.status['pipeline_mode'] = 'overnight'
+                    logger.info("\u2713 OVERNIGHT MODE (Standard)")
+                    logger.info("  \u2022 US Market is closed")
+                    logger.info("  \u2022 Using standard predictions")
+            else:
+                logger.info("Market hours detection disabled - using overnight mode")
+                self.status['pipeline_mode'] = 'overnight'
+                self.status['market_hours'] = {'is_open': False, 'market_phase': 'unknown'}
+            
             # Phase 1: US Market Sentiment
             logger.info("\n" + "="*80)
             logger.info("PHASE 1: US MARKET SENTIMENT ANALYSIS")
@@ -425,15 +478,20 @@ class USOvernightPipeline:
             }
     
     def _scan_all_us_stocks(self, sectors: List[str] = None, stocks_per_sector: int = 30) -> List[Dict]:
-        """Scan all US stocks from specified sectors"""
+        """Scan all US stocks from specified sectors (mode-aware)"""
         
         if sectors is None:
             sectors_to_scan = list(self.scanner.sectors.keys())
         else:
             sectors_to_scan = sectors
         
+        # Check if we should include intraday data
+        include_intraday = self.status.get('pipeline_mode') == 'intraday'
+        
         logger.info(f"Scanning {len(sectors_to_scan)} US sectors...")
         logger.info(f"Target: {stocks_per_sector} stocks per sector")
+        if include_intraday:
+            logger.info(f"Mode: INTRADAY (fetching 1-minute bars)")
         
         all_stocks = []
         
@@ -441,7 +499,12 @@ class USOvernightPipeline:
             logger.info(f"\n[{i}/{len(sectors_to_scan)}] Scanning {sector_name}...")
             
             try:
-                stocks = self.scanner.scan_sector(sector_name, max_stocks=stocks_per_sector)
+                # Scan sector (with intraday data if market is open)
+                stocks = self.scanner.scan_sector(
+                    sector_name, 
+                    max_stocks=stocks_per_sector,
+                    include_intraday=include_intraday
+                )
                 
                 if stocks:
                     all_stocks.extend(stocks)
@@ -457,6 +520,9 @@ class USOvernightPipeline:
         
         logger.info(f"\n✓ US Stock Scanning Complete:")
         logger.info(f"  Total Valid Stocks: {len(all_stocks)}")
+        if include_intraday:
+            intraday_count = sum(1 for s in all_stocks if 'intraday_data' in s)
+            logger.info(f"  📈 Intraday data: {intraday_count}/{len(all_stocks)} stocks")
         
         self.status['total_stocks'] = len(all_stocks)
         return all_stocks
@@ -504,15 +570,19 @@ class USOvernightPipeline:
             return stocks  # Return stocks without predictions
     
     def _score_opportunities(self, stocks: List[Dict], sentiment: Dict, ai_scores: Dict = None) -> List[Dict]:
-        """Score trading opportunities"""
+        """Score trading opportunities (mode-aware)"""
         logger.info(f"Scoring opportunities for {len(stocks)} stocks...")
         
         try:
+            # Pass market_status for mode-aware scoring
+            market_status = self.status.get('market_hours')
+            
             # Use score_opportunities method (same as ASX pipeline)
             scored = self.scorer.score_opportunities(
                 stocks=stocks,
-                market_sentiment=sentiment,
-                ai_scores=ai_scores
+                spi_sentiment=sentiment,
+                ai_scores=ai_scores,
+                market_status=market_status
             )
             
             # Sort by score
@@ -520,6 +590,17 @@ class USOvernightPipeline:
             
             high_quality = sum(1 for s in scored if s.get('opportunity_score', 0) >= 75)
             logger.info(f"✓ Scoring Complete: {high_quality} high-quality opportunities (≥75)")
+            logger.info(f"  Mode: {self.status.get('pipeline_mode', 'overnight').upper()}")
+            
+            # Log momentum for top stocks if intraday
+            if self.status.get('pipeline_mode') == 'intraday' and scored:
+                top_5 = scored[:5]
+                logger.info(f"  Top 5:")
+                for i, opp in enumerate(top_5, 1):
+                    momentum_info = ""
+                    if 'momentum_breakdown' in opp:
+                        momentum_info = f" | Momentum: {opp['momentum_breakdown'].get('momentum', 0):.0f}"
+                    logger.info(f"    {i}. {opp['symbol']}: {opp['opportunity_score']:.1f}/100{momentum_info}")
             
             return scored
             

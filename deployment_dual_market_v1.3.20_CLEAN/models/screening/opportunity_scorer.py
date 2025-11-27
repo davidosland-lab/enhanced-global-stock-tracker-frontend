@@ -66,19 +66,30 @@ class OpportunityScorer:
         self,
         stocks_with_predictions: List[Dict],
         spi_sentiment: Dict = None,
-        ai_scores: Dict = None
+        ai_scores: Dict = None,
+        market_status: Dict = None
     ) -> List[Dict]:
         """
-        Calculate opportunity scores for all stocks
+        Calculate opportunity scores for all stocks (mode-aware)
         
         Args:
             stocks_with_predictions: List of stocks with prediction data
             spi_sentiment: Market sentiment data
             ai_scores: Optional AI scoring data {symbol: {scores}}
+            market_status: Optional market hours status (for intraday mode)
             
         Returns:
             List of stocks with opportunity_score added, sorted by score
         """
+        # Determine scoring mode
+        if market_status and market_status.get('is_open', False):
+            pipeline_mode = 'intraday'
+            logger.info(f"📈 Intraday scoring mode active")
+            logger.info(f"  Market: {market_status.get('trading_hours_elapsed_pct', 0):.1f}% complete")
+        else:
+            pipeline_mode = 'overnight'
+            logger.info(f"🌙 Overnight scoring mode active")
+        
         logger.info(f"Scoring {len(stocks_with_predictions)} opportunities...")
         
         # Check if AI scoring is enabled
@@ -90,8 +101,11 @@ class OpportunityScorer:
         
         for stock in stocks_with_predictions:
             try:
-                # Calculate base opportunity score
-                score = self._calculate_opportunity_score(stock, spi_sentiment)
+                # Calculate base opportunity score (mode-aware)
+                if pipeline_mode == 'intraday':
+                    score = self._calculate_intraday_score(stock, market_status, spi_sentiment)
+                else:
+                    score = self._calculate_opportunity_score(stock, spi_sentiment)
                 
                 # Add AI score if available
                 symbol = stock.get('symbol', '')
@@ -107,6 +121,7 @@ class OpportunityScorer:
                 stock['opportunity_score'] = score['total_score']
                 stock['score_breakdown'] = score['breakdown']
                 stock['score_factors'] = score['factors']
+                stock['pipeline_mode'] = pipeline_mode
                 
                 scored_stocks.append(stock)
                 
@@ -114,6 +129,7 @@ class OpportunityScorer:
                 logger.error(f"Scoring error for {stock.get('symbol', 'UNKNOWN')}: {e}")
                 stock['opportunity_score'] = 0
                 stock['score_error'] = str(e)
+                stock['pipeline_mode'] = pipeline_mode
                 scored_stocks.append(stock)
         
         # Sort by opportunity score (descending)
@@ -121,6 +137,7 @@ class OpportunityScorer:
         
         if scored_stocks:
             logger.info(f"Scoring complete. Top score: {scored_stocks[0]['opportunity_score']:.1f}")
+            logger.info(f"  Mode: {pipeline_mode.upper()}")
             if ai_enabled:
                 ai_enhanced_count = sum(1 for s in scored_stocks if s.get('ai_enhanced', False))
                 logger.info(f"  🤖 {ai_enhanced_count} stocks enhanced with AI scores")
@@ -441,6 +458,357 @@ class OpportunityScorer:
         
         # High screening score suggests strong sector positioning
         return screening_score / 100
+    
+    # ========================================================================
+    # INTRADAY MOMENTUM SCORING (Phase 2)
+    # ========================================================================
+    
+    def _score_intraday_momentum(self, stock: Dict, market_status: Dict) -> float:
+        """
+        Score intraday momentum for stocks during market hours (0-1)
+        
+        Components:
+        1. Price Rate of Change (40%): 15m, 60m, session momentum
+        2. Volume Surge (30%): Current vs typical hourly rate
+        3. Intraday Volatility (20%): High-low range
+        4. Breakout Detection (10%): Support/resistance levels
+        
+        Args:
+            stock: Stock data with intraday_data
+            market_status: Market hours status dict
+            
+        Returns:
+            Momentum score (0-1)
+        """
+        intraday_data = stock.get('intraday_data', {})
+        
+        if not intraday_data:
+            logger.debug(f"No intraday data for {stock.get('symbol', 'UNKNOWN')}")
+            return 0.5  # Neutral if no intraday data
+        
+        scores = {}
+        
+        # 1. Price Momentum (40% of momentum score)
+        mom_15m = intraday_data.get('momentum_15m', 0)
+        mom_60m = intraday_data.get('momentum_60m', 0)
+        session_change = intraday_data.get('session_change_pct', 0)
+        
+        # Score based on absolute momentum (direction-agnostic, we want movement)
+        # Scale: 1% move = 50 points, 2%+ = 100 points
+        score_15m = min(abs(mom_15m) * 50, 100)
+        score_60m = min(abs(mom_60m) * 40, 100)
+        score_session = min(abs(session_change) * 30, 100)
+        
+        momentum_score = (
+            score_15m * 0.4 +      # Recent acceleration
+            score_60m * 0.3 +      # Sustained trend
+            score_session * 0.3    # Overall session
+        )
+        scores['momentum'] = momentum_score
+        
+        # 2. Volume Surge (30% of momentum score)
+        hours_elapsed = market_status.get('trading_hours_elapsed_pct', 50) / 100
+        session_duration = 6.0  # ASX trades 6 hours (10 AM - 4 PM)
+        hours_elapsed_actual = hours_elapsed * session_duration
+        
+        if hours_elapsed_actual > 0.5:  # At least 30 minutes elapsed
+            current_volume = intraday_data.get('current_volume', 0)
+            avg_daily_volume = stock.get('volume', 1_000_000)
+            
+            # Calculate volume rate
+            current_volume_rate = current_volume / hours_elapsed_actual if hours_elapsed_actual > 0 else 0
+            typical_hourly_volume = avg_daily_volume / session_duration
+            
+            surge_ratio = current_volume_rate / typical_hourly_volume if typical_hourly_volume > 0 else 1.0
+            
+            # Score volume surge
+            if surge_ratio > 2.0:
+                volume_score = 100
+            elif surge_ratio > 1.5:
+                volume_score = 80
+            elif surge_ratio > 1.2:
+                volume_score = 60
+            elif surge_ratio > 0.8:
+                volume_score = 50
+            else:
+                volume_score = 30  # Below normal volume
+            
+            scores['volume_surge'] = volume_score
+            scores['surge_ratio'] = surge_ratio
+        else:
+            volume_score = 50  # Too early to assess
+            scores['volume_surge'] = volume_score
+            scores['surge_ratio'] = 1.0
+        
+        # 3. Intraday Volatility (20% of momentum score)
+        intraday_range_pct = intraday_data.get('intraday_range_pct', 0)
+        
+        # Higher range = more trading opportunity
+        # Scale: 1% range = 40 points, 2.5%+ = 100 points
+        if intraday_range_pct > 2.5:
+            volatility_score = 100
+        elif intraday_range_pct > 2.0:
+            volatility_score = 90
+        elif intraday_range_pct > 1.5:
+            volatility_score = 75
+        elif intraday_range_pct > 1.0:
+            volatility_score = 60
+        elif intraday_range_pct > 0.5:
+            volatility_score = 45
+        else:
+            volatility_score = 30
+        
+        scores['volatility'] = volatility_score
+        
+        # 4. Breakout Detection (10% of momentum score)
+        current_price = intraday_data.get('current_price', stock.get('price', 0))
+        high_price = intraday_data.get('high_price', current_price)
+        low_price = intraday_data.get('low_price', current_price)
+        
+        technical = stock.get('technical', {})
+        ma_20 = technical.get('ma_20', current_price)
+        ma_50 = technical.get('ma_50', current_price)
+        
+        # Check for breakout conditions
+        breakout_score = 50  # Default neutral
+        
+        # Strong breakout above MA50
+        if current_price > ma_50 * 1.02:
+            breakout_score = 100
+        # Breakout above MA20
+        elif current_price > ma_20 * 1.02:
+            breakout_score = 80
+        # Testing highs
+        elif current_price > high_price * 0.995:
+            breakout_score = 90
+        # Testing lows (breakdown)
+        elif current_price < low_price * 1.005:
+            breakout_score = 85  # Breakdowns can be opportunities too
+        # Above MA20 but not breaking out
+        elif current_price > ma_20:
+            breakout_score = 60
+        # Below MA20
+        else:
+            breakout_score = 40
+        
+        scores['breakout'] = breakout_score
+        
+        # Combine all momentum components
+        total_momentum = (
+            momentum_score * 0.40 +
+            volume_score * 0.30 +
+            volatility_score * 0.20 +
+            breakout_score * 0.10
+        )
+        
+        # Store detailed scores for debugging
+        stock['momentum_breakdown'] = scores
+        
+        # Return normalized score (0-1)
+        return total_momentum / 100
+    
+    def _calculate_intraday_score(
+        self,
+        stock: Dict,
+        market_status: Dict,
+        spi_sentiment: Dict = None
+    ) -> Dict:
+        """
+        Calculate opportunity score for intraday mode (0-100)
+        
+        Intraday Weights:
+        1. Intraday Momentum (30%): Real-time price velocity
+        2. Technical Strength (25%): Live technical indicators
+        3. Liquidity (20%): Critical for rapid execution
+        4. Volatility (15%): Opportunity for intraday traders
+        5. Prediction Confidence (10%): Less reliable intraday
+        6. SPI Alignment (5%): Gap already occurred
+        
+        Args:
+            stock: Stock data with intraday_data
+            market_status: Market hours status
+            spi_sentiment: Market sentiment (optional, less relevant)
+            
+        Returns:
+            Dictionary with total score and breakdown
+        """
+        breakdown = {}
+        
+        # Intraday-specific factors
+        momentum_score = self._score_intraday_momentum(stock, market_status)
+        technical_score = self._score_technical_strength(stock)
+        liquidity_score = self._score_liquidity(stock)
+        volatility_score = self._score_volatility_intraday(stock)
+        prediction_score = self._score_prediction_confidence(stock)
+        spi_score = self._score_spi_alignment(stock, spi_sentiment)
+        
+        # Intraday weights (different from overnight)
+        intraday_weights = {
+            'intraday_momentum': 0.30,
+            'technical_strength': 0.25,
+            'liquidity': 0.20,
+            'volatility': 0.15,
+            'prediction_confidence': 0.10,
+            'spi_alignment': 0.05
+        }
+        
+        # Calculate weighted total
+        total = (
+            momentum_score * intraday_weights['intraday_momentum'] +
+            technical_score * intraday_weights['technical_strength'] +
+            liquidity_score * intraday_weights['liquidity'] +
+            volatility_score * intraday_weights['volatility'] +
+            prediction_score * intraday_weights['prediction_confidence'] +
+            spi_score * intraday_weights['spi_alignment']
+        ) * 100  # Convert to 0-100 scale
+        
+        breakdown = {
+            'intraday_momentum': momentum_score * 100,
+            'technical_strength': technical_score * 100,
+            'liquidity': liquidity_score * 100,
+            'volatility': volatility_score * 100,
+            'prediction_confidence': prediction_score * 100,
+            'spi_alignment': spi_score * 100,
+            'base_total': total
+        }
+        
+        # Apply adjustments (reduced for intraday)
+        adjustments = self._apply_intraday_adjustments(stock, market_status)
+        total += adjustments['total_adjustment']
+        
+        # Ensure score is within bounds
+        total = max(0, min(100, total))
+        
+        return {
+            'total_score': total,
+            'breakdown': breakdown,
+            'factors': {
+                'adjustments': adjustments,
+                'prediction': stock.get('prediction'),
+                'confidence': stock.get('confidence', 0),
+                'mode': 'intraday',
+                'market_status': market_status.get('market_phase', 'unknown')
+            }
+        }
+    
+    def _score_volatility_intraday(self, stock: Dict) -> float:
+        """
+        Score volatility for intraday trading (0-1)
+        
+        For intraday: HIGHER volatility = HIGHER score (opportunity)
+        Opposite of overnight where lower volatility is preferred
+        
+        Args:
+            stock: Stock data
+            
+        Returns:
+            Volatility score (0-1)
+        """
+        intraday_data = stock.get('intraday_data', {})
+        
+        if intraday_data:
+            # Use intraday range as primary volatility metric
+            intraday_range_pct = intraday_data.get('intraday_range_pct', 0)
+            
+            # Higher intraday range = better for intraday trading
+            if intraday_range_pct > 2.5:
+                return 1.0
+            elif intraday_range_pct > 2.0:
+                return 0.9
+            elif intraday_range_pct > 1.5:
+                return 0.8
+            elif intraday_range_pct > 1.0:
+                return 0.6
+            else:
+                return 0.4
+        else:
+            # Fallback to historical volatility (inverted preference)
+            technical = stock.get('technical', {})
+            volatility = technical.get('volatility', 0.05)
+            
+            # For intraday, prefer higher volatility
+            if volatility > 0.06:
+                return 0.8  # High volatility = good
+            elif volatility > 0.04:
+                return 0.6
+            else:
+                return 0.4  # Low volatility = less opportunity
+    
+    def _apply_intraday_adjustments(self, stock: Dict, market_status: Dict) -> Dict:
+        """
+        Apply intraday-specific penalties and bonuses
+        
+        Different from overnight adjustments:
+        - No SPI alignment penalties (gap already occurred)
+        - Emphasis on execution risk (liquidity, spread)
+        - Momentum confirmation bonuses
+        
+        Args:
+            stock: Stock data
+            market_status: Market hours status
+            
+        Returns:
+            Dictionary with adjustment details
+        """
+        adjustments = {
+            'penalties': [],
+            'bonuses': [],
+            'total_adjustment': 0
+        }
+        
+        # PENALTIES
+        
+        # Very low volume penalty (execution risk)
+        if stock.get('volume', float('inf')) < 500_000:
+            penalty = 15  # Higher than overnight (10)
+            adjustments['penalties'].append({
+                'type': 'low_volume_intraday',
+                'amount': -penalty
+            })
+            adjustments['total_adjustment'] -= penalty
+        
+        # Early market hours penalty (first 10% of day - volatile/unreliable)
+        hours_elapsed_pct = market_status.get('trading_hours_elapsed_pct', 50)
+        if hours_elapsed_pct < 10:
+            penalty = 5
+            adjustments['penalties'].append({
+                'type': 'early_market_hours',
+                'amount': -penalty
+            })
+            adjustments['total_adjustment'] -= penalty
+        
+        # BONUSES
+        
+        # Strong momentum confirmation bonus
+        momentum_breakdown = stock.get('momentum_breakdown', {})
+        if momentum_breakdown.get('momentum', 0) > 80:
+            bonus = 5
+            adjustments['bonuses'].append({
+                'type': 'strong_momentum',
+                'amount': bonus
+            })
+            adjustments['total_adjustment'] += bonus
+        
+        # Volume surge confirmation bonus
+        surge_ratio = momentum_breakdown.get('surge_ratio', 1.0)
+        if surge_ratio > 1.5:
+            bonus = 5
+            adjustments['bonuses'].append({
+                'type': 'volume_surge',
+                'amount': bonus
+            })
+            adjustments['total_adjustment'] += bonus
+        
+        # Breakout confirmation bonus
+        if momentum_breakdown.get('breakout', 0) >= 90:
+            bonus = 8
+            adjustments['bonuses'].append({
+                'type': 'breakout_confirmed',
+                'amount': bonus
+            })
+            adjustments['total_adjustment'] += bonus
+        
+        return adjustments
     
     def _apply_adjustments(
         self,
