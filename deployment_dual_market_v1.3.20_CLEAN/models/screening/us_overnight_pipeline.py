@@ -366,7 +366,8 @@ class USOvernightPipeline:
             self.status['phase'] = 'scoring'
             self.status['progress'] = 70
             
-            scored_stocks = self._score_opportunities(predicted_stocks, us_sentiment, ai_scores)
+            # Pass market_status from Phase 0 to enable mode-aware scoring
+            scored_stocks = self._score_opportunities(predicted_stocks, us_sentiment, ai_scores, market_status)
             
             # Phase 4.5: LSTM Model Training (Optional)
             logger.info("\n" + "="*80)
@@ -569,13 +570,14 @@ class USOvernightPipeline:
             logger.error(f"Prediction generation failed: {e}")
             return stocks  # Return stocks without predictions
     
-    def _score_opportunities(self, stocks: List[Dict], sentiment: Dict, ai_scores: Dict = None) -> List[Dict]:
+    def _score_opportunities(self, stocks: List[Dict], sentiment: Dict, ai_scores: Dict = None, market_status: Dict = None) -> List[Dict]:
         """Score trading opportunities (mode-aware)"""
         logger.info(f"Scoring opportunities for {len(stocks)} stocks...")
         
         try:
-            # Pass market_status for mode-aware scoring
-            market_status = self.status.get('market_hours')
+            # Use passed market_status or fallback to stored status
+            if market_status is None:
+                market_status = self.status.get('market_hours')
             
             # Use score_opportunities method (same as ASX pipeline)
             scored = self.scorer.score_opportunities(
