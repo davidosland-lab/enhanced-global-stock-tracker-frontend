@@ -581,7 +581,7 @@ class USOvernightPipeline:
             
             # Use score_opportunities method (same as ASX pipeline)
             scored = self.scorer.score_opportunities(
-                stocks=stocks,
+                stocks_with_predictions=stocks,
                 spi_sentiment=sentiment,
                 ai_scores=ai_scores,
                 market_status=market_status
