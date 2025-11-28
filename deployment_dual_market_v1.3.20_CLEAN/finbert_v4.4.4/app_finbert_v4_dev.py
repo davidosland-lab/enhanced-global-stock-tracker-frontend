@@ -710,8 +710,9 @@ def fetch_yahoo_data(symbol, interval='1d', period='1m'):
     try:
         # Map periods to Yahoo Finance ranges
         range_map = {
-            '1d': '1d', '5d': '5d', '1m': '1mo', 
-            '3m': '3mo', '6m': '6mo', '1y': '1y', '2y': '2y', '5y': '5y'
+            '1d': '1d', '5d': '5d', '1m': '1mo', '1mo': '1mo',
+            '3m': '3mo', '3mo': '3mo', '6m': '6mo', '6mo': '6mo',
+            '1y': '1y', '2y': '2y', '5y': '5y'
         }
         range_str = range_map.get(period, '1mo')
         
