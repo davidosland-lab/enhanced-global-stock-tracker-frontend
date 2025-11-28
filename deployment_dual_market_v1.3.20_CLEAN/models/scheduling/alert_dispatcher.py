@@ -9,21 +9,29 @@ Alert Channels:
 - Email (via SMTP)
 - SMS (via Twilio)
 - Webhook (Slack, Discord, Custom)
+- Telegram (text + file attachments)
 - Console (for development/testing)
 
 Author: FinBERT Enhanced Stock Screener
-Version: 1.0.0 (Phase 3 Auto-Rescan)
+Version: 1.1.0 (Phase 3 Auto-Rescan + Telegram)
 """
 
 import logging
 import smtplib
 import json
 import requests
+import sys
 from typing import Dict, List, Optional
 from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from pathlib import Path
+
+# Add parent directory to path for imports
+BASE_PATH = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(BASE_PATH))
+
+from models.notifications.telegram_notifier import TelegramNotifier
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +44,7 @@ class AlertDispatcher:
     - Email alerts (SMTP)
     - SMS alerts (Twilio)
     - Webhook alerts (Slack, Discord, custom)
+    - Telegram alerts (text + file attachments)
     - Console logging
     """
     
@@ -67,6 +76,25 @@ class AlertDispatcher:
         self.email_enabled = self.config.get('email', {}).get('enabled', False)
         self.sms_enabled = self.config.get('sms', {}).get('enabled', False)
         self.webhook_enabled = self.config.get('webhook', {}).get('enabled', False)
+        self.telegram_enabled = self.config.get('telegram', {}).get('enabled', False)
+        
+        # Initialize Telegram notifier
+        if self.telegram_enabled:
+            try:
+                telegram_config = self.config.get('telegram', {})
+                self.telegram = TelegramNotifier(
+                    bot_token=telegram_config.get('bot_token'),
+                    chat_id=telegram_config.get('chat_id')
+                )
+                if not self.telegram.enabled:
+                    self.telegram_enabled = False
+                    logger.warning("Telegram credentials not configured")
+            except Exception as e:
+                logger.error(f"Failed to initialize Telegram: {e}")
+                self.telegram_enabled = False
+                self.telegram = None
+        else:
+            self.telegram = None
         
         # Alert history
         self.sent_alerts: List[Dict] = []
@@ -75,6 +103,7 @@ class AlertDispatcher:
         logger.info(f"  Email alerts: {'ENABLED' if self.email_enabled else 'DISABLED'}")
         logger.info(f"  SMS alerts: {'ENABLED' if self.sms_enabled else 'DISABLED'}")
         logger.info(f"  Webhook alerts: {'ENABLED' if self.webhook_enabled else 'DISABLED'}")
+        logger.info(f"  Telegram alerts: {'ENABLED' if self.telegram_enabled else 'DISABLED'}")
     
     def send_email_alert(
         self,
@@ -258,6 +287,42 @@ class AlertDispatcher:
             logger.error(f"Failed to send webhook alert: {e}")
             return False
     
+    def send_telegram_alert(
+        self,
+        data: Dict
+    ) -> bool:
+        """
+        Send Telegram alert.
+        
+        Args:
+            data: Alert data dictionary
+            
+        Returns:
+            True if sent successfully
+        """
+        if not self.telegram_enabled or not self.telegram:
+            logger.debug("Telegram alerts disabled, skipping")
+            return False
+        
+        try:
+            symbol = data.get('symbol', 'Unknown')
+            breakout_type = data.get('breakout_type', 'alert')
+            strength = data.get('strength', 0)
+            price = data.get('price', 0)
+            details = data.get('details', {})
+            
+            return self.telegram.send_breakout_alert(
+                symbol=symbol,
+                breakout_type=breakout_type,
+                strength=strength,
+                price=price,
+                details=details
+            )
+            
+        except Exception as e:
+            logger.error(f"Failed to send Telegram alert: {e}")
+            return False
+    
     def _format_slack_payload(self, data: Dict) -> Dict:
         """Format data for Slack webhook"""
         symbol = data.get('symbol', 'Unknown')
@@ -348,7 +413,7 @@ class AlertDispatcher:
         """
         channels = channels or ['all']
         if 'all' in channels:
-            channels = ['email', 'sms', 'webhook']
+            channels = ['email', 'sms', 'webhook', 'telegram']
         
         results = {}
         
@@ -384,6 +449,9 @@ Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
         
         if 'webhook' in channels:
             results['webhook'] = self.send_webhook_alert(breakout_signal)
+        
+        if 'telegram' in channels:
+            results['telegram'] = self.send_telegram_alert(breakout_signal)
         
         # Log to console
         logger.info(f"ALERT DISPATCHED: {symbol} - {breakout_type} (Strength: {strength:.1f})")
@@ -435,15 +503,21 @@ Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
             1 for alert in self.sent_alerts
             if alert.get('channels', {}).get('webhook', False)
         )
+        telegram_count = sum(
+            1 for alert in self.sent_alerts
+            if alert.get('channels', {}).get('telegram', False)
+        )
         
         return {
             'total_alerts': total,
             'email_sent': email_count,
             'sms_sent': sms_count,
             'webhook_sent': webhook_count,
+            'telegram_sent': telegram_count,
             'email_enabled': self.email_enabled,
             'sms_enabled': self.sms_enabled,
-            'webhook_enabled': self.webhook_enabled
+            'webhook_enabled': self.webhook_enabled,
+            'telegram_enabled': self.telegram_enabled
         }
 
 
