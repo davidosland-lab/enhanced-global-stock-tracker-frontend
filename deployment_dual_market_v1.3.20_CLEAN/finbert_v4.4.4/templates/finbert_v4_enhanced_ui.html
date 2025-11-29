@@ -717,6 +717,11 @@
         }
 
         function changePeriod(period, interval = '1d') {
+            console.log('=== PERIOD CHANGE ===');
+            console.log(`Changing to: period=${period}, interval=${interval}`);
+            console.log('Current symbol:', currentSymbol);
+            console.log('=====================');
+            
             currentPeriod = period;
             currentInterval = interval;
             document.querySelectorAll('.interval-btn').forEach(btn => {
@@ -727,6 +732,8 @@
             });
             if (currentSymbol) {
                 analyzeStock();
+            } else {
+                console.log('No symbol selected yet - skipping fetch');
             }
         }
 
@@ -762,13 +769,27 @@
             }
 
             try {
-                const response = await fetch(`${API_BASE}/api/stock/${currentSymbol}?period=${currentPeriod}&interval=${currentInterval}`);
+                // DEBUG: Log API request
+                const apiUrl = `${API_BASE}/api/stock/${currentSymbol}?period=${currentPeriod}&interval=${currentInterval}`;
+                console.log('=== API REQUEST ===');
+                console.log(`URL: ${apiUrl}`);
+                console.log(`Period: ${currentPeriod}, Interval: ${currentInterval}`);
+                console.log('===================');
+                
+                const response = await fetch(apiUrl);
                 
                 if (!response.ok) {
+                    console.error(`API Error: ${response.status} ${response.statusText}`);
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
                 const data = await response.json();
+                
+                // DEBUG: Log response data summary
+                console.log('=== API RESPONSE ===');
+                console.log(`Response period: ${data.period}, interval: ${data.interval}`);
+                console.log(`Chart data points: ${data.chart_data ? data.chart_data.length : 0}`);
+                console.log('====================');
                 
                 // Hide loading
                 document.getElementById('loadingIndicator').classList.add('hidden');
