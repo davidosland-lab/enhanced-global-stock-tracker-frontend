@@ -716,6 +716,9 @@ def fetch_yahoo_data(symbol, interval='1d', period='1m'):
         }
         range_str = range_map.get(period, '1mo')
         
+        # DEBUG: Log what we're about to request
+        logger.info(f"DEBUG: Requested period={period}, interval={interval}, range_str={range_str}")
+        
         # Build URL based on interval type
         if interval in ['1m', '2m', '5m', '15m', '30m', '60m', '90m']:
             # Intraday data - use smaller range
@@ -731,6 +734,9 @@ def fetch_yahoo_data(symbol, interval='1d', period='1m'):
             # Daily or longer intervals
             url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range={range_str}&interval={interval}"
         
+        # DEBUG: Log the actual URL being requested
+        logger.info(f"DEBUG: Yahoo URL={url}")
+        
         headers = {'User-Agent': 'Mozilla/5.0'}
         req = urllib.request.Request(url, headers=headers)
         
@@ -738,7 +744,13 @@ def fetch_yahoo_data(symbol, interval='1d', period='1m'):
             data = json.loads(response.read().decode('utf-8'))
         
         if 'chart' not in data or 'result' not in data['chart']:
+            logger.error(f"DEBUG: Yahoo returned invalid data structure")
             return None
+        
+        # DEBUG: Log what Yahoo returned
+        result = data['chart']['result'][0]
+        timestamps = result.get('timestamp', [])
+        logger.info(f"DEBUG: Yahoo returned {len(timestamps)} timestamps for {symbol}")
         
         result = data['chart']['result'][0]
         meta = result.get('meta', {})
