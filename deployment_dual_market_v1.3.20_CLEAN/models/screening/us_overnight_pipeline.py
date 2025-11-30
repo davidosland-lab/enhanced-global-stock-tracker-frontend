@@ -63,6 +63,12 @@ try:
 except ImportError:
     EventRiskGuard = None
 
+# Macro news monitoring
+try:
+    from .macro_news_monitor import MacroNewsMonitor
+except ImportError:
+    MacroNewsMonitor = None
+
 try:
     from .csv_exporter import CSVExporter
 except ImportError:
@@ -213,6 +219,14 @@ class USOvernightPipeline:
             else:
                 self.notifier = None
                 logger.info("  Email notifications disabled")
+            
+            # Optional: Macro News Monitor
+            if MacroNewsMonitor is not None:
+                self.macro_monitor = MacroNewsMonitor(market='US')
+                logger.info("✓ Macro News Monitor enabled (Fed/economic data)")
+            else:
+                self.macro_monitor = None
+                logger.info("  Macro News Monitor disabled")
             
             # Optional: Telegram notifications
             if TelegramNotifier is not None:
@@ -480,7 +494,7 @@ class USOvernightPipeline:
             raise
     
     def _fetch_us_market_sentiment(self) -> Dict:
-        """Fetch US market sentiment (S&P 500, VIX, etc.)"""
+        """Fetch US market sentiment (S&P 500, VIX, etc.) + Macro News"""
         logger.info("Fetching US market sentiment data...")
         
         try:
@@ -492,6 +506,35 @@ class USOvernightPipeline:
             logger.info(f"  S&P 500: {sentiment['sp500']['price']:.2f} ({sentiment['sp500']['day_change']:+.2f}%)")
             logger.info(f"  VIX: {sentiment['vix']['current_vix']:.2f} ({sentiment['vix']['level']})")
             logger.info(f"  Market Mood: {sentiment['vix']['market_mood']}")
+            
+            # Fetch macro news sentiment (Fed announcements, etc.)
+            if self.macro_monitor is not None:
+                try:
+                    logger.info("")
+                    macro_news = self.macro_monitor.get_macro_sentiment()
+                    
+                    # Add macro news to sentiment
+                    sentiment['macro_news'] = macro_news
+                    
+                    # Adjust overall sentiment based on macro news
+                    if macro_news['sentiment_score'] != 0:
+                        # Macro news has 20% weight on overall sentiment
+                        macro_adjustment = macro_news['sentiment_score'] * 10  # -10 to +10 scale
+                        original_score = sentiment['overall']['score']
+                        adjusted_score = original_score + macro_adjustment
+                        adjusted_score = max(0, min(100, adjusted_score))  # Clamp to 0-100
+                        
+                        logger.info(f"  Macro News Impact: {macro_adjustment:+.1f} points")
+                        logger.info(f"  Adjusted Sentiment: {original_score:.1f} → {adjusted_score:.1f}")
+                        
+                        sentiment['overall']['score'] = adjusted_score
+                        sentiment['overall']['macro_adjusted'] = True
+                    
+                except Exception as e:
+                    logger.warning(f"Macro news fetch failed: {e}")
+                    sentiment['macro_news'] = None
+            else:
+                sentiment['macro_news'] = None
             
             return sentiment
             
