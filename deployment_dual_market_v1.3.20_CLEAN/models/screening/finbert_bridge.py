@@ -37,33 +37,21 @@ from datetime import datetime
 # Setup logging
 logger = logging.getLogger(__name__)
 
-# Calculate paths for module imports
-# In deployment: modules are at models/lstm_predictor.py, models/finbert_sentiment.py, etc.
-# In development with finbert_v4.4.4: try that path first, fall back to models/
-BASE_PATH = Path(__file__).parent.parent  # Points to models/
-FINBERT_PATH = BASE_PATH.parent / 'finbert_v4.4.4'  # Optional separate FinBERT installation
+# Calculate FinBERT path relative to this file
+FINBERT_PATH = Path(__file__).parent.parent.parent / 'finbert_v4.4.4'
+FINBERT_MODELS_PATH = FINBERT_PATH / 'models'
 
-# Try to add FinBERT path if it exists (development setup)
+# Add FinBERT to Python path (read-only access)
 if FINBERT_PATH.exists():
     sys.path.insert(0, str(FINBERT_PATH))
-    sys.path.insert(0, str(FINBERT_PATH / 'models'))
+    sys.path.insert(0, str(FINBERT_MODELS_PATH))
     logger.info(f"✓ Added FinBERT path to sys.path: {FINBERT_PATH}")
 else:
-    # Deployment setup - modules are in models/ directory
-    # Add parent directory to path so we can import from models
-    if str(BASE_PATH) not in sys.path:
-        sys.path.insert(0, str(BASE_PATH))
-    logger.info(f"✓ Using models directory: {BASE_PATH}")
+    logger.warning(f"⚠ FinBERT path not found: {FINBERT_PATH}")
 
-# Import modules (with error handling)
-# Try direct import first (deployment), then from models package
+# Import FinBERT modules (with error handling)
 try:
-    try:
-        # Try direct import (if finbert_v4.4.4 is in path)
-        from lstm_predictor import StockLSTMPredictor
-    except ImportError:
-        # Try from models package (deployment structure)
-        from models.lstm_predictor import StockLSTMPredictor
+    from lstm_predictor import StockLSTMPredictor
     LSTM_AVAILABLE = True
     logger.info("✓ LSTM predictor imported successfully")
 except ImportError as e:
@@ -72,10 +60,7 @@ except ImportError as e:
     StockLSTMPredictor = None
 
 try:
-    try:
-        from finbert_sentiment import FinBERTSentimentAnalyzer
-    except ImportError:
-        from models.finbert_sentiment import FinBERTSentimentAnalyzer
+    from finbert_sentiment import FinBERTSentimentAnalyzer
     SENTIMENT_ANALYZER_AVAILABLE = True
     logger.info("✓ FinBERT sentiment analyzer imported successfully")
 except ImportError as e:
@@ -84,16 +69,22 @@ except ImportError as e:
     FinBERTSentimentAnalyzer = None
 
 try:
-    try:
-        from news_sentiment_real import get_sentiment_sync
-    except ImportError:
-        from models.news_sentiment_real import get_sentiment_sync
-    NEWS_SENTIMENT_AVAILABLE = True
-    logger.info("✓ News sentiment module imported successfully")
+    from news_sentiment_asx import get_sentiment_sync as get_sentiment_sync_asx
+    NEWS_SENTIMENT_ASX_AVAILABLE = True
+    logger.info("✓ ASX news sentiment module imported successfully")
 except ImportError as e:
-    NEWS_SENTIMENT_AVAILABLE = False
-    logger.warning(f"⚠ News sentiment module not available: {e}")
-    get_sentiment_sync = None
+    NEWS_SENTIMENT_ASX_AVAILABLE = False
+    logger.warning(f"⚠ ASX news sentiment module not available: {e}")
+    get_sentiment_sync_asx = None
+
+try:
+    from news_sentiment_us import get_sentiment_sync as get_sentiment_sync_us
+    NEWS_SENTIMENT_US_AVAILABLE = True
+    logger.info("✓ US news sentiment module imported successfully")
+except ImportError as e:
+    NEWS_SENTIMENT_US_AVAILABLE = False
+    logger.warning(f"⚠ US news sentiment module not available: {e}")
+    get_sentiment_sync_us = None
 
 
 class FinBERTBridge:
@@ -112,8 +103,14 @@ class FinBERTBridge:
     - News Scraper: Real news from Yahoo Finance/Finviz
     """
     
-    def __init__(self):
-        """Initialize FinBERT bridge with component availability checking"""
+    def __init__(self, market: str = 'ASX'):
+        """
+        Initialize FinBERT bridge with component availability checking
+        
+        Args:
+            market: Market identifier ('ASX' or 'US') to determine news sources
+        """
+        self.market = market.upper()
         self.lstm_predictor = None
         self.sentiment_analyzer = None
         self._lstm_initialized = False
@@ -123,7 +120,7 @@ class FinBERTBridge:
         self._init_lstm()
         self._init_sentiment()
         
-        logger.info(f"FinBERT Bridge initialized: LSTM={self._lstm_initialized}, Sentiment={self._sentiment_initialized}")
+        logger.info(f"FinBERT Bridge initialized for {self.market} market: LSTM={self._lstm_initialized}, Sentiment={self._sentiment_initialized}")
     
     def _init_lstm(self):
         """Initialize LSTM predictor component"""
@@ -164,13 +161,20 @@ class FinBERTBridge:
             {
                 'lstm_available': bool,
                 'sentiment_available': bool,
-                'news_available': bool
+                'news_available': bool,
+                'market': str
             }
         """
+        if self.market == 'US':
+            news_available = NEWS_SENTIMENT_US_AVAILABLE and get_sentiment_sync_us is not None
+        else:
+            news_available = NEWS_SENTIMENT_ASX_AVAILABLE and get_sentiment_sync_asx is not None
+        
         return {
             'lstm_available': self._lstm_initialized and self.lstm_predictor is not None,
             'sentiment_available': self._sentiment_initialized and self.sentiment_analyzer is not None,
-            'news_available': NEWS_SENTIMENT_AVAILABLE and get_sentiment_sync is not None
+            'news_available': news_available,
+            'market': self.market
         }
     
     def get_lstm_prediction(self, symbol: str, historical_data: pd.DataFrame) -> Optional[Dict]:
@@ -314,14 +318,22 @@ class FinBERTBridge:
             - No news articles found
             - Analysis fails
         """
-        if not NEWS_SENTIMENT_AVAILABLE or get_sentiment_sync is None:
-            logger.debug(f"News sentiment not available for {symbol}")
-            return None
+        # Route to correct news sentiment module based on market
+        if self.market == 'US':
+            if not NEWS_SENTIMENT_US_AVAILABLE or get_sentiment_sync_us is None:
+                logger.debug(f"US news sentiment not available for {symbol}")
+                return None
+            get_sentiment_func = get_sentiment_sync_us
+        else:  # ASX
+            if not NEWS_SENTIMENT_ASX_AVAILABLE or get_sentiment_sync_asx is None:
+                logger.debug(f"ASX news sentiment not available for {symbol}")
+                return None
+            get_sentiment_func = get_sentiment_sync_asx
         
         try:
-            # Call FinBERT news sentiment analyzer
-            logger.debug(f"Calling news sentiment analyzer for {symbol}")
-            sentiment_result = get_sentiment_sync(symbol, use_cache=use_cache)
+            # Call market-specific news sentiment analyzer
+            logger.debug(f"Calling {self.market} news sentiment analyzer for {symbol}")
+            sentiment_result = get_sentiment_func(symbol, use_cache=use_cache)
             
             if sentiment_result is None:
                 logger.debug(f"News sentiment returned None for {symbol}")
@@ -343,18 +355,19 @@ class FinBERTBridge:
             # Adjust direction by confidence
             direction = direction * (confidence / 100.0)
             
-            # Build screener-compatible result
+            # Build screener-compatible result with market identifier
             result = {
                 'sentiment': sentiment,
                 'confidence': float(confidence),
                 'direction': float(direction),
                 'article_count': int(article_count),
-                'sources': sentiment_result.get('sources', ['Yahoo Finance', 'Finviz']),
+                'sources': sentiment_result.get('sources', [f'Yahoo Finance ({self.market})']),
+                'market': self.market,
                 'analysis_date': datetime.now().isoformat(),
                 'cached': sentiment_result.get('cached', False)
             }
             
-            logger.info(f"✓ Sentiment for {symbol}: {sentiment} ({confidence:.1f}%), {article_count} articles")
+            logger.info(f"✓ {self.market} Sentiment for {symbol}: {sentiment} ({confidence:.1f}%), {article_count} articles")
             return result
             
         except Exception as e:
@@ -402,6 +415,31 @@ class FinBERTBridge:
             logger.error(f"Text analysis failed: {e}")
             return None
     
+    def get_trained_models_count(self) -> int:
+        """
+        Count the number of trained LSTM models available
+        
+        Returns:
+            int: Number of trained models found in finbert_v4.4.4/models/trained/
+        """
+        if not self._lstm_initialized:
+            return 0
+        
+        try:
+            trained_dir = FINBERT_PATH / 'models' / 'trained'
+            if not trained_dir.exists():
+                return 0
+            
+            # Count .h5 and .keras model files
+            h5_models = list(trained_dir.glob('*_lstm.h5'))
+            keras_models = list(trained_dir.glob('*_lstm.keras'))
+            
+            return len(h5_models) + len(keras_models)
+            
+        except Exception as e:
+            logger.error(f"Failed to count trained models: {e}")
+            return 0
+    
     def get_component_info(self) -> Dict:
         """
         Get detailed information about FinBERT components
@@ -447,20 +485,24 @@ class FinBERTBridge:
         return info
 
 
-# Global singleton instance
-_bridge_instance = None
+# Global singleton instances (one per market)
+_bridge_instances = {}
 
-def get_finbert_bridge() -> FinBERTBridge:
+def get_finbert_bridge(market: str = 'ASX') -> FinBERTBridge:
     """
-    Get global FinBERT bridge instance (singleton pattern)
+    Get market-specific FinBERT bridge instance (singleton pattern per market)
+    
+    Args:
+        market: Market identifier ('ASX' or 'US')
     
     Returns:
-        FinBERTBridge: Shared bridge instance
+        FinBERTBridge: Shared bridge instance for the specified market
     """
-    global _bridge_instance
-    if _bridge_instance is None:
-        _bridge_instance = FinBERTBridge()
-    return _bridge_instance
+    global _bridge_instances
+    market = market.upper()
+    if market not in _bridge_instances:
+        _bridge_instances[market] = FinBERTBridge(market=market)
+    return _bridge_instances[market]
 
 
 def test_bridge():

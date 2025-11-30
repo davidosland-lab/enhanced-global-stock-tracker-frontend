@@ -1,0 +1,189 @@
+================================================================================
+TELEGRAM PHASE 8 INTEGRATION PATCH - QUICK INSTALL GUIDE
+================================================================================
+
+PROBLEM FIXED:
+  Your pipelines were stopping at Phase 7 (Email Notifications) without
+  sending Telegram messages. Phase 8 was missing from the code.
+
+WHAT THIS PATCH DOES:
+  ✓ Adds Phase 8 (Telegram Notifications) to overnight_pipeline.py
+  ✓ Adds Phase 8 (Telegram Notifications) to us_overnight_pipeline.py
+  ✓ Sends Telegram summaries + HTML/CSV reports after pipeline completion
+
+================================================================================
+INSTALLATION (3 STEPS)
+================================================================================
+
+STEP 1: Get the Patch
+  ---------------------
+  On your local machine (C:\Users\david\AATelS):
+  
+  Option A: Pull from Git (if you have git access)
+    cd C:\Users\david\AATelS
+    git pull origin finbert-v4.0-development
+    
+  Option B: Download ZIP manually
+    Download TELEGRAM_PHASE8_PATCH.zip
+    Extract to: C:\Users\david\AATelS\
+    
+  You should have:
+    C:\Users\david\AATelS\TELEGRAM_PHASE8_PATCH\runpatch.bat
+
+STEP 2: Run the Installer
+  ------------------------
+  Double-click: runpatch.bat
+  
+  OR from command prompt:
+    cd C:\Users\david\AATelS\TELEGRAM_PHASE8_PATCH
+    runpatch.bat
+  
+  The installer will:
+    1. Check your environment
+    2. Create backups (.backup files)
+    3. Apply the patch
+    4. Verify installation
+  
+  Expected output:
+    ✓ Found overnight_pipeline.py
+    ✓ Found us_overnight_pipeline.py
+    ✓ Backed up files
+    ✓ Phase 8 execution code added
+    ✓ Telegram function added
+    INSTALLATION COMPLETE!
+
+STEP 3: Test It
+  -------------
+  Run a quick test (5 stocks, ~5 minutes):
+  
+  Australian pipeline:
+    cd C:\Users\david\AATelS
+    python models\screening\overnight_pipeline.py --stocks-per-sector 5
+  
+  US pipeline:
+    cd C:\Users\david\AATelS
+    python models\screening\us_overnight_pipeline.py --stocks-per-sector 5
+  
+  Look for in the log:
+    ================================================================================
+    PHASE 8: TELEGRAM NOTIFICATIONS
+    ================================================================================
+    Sending Telegram morning report notification...
+    ✓ Telegram report sent: 2025-11-30_market_report.html
+    ✓ CSV file sent: 2025-11-30_screening_results.csv
+  
+  Check your Telegram:
+    📱 Message from your bot
+    📊 Pipeline summary (stocks, opportunities, time)
+    📄 HTML report attached
+    📊 CSV file attached
+
+================================================================================
+WHAT YOU'LL RECEIVE ON TELEGRAM
+================================================================================
+
+After pipeline completion:
+
+  🇦🇺 ASX Market Morning Report  (or 🇺🇸 US Market)
+  
+  📊 Pipeline Summary:
+  • Total Stocks Scanned: 129
+  • High-Quality Opportunities (≥70%): 10
+  • Execution Time: 97.5 minutes
+  • Report Generated: 2025-11-30 19:33:26 AEDT
+  
+  📁 Report files generated:
+  • HTML Report (with charts)
+  • CSV Export (for Excel)
+  • Pipeline Results (JSON)
+  
+  ✅ Pipeline Status: COMPLETE
+  
+  [Attached: 2025-11-30_market_report.html]
+  [Attached: 2025-11-30_screening_results.csv]
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+ISSUE: "ERROR: overnight_pipeline.py not found!"
+  → You're in the wrong directory
+  → Solution: cd C:\Users\david\AATelS\TELEGRAM_PHASE8_PATCH
+  → Then run: runpatch.bat
+
+ISSUE: "Phase 8 already exists"
+  → This means the patch is already installed!
+  → No action needed, you're good to go
+
+ISSUE: Patch installed but no Telegram message
+  → Check the pipeline log for "PHASE 8: TELEGRAM NOTIFICATIONS"
+  → If Phase 8 appears but no message, it's a config issue:
+     - Run: python check_telegram_setup.py
+     - Verify: config\intraday_rescan_config.json
+     - Check: notifications.telegram section has bot_token and chat_id
+
+ISSUE: "Email notification failed: 'bool' object is not callable"
+  → This is a Phase 7 issue, not Phase 8
+  → Phase 8 should still execute after this error
+  → Check if you see "PHASE 8" in the log after the Phase 7 error
+
+ROLLBACK (if needed):
+  If something goes wrong, restore backups:
+    cd C:\Users\david\AATelS\models\screening
+    copy overnight_pipeline.py.backup overnight_pipeline.py /Y
+    copy us_overnight_pipeline.py.backup us_overnight_pipeline.py /Y
+
+================================================================================
+FILES INCLUDED IN THIS PATCH
+================================================================================
+
+TELEGRAM_PHASE8_PATCH/
+├── runpatch.bat           → Automatic installer (Windows)
+├── apply_patch.py         → Python patcher script
+├── README.md              → Quick start guide
+├── USAGE_GUIDE.md         → Detailed instructions
+└── INSTALL_INSTRUCTIONS.txt → This file
+
+Size: 12KB (compressed)
+
+================================================================================
+VERIFICATION CHECKLIST
+================================================================================
+
+After installation, verify:
+
+  [ ] runpatch.bat completed without errors
+  [ ] Backup files created (overnight_pipeline.py.backup)
+  [ ] Phase 8 code exists (check with findstr command)
+  [ ] Quick test shows "PHASE 8" in log
+  [ ] Telegram message received during test
+  [ ] HTML report attached to Telegram message
+  [ ] CSV file attached to Telegram message
+  [ ] Pipeline completes successfully
+
+If all checked, you're done! ✅
+
+================================================================================
+SUPPORT
+================================================================================
+
+For issues:
+  1. Check README.md for troubleshooting
+  2. Review USAGE_GUIDE.md for detailed steps
+  3. Examine pipeline logs for error messages
+  4. Verify Telegram config with: python check_telegram_setup.py
+
+Log locations:
+  - logs\overnight_pipeline_YYYY-MM-DD.log (Australian)
+  - logs\screening\us\us_overnight_pipeline.log (US)
+
+================================================================================
+VERSION INFO
+================================================================================
+
+Patch Version: 1.0
+Release Date: 2025-11-30
+Compatibility: FinBERT v4.4.4 / Overnight Pipelines v1.3.20+
+Git Commit: 08ddfb2
+
+================================================================================

@@ -52,13 +52,16 @@ class BatchPredictor:
     Integrates with existing ensemble prediction system.
     """
     
-    def __init__(self, config_path: str = None):
+    def __init__(self, config_path: str = None, market: str = 'ASX'):
         """
         Initialize Batch Predictor
         
         Args:
             config_path: Path to screening_config.json
+            market: Market identifier ('ASX' or 'US') for news source routing
         """
+        self.market = market.upper()
+        
         if config_path is None:
             config_path = Path(__file__).parent.parent / "config" / "screening_config.json"
         
@@ -76,21 +79,22 @@ class BatchPredictor:
         # Data fetcher removed (using yahooquery only now)
         self.data_fetcher = None
         
-        # Initialize FinBERT Bridge for real LSTM and sentiment
+        # Initialize FinBERT Bridge for real LSTM and sentiment (market-specific)
         self.finbert_bridge = None
-        self.finbert_components = {'lstm_available': False, 'sentiment_available': False, 'news_available': False}
+        self.finbert_components = {'lstm_available': False, 'sentiment_available': False, 'news_available': False, 'market': self.market}
         if FINBERT_BRIDGE_AVAILABLE:
             try:
-                self.finbert_bridge = get_finbert_bridge()
+                self.finbert_bridge = get_finbert_bridge(market=self.market)
                 self.finbert_components = self.finbert_bridge.is_available()
-                logger.info("✓ FinBERT Bridge initialized successfully")
+                logger.info(f"✓ FinBERT Bridge initialized for {self.market} market successfully")
             except Exception as e:
-                logger.warning(f"FinBERT Bridge initialization failed: {e}")
+                logger.warning(f"FinBERT Bridge initialization failed for {self.market}: {e}")
         
         # Legacy LSTM check (kept for backward compatibility)
         self.lstm_available = self._check_lstm_availability() or self.finbert_components['lstm_available']
         
-        logger.info(f"Batch Predictor initialized")
+        logger.info(f"Batch Predictor initialized for {self.market} market")
+        logger.info(f"  Market: {self.market}")
         logger.info(f"  FinBERT LSTM Available: {self.finbert_components['lstm_available']}")
         logger.info(f"  FinBERT Sentiment Available: {self.finbert_components['sentiment_available']}")
         logger.info(f"  FinBERT News Available: {self.finbert_components['news_available']}")

@@ -22,12 +22,14 @@
   },
   "lstm_training": {
     "enabled": true,
-    "max_models_per_night": 20,
+    "max_models_per_night": 100,
     "stale_threshold_days": 7,
     "epochs": 50,
     "batch_size": 32,
     "validation_split": 0.2,
-    "priority_strategy": "highest_opportunity_score"
+    "priority_strategy": "highest_opportunity_score",
+    "top_priority_count": null,
+    "rotation_enabled": true
   },
   "spi_monitoring": {
     "enabled": true,
@@ -161,5 +163,47 @@
     "update_frequency": "daily",
     "use_cache": true,
     "cache_duration_hours": 24
+  },
+  "research": {
+    "enabled": true,
+    "model": "gpt-4o-mini",
+    "max_stocks": 5,
+    "output_format": "markdown",
+    "output_path": "reports/chatgpt_research",
+    "include_in_report": true,
+    "run_after_scoring": true
+  },
+  "ai_integration": {
+    "enabled": true,
+    "model": "gpt-4o-mini",
+    "stages": {
+      "quick_filter": {
+        "enabled": true,
+        "run_on_all_stocks": true,
+        "filter_high_risk": true,
+        "boost_hidden_gems": true
+      },
+      "ai_scoring": {
+        "enabled": true,
+        "score_top_n": 50,
+        "weight_in_ensemble": 0.15,
+        "include_fundamental": true,
+        "include_risk": true,
+        "include_recommendation": true
+      },
+      "ai_reranking": {
+        "enabled": true,
+        "rerank_top_n": 20,
+        "final_picks": 10,
+        "max_adjustment": 5
+      }
+    },
+    "performance": {
+      "batch_size": 20,
+      "max_tokens_quick": 500,
+      "max_tokens_scoring": 300,
+      "max_tokens_reranking": 500,
+      "temperature": 0.3
+    }
   }
 }

@@ -55,6 +55,24 @@ except ImportError:
     except ImportError:
         EmailNotifier = None
 
+# Telegram notification support
+try:
+    from ..notifications.telegram_notifier import TelegramNotifier
+except ImportError:
+    try:
+        from models.notifications.telegram_notifier import TelegramNotifier
+    except ImportError:
+        TelegramNotifier = None
+
+# Market Hours Detector (optional)
+try:
+    from .market_hours_detector import MarketHoursDetector
+except ImportError:
+    try:
+        from market_hours_detector import MarketHoursDetector
+    except ImportError:
+        MarketHoursDetector = None
+
 try:
     from .lstm_trainer import LSTMTrainer
 except ImportError:
@@ -72,6 +90,12 @@ except ImportError:
     except ImportError:
         EventRiskGuard = None
 
+# Macro news monitoring
+try:
+    from .macro_news_monitor import MacroNewsMonitor
+except ImportError:
+    MacroNewsMonitor = None
+
 # 🆕 CSV Exporter (optional)
 try:
     from .csv_exporter import CSVExporter
@@ -80,6 +104,31 @@ except ImportError:
         from csv_exporter import CSVExporter
     except ImportError:
         CSVExporter = None
+
+# 🆕 ChatGPT Research (optional)
+try:
+    from .chatgpt_research import (
+        run_chatgpt_research, 
+        save_markdown,
+        ai_quick_filter,
+        ai_score_opportunity,
+        ai_rerank_opportunities
+    )
+except ImportError:
+    try:
+        from chatgpt_research import (
+            run_chatgpt_research,
+            save_markdown,
+            ai_quick_filter,
+            ai_score_opportunity,
+            ai_rerank_opportunities
+        )
+    except ImportError:
+        run_chatgpt_research = None
+        save_markdown = None
+        ai_quick_filter = None
+        ai_score_opportunity = None
+        ai_rerank_opportunities = None
 
 # Setup logging with proper path handling
 import sys
@@ -124,6 +173,45 @@ class OvernightPipeline:
             'warnings': []
         }
         
+        # Initialize market hours detector (for intraday awareness)
+        if MarketHoursDetector is not None:
+            self.market_detector = MarketHoursDetector()
+            logger.info("✓ Market Hours Detector initialized")
+        else:
+            self.market_detector = None
+            logger.info("  Market Hours Detector disabled")
+        
+        # Add market hours tracking
+        self.status.update({
+            'market_hours': None,
+            'pipeline_mode': 'overnight'  # or 'intraday'
+        })
+        
+        # Load configuration
+        config_path = Path(__file__).parent.parent / 'config' / 'screening_config.json'
+        try:
+            with open(config_path, 'r') as f:
+                self.config = json.load(f)
+            logger.info(f"✓ Configuration loaded from {config_path}")
+        except FileNotFoundError:
+            logger.warning(f"Configuration file not found: {config_path}, using defaults")
+            self.config = {
+                'lstm_training': {
+                    'enabled': True,
+                    'max_models_per_night': 100,
+                    'stale_threshold_days': 7
+                }
+            }
+        except Exception as e:
+            logger.error(f"Failed to load configuration: {e}, using defaults")
+            self.config = {
+                'lstm_training': {
+                    'enabled': True,
+                    'max_models_per_night': 100,
+                    'stale_threshold_days': 7
+                }
+            }
+        
         # Initialize components
         logger.info("="*80)
         logger.info("OVERNIGHT STOCK SCREENING PIPELINE - STARTING")
@@ -133,7 +221,7 @@ class OvernightPipeline:
         try:
             self.scanner = StockScanner()
             self.spi_monitor = SPIMonitor()
-            self.predictor = BatchPredictor()
+            self.predictor = BatchPredictor(market='ASX')
             self.scorer = OpportunityScorer()
             self.reporter = ReportGenerator()
             
@@ -145,6 +233,47 @@ class OvernightPipeline:
                 self.notifier = None
                 logger.info("  Email notifications disabled (send_notification module not found)")
             
+            # Optional: Macro News Monitor
+            if MacroNewsMonitor is not None:
+                self.macro_monitor = MacroNewsMonitor(market='ASX')
+                logger.info("✓ Macro News Monitor enabled (RBA/economic data)")
+            else:
+                self.macro_monitor = None
+                logger.info("  Macro News Monitor disabled")
+            
+            # Optional: Telegram notifications
+            if TelegramNotifier is not None:
+                try:
+                    # Load Telegram config from intraday config
+                    telegram_config_path = Path(__file__).parent.parent.parent / 'config' / 'intraday_rescan_config.json'
+                    if telegram_config_path.exists():
+                        with open(telegram_config_path, 'r') as f:
+                            full_config = json.load(f)
+                            telegram_cfg = full_config.get('notifications', {}).get('telegram', {})
+                            
+                            if telegram_cfg.get('enabled', False):
+                                bot_token = telegram_cfg.get('bot_token')
+                                chat_id = telegram_cfg.get('chat_id')
+                                
+                                if bot_token and chat_id:
+                                    self.telegram = TelegramNotifier(bot_token=bot_token, chat_id=chat_id)
+                                    logger.info("✓ Telegram notifications enabled")
+                                else:
+                                    self.telegram = None
+                                    logger.info("  Telegram notifications disabled (missing credentials)")
+                            else:
+                                self.telegram = None
+                                logger.info("  Telegram notifications disabled in config")
+                    else:
+                        self.telegram = None
+                        logger.info("  Telegram notifications disabled (config not found)")
+                except Exception as e:
+                    self.telegram = None
+                    logger.warning(f"  Telegram initialization failed: {e}")
+            else:
+                self.telegram = None
+                logger.info("  Telegram notifications disabled (module not available)")
+            
             # Optional: LSTM training
             if LSTMTrainer is not None:
                 self.trainer = LSTMTrainer()
@@ -152,6 +281,26 @@ class OvernightPipeline:
             else:
                 self.trainer = None
                 logger.info("  LSTM training disabled (lstm_trainer module not found)")
+            
+            # Optional: ChatGPT Research
+            self.research_config = self.config.get('research', {})
+            if run_chatgpt_research is not None and self.research_config.get('enabled', False):
+                logger.info("✓ ChatGPT research enabled")
+                logger.info(f"  Model: {self.research_config.get('model', 'gpt-4o-mini')}")
+                logger.info(f"  Max stocks: {self.research_config.get('max_stocks', 5)}")
+            else:
+                logger.info("  ChatGPT research disabled")
+            
+            # Optional: AI Integration (Full AI Pipeline)
+            self.ai_config = self.config.get('ai_integration', {})
+            if ai_quick_filter is not None and self.ai_config.get('enabled', False):
+                logger.info("✓ AI Integration enabled (Full AI Pipeline)")
+                stages = self.ai_config.get('stages', {})
+                logger.info(f"  Quick Filter: {stages.get('quick_filter', {}).get('enabled', False)}")
+                logger.info(f"  AI Scoring: {stages.get('ai_scoring', {}).get('enabled', False)}")
+                logger.info(f"  AI Re-Ranking: {stages.get('ai_reranking', {}).get('enabled', False)}")
+            else:
+                logger.info("  AI Integration disabled")
             
             # 🆕 Optional: Event Risk Guard
             if EventRiskGuard is not None:
@@ -188,6 +337,37 @@ class OvernightPipeline:
         self.start_time = time.time()
         
         try:
+            # Phase 0: Market Hours Detection (NEW)
+            logger.info("\n" + "="*80)
+            logger.info("PHASE 0: MARKET HOURS DETECTION")
+            logger.info("="*80)
+            
+            if self.market_detector is not None:
+                market_status = self.market_detector.is_market_open('ASX')
+                self.status['market_hours'] = market_status
+                
+                # Log market status
+                logger.info(self.market_detector.get_market_status_summary('ASX'))
+                logger.info("")
+                
+                # Determine pipeline mode
+                if market_status['is_open']:
+                    self.status['pipeline_mode'] = 'intraday'
+                    logger.warning("⚠️  INTRADAY MODE ACTIVE")
+                    logger.warning("    • Market is currently open")
+                    logger.warning("    • Using recent/live prices")
+                    logger.warning("    • SPI gap predictions less relevant")
+                    logger.warning("    • Consider running after market close for best results")
+                else:
+                    self.status['pipeline_mode'] = 'overnight'
+                    logger.info("✓ OVERNIGHT MODE (Standard)")
+                    logger.info("  • Market is closed")
+                    logger.info("  • Using standard predictions")
+            else:
+                logger.info("Market hours detection disabled - using overnight mode")
+                self.status['pipeline_mode'] = 'overnight'
+                self.status['market_hours'] = {'is_open': False, 'market_phase': 'unknown'}
+            
             # Phase 1: Market Sentiment
             logger.info("\n" + "="*80)
             logger.info("PHASE 1: MARKET SENTIMENT ANALYSIS")
@@ -209,6 +389,9 @@ class OvernightPipeline:
             if not scanned_stocks:
                 raise Exception("No valid stocks found during scanning")
             
+            # 🤖 Phase 2.3: AI Quick Filter (Optional)
+            ai_filter_results = self._run_ai_quick_filter(scanned_stocks)
+            
             # 🆕 Phase 2.5: Event Risk Assessment
             logger.info("\n" + "="*80)
             logger.info("PHASE 2.5: EVENT RISK ASSESSMENT")
@@ -227,6 +410,9 @@ class OvernightPipeline:
             
             predicted_stocks = self._generate_predictions(scanned_stocks, spi_sentiment, event_risk_data)
             
+            # 🤖 Phase 3.5: AI Scoring (Optional)
+            ai_scores = self._run_ai_scoring(predicted_stocks)
+            
             # Phase 4: Opportunity Scoring
             logger.info("\n" + "="*80)
             logger.info("PHASE 4: OPPORTUNITY SCORING")
@@ -234,7 +420,16 @@ class OvernightPipeline:
             self.status['phase'] = 'scoring'
             self.status['progress'] = 70
             
-            scored_stocks = self._score_opportunities(predicted_stocks, spi_sentiment)
+            scored_stocks = self._score_opportunities(predicted_stocks, spi_sentiment, ai_scores)
+            
+            # Phase 4.5: LSTM Model Training (Optional)
+            lstm_training_results = self._train_lstm_models(scored_stocks)
+            
+            # 🤖 Phase 4.6: AI Re-Ranking (Optional)
+            final_opportunities = self._run_ai_reranking(scored_stocks)
+            
+            # Phase 4.7: ChatGPT Research (Optional)
+            research_data = self._run_chatgpt_research(final_opportunities)
             
             # Phase 5: Report Generation
             logger.info("\n" + "="*80)
@@ -243,7 +438,12 @@ class OvernightPipeline:
             self.status['phase'] = 'report_generation'
             self.status['progress'] = 85
             
-            report_path = self._generate_report(scored_stocks, spi_sentiment)
+            report_path = self._generate_report(
+                final_opportunities, 
+                spi_sentiment, 
+                event_risk_data,
+                research_data=research_data
+            )
             
             # Phase 6: Finalization
             logger.info("\n" + "="*80)
@@ -253,7 +453,7 @@ class OvernightPipeline:
             self.status['progress'] = 100
             
             results = self._finalize_pipeline(
-                scored_stocks=scored_stocks,
+                scored_stocks=final_opportunities,
                 spi_sentiment=spi_sentiment,
                 report_path=report_path
             )
@@ -276,8 +476,8 @@ class OvernightPipeline:
                 if self.notifier is None:
                     logger.info("  Email notifications disabled (module not available)")
                 else:
-                    # Send morning report (method already checks if enabled)
-                    if self.notifier.enabled:
+                    # Send morning report
+                    if self.notifier.enabled and self.notifier.send_morning_report:
                         logger.info("Sending morning report email...")
                         self.notifier.send_morning_report(
                             report_path=str(report_path),
@@ -285,8 +485,8 @@ class OvernightPipeline:
                             top_opportunities=results.get('top_opportunities', [])
                         )
                     
-                    # Send alerts for high-confidence opportunities (method already checks if enabled)
-                    if self.notifier.enabled:
+                    # Send alerts for high-confidence opportunities
+                    if self.notifier.enabled and self.notifier.send_alerts:
                         logger.info("Checking for high-confidence opportunities...")
                         self.notifier.send_alert(results.get('top_opportunities', []))
                     
@@ -294,6 +494,22 @@ class OvernightPipeline:
             except Exception as e:
                 logger.warning(f"Email notification failed: {str(e)}")
                 # Don't fail the pipeline if emails fail
+            
+            # Send Telegram notification
+            try:
+                logger.info("\n" + "="*80)
+                logger.info("PHASE 8: TELEGRAM NOTIFICATIONS")
+                logger.info("="*80)
+                
+                self._send_telegram_report_notification(
+                    report_path=Path(report_path),
+                    stocks_count=len(scanned_stocks),
+                    top_opportunities=len([s for s in final_opportunities if s.get('signal_strength', 0) >= 70]),
+                    execution_time=elapsed_time/60
+                )
+            except Exception as e:
+                logger.warning(f"Telegram notification failed: {str(e)}")
+                # Don't fail the pipeline if Telegram fails
             
             return results
             
@@ -305,7 +521,7 @@ class OvernightPipeline:
             
             # Send error notification
             try:
-                if self.notifier is not None and self.notifier.enabled:
+                if self.notifier is not None and self.notifier.enabled and self.notifier.send_errors:
                     logger.info("Sending error notification...")
                     self.notifier.send_error(
                         error_message=str(e),
@@ -321,7 +537,7 @@ class OvernightPipeline:
             raise
     
     def _fetch_market_sentiment(self) -> Dict:
-        """Fetch SPI and US market sentiment"""
+        """Fetch SPI and US market sentiment + Macro News"""
         logger.info("Fetching market sentiment data...")
         
         try:
@@ -332,6 +548,35 @@ class OvernightPipeline:
             logger.info(f"  Gap Prediction: {sentiment['gap_prediction']['predicted_gap_pct']:+.2f}%")
             logger.info(f"  Direction: {sentiment['gap_prediction']['direction'].upper()}")
             logger.info(f"  Recommendation: {sentiment['recommendation']['stance']}")
+            
+            # Fetch macro news sentiment (RBA announcements, etc.)
+            if self.macro_monitor is not None:
+                try:
+                    logger.info("")
+                    macro_news = self.macro_monitor.get_macro_sentiment()
+                    
+                    # Add macro news to sentiment
+                    sentiment['macro_news'] = macro_news
+                    
+                    # Adjust overall sentiment based on macro news
+                    if macro_news['sentiment_score'] != 0:
+                        # Macro news has 20% weight on overall sentiment
+                        macro_adjustment = macro_news['sentiment_score'] * 10  # -10 to +10 scale
+                        original_score = sentiment['sentiment_score']
+                        adjusted_score = original_score + macro_adjustment
+                        adjusted_score = max(0, min(100, adjusted_score))  # Clamp to 0-100
+                        
+                        logger.info(f"  Macro News Impact: {macro_adjustment:+.1f} points")
+                        logger.info(f"  Adjusted Sentiment: {original_score:.1f} → {adjusted_score:.1f}")
+                        
+                        sentiment['sentiment_score'] = adjusted_score
+                        sentiment['macro_adjusted'] = True
+                    
+                except Exception as e:
+                    logger.warning(f"Macro news fetch failed: {e}")
+                    sentiment['macro_news'] = None
+            else:
+                sentiment['macro_news'] = None
             
             return sentiment
             
@@ -348,7 +593,7 @@ class OvernightPipeline:
             }
     
     def _scan_all_stocks(self, sectors: List[str] = None, stocks_per_sector: int = 30) -> List[Dict]:
-        """Scan all stocks from specified sectors"""
+        """Scan all stocks from specified sectors (mode-aware)"""
         
         # Determine which sectors to scan
         if sectors is None:
@@ -356,8 +601,13 @@ class OvernightPipeline:
         else:
             sectors_to_scan = sectors
         
+        # Check if we should include intraday data
+        include_intraday = self.status.get('pipeline_mode') == 'intraday'
+        
         logger.info(f"Scanning {len(sectors_to_scan)} sectors...")
         logger.info(f"Target: {stocks_per_sector} stocks per sector")
+        if include_intraday:
+            logger.info(f"Mode: INTRADAY (fetching 1-minute bars)")
         
         all_stocks = []
         sector_summaries = {}
@@ -366,8 +616,12 @@ class OvernightPipeline:
             logger.info(f"\n[{i}/{len(sectors_to_scan)}] Scanning {sector_name}...")
             
             try:
-                # Scan sector
-                stocks = self.scanner.scan_sector(sector_name, top_n=stocks_per_sector)
+                # Scan sector (with intraday data if market is open)
+                stocks = self.scanner.scan_sector(
+                    sector_name, 
+                    top_n=stocks_per_sector,
+                    include_intraday=include_intraday
+                )
                 
                 if stocks:
                     all_stocks.extend(stocks)
@@ -386,6 +640,9 @@ class OvernightPipeline:
         logger.info(f"\n✓ Scanning Complete:")
         logger.info(f"  Total Valid Stocks: {len(all_stocks)}")
         logger.info(f"  Sectors Processed: {len(sector_summaries)}/{len(sectors_to_scan)}")
+        if include_intraday:
+            intraday_count = sum(1 for s in all_stocks if 'intraday_data' in s)
+            logger.info(f"  📈 Intraday data: {intraday_count}/{len(all_stocks)} stocks")
         
         self.status['total_stocks'] = len(all_stocks)
         
@@ -415,11 +672,14 @@ class OvernightPipeline:
             # Batch assess
             results = self.event_guard.assess_batch(tickers)
             
+            # Extract ticker results (filter out market_regime key)
+            ticker_results = {k: v for k, v in results.items() if k != 'market_regime' and hasattr(v, 'has_upcoming_event')}
+            
             # Summary stats
-            total_events = sum(1 for r in results.values() if r.has_upcoming_event)
-            sit_outs = sum(1 for r in results.values() if r.skip_trading)
-            high_risk = sum(1 for r in results.values() if r.risk_score >= 0.7)
-            regulatory = sum(1 for r in results.values() if r.event_type in ['basel_iii', 'regulatory', 'pillar_3'])
+            total_events = sum(1 for r in ticker_results.values() if r.has_upcoming_event)
+            sit_outs = sum(1 for r in ticker_results.values() if r.skip_trading)
+            high_risk = sum(1 for r in ticker_results.values() if r.risk_score >= 0.7)
+            regulatory = sum(1 for r in ticker_results.values() if r.event_type in ['basel_iii', 'regulatory', 'pillar_3'])
             
             logger.info(f"✓ Event Risk Assessment Complete:")
             logger.info(f"  Upcoming Events: {total_events}")
@@ -427,9 +687,14 @@ class OvernightPipeline:
             logger.info(f"  ⚠️  Sit-Out Recommendations: {sit_outs}")
             logger.info(f"  ⚡ High Risk Stocks (≥0.7): {high_risk}")
             
+            # Log market regime if available
+            if 'market_regime' in results:
+                regime = results['market_regime']
+                logger.info(f"  📊 Market Regime: {regime.get('regime_label', 'unknown')} | Crash Risk: {regime.get('crash_risk_score', 0)*100:.1f}%")
+            
             # Log specific warnings
             warnings = [
-                (ticker, r) for ticker, r in results.items()
+                (ticker, r) for ticker, r in ticker_results.items()
                 if r.warning_message and r.risk_score >= 0.5
             ]
             
@@ -455,7 +720,17 @@ class OvernightPipeline:
             event_risk_data: Event risk assessment results (optional)
         """
         logger.info(f"Generating predictions for {len(stocks)} stocks...")
-        logger.info(f"Using {self.predictor.max_workers} parallel workers")
+        
+        # Safety check for predictor
+        if not hasattr(self, 'predictor') or self.predictor is None:
+            logger.error("BatchPredictor not initialized - cannot generate predictions")
+            raise RuntimeError("BatchPredictor not initialized")
+        
+        try:
+            max_workers = getattr(self.predictor, 'max_workers', 4)
+            logger.info(f"Using {max_workers} parallel workers")
+        except Exception as e:
+            logger.warning(f"Could not get max_workers: {e}, using default")
         
         try:
             predicted_stocks = self.predictor.predict_batch(stocks, spi_sentiment)
@@ -521,17 +796,25 @@ class OvernightPipeline:
             logger.error(f"✗ Prediction generation failed: {e}")
             raise
     
-    def _score_opportunities(self, stocks: List[Dict], spi_sentiment: Dict) -> List[Dict]:
-        """Score all opportunities"""
+    def _score_opportunities(self, stocks: List[Dict], spi_sentiment: Dict, ai_scores: Dict = None) -> List[Dict]:
+        """Score all opportunities (mode-aware)"""
         logger.info(f"Scoring {len(stocks)} opportunities...")
         
         try:
-            scored_stocks = self.scorer.score_opportunities(stocks, spi_sentiment)
+            # Pass market_status for mode-aware scoring
+            market_status = self.status.get('market_hours')
+            scored_stocks = self.scorer.score_opportunities(
+                stocks, 
+                spi_sentiment, 
+                ai_scores,
+                market_status=market_status
+            )
             
             # Get summary
             summary = self.scorer.get_opportunity_summary(scored_stocks)
             
             logger.info(f"✓ Opportunities Scored:")
+            logger.info(f"  Mode: {self.status.get('pipeline_mode', 'overnight').upper()}")
             logger.info(f"  Average Score: {summary['avg_score']:.1f}/100")
             logger.info(f"  High Opportunities (≥80): {summary['high_opportunity_count']}")
             logger.info(f"  Medium Opportunities (65-80): {summary['medium_opportunity_count']}")
@@ -541,7 +824,10 @@ class OvernightPipeline:
                 top_5 = summary['top_opportunities'][:5]
                 logger.info(f"  Top 5:")
                 for i, opp in enumerate(top_5, 1):
-                    logger.info(f"    {i}. {opp['symbol']}: {opp['opportunity_score']:.1f}/100")
+                    momentum_info = ""
+                    if 'momentum_breakdown' in opp:
+                        momentum_info = f" | Momentum: {opp['momentum_breakdown'].get('momentum', 0):.0f}"
+                    logger.info(f"    {i}. {opp['symbol']}: {opp['opportunity_score']:.1f}/100{momentum_info}")
             
             return scored_stocks
             
@@ -549,7 +835,349 @@ class OvernightPipeline:
             logger.error(f"✗ Opportunity scoring failed: {e}")
             raise
     
-    def _generate_report(self, stocks: List[Dict], spi_sentiment: Dict) -> str:
+    def _train_lstm_models(self, scored_stocks: List[Dict]) -> Dict:
+        """
+        Train LSTM models for top opportunity stocks
+        
+        Args:
+            scored_stocks: List of scored stocks
+            
+        Returns:
+            Dictionary with training results
+        """
+        if self.trainer is None:
+            logger.info("  LSTM trainer not available - skipping training")
+            return {'status': 'disabled', 'trained_count': 0}
+        
+        # Check if training is enabled in config
+        lstm_config = self.config.get('lstm_training', {})
+        training_enabled = lstm_config.get('enabled', True)
+        
+        logger.info(f"[DEBUG] LSTM Training Check:")
+        logger.info(f"  self.trainer = {self.trainer}")
+        logger.info(f"  config.lstm_training.enabled = {training_enabled}")
+        logger.info(f"  config.lstm_training = {lstm_config}")
+        
+        if not training_enabled:
+            logger.info("  LSTM training disabled in configuration")
+            return {'status': 'disabled', 'trained_count': 0}
+        
+        logger.info("\n" + "="*80)
+        logger.info("PHASE 4.5: LSTM MODEL TRAINING")
+        logger.info("="*80)
+        self.status['phase'] = 'lstm_training'
+        self.status['progress'] = 75
+        
+        try:
+            # Create training queue from scored stocks
+            max_models = lstm_config.get('max_models_per_night', 100)
+            logger.info(f"Creating training queue (max {max_models} stocks)...")
+            
+            training_queue = self.trainer.create_training_queue(
+                opportunities=scored_stocks,
+                max_stocks=max_models
+            )
+            
+            # Train the models
+            if training_queue:
+                logger.info(f"Training {len(training_queue)} LSTM models...")
+                training_results = self.trainer.train_batch(
+                    training_queue=training_queue,
+                    max_stocks=max_models
+                )
+                
+                logger.info(f"[SUCCESS] LSTM Training Complete:")
+                logger.info(f"  Models trained: {training_results.get('trained_count', 0)}/{training_results.get('total_stocks', 0)}")
+                logger.info(f"  Successful: {training_results.get('trained_count', 0)}")
+                logger.info(f"  Failed: {training_results.get('failed_count', 0)}")
+                logger.info(f"  Total Time: {training_results.get('total_time', 0)/60:.1f} minutes")
+                
+                return training_results
+            else:
+                logger.info("No stocks queued for training (all models are fresh)")
+                return {'status': 'no_training_needed', 'trained_count': 0}
+                
+        except Exception as e:
+            logger.error(f"✗ LSTM training failed: {e}")
+            logger.error(traceback.format_exc())
+            self.status['warnings'].append(f"LSTM training failed: {str(e)}")
+            return {'status': 'failed', 'trained_count': 0, 'error': str(e)}
+    
+    def _run_chatgpt_research(self, scored_stocks: List[Dict]) -> Dict:
+        """
+        Run ChatGPT research on top opportunity stocks
+        
+        Args:
+            scored_stocks: List of scored stocks
+            
+        Returns:
+            Dictionary with research results and markdown path
+        """
+        if run_chatgpt_research is None:
+            logger.info("  ChatGPT research module not available - skipping research")
+            return {'status': 'disabled', 'research_count': 0}
+        
+        # Check if research is enabled in config
+        research_config = self.research_config
+        research_enabled = research_config.get('enabled', False)
+        
+        if not research_enabled:
+            logger.info("  ChatGPT research disabled in configuration")
+            return {'status': 'disabled', 'research_count': 0}
+        
+        logger.info("\n" + "="*80)
+        logger.info("PHASE 4.7: CHATGPT RESEARCH")
+        logger.info("="*80)
+        self.status['phase'] = 'chatgpt_research'
+        self.status['progress'] = 78
+        
+        try:
+            # Extract config parameters
+            model = research_config.get('model', 'gpt-4o-mini')
+            max_stocks = research_config.get('max_stocks', 5)
+            output_path_template = research_config.get('output_path', 'reports/chatgpt_research')
+            
+            logger.info(f"Running ChatGPT research for top {max_stocks} opportunities...")
+            logger.info(f"  Model: {model}")
+            logger.info(f"  Market: ASX")
+            
+            # Run research
+            research_results = run_chatgpt_research(
+                opportunities=scored_stocks,
+                model=model,
+                max_stocks=max_stocks,
+                market='ASX'
+            )
+            
+            if research_results:
+                # Save markdown report
+                date_str = datetime.now(self.timezone).strftime("%Y%m%d")
+                output_dir = BASE_PATH / output_path_template
+                output_file = output_dir / f"asx_research_{date_str}.md"
+                
+                # Prepare pipeline metadata
+                pipeline_metadata = {
+                    'run_id': date_str,
+                    'total_opportunities': len(scored_stocks),
+                    'market': 'ASX'
+                }
+                
+                markdown_path = save_markdown(
+                    research_results=research_results,
+                    output_path=output_file,
+                    market='ASX',
+                    pipeline_metadata=pipeline_metadata
+                )
+                
+                logger.info(f"[SUCCESS] ChatGPT Research Complete:")
+                logger.info(f"  Stocks researched: {len(research_results)}/{max_stocks}")
+                logger.info(f"  Report saved: {markdown_path}")
+                
+                return {
+                    'status': 'success',
+                    'research_count': len(research_results),
+                    'markdown_path': str(markdown_path),
+                    'research_results': research_results
+                }
+            else:
+                logger.warning("  No research results generated")
+                return {'status': 'no_results', 'research_count': 0}
+                
+        except Exception as e:
+            logger.error(f"✗ ChatGPT research failed: {e}")
+            logger.error(traceback.format_exc())
+            self.status['warnings'].append(f"ChatGPT research failed: {str(e)}")
+            return {'status': 'failed', 'research_count': 0, 'error': str(e)}
+    
+    def _run_ai_quick_filter(self, scanned_stocks: List[Dict]) -> Dict:
+        """
+        Run AI quick filter on all scanned stocks
+        
+        Args:
+            scanned_stocks: List of scanned stocks
+            
+        Returns:
+            Dictionary with filter results {symbol: {risk_flag, opportunity_flag, quick_score}}
+        """
+        if ai_quick_filter is None:
+            return {}
+        
+        # Check if AI integration is enabled
+        ai_config = self.ai_config.get('stages', {}).get('quick_filter', {})
+        if not ai_config.get('enabled', False):
+            return {}
+        
+        logger.info("\n" + "="*80)
+        logger.info("PHASE 2.3: AI QUICK FILTER")
+        logger.info("="*80)
+        self.status['phase'] = 'ai_quick_filter'
+        self.status['progress'] = 28
+        
+        try:
+            model = self.ai_config.get('model', 'gpt-4o-mini')
+            
+            logger.info(f"Running AI Quick Filter on {len(scanned_stocks)} stocks...")
+            logger.info(f"  Model: {model}")
+            logger.info(f"  Market: ASX")
+            
+            filter_results = ai_quick_filter(
+                stocks=scanned_stocks,
+                model=model,
+                market='ASX'
+            )
+            
+            if filter_results:
+                high_risk_count = sum(1 for v in filter_results.values() if v.get('risk_flag') == 'high')
+                high_opp_count = sum(1 for v in filter_results.values() if v.get('opportunity_flag') == 'high')
+                
+                logger.info(f"[SUCCESS] AI Quick Filter Complete:")
+                logger.info(f"  Stocks analyzed: {len(filter_results)}")
+                logger.info(f"  High risk flags: {high_risk_count}")
+                logger.info(f"  High opportunity flags: {high_opp_count}")
+                
+                # Add filter results to stocks
+                for stock in scanned_stocks:
+                    symbol = stock.get('symbol', '')
+                    if symbol in filter_results:
+                        stock['ai_filter'] = filter_results[symbol]
+                
+                return filter_results
+            else:
+                logger.warning("  No filter results generated")
+                return {}
+                
+        except Exception as e:
+            logger.error(f"✗ AI Quick Filter failed: {e}")
+            logger.error(traceback.format_exc())
+            self.status['warnings'].append(f"AI Quick Filter failed: {str(e)}")
+            return {}
+    
+    def _run_ai_scoring(self, predicted_stocks: List[Dict]) -> Dict:
+        """
+        Run AI scoring on top predicted stocks
+        
+        Args:
+            predicted_stocks: List of stocks with predictions
+            
+        Returns:
+            Dictionary with AI scores {symbol: {fundamental_score, risk_score, etc}}
+        """
+        if ai_score_opportunity is None:
+            return {}
+        
+        # Check if AI scoring is enabled
+        ai_config = self.ai_config.get('stages', {}).get('ai_scoring', {})
+        if not ai_config.get('enabled', False):
+            return {}
+        
+        logger.info("\n" + "="*80)
+        logger.info("PHASE 3.5: AI SCORING")
+        logger.info("="*80)
+        self.status['phase'] = 'ai_scoring'
+        self.status['progress'] = 60
+        
+        try:
+            model = self.ai_config.get('model', 'gpt-4o-mini')
+            score_top_n = ai_config.get('score_top_n', 50)
+            
+            # Sort by prediction confidence to get top candidates
+            top_stocks = sorted(predicted_stocks, key=lambda x: x.get('confidence', 0), reverse=True)[:score_top_n]
+            
+            logger.info(f"Running AI Scoring on top {len(top_stocks)} stocks...")
+            logger.info(f"  Model: {model}")
+            logger.info(f"  Market: ASX")
+            
+            ai_scores = {}
+            
+            for i, stock in enumerate(top_stocks, 1):
+                symbol = stock.get('symbol', 'N/A')
+                
+                try:
+                    score_data = ai_score_opportunity(
+                        opportunity=stock,
+                        model=model,
+                        market='ASX'
+                    )
+                    
+                    if score_data:
+                        ai_scores[symbol] = score_data
+                        logger.info(f"  ✓ {symbol}: AI Score = {score_data.get('overall_ai_score', 0)}/100 ({i}/{len(top_stocks)})")
+                    
+                except Exception as e:
+                    logger.error(f"  ✗ AI scoring failed for {symbol}: {e}")
+                    continue
+            
+            logger.info(f"[SUCCESS] AI Scoring Complete:")
+            logger.info(f"  Stocks scored: {len(ai_scores)}/{len(top_stocks)}")
+            
+            return ai_scores
+            
+        except Exception as e:
+            logger.error(f"✗ AI Scoring failed: {e}")
+            logger.error(traceback.format_exc())
+            self.status['warnings'].append(f"AI Scoring failed: {str(e)}")
+            return {}
+    
+    def _run_ai_reranking(self, scored_stocks: List[Dict]) -> List[Dict]:
+        """
+        Run AI re-ranking on top opportunities
+        
+        Args:
+            scored_stocks: List of scored stocks
+            
+        Returns:
+            Re-ranked list of top opportunities
+        """
+        if ai_rerank_opportunities is None:
+            return scored_stocks
+        
+        # Check if AI re-ranking is enabled
+        ai_config = self.ai_config.get('stages', {}).get('ai_reranking', {})
+        if not ai_config.get('enabled', False):
+            return scored_stocks
+        
+        logger.info("\n" + "="*80)
+        logger.info("PHASE 4.6: AI RE-RANKING")
+        logger.info("="*80)
+        self.status['phase'] = 'ai_reranking'
+        self.status['progress'] = 77
+        
+        try:
+            model = self.ai_config.get('model', 'gpt-4o-mini')
+            rerank_top_n = ai_config.get('rerank_top_n', 20)
+            final_picks = ai_config.get('final_picks', 10)
+            
+            # Get top N for re-ranking
+            top_opportunities = scored_stocks[:rerank_top_n]
+            
+            logger.info(f"Running AI Re-Ranking on top {len(top_opportunities)} opportunities...")
+            logger.info(f"  Model: {model}")
+            logger.info(f"  Market: ASX")
+            logger.info(f"  Final picks: {final_picks}")
+            
+            reranked = ai_rerank_opportunities(
+                opportunities=top_opportunities,
+                model=model,
+                market='ASX',
+                top_n=final_picks
+            )
+            
+            logger.info(f"[SUCCESS] AI Re-Ranking Complete:")
+            logger.info(f"  Final top picks: {len(reranked)}")
+            
+            # Combine reranked top picks with remaining stocks
+            remaining = scored_stocks[rerank_top_n:]
+            final_list = reranked + remaining
+            
+            return final_list
+            
+        except Exception as e:
+            logger.error(f"✗ AI Re-Ranking failed: {e}")
+            logger.error(traceback.format_exc())
+            self.status['warnings'].append(f"AI Re-Ranking failed: {str(e)}")
+            return scored_stocks
+    
+    def _generate_report(self, stocks: List[Dict], spi_sentiment: Dict, event_risk_data: Dict = None, research_data: Dict = None) -> str:
         """Generate morning report"""
         logger.info("Generating morning report...")
         
@@ -583,7 +1211,9 @@ class OvernightPipeline:
                 opportunities=stocks,
                 spi_sentiment=spi_sentiment,
                 sector_summary=sector_summary,
-                system_stats=system_stats
+                system_stats=system_stats,
+                event_risk_data=event_risk_data,
+                research_data=research_data
             )
             
             logger.info(f"✓ Report Generated: {report_path}")
@@ -726,6 +1356,68 @@ class OvernightPipeline:
     def get_status(self) -> Dict:
         """Get current pipeline status"""
         return self.status
+    
+    def _send_telegram_report_notification(self, report_path: Path, stocks_count: int, 
+                                          top_opportunities: int, execution_time: float):
+        """Send morning report notification via Telegram"""
+        if self.telegram is None:
+            logger.debug("Telegram notifications disabled, skipping")
+            return
+        
+        try:
+            # Prepare market summary
+            market_summary = f"""🇦🇺 *ASX Market Morning Report*
+
+📊 *Pipeline Summary:*
+• Total Stocks Scanned: {stocks_count}
+• High-Quality Opportunities (≥70%): {top_opportunities}
+• Execution Time: {execution_time:.1f} minutes
+• Report Generated: {datetime.now(self.timezone).strftime('%Y-%m-%d %H:%M:%S %Z')}
+
+📁 Report files generated:
+• HTML Report (with charts)
+• CSV Export (for Excel)
+• Pipeline Results (JSON)
+
+✅ *Pipeline Status: COMPLETE*"""
+            
+            # Get report directory and find all related files
+            report_dir = report_path.parent
+            timestamp = report_path.stem.split('_')[-1]  # Extract timestamp from filename
+            
+            # Find related files (HTML, CSV)
+            html_files = list(report_dir.glob(f'*{timestamp}*.html'))
+            csv_files = list(report_dir.glob(f'*{timestamp}*.csv'))
+            
+            # Send morning report with attachments
+            logger.info("Sending Telegram morning report notification...")
+            
+            if html_files:
+                # Send HTML report
+                self.telegram.send_morning_report(
+                    report_files=[str(html_files[0])],
+                    market_summary=market_summary
+                )
+                logger.info(f"✓ Telegram report sent: {html_files[0].name}")
+            else:
+                # Send text-only summary if no HTML
+                self.telegram.send_message(market_summary)
+                logger.info("✓ Telegram summary sent (text-only)")
+            
+            # Optionally send CSV as separate attachment
+            if csv_files:
+                try:
+                    self.telegram.send_document(
+                        document_path=str(csv_files[0]),
+                        caption=f"📊 ASX Market Screening Results - {datetime.now(self.timezone).strftime('%Y-%m-%d')}"
+                    )
+                    logger.info(f"✓ CSV file sent: {csv_files[0].name}")
+                except Exception as csv_error:
+                    logger.warning(f"CSV file send failed: {csv_error}")
+            
+        except Exception as e:
+            logger.error(f"✗ Telegram notification failed: {e}")
+            logger.error(traceback.format_exc())
 
 
 # ============================================================================

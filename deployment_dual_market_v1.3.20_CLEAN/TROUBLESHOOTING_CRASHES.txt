@@ -1,0 +1,277 @@
+================================================================================
+EVENT RISK GUARD - TROUBLESHOOTING PIPELINE CRASHES
+================================================================================
+
+If your pipeline crashes, follow these steps to diagnose and fix the issue.
+
+================================================================================
+STEP 1: RUN DIAGNOSTIC TOOL
+================================================================================
+
+First, run the diagnostic tool to identify component failures:
+
+    python DIAGNOSE_CRASH.py
+
+This will test 8 components and show which ones fail.
+
+Common Issues:
+--------------
+✗ hmmlearn Package fails
+  Fix: pip install hmmlearn>=0.3.0
+
+✗ Market Data Fetch fails
+  Fix: Check internet connection, try: pip install --upgrade yfinance
+
+✗ Regime Analysis fails with "insufficient data"
+  Normal: Just means not enough historical data available
+
+================================================================================
+STEP 2: RUN DEBUG MODE
+================================================================================
+
+Run the pipeline in debug mode to capture full error output:
+
+    RUN_PIPELINE_TEST_DEBUG.bat
+
+This will:
+- Run the pipeline with full error capture
+- Save all output to: pipeline_test_debug.log
+- Show the last 50 lines if it crashes
+- Display the exact error message and line number
+
+================================================================================
+STEP 3: READ THE ERROR LOG
+================================================================================
+
+Open: pipeline_test_debug.log
+
+Look for these key indicators:
+
+ERROR Messages:
+---------------
+Search for: "ERROR" or "✗" or "FAILED"
+
+Example:
+    ERROR - Failed to initialize BatchPredictor: No module named 'tensorflow'
+    Fix: pip install tensorflow>=2.15.0
+
+Exceptions:
+-----------
+Search for: "Exception" or "Traceback" or "Error:"
+
+Example:
+    AttributeError: 'NoneType' object has no attribute 'predict_batch'
+    Fix: Component initialization failed - check logs above for why
+
+File Not Found:
+---------------
+Example:
+    FileNotFoundError: [Errno 2] No such file or directory: 'config.json'
+    Fix: Ensure you're running from the correct directory
+
+Import Errors:
+--------------
+Example:
+    ModuleNotFoundError: No module named 'hmmlearn'
+    Fix: pip install hmmlearn>=0.3.0
+
+================================================================================
+STEP 4: COMMON CRASH SCENARIOS
+================================================================================
+
+Scenario 1: Crashes IMMEDIATELY at start
+-----------------------------------------
+Symptom: Pipeline stops before "PHASE 1"
+Cause: Missing dependencies or import errors
+
+Fix:
+    1. Run: python DIAGNOSE_CRASH.py
+    2. Install any failed packages
+    3. Run: python VERIFY_INSTALLATION.py
+
+Scenario 2: Crashes after "PHASE 2.5: EVENT RISK ASSESSMENT"
+------------------------------------------------------------
+Symptom: Shows regime engine output, then crashes
+
+Possible Causes:
+a) BatchPredictor initialization failed
+   Fix: Check if tensorflow is installed: pip show tensorflow
+
+b) FinBERT bridge error
+   Fix: Run DIAGNOSE_CRASH.py test #7 and #8
+
+c) Parallel processing error
+   Fix: Check if torch is installed: pip show torch
+
+Scenario 3: Crashes during "PHASE 3: BATCH PREDICTION"
+-------------------------------------------------------
+Symptom: Crashes while generating predictions
+
+Possible Causes:
+a) LSTM model files corrupt or missing
+   Fix: Delete finbert_v4.4.4/models/trained/*.h5 and re-train
+
+b) Memory error (out of RAM)
+   Fix: Reduce max_workers in config or use test mode
+
+c) yfinance data fetch timeout
+   Fix: Check internet connection, increase timeout in config
+
+Scenario 4: Crashes during "PHASE 4.5: LSTM MODEL TRAINING"
+-----------------------------------------------------------
+Symptom: Crashes while training models
+
+Possible Causes:
+a) TensorFlow/Keras error
+   Fix: pip install --upgrade tensorflow keras
+
+b) Insufficient disk space
+   Fix: Free up disk space (models are ~5-10 MB each)
+
+c) Out of memory
+   Fix: Reduce max_models_per_night in config from 100 to 20
+
+Scenario 5: Crashes during "PHASE 5: REPORT GENERATION"
+-------------------------------------------------------
+Symptom: Crashes while generating HTML report
+
+Possible Causes:
+a) Missing reports directory
+   Fix: Create directory: mkdir -p reports/morning_reports
+
+b) Permission error (can't write files)
+   Fix: Run as administrator or check folder permissions
+
+c) Template file missing
+   Fix: Check if templates/dashboard.html exists
+
+================================================================================
+STEP 5: CHECK SPECIFIC LOGS
+================================================================================
+
+After crash, check these log files:
+
+1. Pipeline Log:
+   Location: models/screening/logs/overnight_screening_YYYYMMDD.log
+   Contains: All pipeline execution details
+   Look for: The LAST few lines before crash
+
+2. Debug Log (if using debug mode):
+   Location: pipeline_test_debug.log
+   Contains: Full stdout/stderr capture
+   Look for: Exception tracebacks
+
+3. Python Error Output:
+   Shows: Immediately in console when crash happens
+   Contains: Error type, message, and traceback
+
+================================================================================
+STEP 6: SPECIFIC ERROR FIXES
+================================================================================
+
+Error: "ModuleNotFoundError: No module named 'hmmlearn'"
+---------------------------------------------------------
+Fix: pip install hmmlearn>=0.3.0
+
+Error: "ModuleNotFoundError: No module named 'tensorflow'"
+----------------------------------------------------------
+Fix: pip install tensorflow>=2.15.0
+
+Error: "ModuleNotFoundError: No module named 'torch'"
+----------------------------------------------------
+Fix: pip install torch>=2.0.0
+
+Error: "ModuleNotFoundError: No module named 'transformers'"
+-----------------------------------------------------------
+Fix: pip install transformers>=4.30.0
+
+Error: "AttributeError: 'NoneType' object has no attribute..."
+--------------------------------------------------------------
+Cause: A component failed to initialize
+Fix: 
+    1. Check earlier in the log for initialization errors
+    2. Run DIAGNOSE_CRASH.py to identify which component
+    3. Fix that component's dependencies
+
+Error: "FileNotFoundError: [Errno 2] No such file or directory"
+---------------------------------------------------------------
+Cause: Missing file or wrong working directory
+Fix:
+    1. Check if file path in error exists
+    2. Ensure you're running from package root directory
+    3. Check if all files were extracted from ZIP
+
+Error: "MemoryError" or "Out of memory"
+---------------------------------------
+Cause: Not enough RAM for parallel processing
+Fix:
+    1. Close other programs
+    2. Reduce max_workers in config
+    3. Use test mode (processes only 5 stocks)
+
+Error: "KeyError: 'Close'" or similar data errors
+--------------------------------------------------
+Cause: yfinance returned incomplete data
+Fix:
+    1. Check internet connection
+    2. Try different stocks (some may be delisted)
+    3. Wait a few minutes and try again (rate limiting)
+
+================================================================================
+STEP 7: ENABLE VERBOSE LOGGING
+================================================================================
+
+For maximum debug detail, edit: models/screening/overnight_pipeline.py
+
+Find:
+    logging.basicConfig(level=logging.INFO, ...)
+
+Change to:
+    logging.basicConfig(level=logging.DEBUG, ...)
+
+Then re-run. You'll see much more detailed output showing exactly what's happening.
+
+================================================================================
+STEP 8: GET HELP
+================================================================================
+
+If none of the above fixes work:
+
+1. Run DIAGNOSE_CRASH.py and save the output
+2. Run RUN_PIPELINE_TEST_DEBUG.bat
+3. Check pipeline_test_debug.log
+4. Find the EXACT error message and traceback
+5. Search for the error message online
+6. Check the GitHub issues page
+
+When reporting the issue, include:
+- Full error message and traceback
+- Output from DIAGNOSE_CRASH.py
+- Last 100 lines from pipeline_test_debug.log
+- Your Python version: python --version
+- Your OS: Windows/Linux
+
+================================================================================
+QUICK REFERENCE: COMMAND CHEAT SHEET
+================================================================================
+
+Diagnostic:        python DIAGNOSE_CRASH.py
+Verify Install:    python VERIFY_INSTALLATION.py
+Normal Test:       RUN_PIPELINE_TEST.bat
+Debug Test:        RUN_PIPELINE_TEST_DEBUG.bat
+Full Pipeline:     RUN_PIPELINE.bat
+View Dashboard:    START_WEB_UI.bat
+
+Check Logs:        
+    - models/screening/logs/overnight_screening_YYYYMMDD.log
+    - pipeline_test_debug.log (if using debug mode)
+
+Install Missing Package:
+    pip install <package-name>
+
+Re-install All:
+    pip install -r requirements.txt --force-reinstall
+
+================================================================================
+END OF TROUBLESHOOTING GUIDE
+================================================================================

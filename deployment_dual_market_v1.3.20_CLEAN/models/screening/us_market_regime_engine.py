@@ -54,6 +54,7 @@ class USMarketRegimeEngine:
         self.index_symbol = "^GSPC"  # S&P 500
         self.model = None
         self.fitted = False
+        self.scaler = None  # Feature scaler for HMM
         
         if not HMM_AVAILABLE:
             logger.warning("HMM not available - using fallback regime detection")
@@ -138,23 +139,38 @@ class USMarketRegimeEngine:
             return False
         
         try:
-            # Initialize Gaussian HMM
+            # Normalize features to prevent covariance matrix issues
+            # This ensures numerical stability and positive-definite covariances
+            from sklearn.preprocessing import StandardScaler
+            
+            scaler = StandardScaler()
+            features_scaled = scaler.fit_transform(features)
+            
+            # Add small regularization to features to ensure positive-definiteness
+            features_scaled = features_scaled + np.random.randn(*features_scaled.shape) * 1e-6
+            
+            # Initialize Gaussian HMM with diagonal covariance for better stability
+            # 'diagonal' is more stable than 'full' for limited data
             self.model = hmm.GaussianHMM(
                 n_components=self.n_states,
-                covariance_type="full",
+                covariance_type="diag",  # Changed from 'full' to 'diag' for stability
                 n_iter=100,
-                random_state=42
+                random_state=42,
+                init_params="mc",  # Initialize means and covariances
+                params="mct"  # Update means, covariances, and transitions
             )
             
             # Fit model
-            self.model.fit(features)
+            self.model.fit(features_scaled)
             self.fitted = True
+            self.scaler = scaler  # Store scaler for prediction
             
             logger.info(f"✓ HMM model fitted with {self.n_states} states")
             return True
             
         except Exception as e:
             logger.error(f"Error fitting HMM model: {e}")
+            logger.warning("Falling back to simple regime detection")
             return False
     
     def predict_regime(self, features: np.ndarray) -> Tuple[int, np.ndarray]:
@@ -172,8 +188,14 @@ class USMarketRegimeEngine:
             return 1, np.array([0.33, 0.34, 0.33])
         
         try:
+            # Scale features using the same scaler from training
+            if hasattr(self, 'scaler') and self.scaler is not None:
+                features_scaled = self.scaler.transform(features)
+            else:
+                features_scaled = features
+            
             # Predict state probabilities
-            probs = self.model.predict_proba(features)
+            probs = self.model.predict_proba(features_scaled)
             
             # Current state (last row)
             current_probs = probs[-1]

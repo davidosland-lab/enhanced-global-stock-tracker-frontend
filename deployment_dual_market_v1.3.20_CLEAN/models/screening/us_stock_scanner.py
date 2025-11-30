@@ -70,7 +70,14 @@ class USStockScanner:
             'min_market_cap': 2000000000
         })
         self.logger = logger
+        
+        # Rate limiting settings to avoid Yahoo Finance throttling
+        self.request_count = 0
+        self.last_request_time = time.time()
+        self.rate_limit_delay = 0.5  # Increased from 0.1s to 0.5s between requests
+        
         logger.info(f"US Stock Scanner initialized with {len(self.sectors)} sectors")
+        logger.info(f"Rate limiting: {self.rate_limit_delay}s delay between requests")
     
     def _load_config(self, config_path: str) -> Dict:
         """Load configuration from JSON"""
@@ -92,36 +99,140 @@ class USStockScanner:
     # DATA FETCHING - yahooquery ONLY
     # ========================================================================
     
-    def fetch_stock_history(self, symbol: str, start_date=None, end_date=None, period='1mo'):
+    def _apply_rate_limit(self):
+        """Apply rate limiting between requests to avoid Yahoo Finance throttling"""
+        self.request_count += 1
+        current_time = time.time()
+        elapsed = current_time - self.last_request_time
+        
+        # Enforce minimum delay between requests
+        if elapsed < self.rate_limit_delay:
+            sleep_time = self.rate_limit_delay - elapsed
+            time.sleep(sleep_time)
+        
+        # Every 50 requests, add an extra pause to avoid aggressive rate limiting
+        if self.request_count % 50 == 0:
+            logger.debug(f"Rate limit pause: {self.request_count} requests made")
+            time.sleep(2.0)
+        
+        self.last_request_time = time.time()
+    
+    def fetch_stock_history(self, symbol: str, start_date=None, end_date=None, period='1mo', interval='1d'):
         """
-        Fetch US stock history using yahooquery
+        Fetch US stock history using yahooquery with rate limiting
         
         Args:
             symbol: Stock ticker (no suffix needed for US stocks)
             start_date: Start date (optional)
             end_date: End date (optional)
             period: Period string if not using dates
+            interval: Data interval ('1d', '1m', '5m', '15m', '1h')
             
         Returns:
             DataFrame with OHLCV data, or None on error
         """
-        try:
-            ticker = Ticker(symbol)
-            
-            if start_date and end_date:
-                hist = ticker.history(start=start_date, end=end_date)
-            else:
-                hist = ticker.history(period=period)
-            
-            if isinstance(hist, pd.DataFrame) and not hist.empty:
-                # Normalize column names
-                hist.columns = [col.capitalize() for col in hist.columns]
-                return hist
-            else:
-                return None
+        max_retries = 3
+        base_delay = 2
+        
+        for attempt in range(max_retries):
+            try:
+                # Apply rate limiting before request
+                self._apply_rate_limit()
                 
+                ticker = Ticker(symbol)
+                
+                if start_date and end_date:
+                    hist = ticker.history(start=start_date, end=end_date, interval=interval)
+                else:
+                    hist = ticker.history(period=period, interval=interval)
+                
+                if isinstance(hist, pd.DataFrame) and not hist.empty:
+                    # Normalize column names
+                    hist.columns = [col.capitalize() for col in hist.columns]
+                    return hist
+                else:
+                    return None
+                    
+            except Exception as e:
+                error_msg = str(e).lower()
+                # Check if it's a rate limiting error
+                if 'rate' in error_msg or 'limit' in error_msg or 'throttle' in error_msg or '429' in error_msg:
+                    if attempt < max_retries - 1:
+                        # Exponential backoff for rate limit errors
+                        delay = base_delay * (2 ** attempt)
+                        logger.warning(f"Rate limit detected for {symbol}, waiting {delay}s (attempt {attempt+1}/{max_retries})")
+                        time.sleep(delay)
+                        continue
+                
+                if attempt < max_retries - 1:
+                    logger.debug(f"Retry {attempt + 1} for {symbol}: {e}")
+                    time.sleep(1)
+                else:
+                    logger.debug(f"Error fetching {symbol} after {max_retries} attempts: {e}")
+                return None
+        
+        return None
+    
+    def fetch_intraday_data(self, symbol: str) -> Optional[Dict]:
+        """
+        Fetch intraday data for momentum analysis (1-minute bars)
+        
+        Args:
+            symbol: US stock ticker (no suffix)
+            
+        Returns:
+            Dictionary with intraday data or None
+        """
+        try:
+            # Fetch 1-minute bars for today
+            intraday_hist = self.fetch_stock_history(symbol, period='1d', interval='1m')
+            
+            if intraday_hist is None or intraday_hist.empty:
+                logger.debug(f"No intraday data for {symbol}")
+                return None
+            
+            # Calculate intraday metrics
+            current_price = float(intraday_hist['Close'].iloc[-1])
+            open_price = float(intraday_hist['Open'].iloc[0])
+            high_price = float(intraday_hist['High'].max())
+            low_price = float(intraday_hist['Low'].min())
+            current_volume = int(intraday_hist['Volume'].sum())
+            
+            # Extract price series for momentum calculations
+            prices = intraday_hist['Close'].values
+            
+            # Calculate momentum metrics
+            session_change_pct = ((current_price - open_price) / open_price) * 100 if open_price > 0 else 0
+            intraday_range_pct = ((high_price - low_price) / open_price) * 100 if open_price > 0 else 0
+            
+            # 15-minute momentum (if enough data)
+            mom_15m = 0
+            if len(prices) >= 15:
+                price_15m_ago = float(prices[-15])
+                mom_15m = ((current_price - price_15m_ago) / price_15m_ago) * 100 if price_15m_ago > 0 else 0
+            
+            # 60-minute momentum (if enough data)
+            mom_60m = 0
+            if len(prices) >= 60:
+                price_60m_ago = float(prices[-60])
+                mom_60m = ((current_price - price_60m_ago) / price_60m_ago) * 100 if price_60m_ago > 0 else 0
+            
+            return {
+                'current_price': current_price,
+                'open_price': open_price,
+                'high_price': high_price,
+                'low_price': low_price,
+                'current_volume': current_volume,
+                'session_change_pct': session_change_pct,
+                'intraday_range_pct': intraday_range_pct,
+                'momentum_15m': mom_15m,
+                'momentum_60m': mom_60m,
+                'prices': prices.tolist(),  # For advanced calculations
+                'data_points': len(prices)
+            }
+            
         except Exception as e:
-            logger.debug(f"Error fetching {symbol}: {e}")
+            logger.debug(f"Error fetching intraday data for {symbol}: {e}")
             return None
     
     # ========================================================================
@@ -130,7 +241,7 @@ class USStockScanner:
     
     def validate_stock(self, symbol: str) -> bool:
         """
-        Validate US stock meets selection criteria
+        Validate US stock meets selection criteria with enhanced error handling
         
         Args:
             symbol: Stock ticker symbol (no suffix)
@@ -138,46 +249,34 @@ class USStockScanner:
         Returns:
             True if stock passes validation
         """
-        max_retries = 2
-        retry_delay = 1
-        
-        for attempt in range(max_retries):
-            try:
-                if attempt > 0:
-                    time.sleep(retry_delay)
-                
-                # Fetch recent data
-                hist = self.fetch_stock_history(symbol, period='1mo')
-                
-                if hist is None or hist.empty:
-                    logger.debug(f"No history data for {symbol}")
-                    return False
-                
-                # Get current price
-                current_price = hist['Close'].iloc[-1]
-                
-                # Price check (US market: $5-$1000 typical range)
-                if not (self.criteria['min_price'] <= current_price <= self.criteria['max_price']):
-                    logger.debug(f"{symbol}: Price ${current_price:.2f} out of range")
-                    return False
-                
-                # Volume check (US market: typically higher volume)
-                avg_volume = hist['Volume'].mean()
-                if avg_volume < self.criteria['min_avg_volume']:
-                    logger.debug(f"{symbol}: Volume {int(avg_volume):,} too low")
-                    return False
-                
-                return True
-                
-            except Exception as e:
-                if attempt < max_retries - 1:
-                    logger.debug(f"Retry {attempt + 1} for {symbol}")
-                    continue
-                else:
-                    logger.debug(f"Validation error for {symbol}: {e}")
-                    return False
-        
-        return False
+        try:
+            # Fetch recent data (rate limiting is handled in fetch_stock_history)
+            hist = self.fetch_stock_history(symbol, period='1mo')
+            
+            if hist is None or hist.empty:
+                logger.debug(f"{symbol}: No history data available")
+                return False
+            
+            # Get current price
+            current_price = hist['Close'].iloc[-1]
+            
+            # Price check (US market: $5-$1000 typical range)
+            if not (self.criteria['min_price'] <= current_price <= self.criteria['max_price']):
+                logger.debug(f"{symbol}: Price ${current_price:.2f} out of range [{self.criteria['min_price']}-{self.criteria['max_price']}]")
+                return False
+            
+            # Volume check (US market: typically higher volume)
+            avg_volume = hist['Volume'].mean()
+            if avg_volume < self.criteria['min_avg_volume']:
+                logger.debug(f"{symbol}: Avg volume {int(avg_volume):,} below minimum {self.criteria['min_avg_volume']:,}")
+                return False
+            
+            logger.debug(f"{symbol}: ✓ Validation passed (Price: ${current_price:.2f}, Volume: {int(avg_volume):,})")
+            return True
+            
+        except Exception as e:
+            logger.debug(f"{symbol}: Validation failed - {e}")
+            return False
     
     # ========================================================================
     # TECHNICAL ANALYSIS
@@ -220,13 +319,63 @@ class USStockScanner:
         except:
             return 0.0
     
-    def analyze_stock(self, symbol: str, sector_weight: float) -> Optional[Dict]:
+    def _fetch_fundamentals(self, symbol: str) -> Dict:
+        """
+        Fetch fundamental data (market cap, beta, sector, name) using yahooquery
+        
+        Args:
+            symbol: Stock ticker symbol
+            
+        Returns:
+            Dictionary with fundamental data (with safe defaults)
+        """
+        fundamentals = {
+            'name': symbol,  # Default to ticker if name not found
+            'market_cap': 0,
+            'beta': 1.0,
+            'sector_name': 'Unknown'
+        }
+        
+        try:
+            ticker = Ticker(symbol)
+            
+            # Get price info for company name
+            price_info = ticker.price
+            if isinstance(price_info, dict) and symbol in price_info:
+                data = price_info[symbol]
+                if isinstance(data, dict):
+                    fundamentals['name'] = data.get('shortName', data.get('longName', symbol))
+            
+            # Get summary detail for market cap and beta
+            summary_detail = ticker.summary_detail
+            if isinstance(summary_detail, dict) and symbol in summary_detail:
+                data = summary_detail[symbol]
+                if isinstance(data, dict):
+                    fundamentals['market_cap'] = data.get('marketCap', 0)
+                    fundamentals['beta'] = data.get('beta', 1.0)
+            
+            # Get asset profile for sector
+            asset_profile = ticker.asset_profile
+            if isinstance(asset_profile, dict) and symbol in asset_profile:
+                data = asset_profile[symbol]
+                if isinstance(data, dict):
+                    fundamentals['sector_name'] = data.get('sector', 'Unknown')
+            
+            logger.debug(f"{symbol}: {fundamentals['name']} - MCap: ${fundamentals['market_cap']/1e9:.1f}B, Beta: {fundamentals['beta']:.2f}, Sector: {fundamentals['sector_name']}")
+            
+        except Exception as e:
+            logger.debug(f"{symbol}: Could not fetch fundamentals: {e}")
+        
+        return fundamentals
+    
+    def analyze_stock(self, symbol: str, sector_weight: float, include_intraday: bool = False) -> Optional[Dict]:
         """
         Perform complete analysis on a US stock
         
         Args:
             symbol: Stock ticker symbol
             sector_weight: Sector importance weight
+            include_intraday: If True, fetch intraday data for momentum analysis
             
         Returns:
             Dictionary with analysis results, or None if analysis fails
@@ -250,6 +399,9 @@ class USStockScanner:
             ma_data = self._calculate_moving_averages(hist['Close'])
             volatility = self._calculate_volatility(hist['Close'])
             
+            # Fetch fundamental data (market cap, beta, sector)
+            fundamentals = self._fetch_fundamentals(symbol)
+            
             # Calculate price change
             price_change = ((current_price - prev_close) / prev_close) * 100
             
@@ -263,21 +415,42 @@ class USStockScanner:
                 sector_weight=sector_weight
             )
             
-            return {
+            result = {
                 'symbol': symbol,
+                'name': fundamentals['name'],
                 'price': float(current_price),
                 'price_change': float(price_change),
                 'volume': int(volume),
                 'avg_volume': int(avg_volume),
-                'rsi': float(rsi),
-                'ma20': float(ma_data['ma20']),
-                'ma50': float(ma_data['ma50']),
-                'volatility': float(volatility),
                 'score': float(score),
-                'above_ma20': ma_data['above_ma20'],
-                'above_ma50': ma_data['above_ma50'],
-                'scan_time': datetime.now().isoformat()
+                'scan_time': datetime.now().isoformat(),
+                # Fundamental data
+                'market_cap': fundamentals['market_cap'],
+                'beta': fundamentals['beta'],
+                'sector_name': fundamentals['sector_name'],
+                # Nested technical dictionary for batch_predictor compatibility
+                'technical': {
+                    'rsi': float(rsi),
+                    'ma_20': float(ma_data['ma20']),
+                    'ma_50': float(ma_data['ma50']),
+                    'volatility': float(volatility),
+                    'above_ma20': ma_data['above_ma20'],
+                    'above_ma50': ma_data['above_ma50']
+                }
             }
+            
+            # Fetch intraday data if requested (for intraday mode)
+            if include_intraday:
+                intraday_data = self.fetch_intraday_data(symbol)
+                if intraday_data:
+                    result['intraday_data'] = intraday_data
+                    # Update current price with intraday price if available
+                    result['price'] = intraday_data['current_price']
+                    logger.debug(f"{symbol}: Intraday data included ({intraday_data['data_points']} points)")
+                else:
+                    logger.debug(f"{symbol}: No intraday data available")
+            
+            return result
             
         except Exception as e:
             logger.debug(f"Analysis error for {symbol}: {e}")
@@ -342,13 +515,14 @@ class USStockScanner:
     # SECTOR SCANNING
     # ========================================================================
     
-    def scan_sector(self, sector_name: str, max_stocks: int = 30) -> List[Dict]:
+    def scan_sector(self, sector_name: str, max_stocks: int = 30, include_intraday: bool = False) -> List[Dict]:
         """
         Scan all stocks in a US sector
         
         Args:
             sector_name: Name of the sector to scan
             max_stocks: Maximum number of stocks to analyze
+            include_intraday: If True, fetch intraday data for momentum analysis
             
         Returns:
             List of analyzed stocks, sorted by score
@@ -361,34 +535,52 @@ class USStockScanner:
         sector_weight = sector_data.get('weight', 1.0)
         stocks = sector_data.get('stocks', [])[:max_stocks]
         
-        logger.info(f"Scanning {sector_name}: {len(stocks)} stocks")
+        mode_indicator = "📈 INTRADAY" if include_intraday else "🌙 OVERNIGHT"
+        logger.info(f"Scanning {sector_name}: {len(stocks)} stocks - {mode_indicator}")
         
         results = []
+        validation_failures = 0
+        analysis_failures = 0
+        
         for i, symbol in enumerate(stocks, 1):
             try:
-                # Validate stock
+                # Validate stock (rate limiting is handled in fetch_stock_history)
                 if not self.validate_stock(symbol):
-                    logger.debug(f"{symbol}: Failed validation")
+                    validation_failures += 1
                     continue
                 
-                # Analyze stock
-                analysis = self.analyze_stock(symbol, sector_weight)
+                # Analyze stock (with or without intraday data)
+                analysis = self.analyze_stock(symbol, sector_weight, include_intraday=include_intraday)
                 if analysis:
                     analysis['sector'] = sector_name
                     results.append(analysis)
-                    logger.debug(f"{i}/{len(stocks)}: {symbol} - Score: {analysis['score']:.1f}")
-                
-                # Rate limiting
-                time.sleep(0.1)
+                    
+                    intraday_info = ""
+                    if include_intraday and 'intraday_data' in analysis:
+                        intraday_data = analysis['intraday_data']
+                        intraday_info = f" | Mom: {intraday_data['session_change_pct']:+.2f}%"
+                    
+                    logger.debug(f"{i}/{len(stocks)}: {symbol} - Score: {analysis['score']:.1f}{intraday_info}")
+                else:
+                    analysis_failures += 1
                 
             except Exception as e:
                 logger.debug(f"Error scanning {symbol}: {e}")
+                analysis_failures += 1
                 continue
         
         # Sort by score (highest first)
         results.sort(key=lambda x: x['score'], reverse=True)
         
         logger.info(f"✓ {sector_name}: {len(results)}/{len(stocks)} stocks analyzed")
+        if validation_failures > 0:
+            logger.info(f"  ⚠️  Validation failures: {validation_failures}/{len(stocks)} stocks")
+        if analysis_failures > 0:
+            logger.info(f"  ⚠️  Analysis failures: {analysis_failures}/{len(stocks)} stocks")
+        if include_intraday:
+            intraday_count = sum(1 for s in results if 'intraday_data' in s)
+            logger.info(f"  📈 Intraday data: {intraday_count}/{len(results)} stocks")
+        
         return results
     
     def scan_all_sectors(self, stocks_per_sector: int = 30) -> Dict[str, List[Dict]]:

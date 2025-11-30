@@ -20,6 +20,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import pytz
 import traceback
+import random  # NEW: for rotational training queue
 
 # Setup logging
 BASE_PATH = Path(__file__).parent.parent.parent
@@ -67,6 +68,12 @@ class LSTMTrainer:
         self.batch_size = self.training_config.get('batch_size', 32)
         self.validation_split = self.training_config.get('validation_split', 0.2)
         self.priority_strategy = self.training_config.get('priority_strategy', 'highest_opportunity_score')
+        
+        # NEW: mixed strategy controls
+        # How many hard top-priority names to always include
+        self.top_priority_count = self.training_config.get('top_priority_count', None)
+        # Whether to fill the remaining slots with a rotating pool
+        self.rotation_enabled = self.training_config.get('rotation_enabled', True)
         
         # Paths
         self.models_dir = BASE_PATH / 'models' / 'lstm'
@@ -125,56 +132,92 @@ class LSTMTrainer:
         max_stocks: Optional[int] = None
     ) -> List[Dict]:
         """
-        Create priority-based training queue from opportunities.
-        
+        Create a mixed priority + rotation training queue from opportunities.
+
+        Strategy:
+            - Filter to symbols with stale or missing models
+            - Take top-K by opportunity score as hard priority
+            - Fill remaining slots by rotating through the remaining stale names
+
         Args:
             opportunities: List of stock opportunities with scores
             max_stocks: Maximum number of stocks to queue (default: config value)
-        
+
         Returns:
             List of stocks to train, sorted by priority
         """
         if max_stocks is None:
             max_stocks = self.max_models_per_night
-        
+
         # Extract stock symbols from opportunities
         stocks = [opp.get('symbol') for opp in opportunities if opp.get('symbol')]
-        
+
         # Check which models are stale
         stale_stocks = self.check_stale_models(stocks)
-        
+
         # Filter opportunities to only include stale stocks
         stale_opportunities = [
-            opp for opp in opportunities 
+            opp for opp in opportunities
             if opp.get('symbol') in stale_stocks
         ]
-        
+
+        if not stale_opportunities:
+            logger.info("No stale models found for LSTM training.")
+            return []
+
         # Sort by opportunity score (highest first)
         if self.priority_strategy == 'highest_opportunity_score':
-            sorted_opportunities = sorted(
+            base_sorted = sorted(
                 stale_opportunities,
                 key=lambda x: x.get('opportunity_score', 0),
                 reverse=True
             )
         else:
             # Default: highest score
-            sorted_opportunities = sorted(
+            base_sorted = sorted(
                 stale_opportunities,
                 key=lambda x: x.get('opportunity_score', 0),
                 reverse=True
             )
-        
-        # Limit to max stocks
-        training_queue = sorted_opportunities[:max_stocks]
-        
+
+        # Determine how many to take as strict top-priority
+        if self.top_priority_count is None:
+            # Default: half the nightly budget but at least 10
+            top_k = max(10, max_stocks // 2)
+        else:
+            top_k = self.top_priority_count
+
+        top_k = max(0, min(top_k, max_stocks, len(base_sorted)))
+        top_priority = base_sorted[:top_k]
+
+        # Remaining candidates for rotation
+        remaining = base_sorted[top_k:]
+        rotation = []
+        slots_left = max_stocks - len(top_priority)
+
+        if self.rotation_enabled and slots_left > 0 and remaining:
+            # Deterministic daily shuffle for stable rotation behaviour
+            seed = int(datetime.now(self.timezone).strftime("%Y%m%d"))
+            rng = random.Random(seed)
+            shuffled = remaining[:]
+            rng.shuffle(shuffled)
+            rotation = shuffled[:slots_left]
+
+        training_queue = top_priority + rotation
+
         logger.info(f"Created training queue with {len(training_queue)} stocks")
-        
+        logger.info(f"  Top-priority (by score): {len(top_priority)}")
+        logger.info(f"  Rotational additions   : {len(rotation)}")
+
         for i, opp in enumerate(training_queue[:10], 1):
-            logger.info(f"  {i}. {opp.get('symbol')}: Score {opp.get('opportunity_score', 0):.1f}/100")
-        
+            logger.info(
+                f"  {i}. {opp.get('symbol')}: "
+                f"Score {opp.get('opportunity_score', 0):.1f}/100"
+            )
+
         if len(training_queue) > 10:
             logger.info(f"  ... and {len(training_queue) - 10} more stocks")
-        
+
         return training_queue
     
     def train_stock_model(
