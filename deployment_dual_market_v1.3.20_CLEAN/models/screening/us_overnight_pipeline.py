@@ -49,6 +49,15 @@ try:
 except ImportError:
     EmailNotifier = None
 
+# Telegram notification support
+try:
+    from ..notifications.telegram_notifier import TelegramNotifier
+except ImportError:
+    try:
+        from models.notifications.telegram_notifier import TelegramNotifier
+    except ImportError:
+        TelegramNotifier = None
+
 try:
     from .event_risk_guard import EventRiskGuard
 except ImportError:
@@ -204,6 +213,39 @@ class USOvernightPipeline:
             else:
                 self.notifier = None
                 logger.info("  Email notifications disabled")
+            
+            # Optional: Telegram notifications
+            if TelegramNotifier is not None:
+                try:
+                    # Load Telegram config from intraday config
+                    telegram_config_path = Path(__file__).parent.parent.parent / 'config' / 'intraday_rescan_config.json'
+                    if telegram_config_path.exists():
+                        with open(telegram_config_path, 'r') as f:
+                            full_config = json.load(f)
+                            telegram_cfg = full_config.get('notifications', {}).get('telegram', {})
+                            
+                            if telegram_cfg.get('enabled', False):
+                                bot_token = telegram_cfg.get('bot_token')
+                                chat_id = telegram_cfg.get('chat_id')
+                                
+                                if bot_token and chat_id:
+                                    self.telegram = TelegramNotifier(bot_token=bot_token, chat_id=chat_id)
+                                    logger.info("✓ Telegram notifications enabled")
+                                else:
+                                    self.telegram = None
+                                    logger.info("  Telegram notifications disabled (missing credentials)")
+                            else:
+                                self.telegram = None
+                                logger.info("  Telegram notifications disabled in config")
+                    else:
+                        self.telegram = None
+                        logger.info("  Telegram notifications disabled (config not found)")
+                except Exception as e:
+                    self.telegram = None
+                    logger.warning(f"  Telegram initialization failed: {e}")
+            else:
+                self.telegram = None
+                logger.info("  Telegram notifications disabled (module not available)")
             
             # Optional: Event Risk Guard
             if EventRiskGuard is not None:
@@ -418,6 +460,14 @@ class USOvernightPipeline:
             logger.info(f"Stocks Processed: {len(scanned_stocks)}")
             logger.info(f"Report Generated: {report_path}")
             logger.info(f"End Time: {datetime.now(self.timezone).strftime('%Y-%m-%d %H:%M:%S %Z')}")
+            
+            # Send Telegram notification
+            self._send_telegram_report_notification(
+                report_path=report_path,
+                stocks_count=len(scanned_stocks),
+                top_opportunities=len([s for s in scored_stocks if s.get('signal_strength', 0) >= 70]),
+                execution_time=elapsed_time/60
+            )
             
             return results
             
@@ -1119,6 +1169,68 @@ Full traceback:
     def get_status(self) -> Dict:
         """Get current US pipeline status"""
         return self.status
+    
+    def _send_telegram_report_notification(self, report_path: Path, stocks_count: int, 
+                                          top_opportunities: int, execution_time: float):
+        """Send morning report notification via Telegram"""
+        if self.telegram is None:
+            logger.debug("Telegram notifications disabled, skipping")
+            return
+        
+        try:
+            # Prepare market summary
+            market_summary = f"""🇺🇸 *US Market Morning Report*
+
+📊 *Pipeline Summary:*
+• Total Stocks Scanned: {stocks_count}
+• High-Quality Opportunities (≥70%): {top_opportunities}
+• Execution Time: {execution_time:.1f} minutes
+• Report Generated: {datetime.now(self.timezone).strftime('%Y-%m-%d %H:%M:%S %Z')}
+
+📁 Report files generated:
+• HTML Report (with charts)
+• CSV Export (for Excel)
+• Pipeline Results (JSON)
+
+✅ *Pipeline Status: COMPLETE*"""
+            
+            # Get report directory and find all related files
+            report_dir = report_path.parent
+            timestamp = report_path.stem.split('_')[-1]  # Extract timestamp from filename
+            
+            # Find related files (HTML, CSV)
+            html_files = list(report_dir.glob(f'*{timestamp}*.html'))
+            csv_files = list(report_dir.glob(f'*{timestamp}*.csv'))
+            
+            # Send morning report with attachments
+            logger.info("Sending Telegram morning report notification...")
+            
+            if html_files:
+                # Send HTML report
+                self.telegram.send_morning_report(
+                    report_files=[str(html_files[0])],
+                    market_summary=market_summary
+                )
+                logger.info(f"✓ Telegram report sent: {html_files[0].name}")
+            else:
+                # Send text-only summary if no HTML
+                self.telegram.send_message(market_summary)
+                logger.info("✓ Telegram summary sent (text-only)")
+            
+            # Optionally send CSV as separate attachment
+            if csv_files:
+                try:
+                    self.telegram.send_document(
+                        document_path=str(csv_files[0]),
+                        caption=f"📊 US Market Screening Results - {datetime.now(self.timezone).strftime('%Y-%m-%d')}"
+                    )
+                    logger.info(f"✓ CSV file sent: {csv_files[0].name}")
+                except Exception as csv_error:
+                    logger.warning(f"CSV file send failed: {csv_error}")
+            
+        except Exception as e:
+            logger.error(f"✗ Telegram notification failed: {e}")
+            logger.error(traceback.format_exc())
 
 
 def main():
