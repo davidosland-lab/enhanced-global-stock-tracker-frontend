@@ -75,8 +75,8 @@ class LSTMTrainer:
         # Whether to fill the remaining slots with a rotating pool
         self.rotation_enabled = self.training_config.get('rotation_enabled', True)
         
-        # Paths
-        self.models_dir = BASE_PATH / 'models' / 'lstm'
+        # Paths - Use models/screening/models where LSTM actually saves
+        self.models_dir = Path(__file__).parent / 'models'
         self.models_dir.mkdir(parents=True, exist_ok=True)
         
         self.training_logs_dir = BASE_PATH / 'logs' / 'lstm_training'
