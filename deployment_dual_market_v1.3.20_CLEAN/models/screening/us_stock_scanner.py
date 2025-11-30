@@ -70,7 +70,14 @@ class USStockScanner:
             'min_market_cap': 2000000000
         })
         self.logger = logger
+        
+        # Rate limiting settings to avoid Yahoo Finance throttling
+        self.request_count = 0
+        self.last_request_time = time.time()
+        self.rate_limit_delay = 0.5  # Increased from 0.1s to 0.5s between requests
+        
         logger.info(f"US Stock Scanner initialized with {len(self.sectors)} sectors")
+        logger.info(f"Rate limiting: {self.rate_limit_delay}s delay between requests")
     
     def _load_config(self, config_path: str) -> Dict:
         """Load configuration from JSON"""
@@ -92,9 +99,27 @@ class USStockScanner:
     # DATA FETCHING - yahooquery ONLY
     # ========================================================================
     
+    def _apply_rate_limit(self):
+        """Apply rate limiting between requests to avoid Yahoo Finance throttling"""
+        self.request_count += 1
+        current_time = time.time()
+        elapsed = current_time - self.last_request_time
+        
+        # Enforce minimum delay between requests
+        if elapsed < self.rate_limit_delay:
+            sleep_time = self.rate_limit_delay - elapsed
+            time.sleep(sleep_time)
+        
+        # Every 50 requests, add an extra pause to avoid aggressive rate limiting
+        if self.request_count % 50 == 0:
+            logger.debug(f"Rate limit pause: {self.request_count} requests made")
+            time.sleep(2.0)
+        
+        self.last_request_time = time.time()
+    
     def fetch_stock_history(self, symbol: str, start_date=None, end_date=None, period='1mo', interval='1d'):
         """
-        Fetch US stock history using yahooquery
+        Fetch US stock history using yahooquery with rate limiting
         
         Args:
             symbol: Stock ticker (no suffix needed for US stocks)
@@ -106,24 +131,47 @@ class USStockScanner:
         Returns:
             DataFrame with OHLCV data, or None on error
         """
-        try:
-            ticker = Ticker(symbol)
-            
-            if start_date and end_date:
-                hist = ticker.history(start=start_date, end=end_date, interval=interval)
-            else:
-                hist = ticker.history(period=period, interval=interval)
-            
-            if isinstance(hist, pd.DataFrame) and not hist.empty:
-                # Normalize column names
-                hist.columns = [col.capitalize() for col in hist.columns]
-                return hist
-            else:
-                return None
+        max_retries = 3
+        base_delay = 2
+        
+        for attempt in range(max_retries):
+            try:
+                # Apply rate limiting before request
+                self._apply_rate_limit()
                 
-        except Exception as e:
-            logger.debug(f"Error fetching {symbol}: {e}")
-            return None
+                ticker = Ticker(symbol)
+                
+                if start_date and end_date:
+                    hist = ticker.history(start=start_date, end=end_date, interval=interval)
+                else:
+                    hist = ticker.history(period=period, interval=interval)
+                
+                if isinstance(hist, pd.DataFrame) and not hist.empty:
+                    # Normalize column names
+                    hist.columns = [col.capitalize() for col in hist.columns]
+                    return hist
+                else:
+                    return None
+                    
+            except Exception as e:
+                error_msg = str(e).lower()
+                # Check if it's a rate limiting error
+                if 'rate' in error_msg or 'limit' in error_msg or 'throttle' in error_msg or '429' in error_msg:
+                    if attempt < max_retries - 1:
+                        # Exponential backoff for rate limit errors
+                        delay = base_delay * (2 ** attempt)
+                        logger.warning(f"Rate limit detected for {symbol}, waiting {delay}s (attempt {attempt+1}/{max_retries})")
+                        time.sleep(delay)
+                        continue
+                
+                if attempt < max_retries - 1:
+                    logger.debug(f"Retry {attempt + 1} for {symbol}: {e}")
+                    time.sleep(1)
+                else:
+                    logger.debug(f"Error fetching {symbol} after {max_retries} attempts: {e}")
+                return None
+        
+        return None
     
     def fetch_intraday_data(self, symbol: str) -> Optional[Dict]:
         """
@@ -193,7 +241,7 @@ class USStockScanner:
     
     def validate_stock(self, symbol: str) -> bool:
         """
-        Validate US stock meets selection criteria
+        Validate US stock meets selection criteria with enhanced error handling
         
         Args:
             symbol: Stock ticker symbol (no suffix)
@@ -201,46 +249,34 @@ class USStockScanner:
         Returns:
             True if stock passes validation
         """
-        max_retries = 2
-        retry_delay = 1
-        
-        for attempt in range(max_retries):
-            try:
-                if attempt > 0:
-                    time.sleep(retry_delay)
-                
-                # Fetch recent data
-                hist = self.fetch_stock_history(symbol, period='1mo')
-                
-                if hist is None or hist.empty:
-                    logger.debug(f"No history data for {symbol}")
-                    return False
-                
-                # Get current price
-                current_price = hist['Close'].iloc[-1]
-                
-                # Price check (US market: $5-$1000 typical range)
-                if not (self.criteria['min_price'] <= current_price <= self.criteria['max_price']):
-                    logger.debug(f"{symbol}: Price ${current_price:.2f} out of range")
-                    return False
-                
-                # Volume check (US market: typically higher volume)
-                avg_volume = hist['Volume'].mean()
-                if avg_volume < self.criteria['min_avg_volume']:
-                    logger.debug(f"{symbol}: Volume {int(avg_volume):,} too low")
-                    return False
-                
-                return True
-                
-            except Exception as e:
-                if attempt < max_retries - 1:
-                    logger.debug(f"Retry {attempt + 1} for {symbol}")
-                    continue
-                else:
-                    logger.debug(f"Validation error for {symbol}: {e}")
-                    return False
-        
-        return False
+        try:
+            # Fetch recent data (rate limiting is handled in fetch_stock_history)
+            hist = self.fetch_stock_history(symbol, period='1mo')
+            
+            if hist is None or hist.empty:
+                logger.debug(f"{symbol}: No history data available")
+                return False
+            
+            # Get current price
+            current_price = hist['Close'].iloc[-1]
+            
+            # Price check (US market: $5-$1000 typical range)
+            if not (self.criteria['min_price'] <= current_price <= self.criteria['max_price']):
+                logger.debug(f"{symbol}: Price ${current_price:.2f} out of range [{self.criteria['min_price']}-{self.criteria['max_price']}]")
+                return False
+            
+            # Volume check (US market: typically higher volume)
+            avg_volume = hist['Volume'].mean()
+            if avg_volume < self.criteria['min_avg_volume']:
+                logger.debug(f"{symbol}: Avg volume {int(avg_volume):,} below minimum {self.criteria['min_avg_volume']:,}")
+                return False
+            
+            logger.debug(f"{symbol}: ✓ Validation passed (Price: ${current_price:.2f}, Volume: {int(avg_volume):,})")
+            return True
+            
+        except Exception as e:
+            logger.debug(f"{symbol}: Validation failed - {e}")
+            return False
     
     # ========================================================================
     # TECHNICAL ANALYSIS
@@ -503,11 +539,14 @@ class USStockScanner:
         logger.info(f"Scanning {sector_name}: {len(stocks)} stocks - {mode_indicator}")
         
         results = []
+        validation_failures = 0
+        analysis_failures = 0
+        
         for i, symbol in enumerate(stocks, 1):
             try:
-                # Validate stock
+                # Validate stock (rate limiting is handled in fetch_stock_history)
                 if not self.validate_stock(symbol):
-                    logger.debug(f"{symbol}: Failed validation")
+                    validation_failures += 1
                     continue
                 
                 # Analyze stock (with or without intraday data)
@@ -522,18 +561,22 @@ class USStockScanner:
                         intraday_info = f" | Mom: {intraday_data['session_change_pct']:+.2f}%"
                     
                     logger.debug(f"{i}/{len(stocks)}: {symbol} - Score: {analysis['score']:.1f}{intraday_info}")
-                
-                # Rate limiting
-                time.sleep(0.1)
+                else:
+                    analysis_failures += 1
                 
             except Exception as e:
                 logger.debug(f"Error scanning {symbol}: {e}")
+                analysis_failures += 1
                 continue
         
         # Sort by score (highest first)
         results.sort(key=lambda x: x['score'], reverse=True)
         
         logger.info(f"✓ {sector_name}: {len(results)}/{len(stocks)} stocks analyzed")
+        if validation_failures > 0:
+            logger.info(f"  ⚠️  Validation failures: {validation_failures}/{len(stocks)} stocks")
+        if analysis_failures > 0:
+            logger.info(f"  ⚠️  Analysis failures: {analysis_failures}/{len(stocks)} stocks")
         if include_intraday:
             intraday_count = sum(1 for s in results if 'intraday_data' in s)
             logger.info(f"  📈 Intraday data: {intraday_count}/{len(results)} stocks")

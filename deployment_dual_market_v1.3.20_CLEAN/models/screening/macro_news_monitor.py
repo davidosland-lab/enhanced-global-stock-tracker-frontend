@@ -45,10 +45,14 @@ class MacroNewsMonitor:
             market: 'US' or 'ASX'
         """
         self.market = market.upper()
-        self.polite_delay = 2.0  # Respectful scraping delay
+        self.polite_delay = 3.0  # Respectful scraping delay (increased to 3 seconds)
+        self.timeout = 15  # Increased timeout to 15 seconds
+        self.max_retries = 2  # Retry failed requests
         self.headers = {
             'User-Agent': 'FinBERT-Educational-Scraper/1.0 (Non-commercial; Educational purposes)',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'Connection': 'keep-alive',
         }
         
         # US sources
@@ -80,6 +84,56 @@ class MacroNewsMonitor:
         }
         
         logger.info(f"Macro News Monitor initialized for {market} market")
+    
+    def _safe_request(self, url: str, description: str = "page") -> Optional[requests.Response]:
+        """
+        Make a safe HTTP request with retries and delays
+        
+        Args:
+            url: URL to fetch
+            description: Description for logging
+            
+        Returns:
+            Response object or None if failed
+        """
+        for attempt in range(self.max_retries):
+            try:
+                if attempt > 0:
+                    wait_time = self.polite_delay * (attempt + 1)
+                    logger.info(f"    Retry {attempt + 1}/{self.max_retries} after {wait_time}s delay...")
+                    time.sleep(wait_time)
+                else:
+                    time.sleep(self.polite_delay)
+                
+                response = requests.get(url, headers=self.headers, timeout=self.timeout)
+                
+                if response.status_code == 200:
+                    return response
+                elif response.status_code == 429:  # Rate limited
+                    logger.warning(f"    Rate limited (429), waiting longer...")
+                    time.sleep(self.polite_delay * 2)
+                    continue
+                elif response.status_code >= 500:  # Server error
+                    logger.warning(f"    Server error ({response.status_code}), retrying...")
+                    continue
+                else:
+                    logger.warning(f"    HTTP {response.status_code} for {description}")
+                    return None
+                    
+            except requests.exceptions.Timeout:
+                logger.warning(f"    Timeout fetching {description}")
+                if attempt < self.max_retries - 1:
+                    continue
+            except requests.exceptions.ConnectionError:
+                logger.warning(f"    Connection error fetching {description}")
+                if attempt < self.max_retries - 1:
+                    continue
+            except Exception as e:
+                logger.warning(f"    Error fetching {description}: {e}")
+                return None
+        
+        logger.warning(f"  Failed to fetch {description} after {self.max_retries} attempts")
+        return None
     
     def get_macro_sentiment(self) -> Dict:
         """
@@ -180,12 +234,10 @@ class MacroNewsMonitor:
         
         try:
             logger.info("  Fetching Federal Reserve press releases...")
-            time.sleep(self.polite_delay)
             
-            response = requests.get(self.us_sources['FED_RELEASES'], 
-                                  headers=self.headers, timeout=10)
+            response = self._safe_request(self.us_sources['FED_RELEASES'], "Fed releases")
             
-            if response.status_code == 200:
+            if response:
                 soup = BeautifulSoup(response.text, 'html.parser')
                 
                 # Find recent press releases
@@ -227,12 +279,10 @@ class MacroNewsMonitor:
         
         try:
             logger.info("  Fetching Federal Reserve speeches...")
-            time.sleep(self.polite_delay)
             
-            response = requests.get(self.us_sources['FED_SPEECHES'], 
-                                  headers=self.headers, timeout=10)
+            response = self._safe_request(self.us_sources['FED_SPEECHES'], "Fed speeches")
             
-            if response.status_code == 200:
+            if response:
                 soup = BeautifulSoup(response.text, 'html.parser')
                 
                 # Find recent speeches
@@ -272,12 +322,10 @@ class MacroNewsMonitor:
         
         try:
             logger.info("  Fetching RBA media releases...")
-            time.sleep(self.polite_delay)
             
-            response = requests.get(self.aus_sources['RBA_MEDIA'], 
-                                  headers=self.headers, timeout=10)
+            response = self._safe_request(self.aus_sources['RBA_MEDIA'], "RBA releases")
             
-            if response.status_code == 200:
+            if response:
                 soup = BeautifulSoup(response.text, 'html.parser')
                 
                 # Find media release links
@@ -340,12 +388,10 @@ class MacroNewsMonitor:
         
         try:
             logger.info("  Fetching RBA speeches...")
-            time.sleep(self.polite_delay)
             
-            response = requests.get(self.aus_sources['RBA_SPEECHES'], 
-                                  headers=self.headers, timeout=10)
+            response = self._safe_request(self.aus_sources['RBA_SPEECHES'], "RBA speeches")
             
-            if response.status_code == 200:
+            if response:
                 soup = BeautifulSoup(response.text, 'html.parser')
                 
                 # Find speech links

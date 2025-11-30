@@ -68,6 +68,14 @@ class StockScanner:
             'min_avg_volume': 100000
         })
         self.logger = logger
+        
+        # Rate limiting settings to avoid Yahoo Finance throttling
+        self.request_count = 0
+        self.last_request_time = time.time()
+        self.rate_limit_delay = 0.5  # 0.5s delay between requests
+        
+        logger.info(f"ASX Stock Scanner initialized")
+        logger.info(f"Rate limiting: {self.rate_limit_delay}s delay between requests")
     
     def _load_config(self, config_path: str) -> Dict:
         """Load configuration from JSON"""
@@ -89,9 +97,27 @@ class StockScanner:
     # DATA FETCHING - yahooquery ONLY
     # ========================================================================
     
+    def _apply_rate_limit(self):
+        """Apply rate limiting between requests to avoid Yahoo Finance throttling"""
+        self.request_count += 1
+        current_time = time.time()
+        elapsed = current_time - self.last_request_time
+        
+        # Enforce minimum delay between requests
+        if elapsed < self.rate_limit_delay:
+            sleep_time = self.rate_limit_delay - elapsed
+            time.sleep(sleep_time)
+        
+        # Every 50 requests, add an extra pause to avoid aggressive rate limiting
+        if self.request_count % 50 == 0:
+            logger.debug(f"Rate limit pause: {self.request_count} requests made")
+            time.sleep(2.0)
+        
+        self.last_request_time = time.time()
+    
     def fetch_stock_history(self, symbol: str, start_date=None, end_date=None, period='1mo', interval='1d'):
         """
-        Fetch stock history using yahooquery
+        Fetch stock history using yahooquery with rate limiting
         
         Args:
             symbol: Stock ticker
@@ -103,24 +129,47 @@ class StockScanner:
         Returns:
             DataFrame with OHLCV data, or None on error
         """
-        try:
-            ticker = Ticker(symbol)
-            
-            if start_date and end_date:
-                hist = ticker.history(start=start_date, end=end_date, interval=interval)
-            else:
-                hist = ticker.history(period=period, interval=interval)
-            
-            if isinstance(hist, pd.DataFrame) and not hist.empty:
-                # Normalize column names
-                hist.columns = [col.capitalize() for col in hist.columns]
-                return hist
-            else:
-                return None
+        max_retries = 3
+        base_delay = 2
+        
+        for attempt in range(max_retries):
+            try:
+                # Apply rate limiting before request
+                self._apply_rate_limit()
                 
-        except Exception as e:
-            logger.debug(f"Error fetching {symbol}: {e}")
-            return None
+                ticker = Ticker(symbol)
+                
+                if start_date and end_date:
+                    hist = ticker.history(start=start_date, end=end_date, interval=interval)
+                else:
+                    hist = ticker.history(period=period, interval=interval)
+                
+                if isinstance(hist, pd.DataFrame) and not hist.empty:
+                    # Normalize column names
+                    hist.columns = [col.capitalize() for col in hist.columns]
+                    return hist
+                else:
+                    return None
+                    
+            except Exception as e:
+                error_msg = str(e).lower()
+                # Check if it's a rate limiting error
+                if 'rate' in error_msg or 'limit' in error_msg or 'throttle' in error_msg or '429' in error_msg:
+                    if attempt < max_retries - 1:
+                        # Exponential backoff for rate limit errors
+                        delay = base_delay * (2 ** attempt)
+                        logger.warning(f"Rate limit detected for {symbol}, waiting {delay}s (attempt {attempt+1}/{max_retries})")
+                        time.sleep(delay)
+                        continue
+                
+                if attempt < max_retries - 1:
+                    logger.debug(f"Retry {attempt + 1} for {symbol}: {e}")
+                    time.sleep(1)
+                else:
+                    logger.debug(f"Error fetching {symbol} after {max_retries} attempts: {e}")
+                return None
+        
+        return None
     
     def fetch_intraday_data(self, symbol: str) -> Optional[Dict]:
         """
@@ -190,7 +239,7 @@ class StockScanner:
     
     def validate_stock(self, symbol: str) -> bool:
         """
-        Validate stock meets selection criteria
+        Validate stock meets selection criteria with enhanced error handling
         
         Args:
             symbol: Stock ticker symbol
@@ -198,46 +247,34 @@ class StockScanner:
         Returns:
             True if stock passes validation
         """
-        max_retries = 2
-        retry_delay = 1  # seconds
-        
-        for attempt in range(max_retries):
-            try:
-                if attempt > 0:
-                    time.sleep(retry_delay)
-                
-                # Fetch recent data
-                hist = self.fetch_stock_history(symbol, period='1mo')
-                
-                if hist is None or hist.empty:
-                    logger.debug(f"No history data for {symbol}")
-                    return False
-                
-                # Get current price
-                current_price = hist['Close'].iloc[-1]
-                
-                # Price check
-                if not (self.criteria['min_price'] <= current_price <= self.criteria['max_price']):
-                    logger.debug(f"{symbol}: Price ${current_price:.2f} out of range")
-                    return False
-                
-                # Volume check
-                avg_volume = hist['Volume'].mean()
-                if avg_volume < self.criteria['min_avg_volume']:
-                    logger.debug(f"{symbol}: Volume {int(avg_volume):,} too low")
-                    return False
-                
-                return True
-                
-            except Exception as e:
-                if attempt < max_retries - 1:
-                    logger.debug(f"Retry {attempt + 1} for {symbol}")
-                    continue
-                else:
-                    logger.debug(f"Validation error for {symbol}: {e}")
-                    return False
-        
-        return False
+        try:
+            # Fetch recent data (rate limiting is handled in fetch_stock_history)
+            hist = self.fetch_stock_history(symbol, period='1mo')
+            
+            if hist is None or hist.empty:
+                logger.debug(f"{symbol}: No history data available")
+                return False
+            
+            # Get current price
+            current_price = hist['Close'].iloc[-1]
+            
+            # Price check
+            if not (self.criteria['min_price'] <= current_price <= self.criteria['max_price']):
+                logger.debug(f"{symbol}: Price ${current_price:.2f} out of range [{self.criteria['min_price']}-{self.criteria['max_price']}]")
+                return False
+            
+            # Volume check
+            avg_volume = hist['Volume'].mean()
+            if avg_volume < self.criteria['min_avg_volume']:
+                logger.debug(f"{symbol}: Avg volume {int(avg_volume):,} below minimum {self.criteria['min_avg_volume']:,}")
+                return False
+            
+            logger.debug(f"{symbol}: ✓ Validation passed (Price: ${current_price:.2f}, Volume: {int(avg_volume):,})")
+            return True
+            
+        except Exception as e:
+            logger.debug(f"{symbol}: Validation failed - {e}")
+            return False
     
     # ========================================================================
     # TECHNICAL ANALYSIS
@@ -441,18 +478,18 @@ class StockScanner:
         logger.info(f"{'='*80}\n")
         
         valid_stocks = []
+        validation_failures = 0
+        analysis_failures = 0
         
         for i, symbol in enumerate(symbols):
             try:
-                # Small delay between stocks
-                if i > 0:
-                    time.sleep(0.5)
-                
+                # Rate limiting is handled in fetch_stock_history, no need for additional sleep
                 logger.info(f"[{i+1}/{len(symbols)}] Processing {symbol}...")
                 
                 # Validate
                 if not self.validate_stock(symbol):
                     logger.info(f"  ✗ {symbol}: Failed validation")
+                    validation_failures += 1
                     continue
                 
                 # Analyze (with or without intraday data)
@@ -467,19 +504,25 @@ class StockScanner:
                     logger.info(f"  ✓ {symbol}: Score {stock_data['score']:.0f}/100{intraday_info}")
                 else:
                     logger.info(f"  ✗ {symbol}: Analysis failed")
+                    analysis_failures += 1
                     
             except KeyboardInterrupt:
                 logger.info("\n\nScan interrupted by user")
                 break
             except Exception as e:
                 logger.error(f"  ✗ {symbol}: Error - {e}")
+                analysis_failures += 1
                 continue
         
         # Sort by score and return top N
         valid_stocks.sort(key=lambda x: x['score'], reverse=True)
         
         logger.info(f"\n{'='*80}")
-        logger.info(f"Sector Summary: {len(valid_stocks)} stocks validated")
+        logger.info(f"Sector Summary: {len(valid_stocks)}/{len(symbols)} stocks validated")
+        if validation_failures > 0:
+            logger.info(f"  ⚠️  Validation failures: {validation_failures}/{len(symbols)} stocks")
+        if analysis_failures > 0:
+            logger.info(f"  ⚠️  Analysis failures: {analysis_failures}/{len(symbols)} stocks")
         if include_intraday:
             intraday_count = sum(1 for s in valid_stocks if 'intraday_data' in s)
             logger.info(f"  📈 Intraday data: {intraday_count}/{len(valid_stocks)} stocks")
