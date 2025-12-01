@@ -1,0 +1,164 @@
+================================================================================
+INTRADAY MONITORING FIX #2 - Missing run_incremental_scan() Method
+================================================================================
+
+ERROR YOU'RE SEEING:
+    ❌ Scan #1 failed: 'IntradayRescanManager' object has no attribute 
+    'run_incremental_scan'
+    
+    AttributeError: 'IntradayRescanManager' object has no attribute 
+    'run_incremental_scan'
+
+THE PROBLEM:
+    intraday_scheduler.py is calling:
+        self.rescan_manager.run_incremental_scan()
+    
+    But IntradayRescanManager class only has a perform_rescan() method,
+    not run_incremental_scan(). The scheduler is using the wrong method name.
+
+================================================================================
+THE FIX (Manual)
+================================================================================
+
+Open this file:
+    C:\Users\david\AATelS\models\scheduling\intraday_rescan_manager.py
+
+Find this section (around line 115):
+    def is_market_open(self) -> bool:
+        """
+        Check if market is currently open.
+        ...
+        """
+        if self.market == "US":
+            return self.market_detector.is_us_market_open()
+        elif self.market == "ASX":
+            return self.market_detector.is_asx_market_open()
+        else:
+            logger.warning(f"Unknown market: {self.market}")
+            return False
+    
+    def perform_rescan(
+
+ADD THIS NEW METHOD between is_market_open() and perform_rescan():
+
+    def run_incremental_scan(self, stock_quotes: Optional[List[Dict]] = None) -> Dict:
+        """
+        Run incremental scan (wrapper for perform_rescan).
+        
+        This is a convenience method for the scheduler that doesn't require
+        manually fetching stock quotes. If quotes aren't provided, it will
+        return a minimal result.
+        
+        Args:
+            stock_quotes: Optional list of stock quote dictionaries
+            
+        Returns:
+            Dictionary with scan results
+        """
+        if stock_quotes is None:
+            # If no quotes provided, return empty result
+            # (Scheduler should provide quotes or handle this case)
+            logger.warning("No stock quotes provided - returning empty scan result")
+            return {
+                'stocks_scanned': 0,
+                'changed_stocks': 0,
+                'new_opportunities': 0,
+                'breakouts_detected': 0,
+                'alerts_sent': 0,
+                'top_opportunities': [],
+                'rescan_count': self.rescan_count,
+                'duration': 0.0
+            }
+        
+        # Call the main perform_rescan method
+        return self.perform_rescan(stock_quotes=stock_quotes, full_scan=False)
+
+IMPORTANT: Make sure you add this BETWEEN is_market_open() and perform_rescan().
+Keep the indentation exactly as shown (4 spaces).
+
+Also, make sure you have this import at the top of the file:
+    from typing import Dict, List, Optional
+
+================================================================================
+OR USE GIT
+================================================================================
+
+cd C:\Users\david\AATelS
+git pull origin finbert-v4.0-development
+
+This will download the fixed version automatically.
+
+================================================================================
+VERIFICATION
+================================================================================
+
+After applying the fix, test it:
+
+cd C:\Users\david\AATelS
+python models\scheduling\intraday_scheduler.py --market ASX --interval 15
+
+Expected output:
+    ✓ STARTING INTRADAY MONITORING SESSION
+    ✓ Running initial scan...
+    ⚠️  No stock quotes provided - returning empty scan result
+    ✓ Scan #1 completed
+
+Should NOT see:
+    ✗ 'IntradayRescanManager' object has no attribute 'run_incremental_scan'
+
+Note: You'll see a warning about "No stock quotes provided" - this is normal.
+The scanner will return empty results until we add stock quote fetching.
+
+================================================================================
+WHAT THIS FIXES
+================================================================================
+
+BEFORE (Broken):
+    intraday_scheduler.py: self.rescan_manager.run_incremental_scan()
+                           ↓
+    IntradayRescanManager: (method doesn't exist)
+                           ↓
+    AttributeError: 'run_incremental_scan' not found
+
+AFTER (Fixed):
+    intraday_scheduler.py: self.rescan_manager.run_incremental_scan()
+                           ↓
+    IntradayRescanManager: run_incremental_scan() wrapper exists
+                           ↓
+    Calls: perform_rescan(stock_quotes)
+                           ↓
+    Returns scan results
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+After fixing this error, the scanner will run but won't find any stocks because
+it needs stock quotes. The warning message will be:
+
+    "No stock quotes provided - returning empty scan result"
+
+This is expected and not an error. The full intraday scanning requires:
+1. Stock quote fetching (not yet implemented in scheduler)
+2. Incremental filtering
+3. Breakout detection
+4. Alert dispatching
+
+For now, the fix allows the scheduler to run without crashing.
+
+================================================================================
+RELATED FIXES
+================================================================================
+
+You've already fixed:
+1. ✅ MarketHoursDetector initialization (TypeError fixed)
+
+You just fixed:
+2. ✅ run_incremental_scan() method (AttributeError fixed)
+
+Still pending:
+3. ⚠️  Stock quote fetching (needed for actual scanning)
+4. ⚠️  Telegram notifications (missing file)
+5. ⚠️  Macro news monitoring (missing file)
+
+================================================================================
