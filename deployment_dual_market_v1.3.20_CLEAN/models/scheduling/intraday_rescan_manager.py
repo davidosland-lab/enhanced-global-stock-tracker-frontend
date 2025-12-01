@@ -127,6 +127,38 @@ class IntradayRescanManager:
             logger.warning(f"Unknown market: {self.market}")
             return False
     
+    def run_incremental_scan(self, stock_quotes: Optional[List[Dict]] = None) -> Dict:
+        """
+        Run incremental scan (wrapper for perform_rescan).
+        
+        This is a convenience method for the scheduler that doesn't require
+        manually fetching stock quotes. If quotes aren't provided, it will
+        return a minimal result.
+        
+        Args:
+            stock_quotes: Optional list of stock quote dictionaries
+            
+        Returns:
+            Dictionary with scan results
+        """
+        if stock_quotes is None:
+            # If no quotes provided, return empty result
+            # (Scheduler should provide quotes or handle this case)
+            logger.warning("No stock quotes provided - returning empty scan result")
+            return {
+                'stocks_scanned': 0,
+                'changed_stocks': 0,
+                'new_opportunities': 0,
+                'breakouts_detected': 0,
+                'alerts_sent': 0,
+                'top_opportunities': [],
+                'rescan_count': self.rescan_count,
+                'duration': 0.0
+            }
+        
+        # Call the main perform_rescan method
+        return self.perform_rescan(stock_quotes=stock_quotes, full_scan=False)
+    
     def perform_rescan(
         self,
         stock_quotes: List[Dict],
