@@ -152,7 +152,8 @@ def train_model_for_symbol(symbol: str, epochs: int = 50, sequence_length: int =
     
     predictor = StockLSTMPredictor(
         sequence_length=sequence_length,
-        features=available_features
+        features=available_features,
+        symbol=symbol  # Pass symbol for symbol-specific model paths
     )
     
     # Train the model
@@ -177,7 +178,7 @@ def train_model_for_symbol(symbol: str, epochs: int = 50, sequence_length: int =
         'results': results
     }
     
-    metadata_path = f'models/lstm_{symbol}_metadata.json'
+    metadata_path = f'models/{symbol}_lstm_metadata.json'
     with open(metadata_path, 'w') as f:
         json.dump(metadata, f, indent=2)
     

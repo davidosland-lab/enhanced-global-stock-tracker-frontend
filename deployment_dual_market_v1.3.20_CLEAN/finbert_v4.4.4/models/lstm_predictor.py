@@ -68,21 +68,32 @@ class StockLSTMPredictor:
     LSTM model for stock price prediction with multiple features
     """
     
-    def __init__(self, sequence_length: int = 60, features: List[str] = None):
+    def __init__(self, sequence_length: int = 60, features: List[str] = None, symbol: str = None):
         """
         Initialize LSTM predictor
         
         Args:
             sequence_length: Number of time steps to look back
             features: List of feature names to use
+            symbol: Stock symbol (for symbol-specific model paths)
         """
         self.sequence_length = sequence_length
         self.features = features or ['close', 'volume', 'high', 'low', 'open']
+        self.symbol = symbol
         self.model = None
         self.scaler = MinMaxScaler(feature_range=(0, 1))
         self.is_trained = False
-        self.model_path = 'models/lstm_model.h5'
-        self.scaler_path = 'models/scaler.pkl'
+        
+        # Use symbol-specific paths if symbol provided
+        if symbol:
+            # Use .keras format (recommended by Keras 3)
+            self.model_path = f'models/{symbol}_lstm_model.keras'
+            self.scaler_path = f'models/{symbol}_scaler.pkl'
+        else:
+            # Generic paths for backward compatibility
+            self.model_path = 'models/lstm_model.keras'
+            self.scaler_path = 'models/scaler.pkl'
+        
         self.training_history = None
         
     def build_model(self, input_shape: Tuple[int, int]):
@@ -503,25 +514,20 @@ class StockLSTMPredictor:
         return rsi
     
     def save_model(self):
-        """Save model and scaler to disk"""
+        """Save model and scaler to disk (Keras 3 native format)"""
         if self.model and self.is_trained:
             try:
-                # Save model with Keras 3 compatibility
-                # Keras 3.x requires explicit save_format='h5' for .h5 files
-                try:
-                    # Try Keras 3 save format first
-                    self.model.save(self.model_path, save_format='h5')
-                    logger.info(f"Model saved to {self.model_path} (Keras 3 format)")
-                except Exception as keras_error:
-                    # Fallback for older Keras 2.x
-                    logger.warning(f"Keras 3 save failed, trying legacy format: {keras_error}")
-                    self.model.save(self.model_path)
-                    logger.info(f"Model saved to {self.model_path} (legacy format)")
+                # Keras 3 automatically infers format from extension
+                # .keras = native Keras 3 format (recommended)
+                # .h5 = legacy HDF5 format (deprecated but still works)
+                self.model.save(self.model_path)
+                logger.info(f"Model saved to {self.model_path}")
                 
                 # Save scaler
                 with open(self.scaler_path, 'wb') as f:
                     pickle.dump(self.scaler, f)
                 
+                logger.info(f"Scaler saved to {self.scaler_path}")
                 return True
             except Exception as e:
                 logger.error(f"Error saving model: {e}")
