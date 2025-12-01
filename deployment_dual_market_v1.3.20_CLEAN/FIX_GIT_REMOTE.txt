@@ -1,0 +1,197 @@
+================================================================================
+FIX GIT REMOTE - Setup Instructions
+================================================================================
+
+ERROR YOU'RE SEEING:
+    fatal: 'origin' does not appear to be a git repository
+    fatal: Could not read from remote repository.
+
+THE PROBLEM:
+    Your local Git repository doesn't have the 'origin' remote configured.
+    This means Git doesn't know where to pull updates from.
+
+================================================================================
+SOLUTION 1: Add Git Remote (Then Pull Updates)
+================================================================================
+
+Step 1: Check current remotes
+    cd C:\Users\david\AATelS
+    git remote -v
+
+    If empty or missing 'origin', continue to Step 2.
+
+Step 2: Add the remote
+    cd C:\Users\david\AATelS
+    git remote add origin https://github.com/davidosland-lab/enhanced-global-stock-tracker-frontend.git
+
+Step 3: Verify it was added
+    git remote -v
+
+    Should show:
+    origin  https://github.com/davidosland-lab/enhanced-global-stock-tracker-frontend.git (fetch)
+    origin  https://github.com/davidosland-lab/enhanced-global-stock-tracker-frontend.git (push)
+
+Step 4: Pull the latest updates
+    git pull origin finbert-v4.0-development
+
+Step 5: If you get merge conflicts or errors
+    git pull origin finbert-v4.0-development --rebase
+
+    OR if you want to keep remote version:
+    git fetch origin finbert-v4.0-development
+    git reset --hard origin/finbert-v4.0-development
+
+================================================================================
+SOLUTION 2: Manual Fixes (Skip Git Entirely)
+================================================================================
+
+If you don't want to use Git, apply fixes manually:
+
+FIX 1: Intraday Monitoring Error
+    File: models\scheduling\intraday_scheduler.py
+    
+    Line 62 - Change:
+        FROM: self.market_detector = MarketHoursDetector(market=market)
+        TO:   self.market_detector = MarketHoursDetector()
+    
+    Line 85 - Change:
+        FROM: market_status = self.market_detector.is_market_open()
+        TO:   market_status = self.market_detector.is_market_open(market=self.market)
+    
+    Line 114 - Change:
+        FROM: market_status = self.market_detector.is_market_open()
+        TO:   market_status = self.market_detector.is_market_open(market=self.market)
+
+FIX 2: LSTM Model Path
+    File: models\screening\lstm_trainer.py
+    
+    Line 79 - Change:
+        FROM: self.models_dir = BASE_PATH / 'models' / 'lstm'
+        TO:   self.models_dir = Path(__file__).parent / 'models'
+
+FIX 3: Rate Limits (Optional)
+    File: models\screening\stock_scanner.py
+    
+    Line 75 - Change:
+        FROM: self.rate_limit_delay = 0.5
+        TO:   self.rate_limit_delay = 1.0
+    
+    File: models\screening\us_stock_scanner.py
+    
+    Similar change:
+        FROM: self.rate_limit_delay = 0.5
+        TO:   self.rate_limit_delay = 1.0
+
+FIX 4: Install Missing Modules
+    Download and extract these ZIP files:
+    
+    1. TELEGRAM_FIX_COMPLETE.zip
+       Extract to: C:\Users\david\AATelS\
+       Run: cd TELEGRAM_FIX_COMPLETE && install.bat
+    
+    2. MACRO_NEWS_STANDALONE_PATCH.zip
+       Extract to: C:\Users\david\AATelS\
+       Run: cd MACRO_NEWS_STANDALONE_PATCH && install.bat && integrate.bat
+
+================================================================================
+SOLUTION 3: Check If Remote Exists But Named Differently
+================================================================================
+
+Your remote might be named something other than 'origin':
+
+cd C:\Users\david\AATelS
+git remote -v
+
+If you see a different name (e.g., 'upstream', 'davidosland', etc.), use that:
+
+git pull <remote_name> finbert-v4.0-development
+
+For example:
+    git pull upstream finbert-v4.0-development
+
+================================================================================
+SOLUTION 4: Re-clone Repository (Nuclear Option)
+================================================================================
+
+If Git is too broken, start fresh:
+
+Step 1: Backup your current work
+    cd C:\Users\david\
+    xcopy AATelS AATelS_backup /E /I /H
+
+Step 2: Clone fresh copy
+    cd C:\Users\david\
+    git clone https://github.com/davidosland-lab/enhanced-global-stock-tracker-frontend.git AATelS_new
+
+Step 3: Switch to correct branch
+    cd AATelS_new
+    git checkout finbert-v4.0-development
+
+Step 4: Copy your config files from backup
+    copy ..\AATelS_backup\config\*.json config\
+
+Step 5: Test
+    pipeline.bat
+
+Step 6: If everything works, rename
+    cd ..
+    move AATelS AATelS_old
+    move AATelS_new AATelS
+
+================================================================================
+RECOMMENDED APPROACH
+================================================================================
+
+Try solutions in this order:
+
+1. ✅ SOLUTION 1: Add Git remote (simplest if you want Git)
+   Time: 2 minutes
+   Best if: You want to keep using Git for updates
+
+2. ✅ SOLUTION 2: Manual fixes (no Git needed)
+   Time: 5 minutes
+   Best if: You don't want to deal with Git right now
+
+3. ⚠️ SOLUTION 3: Check for different remote name
+   Time: 1 minute
+   Best if: Remote exists but not named 'origin'
+
+4. 🔴 SOLUTION 4: Re-clone (last resort)
+   Time: 10 minutes
+   Best if: Git is completely broken
+
+================================================================================
+VERIFICATION AFTER FIX
+================================================================================
+
+After applying any solution, test:
+
+1. Check Git remote (if using Git):
+   git remote -v
+
+2. Test intraday monitoring:
+   python models\scheduling\intraday_scheduler.py --market ASX --interval 15
+
+3. Test pipeline:
+   pipeline.bat
+
+4. Check for errors in logs:
+   type logs\overnight_pipeline.log
+
+================================================================================
+NEED THE ZIP FILES?
+================================================================================
+
+If you chose Solution 2 (manual fixes) and need the ZIP files:
+
+The ZIP files should be in your GitHub repository at:
+    https://github.com/davidosland-lab/enhanced-global-stock-tracker-frontend/tree/finbert-v4.0-development/deployment_dual_market_v1.3.20_CLEAN
+
+Files:
+- TELEGRAM_FIX_COMPLETE.zip
+- MACRO_NEWS_STANDALONE_PATCH.zip
+- TELEGRAM_PHASE8_PATCH.zip
+
+Download directly or use git commands from Solution 1.
+
+================================================================================
