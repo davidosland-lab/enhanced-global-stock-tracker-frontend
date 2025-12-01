@@ -1,0 +1,157 @@
+═══════════════════════════════════════════════════════════════
+  TELEGRAM NOT WORKING? FIX INSTRUCTIONS
+═══════════════════════════════════════════════════════════════
+
+PROBLEM: You put credentials in config file but alerts not working
+
+═══════════════════════════════════════════════════════════════
+  OPTION 1: FIX CONFIG FILE (Recommended)
+═══════════════════════════════════════════════════════════════
+
+Edit this file:
+  C:\Users\david\AATelS\config\intraday_rescan_config.json
+
+Find the "telegram" section and update it:
+
+BEFORE (Not Working):
+{
+  "telegram": {
+    "enabled": true,
+    "bot_token": "",           ← EMPTY!
+    "chat_id": "",             ← EMPTY!
+    "parse_mode": "Markdown",
+    "disable_notification": false
+  }
+}
+
+AFTER (Working):
+{
+  "telegram": {
+    "enabled": true,
+    "bot_token": "1234567890:ABCdefGHI_YOUR_ACTUAL_TOKEN",  ← ADD YOUR TOKEN
+    "chat_id": "987654321",                                 ← ADD YOUR CHAT ID
+    "parse_mode": "Markdown",
+    "disable_notification": false
+  }
+}
+
+IMPORTANT:
+- Use DOUBLE QUOTES around the values
+- bot_token format: numbers:letters (e.g., "1234567890:ABCdef...")
+- chat_id format: just numbers (e.g., "987654321")
+- NO spaces around the values
+- Save the file
+
+═══════════════════════════════════════════════════════════════
+  OPTION 2: USE .ENV FILE (Alternative)
+═══════════════════════════════════════════════════════════════
+
+If you want to use .env file instead:
+
+1. Make sure config has EMPTY values:
+   {
+     "telegram": {
+       "enabled": true,
+       "bot_token": "",         ← LEAVE EMPTY
+       "chat_id": "",           ← LEAVE EMPTY
+     }
+   }
+
+2. Create/Edit .env file at:
+   C:\Users\david\AATelS\.env
+
+3. Add these lines (NO QUOTES!):
+   TELEGRAM_BOT_TOKEN=1234567890:ABCdefGHI_YOUR_ACTUAL_TOKEN
+   TELEGRAM_CHAT_ID=987654321
+
+4. Make sure .env is in the SAME directory as where you run the script
+
+5. The code must load .env before creating TelegramNotifier:
+   from dotenv import load_dotenv
+   load_dotenv()
+
+═══════════════════════════════════════════════════════════════
+  HOW THE CODE WORKS
+═══════════════════════════════════════════════════════════════
+
+Priority Order (AlertDispatcher):
+1. Config file values (bot_token, chat_id in config)
+2. If config is empty → Falls back to environment variables
+3. If both empty → Telegram disabled
+
+So if you have values in CONFIG, they take priority over .env!
+
+═══════════════════════════════════════════════════════════════
+  TESTING
+═══════════════════════════════════════════════════════════════
+
+After fixing, test with:
+
+cd C:\Users\david\AATelS
+python test_telegram.py
+
+Expected output:
+  ✓ Connection successful
+  ✓ Text message sent
+  ✓ Breakout alert sent
+
+Check your Telegram - you should get 2 test messages!
+
+═══════════════════════════════════════════════════════════════
+  COMMON MISTAKES
+═══════════════════════════════════════════════════════════════
+
+❌ Config file with quotes missing:
+   "bot_token": 1234567890:ABCdef   ← WRONG (needs quotes)
+
+❌ .env file with quotes:
+   TELEGRAM_BOT_TOKEN="123..."      ← WRONG (no quotes in .env)
+
+❌ Wrong file location:
+   .env must be in C:\Users\david\AATelS\
+   NOT in subdirectories!
+
+❌ Config file not saved:
+   Make sure to SAVE the JSON file after editing
+
+❌ Invalid JSON:
+   Missing comma, extra comma, or unmatched braces
+
+═══════════════════════════════════════════════════════════════
+  QUICK FIX COMMAND
+═══════════════════════════════════════════════════════════════
+
+Replace YOUR_TOKEN and YOUR_CHAT_ID with your actual values:
+
+PowerShell:
+$config = Get-Content config\intraday_rescan_config.json | ConvertFrom-Json
+$config.alerts.telegram.bot_token = "YOUR_TOKEN"
+$config.alerts.telegram.chat_id = "YOUR_CHAT_ID"
+$config.alerts.telegram.enabled = $true
+$config | ConvertTo-Json -Depth 10 | Set-Content config\intraday_rescan_config.json
+
+Or just edit manually with Notepad++
+
+═══════════════════════════════════════════════════════════════
+  STILL NOT WORKING?
+═══════════════════════════════════════════════════════════════
+
+Check these:
+1. Bot token is correct (from @BotFather)
+2. Chat ID is correct (from /getUpdates)
+3. You sent /start to your bot
+4. Config file has valid JSON (no syntax errors)
+5. You restarted the Python script after editing config
+6. Firewall isn't blocking api.telegram.org
+
+Test manually in Python:
+  cd C:\Users\david\AATelS
+  python
+  >>> from models.notifications.telegram_notifier import TelegramNotifier
+  >>> t = TelegramNotifier("YOUR_TOKEN", "YOUR_CHAT_ID")
+  >>> t.send_message("Test")
+  >>> exit()
+
+If this works, problem is in how config is being loaded!
+
+═══════════════════════════════════════════════════════════════

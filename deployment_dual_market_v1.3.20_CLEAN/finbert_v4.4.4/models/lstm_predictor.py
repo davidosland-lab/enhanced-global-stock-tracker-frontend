@@ -506,17 +506,27 @@ class StockLSTMPredictor:
         """Save model and scaler to disk"""
         if self.model and self.is_trained:
             try:
-                # Save model
-                self.model.save(self.model_path)
+                # Save model with Keras 3 compatibility
+                # Keras 3.x requires explicit save_format='h5' for .h5 files
+                try:
+                    # Try Keras 3 save format first
+                    self.model.save(self.model_path, save_format='h5')
+                    logger.info(f"Model saved to {self.model_path} (Keras 3 format)")
+                except Exception as keras_error:
+                    # Fallback for older Keras 2.x
+                    logger.warning(f"Keras 3 save failed, trying legacy format: {keras_error}")
+                    self.model.save(self.model_path)
+                    logger.info(f"Model saved to {self.model_path} (legacy format)")
                 
                 # Save scaler
                 with open(self.scaler_path, 'wb') as f:
                     pickle.dump(self.scaler, f)
                 
-                logger.info(f"Model saved to {self.model_path}")
                 return True
             except Exception as e:
                 logger.error(f"Error saving model: {e}")
+                import traceback
+                logger.error(traceback.format_exc())
                 return False
         return False
     
