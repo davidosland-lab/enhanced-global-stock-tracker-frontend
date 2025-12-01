@@ -33,6 +33,18 @@ except ImportError:
     from us_market_monitor import USMarketMonitor
     from us_market_regime_engine import USMarketRegimeEngine
 
+# Import LSTM Trainer BEFORE BatchPredictor (to avoid FinBERT double-load conflict)
+try:
+    from .lstm_trainer import LSTMTrainer
+except ImportError as e:
+    LSTMTrainer = None
+    import sys
+    print(f"⚠️ WARNING: LSTMTrainer import failed: {e}", file=sys.stderr)
+except Exception as e:
+    LSTMTrainer = None
+    import sys
+    print(f"⚠️ WARNING: LSTMTrainer import error: {e}", file=sys.stderr)
+
 # Import shared modules (can be reused with market parameter)
 try:
     from .batch_predictor import BatchPredictor
@@ -73,17 +85,6 @@ try:
     from .csv_exporter import CSVExporter
 except ImportError:
     CSVExporter = None
-
-try:
-    from .lstm_trainer import LSTMTrainer
-except ImportError as e:
-    LSTMTrainer = None
-    import sys
-    print(f"⚠️ WARNING: LSTMTrainer import failed: {e}", file=sys.stderr)
-except Exception as e:
-    LSTMTrainer = None
-    import sys
-    print(f"⚠️ WARNING: LSTMTrainer import error: {e}", file=sys.stderr)
 
 # Market Hours Detector (optional)
 try:
