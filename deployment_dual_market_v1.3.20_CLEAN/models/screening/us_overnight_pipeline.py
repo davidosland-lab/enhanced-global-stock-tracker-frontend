@@ -76,8 +76,14 @@ except ImportError:
 
 try:
     from .lstm_trainer import LSTMTrainer
-except ImportError:
+except ImportError as e:
     LSTMTrainer = None
+    import sys
+    print(f"⚠️ WARNING: LSTMTrainer import failed: {e}", file=sys.stderr)
+except Exception as e:
+    LSTMTrainer = None
+    import sys
+    print(f"⚠️ WARNING: LSTMTrainer import error: {e}", file=sys.stderr)
 
 # Market Hours Detector (optional)
 try:
