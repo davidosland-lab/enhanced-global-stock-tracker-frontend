@@ -1,0 +1,229 @@
+================================================================================
+WHY finbert_v4.4.4 TRAINING ROUTINES ARE USED IN THE MAIN SYSTEM
+================================================================================
+
+OVERVIEW:
+The system has a MODULAR architecture where training code is deliberately 
+separated from the screening pipeline code for maintainability and reusability.
+
+================================================================================
+ARCHITECTURE DIAGRAM:
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        MAIN APPLICATION                                  │
+│                  (deployment_dual_market_v1.3.20_CLEAN)                 │
+└─────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │
+                    ┌───────────────┴────────────────┐
+                    │                                 │
+        ┌───────────▼──────────┐        ┌───────────▼──────────┐
+        │  SCREENING PIPELINE  │        │   US MARKET PIPELINE │
+        │  overnight_pipeline  │        │ us_overnight_pipeline│
+        └──────────┬───────────┘        └──────────┬───────────┘
+                   │                                │
+                   │                                │
+           ┌───────▼────────┐             ┌────────▼───────┐
+           │  LSTMTrainer   │             │  LSTMTrainer   │
+           │  (Orchestrator)│             │  (Orchestrator)│
+           └───────┬────────┘             └────────┬───────┘
+                   │                                │
+                   │ imports                        │ imports
+                   │ train_model_for_symbol()       │ train_model_for_symbol()
+                   │                                │
+        ┌──────────▼────────────────────────────────▼──────────┐
+        │                                                        │
+        │            finbert_v4.4.4 MODULE                      │
+        │         (Specialized LSTM Training Library)           │
+        │                                                        │
+        │   ┌────────────────────────────────────────────┐    │
+        │   │  models/train_lstm.py                       │    │
+        │   │  - train_model_for_symbol()                 │    │
+        │   │  - train_multiple_symbols()                 │    │
+        │   │  - Data fetching & preprocessing            │    │
+        │   └───────────────┬────────────────────────────┘    │
+        │                   │                                   │
+        │                   │ uses                              │
+        │                   │                                   │
+        │   ┌───────────────▼────────────────────────────┐    │
+        │   │  models/lstm_predictor.py                   │    │
+        │   │  - StockLSTMPredictor class                 │    │
+        │   │  - LSTM model architecture                  │    │
+        │   │  - Training logic                           │    │
+        │   │  - Model saving/loading                     │    │
+        │   └─────────────────────────────────────────────┘   │
+        │                                                        │
+        │   ┌─────────────────────────────────────────────┐   │
+        │   │  finbert_sentiment.py                        │   │
+        │   │  - FinBERT sentiment analysis                │   │
+        │   │  - Prediction enhancement                    │   │
+        │   └─────────────────────────────────────────────┘   │
+        │                                                        │
+        └────────────────────────────────────────────────────────┘
+
+================================================================================
+WHY THIS ARCHITECTURE?
+================================================================================
+
+1. SEPARATION OF CONCERNS:
+   - Screening pipeline focuses on: opportunity scoring, filtering, ranking
+   - finbert_v4.4.4 focuses on: LSTM training, model management, predictions
+   - Each module has ONE clear responsibility
+
+2. CODE REUSABILITY:
+   - finbert_v4.4.4 is a REUSABLE LIBRARY
+   - Used by BOTH ASX and US market pipelines
+   - Can be used standalone for training/predictions
+   - Avoids code duplication
+
+3. MAINTAINABILITY:
+   - Bug fixes in LSTM training happen in ONE place (finbert_v4.4.4)
+   - Changes automatically apply to all pipelines
+   - Easier to test LSTM functionality in isolation
+
+4. MODULARITY:
+   - finbert_v4.4.4 can be updated independently
+   - Pipelines can swap out the training module easily
+   - Clear API boundaries (train_model_for_symbol interface)
+
+5. HISTORICAL CONTEXT:
+   - finbert_v4.4.4 is version 4.4.4 of a FinBERT-based system
+   - It evolved as a specialized module for LSTM + sentiment
+   - Main system integrates it rather than reimplementing
+
+================================================================================
+DATA FLOW FOR TRAINING:
+================================================================================
+
+1. Overnight Pipeline runs (e.g., 3:00 AM AEST)
+   └─> Discovers 139 stocks need analysis
+
+2. LSTMTrainer.check_stale_models()
+   └─> Identifies which stocks have missing/old models
+   └─> Example: "BHP.AX model is 10 days old - needs retraining"
+
+3. LSTMTrainer.create_training_queue()
+   └─> Prioritizes stocks by opportunity score
+   └─> Selects top 20 stocks for training tonight
+
+4. LSTMTrainer.train_stock_model(symbol='BHP.AX')
+   └─> Imports train_model_for_symbol from finbert_v4.4.4
+   └─> Calls: train_model_for_symbol('BHP.AX', epochs=50)
+       │
+       ├─> finbert_v4.4.4/models/train_lstm.py
+       │   └─> Fetches 2 years of BHP.AX data from Yahoo Finance
+       │   └─> Generates technical indicators (SMA, RSI, MACD, etc.)
+       │   └─> Creates StockLSTMPredictor instance
+       │       │
+       │       ├─> finbert_v4.4.4/models/lstm_predictor.py
+       │       │   └─> Builds LSTM model (3 LSTM layers, 2 Dense layers)
+       │       │   └─> Trains for 50 epochs with callbacks
+       │       │   └─> Saves model: models/BHP.AX_lstm_model.keras
+       │       │   └─> Saves scaler: models/BHP.AX_scaler.pkl
+       │       │
+       │       └─> Returns training results
+       │
+       └─> LSTMTrainer logs results
+       └─> Saves training metadata
+
+5. Process repeats for next 19 stocks
+
+6. Pipeline continues with predictions using trained models
+
+================================================================================
+KEY INTEGRATION POINTS:
+================================================================================
+
+FILE: models/screening/lstm_trainer.py
+LINE: 242-248
+
+    # Import training module from FinBERT v4.4.4
+    import sys
+    finbert_path = BASE_PATH / 'finbert_v4.4.4'
+    if str(finbert_path) not in sys.path:
+        sys.path.insert(0, str(finbert_path))
+    
+    from models.train_lstm import train_model_for_symbol
+
+This is the BRIDGE between:
+- Main system (models/screening/lstm_trainer.py)
+- Training library (finbert_v4.4.4/models/train_lstm.py)
+
+================================================================================
+MODEL FILE LOCATIONS:
+================================================================================
+
+BEFORE FIX (BROKEN):
+- finbert_v4.4.4/models/lstm_predictor.py saved to: models/lstm_model.keras
+- Result: ALL 139 stocks overwrote the same file
+- Outcome: Only 1 model file existed, last stock trained
+
+AFTER FIX (CORRECT):
+- finbert_v4.4.4/models/lstm_predictor.py saves to: models/{symbol}_lstm_model.keras
+- Result: Each stock gets its own model file
+- Outcome: 139 separate model files:
+    models/BHP.AX_lstm_model.keras      (~500 KB)
+    models/CBA.AX_lstm_model.keras      (~500 KB)
+    models/CSL.AX_lstm_model.keras      (~500 KB)
+    ... (136 more files)
+
+TOTAL: 417 files per run (model + scaler + metadata for each stock)
+
+================================================================================
+WHY NOT TRAIN DIRECTLY IN SCREENING PIPELINE?
+================================================================================
+
+CONS of embedding training in screening code:
+❌ Code duplication (ASX pipeline + US pipeline both need training)
+❌ Harder to test training logic independently
+❌ Mixing concerns (screening + training in same file)
+❌ Can't reuse training code for standalone model training
+❌ Harder to version control training vs. screening changes
+
+PROS of using finbert_v4.4.4 module:
+✅ Single source of truth for LSTM training
+✅ Can be tested independently
+✅ Clear API boundary (train_model_for_symbol)
+✅ Reusable across multiple pipelines
+✅ Can be used for standalone training (python train_lstm.py --symbol BHP.AX)
+✅ Version controlled separately (finbert v4.0, v4.1, v4.4.4, etc.)
+
+================================================================================
+ANALOGY:
+================================================================================
+
+Think of it like:
+
+Main System = Restaurant Kitchen
+finbert_v4.4.4 = Specialized Bakery
+
+The kitchen (main system) doesn't bake its own bread from scratch.
+Instead, it orders from a specialized bakery (finbert_v4.4.4) that:
+- Has expert bakers (LSTM training logic)
+- Uses specialized equipment (model architecture)
+- Delivers consistent quality (trained models)
+- Serves multiple restaurants (ASX + US pipelines)
+
+The kitchen focuses on cooking meals (screening stocks).
+The bakery focuses on baking bread (training models).
+
+================================================================================
+SUMMARY:
+================================================================================
+
+finbert_v4.4.4 training routines are used because:
+
+1. It's a SPECIALIZED MODULE for LSTM training + FinBERT sentiment
+2. It's REUSABLE across multiple pipelines (ASX, US markets)
+3. It provides a CLEAN API (train_model_for_symbol)
+4. It keeps training logic SEPARATE from screening logic
+5. It can be TESTED and UPDATED independently
+6. It follows SOFTWARE ENGINEERING best practices (modularity, separation of concerns)
+
+The main system is the ORCHESTRATOR.
+finbert_v4.4.4 is the EXECUTION ENGINE for model training.
+
+This is GOOD DESIGN, not a bug!
+
+================================================================================
