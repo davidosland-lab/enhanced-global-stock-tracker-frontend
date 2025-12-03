@@ -1,0 +1,140 @@
+================================================================================
+MANUAL FIX: Enable Telegram Notifications in Both Pipelines
+================================================================================
+
+PROBLEM: Telegram shows as "module not available" even though:
+- The file exists: models/notifications/telegram_notifier.py
+- Manual import works: python -c "from models.notifications..."
+- Test script passes all checks
+
+ROOT CAUSE: Relative imports fail when pipeline is run as a script
+
+SOLUTION: Add robust 3-tier fallback import
+
+================================================================================
+FIX #1: Australian Pipeline (overnight_pipeline.py)
+================================================================================
+
+FILE: C:\Users\david\AATelS\models\screening\overnight_pipeline.py
+
+FIND (around line 58-65):
+----------------------------
+# Telegram notification support
+try:
+    from ..notifications.telegram_notifier import TelegramNotifier
+except ImportError:
+    try:
+        from models.notifications.telegram_notifier import TelegramNotifier
+    except ImportError:
+        TelegramNotifier = None
+
+
+REPLACE WITH:
+----------------------------
+# Telegram notification support
+try:
+    from ..notifications.telegram_notifier import TelegramNotifier
+except ImportError:
+    try:
+        from models.notifications.telegram_notifier import TelegramNotifier
+    except ImportError:
+        try:
+            # Fallback: Add parent directory to path and import
+            import sys
+            from pathlib import Path
+            parent_dir = Path(__file__).parent.parent.parent
+            if str(parent_dir) not in sys.path:
+                sys.path.insert(0, str(parent_dir))
+            from models.notifications.telegram_notifier import TelegramNotifier
+        except ImportError as e:
+            TelegramNotifier = None
+            print(f"⚠️ Telegram import failed: {e}", file=sys.stderr)
+
+
+================================================================================
+FIX #2: US Pipeline (us_overnight_pipeline.py)
+================================================================================
+
+FILE: C:\Users\david\AATelS\models\screening\us_overnight_pipeline.py
+
+FIND (around line 64-71):
+----------------------------
+# Telegram notification support
+try:
+    from ..notifications.telegram_notifier import TelegramNotifier
+except ImportError:
+    try:
+        from models.notifications.telegram_notifier import TelegramNotifier
+    except ImportError:
+        TelegramNotifier = None
+
+
+REPLACE WITH:
+----------------------------
+# Telegram notification support
+try:
+    from ..notifications.telegram_notifier import TelegramNotifier
+except ImportError:
+    try:
+        from models.notifications.telegram_notifier import TelegramNotifier
+    except ImportError:
+        try:
+            # Fallback: Add parent directory to path and import
+            import sys
+            from pathlib import Path
+            parent_dir = Path(__file__).parent.parent.parent
+            if str(parent_dir) not in sys.path:
+                sys.path.insert(0, str(parent_dir))
+            from models.notifications.telegram_notifier import TelegramNotifier
+        except ImportError as e:
+            TelegramNotifier = None
+            print(f"⚠️ Telegram import failed: {e}", file=sys.stderr)
+
+
+================================================================================
+VERIFICATION
+================================================================================
+
+After applying both fixes, run the pipeline and check startup logs:
+
+BEFORE (broken):
+  Telegram notifications disabled (module not available)
+
+AFTER (fixed):
+  ✓ Telegram notifications enabled
+  Bot: YourBotName
+  Chat ID: 123456789
+
+Then at the end of the pipeline you should see:
+  ================================================================================
+  PHASE 8: TELEGRAM NOTIFICATIONS (for US)
+  ================================================================================
+  Sending Telegram morning report notification...
+  ✓ Telegram report sent: 2025-12-04_market_report.html
+  ✓ CSV file sent: 2025-12-04_screening_results.csv
+
+OR for Australian pipeline:
+  ================================================================================
+  PHASE 8: TELEGRAM NOTIFICATIONS
+  ================================================================================
+  Sending Telegram morning report notification...
+  ✓ Telegram report sent: 2025-12-04_market_report.html
+  ✓ CSV file sent: 2025-12-04_screening_results.csv
+
+================================================================================
+TESTING
+================================================================================
+
+Test Australian Pipeline:
+  cd C:\Users\david\AATelS
+  python models\screening\overnight_pipeline.py --sectors Technology --stocks-per-sector 5
+
+Test US Pipeline:
+  cd C:\Users\david\AATelS
+  python models\screening\us_overnight_pipeline.py --stocks-per-sector 5
+
+Both should now:
+1. Show "✓ Telegram notifications enabled" at startup
+2. Send Telegram notification with report at completion (~5-10 min)
+
+================================================================================
