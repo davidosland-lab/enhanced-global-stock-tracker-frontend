@@ -26,13 +26,12 @@ echo.
 pause
 
 cd /d "%~dp0"
-cd models\screening
 
 echo.
 echo Starting pipeline...
 echo.
 
-python overnight_pipeline.py
+python models\screening\overnight_pipeline.py
 
 if %errorlevel% equ 0 (
     echo.
