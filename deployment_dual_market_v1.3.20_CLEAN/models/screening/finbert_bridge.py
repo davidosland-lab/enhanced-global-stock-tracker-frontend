@@ -41,6 +41,9 @@ logger = logging.getLogger(__name__)
 FINBERT_PATH = Path(__file__).parent.parent.parent / 'finbert_v4.4.4'
 FINBERT_MODELS_PATH = FINBERT_PATH / 'models'
 
+# Calculate models path for news sentiment modules
+MODELS_PATH = Path(__file__).parent.parent  # Points to models/ directory
+
 # Add FinBERT to Python path (read-only access)
 if FINBERT_PATH.exists():
     sys.path.insert(0, str(FINBERT_PATH))
@@ -48,6 +51,13 @@ if FINBERT_PATH.exists():
     logger.info(f"✓ Added FinBERT path to sys.path: {FINBERT_PATH}")
 else:
     logger.warning(f"⚠ FinBERT path not found: {FINBERT_PATH}")
+
+# Add models path for news sentiment modules
+if MODELS_PATH.exists():
+    sys.path.insert(0, str(MODELS_PATH))
+    logger.info(f"✓ Added models path to sys.path: {MODELS_PATH}")
+else:
+    logger.warning(f"⚠ Models path not found: {MODELS_PATH}")
 
 # Import FinBERT modules (with error handling)
 try:
