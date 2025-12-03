@@ -62,7 +62,17 @@ except ImportError:
     try:
         from models.notifications.telegram_notifier import TelegramNotifier
     except ImportError:
-        TelegramNotifier = None
+        try:
+            # Fallback: Add parent directory to path and import
+            import sys
+            from pathlib import Path
+            parent_dir = Path(__file__).parent.parent.parent
+            if str(parent_dir) not in sys.path:
+                sys.path.insert(0, str(parent_dir))
+            from models.notifications.telegram_notifier import TelegramNotifier
+        except ImportError as e:
+            TelegramNotifier = None
+            print(f"⚠️ Telegram import failed: {e}", file=sys.stderr)
 
 # Market Hours Detector (optional)
 try:
