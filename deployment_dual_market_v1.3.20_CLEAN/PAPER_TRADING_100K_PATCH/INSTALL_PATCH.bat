@@ -68,12 +68,46 @@ echo.
 echo Step 2: Installing Updated Files
 echo ========================================================================
 echo Copying updated files...
+echo.
 
-copy /Y PAPER_TRADING_100K_PATCH\finbert_v4.4.4\models\trading\trade_database.py finbert_v4.4.4\models\trading\ >nul
-if errorlevel 1 (
-    echo ✗ Failed to copy trade_database.py
+REM Check if patch directory exists
+if not exist "PAPER_TRADING_100K_PATCH\finbert_v4.4.4\models\trading\trade_database.py" (
+    echo ✗ ERROR: Patch files not found!
+    echo.
+    echo Looking for: PAPER_TRADING_100K_PATCH\finbert_v4.4.4\models\trading\trade_database.py
+    echo Current directory: %CD%
+    echo.
+    echo Please ensure:
+    echo   1. You extracted PAPER_TRADING_100K_PATCH.zip to C:\Users\david\AATelS\
+    echo   2. The PAPER_TRADING_100K_PATCH folder exists
+    echo   3. You are running this from C:\Users\david\AATelS\
+    echo.
+    echo Directory contents:
+    dir /b | find "PAPER_TRADING"
+    echo.
     pause
     exit /b 1
+)
+
+copy /Y PAPER_TRADING_100K_PATCH\finbert_v4.4.4\models\trading\trade_database.py finbert_v4.4.4\models\trading\ >nul 2>&1
+if errorlevel 1 (
+    echo ✗ Failed to copy trade_database.py
+    echo.
+    echo Trying to diagnose the issue...
+    echo Source exists: 
+    if exist "PAPER_TRADING_100K_PATCH\finbert_v4.4.4\models\trading\trade_database.py" (echo   YES) else (echo   NO)
+    echo Target directory exists:
+    if exist "finbert_v4.4.4\models\trading\" (echo   YES) else (echo   NO - creating...)
+    mkdir "finbert_v4.4.4\models\trading\" 2>nul
+    echo.
+    echo Retrying copy...
+    copy /Y PAPER_TRADING_100K_PATCH\finbert_v4.4.4\models\trading\trade_database.py finbert_v4.4.4\models\trading\
+    if errorlevel 1 (
+        echo ✗ Copy still failed!
+        echo Please check file permissions and try running as Administrator
+        pause
+        exit /b 1
+    )
 )
 echo ✓ Updated: models\trading\trade_database.py
 
