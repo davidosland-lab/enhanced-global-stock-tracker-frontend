@@ -1333,7 +1333,7 @@ def run_backtest():
         "start_date": "2023-01-01",
         "end_date": "2023-12-31",
         "model_type": "ensemble",  # or "finbert", "lstm"
-        "initial_capital": 10000,
+        "initial_capital": 100000,
         "lookback_days": 60
     }
     """
@@ -1511,7 +1511,7 @@ def run_portfolio_backtest():
         "start_date": "2023-01-01",
         "end_date": "2023-12-31",
         "model_type": "ensemble",
-        "initial_capital": 10000,
+        "initial_capital": 100000,
         "allocation_strategy": "equal",  # or "risk_parity", "custom"
         "custom_allocations": {"AAPL": 0.4, "MSFT": 0.3, "GOOGL": 0.3},  # optional
         "rebalance_frequency": "monthly"  # or "never", "weekly", "quarterly"
@@ -1611,7 +1611,7 @@ def optimize_backtest_parameters():
         "start_date": "2023-01-01",
         "end_date": "2024-11-01",
         "model_type": "ensemble",
-        "initial_capital": 10000,
+        "initial_capital": 100000,
         "optimization_method": "random",  # "grid" or "random"
         "max_iterations": 50
     }

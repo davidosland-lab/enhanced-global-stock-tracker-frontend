@@ -87,11 +87,11 @@ class TradingDatabase:
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS account (
                 account_id INTEGER PRIMARY KEY DEFAULT 1,
-                cash_balance REAL NOT NULL DEFAULT 10000,
+                cash_balance REAL NOT NULL DEFAULT 100000,
                 portfolio_value REAL DEFAULT 0,
-                total_value REAL DEFAULT 10000,
-                buying_power REAL DEFAULT 10000,
-                initial_capital REAL DEFAULT 10000,
+                total_value REAL DEFAULT 100000,
+                buying_power REAL DEFAULT 100000,
+                initial_capital REAL DEFAULT 100000,
                 total_pnl REAL DEFAULT 0,
                 total_pnl_percent REAL DEFAULT 0,
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP
@@ -103,7 +103,7 @@ class TradingDatabase:
         if cursor.fetchone()[0] == 0:
             cursor.execute('''
                 INSERT INTO account (account_id, cash_balance, initial_capital, buying_power)
-                VALUES (1, 10000, 10000, 10000)
+                VALUES (1, 100000, 100000, 100000)
             ''')
         
         conn.commit()
@@ -155,7 +155,7 @@ class TradingDatabase:
         conn.commit()
         conn.close()
     
-    def reset_account(self, initial_capital: float = 10000):
+    def reset_account(self, initial_capital: float = 100000):
         """Reset account to initial state"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()

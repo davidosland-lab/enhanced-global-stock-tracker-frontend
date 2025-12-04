@@ -111,7 +111,7 @@ class PortfolioManager:
             'count': len(trades)
         }
     
-    def reset_portfolio(self, initial_capital: float = 10000) -> Dict:
+    def reset_portfolio(self, initial_capital: float = 100000) -> Dict:
         """
         Reset entire portfolio
         

@@ -318,7 +318,7 @@ class PaperTradingEngine:
             'timestamp': datetime.now().isoformat()
         }
     
-    def reset_account(self, initial_capital: float = 10000) -> Dict:
+    def reset_account(self, initial_capital: float = 100000) -> Dict:
         """
         Reset account to initial state
         
