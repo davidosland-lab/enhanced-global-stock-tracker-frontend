@@ -1,0 +1,113 @@
+================================================================================
+QUICK TELEGRAM TEST (Without check_telegram_setup.py)
+================================================================================
+
+Since check_telegram_setup.py is missing, here are alternative tests:
+
+================================================================================
+TEST 1: Simple Import Test (10 seconds)
+================================================================================
+
+cd C:\Users\david\AATelS
+python -c "from models.notifications.telegram_notifier import TelegramNotifier; print('✅ Telegram import successful')"
+
+Expected output:
+  ✅ Telegram import successful
+
+If you see an error:
+  ❌ Telegram module not found or import failed
+
+================================================================================
+TEST 2: Config Check (30 seconds)
+================================================================================
+
+cd C:\Users\david\AATelS
+python -c "import json; config=json.load(open('config/intraday_rescan_config.json')); tg=config.get('notifications',{}).get('telegram',{}); print('✅ Enabled:', tg.get('enabled')); print('✅ Bot Token:', 'SET' if tg.get('bot_token') else 'MISSING'); print('✅ Chat ID:', 'SET' if tg.get('chat_id') else 'MISSING')"
+
+Expected output:
+  ✅ Enabled: True
+  ✅ Bot Token: SET
+  ✅ Chat ID: SET
+
+If you see MISSING:
+  ❌ Need to configure Telegram in config/intraday_rescan_config.json
+
+================================================================================
+TEST 3: Connection Test (1 minute)
+================================================================================
+
+cd C:\Users\david\AATelS
+python -c "import json; from models.notifications.telegram_notifier import TelegramNotifier; config=json.load(open('config/intraday_rescan_config.json')); tg=config['notifications']['telegram']; bot=TelegramNotifier(bot_token=tg['bot_token'], chat_id=tg['chat_id']); bot.send_message('✅ Test from AATelS'); print('✅ Message sent - check your Telegram!')"
+
+Expected output:
+  ✅ Message sent - check your Telegram!
+
+And you should receive a message in Telegram.
+
+If you see an error:
+  ❌ Check bot_token and chat_id are correct
+
+================================================================================
+TEST 4: Pipeline Startup Test (2 minutes)
+================================================================================
+
+cd C:\Users\david\AATelS
+python models\screening\us_overnight_pipeline.py --stocks-per-sector 3
+
+Watch the startup output for:
+
+✅ SUCCESS:
+  ✓ Telegram notifications enabled
+  Bot: YourBotName
+  Chat ID: 123456789
+
+❌ FAILURE:
+  Telegram notifications disabled (module not available)
+
+Press Ctrl+C to cancel after you see the Telegram status.
+
+================================================================================
+TEST 5: Check Batch File Fix (10 seconds)
+================================================================================
+
+cd C:\Users\david\AATelS
+type RUN_PIPELINE.bat | findstr /C:"models\screening\overnight_pipeline.py"
+
+Expected output:
+  python models\screening\overnight_pipeline.py
+
+This confirms the batch file was fixed.
+
+================================================================================
+FULL TEST: Run Complete Pipeline (10-15 minutes)
+================================================================================
+
+After the patch is installed:
+
+Option A: Australian Pipeline
+  cd C:\Users\david\AATelS
+  python models\screening\overnight_pipeline.py --sectors Technology --stocks-per-sector 5
+
+Option B: US Pipeline
+  cd C:\Users\david\AATelS
+  python models\screening\us_overnight_pipeline.py --stocks-per-sector 5
+
+Wait for completion, then check:
+  1. Console shows: "✓ Telegram report sent"
+  2. Telegram app has: Message + 2 file attachments
+
+================================================================================
+DOWNLOAD UPDATED PATCH (Includes check_telegram_setup.py)
+================================================================================
+
+The patch has been updated to include check_telegram_setup.py:
+
+https://github.com/davidosland-lab/enhanced-global-stock-tracker-frontend/raw/finbert-v4.0-development/deployment_dual_market_v1.3.20_CLEAN/TELEGRAM_NOTIFICATION_PATCH.zip
+
+Size: 34 KB (was 32 KB)
+New file included: check_telegram_setup.py
+
+After downloading and installing, you can run:
+  python check_telegram_setup.py
+
+================================================================================
