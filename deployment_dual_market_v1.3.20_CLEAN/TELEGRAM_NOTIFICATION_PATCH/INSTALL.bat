@@ -134,8 +134,8 @@ echo STEP 3: Verification
 echo ================================================================================
 echo.
 
-echo Testing Telegram import...
-python -c "from models.notifications.telegram_notifier import TelegramNotifier; print('  [OK] TelegramNotifier imports successfully')"
+echo Testing Telegram setup...
+python check_telegram_setup.py
 
 if %errorlevel% equ 0 (
     echo.
