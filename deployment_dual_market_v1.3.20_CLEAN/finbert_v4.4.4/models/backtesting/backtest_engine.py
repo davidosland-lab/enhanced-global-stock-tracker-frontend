@@ -38,6 +38,12 @@ class PortfolioPosition:
     current_value: float
     unrealized_pnl: float
     allocation_pct: float
+    
+    # Phase 1 & 2: Risk management fields
+    stop_loss_price: float = 0.0
+    take_profit_price: float = 0.0
+    risk_amount: float = 0.0
+    position_value: float = 0.0
 
 
 class PortfolioBacktestEngine:
@@ -51,11 +57,20 @@ class PortfolioBacktestEngine:
     def __init__(
         self,
         initial_capital: float = 10000.0,
-        allocation_strategy: str = 'equal',  # 'equal', 'risk_parity', 'custom'
+        allocation_strategy: str = 'equal',  # 'equal', 'risk_parity', 'custom', 'risk_based'
         custom_allocations: Optional[Dict[str, float]] = None,
         rebalance_frequency: str = 'monthly',  # 'never', 'weekly', 'monthly', 'quarterly'
         commission_rate: float = 0.001,
-        slippage_rate: float = 0.0005
+        slippage_rate: float = 0.0005,
+        
+        # Phase 1 & 2: Risk management parameters
+        enable_stop_loss: bool = True,
+        stop_loss_percent: float = 2.0,
+        enable_take_profit: bool = True,
+        risk_reward_ratio: float = 2.0,
+        risk_per_trade_percent: float = 1.0,
+        max_portfolio_heat: float = 6.0,
+        max_position_size_percent: float = 20.0
     ):
         """
         Initialize portfolio backtesting engine
@@ -76,6 +91,15 @@ class PortfolioBacktestEngine:
         self.commission_rate = commission_rate
         self.slippage_rate = slippage_rate
         
+        # Phase 1 & 2: Risk management parameters
+        self.enable_stop_loss = enable_stop_loss
+        self.stop_loss_percent = stop_loss_percent
+        self.enable_take_profit = enable_take_profit
+        self.risk_reward_ratio = risk_reward_ratio
+        self.risk_per_trade_percent = risk_per_trade_percent
+        self.max_portfolio_heat = max_portfolio_heat
+        self.max_position_size_percent = max_position_size_percent
+        
         # Portfolio state
         self.positions: Dict[str, PortfolioPosition] = {}
         self.cash = initial_capital
@@ -90,10 +114,27 @@ class PortfolioBacktestEngine:
         self.total_commission_paid = 0.0
         self.daily_returns = []
         
+        # Phase 1 & 2: Risk tracking
+        self.current_portfolio_heat = 0.0
+        self.stop_loss_exits = 0
+        self.take_profit_exits = 0
+        self.stopped_out_trades = []
+        self.take_profit_trades = []
+        
         logger.info(
             f"Portfolio engine initialized (capital=${initial_capital:,.2f}, "
             f"strategy={allocation_strategy}, rebalance={rebalance_frequency})"
         )
+        
+        # Phase 1 & 2: Log risk management settings
+        if enable_stop_loss or enable_take_profit:
+            logger.info(
+                f"Risk Management Enabled: "
+                f"stop_loss={stop_loss_percent}%, "
+                f"take_profit={enable_take_profit} ({risk_reward_ratio}:1 R:R), "
+                f"risk_per_trade={risk_per_trade_percent}%, "
+                f"max_heat={max_portfolio_heat}%"
+            )
     
     def calculate_target_allocations(
         self,
@@ -185,6 +226,17 @@ class PortfolioBacktestEngine:
         """
         executions = {}
         
+        # Phase 1: Check stop-losses and take-profits FIRST
+        if self.enable_stop_loss:
+            stop_loss_exits = self._check_stop_losses(timestamp, current_prices)
+            for exit_execution in stop_loss_exits:
+                executions[exit_execution['symbol']] = exit_execution
+        
+        if self.enable_take_profit:
+            take_profit_exits = self._check_take_profits(timestamp, current_prices)
+            for exit_execution in take_profit_exits:
+                executions[exit_execution['symbol']] = exit_execution
+        
         for symbol in signals.keys():
             if symbol not in current_prices:
                 logger.warning(f"No price data for {symbol}, skipping")
@@ -249,21 +301,60 @@ class PortfolioBacktestEngine:
         
         # Handle BUY signals
         if signal == 'BUY':
-            # Calculate target position value
+            # Phase 2: Calculate stop-loss price first
+            stop_loss_price = execution_price * (1 - self.stop_loss_percent / 100.0)
+            
+            # Calculate position size based on strategy
             portfolio_value = self.get_portfolio_value({symbol: price for symbol in self.positions})
             total_value = portfolio_value + self.cash
-            target_value = total_value * target_allocation
             
-            # Calculate how much to invest
-            current_value = 0
-            if symbol in self.positions:
-                current_value = self.positions[symbol].shares * price
-            
-            invest_amount = target_value - current_value
+            if self.allocation_strategy == 'risk_based':
+                # Phase 2: Risk-based position sizing
+                risk_per_share = execution_price - stop_loss_price
+                max_risk_dollars = total_value * (self.risk_per_trade_percent / 100.0)
+                
+                # Adjust risk based on confidence
+                confidence_multiplier = 0.5 + (confidence * 0.5)  # 0.5 to 1.0
+                risk_dollars = max_risk_dollars * confidence_multiplier
+                
+                # Calculate shares based on risk
+                shares = risk_dollars / risk_per_share if risk_per_share > 0 else 0
+                invest_amount = shares * execution_price
+                
+                # Apply max position size limit
+                max_position_value = total_value * (self.max_position_size_percent / 100.0)
+                if invest_amount > max_position_value:
+                    logger.info(
+                        f"{symbol}: Position capped at {self.max_position_size_percent}% "
+                        f"(${invest_amount:,.0f} -> ${max_position_value:,.0f})"
+                    )
+                    invest_amount = max_position_value
+                    shares = invest_amount / execution_price
+                    risk_dollars = shares * risk_per_share
+                
+                # Check portfolio heat limit
+                new_heat = self.current_portfolio_heat + risk_dollars
+                max_heat = total_value * (self.max_portfolio_heat / 100.0)
+                if new_heat > max_heat:
+                    logger.warning(
+                        f"{symbol}: Portfolio heat limit exceeded: "
+                        f"${new_heat:,.0f} > ${max_heat:,.0f} (skipping trade)"
+                    )
+                    return {'action': 'REJECTED', 'reason': 'PORTFOLIO_HEAT_LIMIT', 'symbol': symbol, 'timestamp': timestamp}
+            else:
+                # Traditional allocation-based sizing
+                target_value = total_value * target_allocation
+                current_value = 0
+                if symbol in self.positions:
+                    current_value = self.positions[symbol].shares * price
+                
+                invest_amount = target_value - current_value
+                shares = invest_amount / execution_price if invest_amount > 0 else 0
+                risk_per_share = execution_price - stop_loss_price
+                risk_dollars = shares * risk_per_share
             
             # Only invest if positive and we have cash
             if invest_amount > 0 and invest_amount <= self.cash:
-                shares = invest_amount / execution_price
                 commission = invest_amount * self.commission_rate
                 total_cost = invest_amount + commission
                 
@@ -271,6 +362,13 @@ class PortfolioBacktestEngine:
                     # Execute buy
                     self.cash -= total_cost
                     self.total_commission_paid += commission
+                    
+                    # Phase 2: Calculate take-profit price
+                    take_profit_price = 0.0
+                    if self.enable_take_profit:
+                        risk_per_share = execution_price - stop_loss_price
+                        reward_per_share = risk_per_share * self.risk_reward_ratio
+                        take_profit_price = execution_price + reward_per_share
                     
                     # Update or create position
                     if symbol in self.positions:
@@ -284,6 +382,11 @@ class PortfolioBacktestEngine:
                         pos.current_price = price
                         pos.current_value = new_shares * price
                         pos.unrealized_pnl = pos.current_value - new_value
+                        # Phase 1 & 2: Update risk management fields
+                        pos.stop_loss_price = pos.entry_price * (1 - self.stop_loss_percent / 100.0)
+                        pos.take_profit_price = take_profit_price
+                        pos.risk_amount = pos.risk_amount + risk_dollars
+                        pos.position_value = new_value
                     else:
                         self.positions[symbol] = PortfolioPosition(
                             symbol=symbol,
@@ -293,8 +396,16 @@ class PortfolioBacktestEngine:
                             current_price=price,
                             current_value=shares * price,
                             unrealized_pnl=0,
-                            allocation_pct=target_allocation * 100
+                            allocation_pct=target_allocation * 100,
+                            # Phase 1 & 2: Set risk management fields
+                            stop_loss_price=stop_loss_price,
+                            take_profit_price=take_profit_price,
+                            risk_amount=risk_dollars,
+                            position_value=invest_amount
                         )
+                    
+                    # Phase 2: Update portfolio heat
+                    self.current_portfolio_heat += risk_dollars
                     
                     # Track trade
                     trade = {
@@ -312,9 +423,11 @@ class PortfolioBacktestEngine:
                         self.trades_by_symbol[symbol] = []
                     self.trades_by_symbol[symbol].append(trade)
                     
+                    # Phase 1 & 2: Enhanced logging
                     logger.info(
                         f"BUY {symbol}: {shares:.2f} shares @ ${execution_price:.2f} "
-                        f"(commission=${commission:.2f})"
+                        f"(commission=${commission:.2f}, stop=${stop_loss_price:.2f}, "
+                        f"target=${take_profit_price:.2f}, risk=${risk_dollars:.2f})"
                     )
                     
                     return {
@@ -343,6 +456,10 @@ class PortfolioBacktestEngine:
             # Execute sell
             self.cash += proceeds
             self.total_commission_paid += commission
+            
+            # Phase 2: Update portfolio heat
+            if hasattr(pos, 'risk_amount'):
+                self.current_portfolio_heat -= pos.risk_amount
             
             # Track trade
             trade = {
@@ -562,6 +679,20 @@ class PortfolioBacktestEngine:
                     'losses': len([t for t in symbol_trades if t['pnl'] <= 0])
                 }
         
+        # Phase 1 & 2: Calculate risk management metrics
+        stop_loss_rate = (self.stop_loss_exits / len(closed_trades) * 100) if closed_trades else 0
+        take_profit_rate = (self.take_profit_exits / len(closed_trades) * 100) if closed_trades else 0
+        
+        # Calculate realized risk:reward ratio
+        wins = [t for t in closed_trades if t['pnl'] > 0]
+        losses = [t for t in closed_trades if t['pnl'] < 0]
+        avg_win_amt = np.mean([t['pnl'] for t in wins]) if wins else 0
+        avg_loss_amt = abs(np.mean([t['pnl'] for t in losses])) if losses else 0
+        realized_rr = avg_win_amt / avg_loss_amt if avg_loss_amt > 0 else 0
+        
+        # Calculate expectancy
+        expectancy = (win_rate * avg_win_amt) - ((1 - win_rate) * avg_loss_amt) if closed_trades else 0
+        
         return {
             'initial_capital': initial_value,
             'final_value': final_value,
@@ -583,7 +714,15 @@ class PortfolioBacktestEngine:
             'symbols_performance': symbols_performance,
             'num_symbols': len(set(t['symbol'] for t in self.all_trades)),
             'avg_positions': np.mean([p['num_positions'] for p in self.portfolio_history]),
-            'charts': self.get_portfolio_charts()
+            'charts': self.get_portfolio_charts(),
+            # Phase 1 & 2: Risk management metrics
+            'stop_loss_exits': self.stop_loss_exits,
+            'take_profit_exits': self.take_profit_exits,
+            'stop_loss_rate': stop_loss_rate,
+            'take_profit_rate': take_profit_rate,
+            'realized_risk_reward': realized_rr,
+            'expectancy': expectancy,
+            'risk_management_enabled': self.enable_stop_loss or self.enable_take_profit
         }
     
     def get_portfolio_charts(self) -> Dict:
@@ -702,6 +841,178 @@ class PortfolioBacktestEngine:
             'data': monthly_data
         }
     
+    def _check_stop_losses(
+        self,
+        timestamp: datetime,
+        current_prices: Dict[str, float]
+    ) -> List[Dict]:
+        """
+        Phase 1: Check if any positions hit stop-loss levels
+        
+        Args:
+            timestamp: Current timestamp
+            current_prices: Current prices
+        
+        Returns:
+            List of stop-loss executions
+        """
+        stop_loss_executions = []
+        positions_to_close = []
+        
+        for symbol, pos in self.positions.items():
+            if symbol not in current_prices:
+                continue
+            
+            current_price = current_prices[symbol]
+            
+            # Check stop-loss
+            if hasattr(pos, 'stop_loss_price') and pos.stop_loss_price > 0:
+                if current_price <= pos.stop_loss_price:
+                    logger.info(
+                        f"🛑 STOP-LOSS HIT: {symbol} @ ${current_price:.2f} "
+                        f"(stop=${pos.stop_loss_price:.2f}, entry=${pos.entry_price:.2f})"
+                    )
+                    
+                    # Execute stop-loss exit
+                    execution_price = current_price * (1 - self.slippage_rate)  # Worse execution
+                    sell_value = pos.shares * execution_price
+                    commission = sell_value * self.commission_rate
+                    proceeds = sell_value - commission
+                    
+                    # Calculate P&L
+                    cost_basis = pos.shares * pos.entry_price
+                    pnl = proceeds - cost_basis
+                    return_pct = pnl / cost_basis if cost_basis > 0 else 0
+                    
+                    # Update cash
+                    self.cash += proceeds
+                    self.total_commission_paid += commission
+                    
+                    # Track trade
+                    trade = {
+                        'timestamp': timestamp,
+                        'symbol': symbol,
+                        'action': 'SELL',
+                        'exit_type': 'STOP_LOSS',
+                        'shares': pos.shares,
+                        'entry_price': pos.entry_price,
+                        'exit_price': execution_price,
+                        'stop_loss_price': pos.stop_loss_price,
+                        'value': sell_value,
+                        'commission': commission,
+                        'pnl': pnl,
+                        'return_pct': return_pct,
+                        'entry_date': pos.entry_date,
+                        'exit_date': timestamp,
+                        'hold_days': (timestamp - pos.entry_date).days,
+                        'risk_amount': getattr(pos, 'risk_amount', 0)
+                    }
+                    
+                    self.all_trades.append(trade)
+                    self.stopped_out_trades.append(trade)
+                    self.stop_loss_exits += 1
+                    
+                    if symbol not in self.trades_by_symbol:
+                        self.trades_by_symbol[symbol] = []
+                    self.trades_by_symbol[symbol].append(trade)
+                    
+                    stop_loss_executions.append(trade)
+                    positions_to_close.append(symbol)
+        
+        # Remove closed positions
+        for symbol in positions_to_close:
+            if hasattr(self.positions[symbol], 'risk_amount'):
+                self.current_portfolio_heat -= self.positions[symbol].risk_amount
+            del self.positions[symbol]
+        
+        return stop_loss_executions
+    
+    def _check_take_profits(
+        self,
+        timestamp: datetime,
+        current_prices: Dict[str, float]
+    ) -> List[Dict]:
+        """
+        Phase 2: Check if any positions hit take-profit levels
+        
+        Args:
+            timestamp: Current timestamp
+            current_prices: Current prices
+        
+        Returns:
+            List of take-profit executions
+        """
+        take_profit_executions = []
+        positions_to_close = []
+        
+        for symbol, pos in self.positions.items():
+            if symbol not in current_prices:
+                continue
+            
+            current_price = current_prices[symbol]
+            
+            # Check take-profit
+            if hasattr(pos, 'take_profit_price') and pos.take_profit_price > 0:
+                if current_price >= pos.take_profit_price:
+                    logger.info(
+                        f"🎯 TAKE-PROFIT HIT: {symbol} @ ${current_price:.2f} "
+                        f"(target=${pos.take_profit_price:.2f}, entry=${pos.entry_price:.2f})"
+                    )
+                    
+                    # Execute take-profit exit
+                    execution_price = current_price * (1 - self.slippage_rate * 0.5)  # Better execution
+                    sell_value = pos.shares * execution_price
+                    commission = sell_value * self.commission_rate
+                    proceeds = sell_value - commission
+                    
+                    # Calculate P&L
+                    cost_basis = pos.shares * pos.entry_price
+                    pnl = proceeds - cost_basis
+                    return_pct = pnl / cost_basis if cost_basis > 0 else 0
+                    
+                    # Update cash
+                    self.cash += proceeds
+                    self.total_commission_paid += commission
+                    
+                    # Track trade
+                    trade = {
+                        'timestamp': timestamp,
+                        'symbol': symbol,
+                        'action': 'SELL',
+                        'exit_type': 'TAKE_PROFIT',
+                        'shares': pos.shares,
+                        'entry_price': pos.entry_price,
+                        'exit_price': execution_price,
+                        'take_profit_price': pos.take_profit_price,
+                        'value': sell_value,
+                        'commission': commission,
+                        'pnl': pnl,
+                        'return_pct': return_pct,
+                        'entry_date': pos.entry_date,
+                        'exit_date': timestamp,
+                        'hold_days': (timestamp - pos.entry_date).days,
+                        'risk_amount': getattr(pos, 'risk_amount', 0)
+                    }
+                    
+                    self.all_trades.append(trade)
+                    self.take_profit_trades.append(trade)
+                    self.take_profit_exits += 1
+                    
+                    if symbol not in self.trades_by_symbol:
+                        self.trades_by_symbol[symbol] = []
+                    self.trades_by_symbol[symbol].append(trade)
+                    
+                    take_profit_executions.append(trade)
+                    positions_to_close.append(symbol)
+        
+        # Remove closed positions
+        for symbol in positions_to_close:
+            if hasattr(self.positions[symbol], 'risk_amount'):
+                self.current_portfolio_heat -= self.positions[symbol].risk_amount
+            del self.positions[symbol]
+        
+        return take_profit_executions
+    
     def reset(self):
         """Reset portfolio to initial state"""
         self.current_capital = self.initial_capital
@@ -713,5 +1024,12 @@ class PortfolioBacktestEngine:
         self.trades_by_symbol = {}
         self.total_commission_paid = 0.0
         self.daily_returns = []
+        
+        # Phase 1 & 2: Reset risk tracking
+        self.current_portfolio_heat = 0.0
+        self.stop_loss_exits = 0
+        self.take_profit_exits = 0
+        self.stopped_out_trades = []
+        self.take_profit_trades = []
         
         logger.info("Portfolio engine reset to initial state")
