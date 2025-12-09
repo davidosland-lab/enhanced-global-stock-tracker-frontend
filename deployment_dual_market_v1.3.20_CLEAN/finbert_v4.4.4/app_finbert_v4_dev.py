@@ -1663,13 +1663,12 @@ def run_swing_trading_backtest():
         from backtesting.news_sentiment_fetcher import NewsSentimentFetcher
         
         # Phase 1: Load price data
-        data_loader = HistoricalDataLoader()
-        price_data = data_loader.load_price_data(
+        data_loader = HistoricalDataLoader(
             symbol=symbol,
             start_date=start_date,
-            end_date=end_date,
-            interval='1d'
+            end_date=end_date
         )
+        price_data = data_loader.load_price_data(interval='1d')
         
         if price_data is None or len(price_data) < 60:
             return jsonify({
