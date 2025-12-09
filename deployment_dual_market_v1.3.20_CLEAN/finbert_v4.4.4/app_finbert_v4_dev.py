@@ -1637,6 +1637,11 @@ def run_swing_trading_backtest():
         start_date = data['start_date']
         end_date = data['end_date']
         
+        logger.info(f"=== SWING BACKTEST REQUEST ===")
+        logger.info(f"Symbol: {symbol}")
+        logger.info(f"Date Range: {start_date} to {end_date}")
+        logger.info(f"Request Data: {data}")
+        
         # Extract parameters with defaults
         initial_capital = data.get('initial_capital', 100000.0)
         holding_period_days = data.get('holding_period_days', 5)
@@ -1670,10 +1675,23 @@ def run_swing_trading_backtest():
         )
         price_data = data_loader.load_price_data(interval='1d')
         
-        if price_data is None or len(price_data) < 60:
+        # Debug logging
+        if price_data is None:
+            logger.error(f"Failed to load any price data for {symbol}")
+            return jsonify({
+                'error': f'Failed to load price data for {symbol}',
+                'suggestion': 'Check if the symbol is valid and Yahoo Finance is accessible'
+            }), 400
+        
+        logger.info(f"Loaded {len(price_data)} trading days for {symbol}")
+        
+        if len(price_data) < 60:
             return jsonify({
                 'error': f'Insufficient price data for {symbol}',
-                'suggestion': 'Try a longer date range (need at least 60 trading days)'
+                'data_points': len(price_data),
+                'required': 60,
+                'suggestion': 'Try a longer date range (need at least 60 trading days)',
+                'date_range': f'{start_date} to {end_date}'
             }), 400
         
         # Phase 2: Load news sentiment (if enabled)
