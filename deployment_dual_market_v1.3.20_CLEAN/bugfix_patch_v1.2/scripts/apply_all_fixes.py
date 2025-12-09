@@ -168,17 +168,31 @@ def main():
         finbert_dir = input("Enter path to FinBERT v4.4.4 directory: ").strip()
         finbert_dir = finbert_dir.strip('"').strip("'")
     
-    # Validate
+    # Validate and find finbert directory
     if not os.path.exists(finbert_dir):
         print_status(f"Directory not found: {finbert_dir}", 'ERROR')
         input("\nPress Enter to exit...")
         sys.exit(1)
     
+    # Check if app_finbert_v4_dev.py exists directly or in a subdirectory
     app_file = os.path.join(finbert_dir, 'app_finbert_v4_dev.py')
+    
     if not os.path.exists(app_file):
-        print_status(f"Not a valid FinBERT directory (missing app_finbert_v4_dev.py)", 'ERROR')
-        input("\nPress Enter to exit...")
-        sys.exit(1)
+        # Try common subdirectories
+        for subdir in ['finbert_v4.4.4', 'finbert_v4.4', 'finbert']:
+            test_path = os.path.join(finbert_dir, subdir)
+            test_app = os.path.join(test_path, 'app_finbert_v4_dev.py')
+            if os.path.exists(test_app):
+                print_status(f"Found FinBERT in subdirectory: {subdir}", 'INFO')
+                finbert_dir = test_path
+                app_file = test_app
+                break
+        else:
+            print_status(f"Not a valid FinBERT directory (missing app_finbert_v4_dev.py)", 'ERROR')
+            print_status(f"Searched in: {finbert_dir}", 'ERROR')
+            print_status("Please enter the full path to the directory containing app_finbert_v4_dev.py", 'ERROR')
+            input("\nPress Enter to exit...")
+            sys.exit(1)
     
     print_status(f"Target: {finbert_dir}", 'INFO')
     print()
