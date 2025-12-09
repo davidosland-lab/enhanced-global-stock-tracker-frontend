@@ -2451,20 +2451,28 @@
             // Show results panel
             document.getElementById('swingResultsPanel').style.display = 'block';
             
-            // Update key metrics
-            const totalReturn = ((data.final_value / data.initial_capital - 1) * 100).toFixed(2);
+            // Update key metrics - use total_return_pct from backend (already in percentage)
+            const totalReturn = (data.total_return_pct || 0).toFixed(2);
             const returnClass = totalReturn >= 0 ? 'text-green-400' : 'text-red-400';
             document.getElementById('swingTotalReturn').innerHTML = `<span class="${returnClass}">${totalReturn > 0 ? '+' : ''}${totalReturn}%</span>`;
             
-            document.getElementById('swingWinRate').textContent = `${(data.win_rate * 100).toFixed(1)}%`;
+            // Win rate - handle both decimal (0.65) and percentage (65) formats
+            const winRate = data.win_rate > 1 ? data.win_rate : (data.win_rate * 100);
+            document.getElementById('swingWinRate').textContent = `${winRate.toFixed(1)}%`;
+            
             document.getElementById('swingProfitFactor').textContent = data.profit_factor ? data.profit_factor.toFixed(2) : 'N/A';
-            document.getElementById('swingTotalTrades').textContent = data.total_trades;
+            document.getElementById('swingTotalTrades').textContent = data.total_trades || 0;
             
             // Additional metrics
             document.getElementById('swingSharpe').textContent = data.sharpe_ratio ? data.sharpe_ratio.toFixed(2) : 'N/A';
-            const maxDD = (data.max_drawdown * 100).toFixed(2);
-            document.getElementById('swingMaxDrawdown').textContent = `-${maxDD}%`;
-            document.getElementById('swingAvgHoldTime').textContent = data.avg_hold_time ? `${data.avg_hold_time.toFixed(1)} days` : 'N/A';
+            
+            // Max drawdown - handle both decimal and percentage
+            const maxDD = data.max_drawdown > 1 ? data.max_drawdown : (data.max_drawdown * 100);
+            document.getElementById('swingMaxDrawdown').textContent = `-${Math.abs(maxDD).toFixed(2)}%`;
+            
+            // Avg hold time
+            const avgHold = data.avg_days_held || data.avg_hold_time || 0;
+            document.getElementById('swingAvgHoldTime').textContent = avgHold > 0 ? `${avgHold.toFixed(1)} days` : 'N/A';
             
             // Draw equity curve
             drawSwingEquityCurve(data.equity_curve || []);
@@ -2515,42 +2523,76 @@
                 return;
             }
             
-            const dates = equityCurve.map(point => point.date);
-            const values = equityCurve.map(point => point.value);
+            // Extract dates and values from equity curve
+            const dates = equityCurve.map(point => point.date || point.timestamp);
+            const values = equityCurve.map(point => point.equity || point.value);
             
-            const trace = {
-                x: dates,
-                y: values,
-                type: 'scatter',
-                mode: 'lines',
-                name: 'Portfolio Value',
-                line: {
-                    color: '#f43f5e',
-                    width: 2
+            // Initialize ECharts
+            const chart = echarts.init(chartDiv);
+            
+            const option = {
+                backgroundColor: 'transparent',
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: 'rgba(30, 41, 59, 0.9)',
+                    borderColor: '#475569',
+                    textStyle: { color: '#cbd5e1' },
+                    formatter: function(params) {
+                        const date = params[0].axisValue;
+                        const value = params[0].data;
+                        return `${date}<br/>Portfolio: $${value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                    }
                 },
-                fill: 'tozeroy',
-                fillcolor: 'rgba(244, 63, 94, 0.1)'
+                grid: {
+                    left: '60px',
+                    right: '30px',
+                    top: '30px',
+                    bottom: '60px'
+                },
+                xAxis: {
+                    type: 'category',
+                    data: dates,
+                    axisLine: { lineStyle: { color: '#475569' } },
+                    axisLabel: { color: '#cbd5e1' }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLine: { lineStyle: { color: '#475569' } },
+                    splitLine: { lineStyle: { color: 'rgba(255,255,255,0.1)' } },
+                    axisLabel: {
+                        color: '#cbd5e1',
+                        formatter: function(value) {
+                            return '$' + value.toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+                        }
+                    }
+                },
+                series: [{
+                    name: 'Portfolio Value',
+                    type: 'line',
+                    data: values,
+                    smooth: true,
+                    lineStyle: {
+                        color: '#f43f5e',
+                        width: 2
+                    },
+                    areaStyle: {
+                        color: {
+                            type: 'linear',
+                            x: 0, y: 0, x2: 0, y2: 1,
+                            colorStops: [
+                                { offset: 0, color: 'rgba(244, 63, 94, 0.3)' },
+                                { offset: 1, color: 'rgba(244, 63, 94, 0.05)' }
+                            ]
+                        }
+                    },
+                    symbol: 'none'
+                }]
             };
             
-            const layout = {
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                font: { color: '#cbd5e1' },
-                xaxis: {
-                    gridcolor: 'rgba(255,255,255,0.1)',
-                    title: 'Date'
-                },
-                yaxis: {
-                    gridcolor: 'rgba(255,255,255,0.1)',
-                    title: 'Portfolio Value ($)',
-                    tickformat: '$,.0f'
-                },
-                margin: { l: 60, r: 30, t: 30, b: 60 },
-                showlegend: false,
-                hovermode: 'x unified'
-            };
+            chart.setOption(option);
             
-            Plotly.newPlot(chartDiv, [trace], layout, { responsive: true });
+            // Resize chart on window resize
+            window.addEventListener('resize', () => chart.resize());
         }
 
         // ========================================================================
