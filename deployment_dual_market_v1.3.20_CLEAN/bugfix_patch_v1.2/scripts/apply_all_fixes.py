@@ -128,38 +128,28 @@ def apply_app_fixes(finbert_dir):
         print_status(f"Error applying fixes: {e}", 'ERROR')
         return False
 
-def disable_lstm(finbert_dir):
-    """Disable LSTM in config"""
-    print_status("Disabling broken LSTM in config...", 'INFO')
+def install_config(finbert_dir):
+    """Install correct config_dev.py"""
+    print_status("Installing configuration file...", 'INFO')
     
-    config_file = os.path.join(finbert_dir, 'config_dev.py')
+    target_file = os.path.join(finbert_dir, 'config_dev.py')
+    source_file = os.path.join(os.path.dirname(os.path.dirname(__file__)), 
+                               'fixes', 'config_dev.py')
     
+    if not os.path.exists(source_file):
+        print_status(f"Source config not found: {source_file}", 'ERROR')
+        return False
+    
+    # Backup original
+    backup_file(target_file)
+    
+    # Copy fixed version
     try:
-        # Create or update config
-        config_content = '''"""
-FinBERT v4.4.4 Development Configuration
-"""
-
-# Feature flags
-FEATURES = {
-    'USE_LSTM': False,  # Disabled until retrained
-    'USE_SENTIMENT': True,  # Real sentiment only
-    'USE_TECHNICAL': True,  # RSI, MACD, etc.
-    'USE_VOLUME': True
-}
-
-# Logging
-LOG_LEVEL = 'INFO'
-'''
-        
-        with open(config_file, 'w', encoding='utf-8') as f:
-            f.write(config_content)
-        
-        print_status("Config updated (LSTM disabled)", 'OK')
+        shutil.copy2(source_file, target_file)
+        print_status(f"Config file installed (LSTM disabled)", 'OK')
         return True
-        
     except Exception as e:
-        print_status(f"Config update failed: {e}", 'ERROR')
+        print_status(f"Failed to copy config: {e}", 'ERROR')
         return False
 
 def main():
@@ -195,7 +185,7 @@ def main():
     
     # Apply all fixes
     fixes_applied = 0
-    fixes_total = 4
+    fixes_total = 3
     
     print("Applying fixes...")
     print("-" * 60)
@@ -206,14 +196,14 @@ def main():
     if apply_app_fixes(finbert_dir):
         fixes_applied += 1
     
-    if disable_lstm(finbert_dir):
+    if install_config(finbert_dir):
         fixes_applied += 1
     
     # Verify installation
     print()
     print("-" * 60)
     
-    if fixes_applied >= 3:
+    if fixes_applied == fixes_total:
         print_status(f"Installation complete ({fixes_applied}/{fixes_total} fixes)", 'OK')
         print()
         print("NEXT STEPS:")
