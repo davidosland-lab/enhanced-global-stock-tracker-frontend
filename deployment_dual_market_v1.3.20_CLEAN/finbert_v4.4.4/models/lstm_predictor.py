@@ -373,9 +373,12 @@ class StockLSTMPredictor:
             return self._simple_prediction(data, sentiment_data, symbol)
     
     def _get_sentiment(self, symbol: str) -> Optional[Dict]:
-        """Get sentiment data for a symbol"""
-        if FINBERT_AVAILABLE and finbert_analyzer:
-            return finbert_analyzer.get_mock_sentiment(symbol)
+        """
+        Get REAL sentiment data for a symbol
+        NO MOCK/FAKE/SYNTHETIC DATA - Returns None if real sentiment unavailable
+        """
+        # NO MOCK DATA - sentiment must come from real FinBERT analysis
+        # This will be populated by the API layer with real sentiment
         return None
     
     def _integrate_sentiment(self, direction: float, confidence_raw: float, 
