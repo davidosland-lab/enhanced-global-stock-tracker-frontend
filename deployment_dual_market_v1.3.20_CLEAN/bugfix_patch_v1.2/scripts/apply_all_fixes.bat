@@ -1,30 +1,23 @@
 @echo off
-chcp 65001 >nul
-echo.
-echo =========================================
-echo FinBERT v4.4.4 - Bug Fix Patch v1.2
-echo NO MOCK DATA - REAL DATA ONLY
-echo =========================================
-echo.
-echo This patch fixes:
-echo [1] Removes mock sentiment from app
-echo [2] Disables broken LSTM temporarily
-echo [3] Removes mock sentiment from LSTM predictor
-echo [4] Fixes ADX calculation crashes
-echo.
-pause
+REM Bug Fix Patch v1.2 - Windows Installer
+REM Fixes: SyntaxError + Mock + ADX + LSTM
 
-python "%~dp0apply_all_fixes.py"
+echo.
+echo ============================================================
+echo   Bug Fix Patch v1.2 Installer
+echo   Fixes: SyntaxError + Mock Data + ADX + LSTM
+echo ============================================================
+echo.
 
-if %ERRORLEVEL% NEQ 0 (
-    echo.
-    echo ERROR: Patch installation failed
+REM Check Python
+python --version >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] Python not found. Please install Python 3.8+
     pause
     exit /b 1
 )
 
-echo.
-echo =========================================
-echo Patch Installation Complete!
-echo =========================================
-pause
+REM Run installer
+python "%~dp0apply_all_fixes.py" %*
+
+exit /b %errorlevel%
