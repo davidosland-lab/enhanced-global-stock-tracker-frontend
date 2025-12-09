@@ -812,18 +812,37 @@ class SwingTraderEngine:
         # Equity curve analysis
         equity_df = pd.DataFrame(self.equity_curve)
         equity_df['returns'] = equity_df['equity'].pct_change()
-        sharpe_ratio = (equity_df['returns'].mean() / equity_df['returns'].std()) * np.sqrt(252) if len(equity_df) > 1 else 0
         
-        # Drawdown
+        # Sharpe ratio (handle NaN/inf)
+        if len(equity_df) > 1 and equity_df['returns'].std() > 0:
+            sharpe_ratio = (equity_df['returns'].mean() / equity_df['returns'].std()) * np.sqrt(252)
+            if np.isnan(sharpe_ratio) or np.isinf(sharpe_ratio):
+                sharpe_ratio = 0.0
+        else:
+            sharpe_ratio = 0.0
+        
+        # Drawdown (handle NaN)
         equity_df['cummax'] = equity_df['equity'].cummax()
         equity_df['drawdown'] = (equity_df['equity'] - equity_df['cummax']) / equity_df['cummax'] * 100
         max_drawdown = equity_df['drawdown'].min()
+        if np.isnan(max_drawdown):
+            max_drawdown = 0.0
         
         # Exit reason breakdown
         exit_reasons = trades_df['exit_reason'].value_counts().to_dict()
         
-        # Sentiment correlation
-        sentiment_corr = trades_df[['sentiment_score', 'pnl_percent']].corr().iloc[0, 1] if 'sentiment_score' in trades_df.columns else 0
+        # Sentiment correlation (handle NaN)
+        if 'sentiment_score' in trades_df.columns and 'pnl_percent' in trades_df.columns:
+            sentiment_corr = trades_df[['sentiment_score', 'pnl_percent']].corr().iloc[0, 1]
+            if np.isnan(sentiment_corr):
+                sentiment_corr = 0.0
+        else:
+            sentiment_corr = 0.0
+        
+        # Avg days held (handle NaN)
+        avg_days_held = trades_df['days_held'].mean()
+        if np.isnan(avg_days_held):
+            avg_days_held = 0.0
         
         return {
             'symbol': symbol,
@@ -847,10 +866,25 @@ class SwingTraderEngine:
             'max_drawdown': max_drawdown,
             'exit_reasons': exit_reasons,
             'sentiment_correlation': sentiment_corr,
-            'avg_days_held': trades_df['days_held'].mean(),
-            'trades': trades_df.to_dict('records'),
-            'equity_curve': equity_df.to_dict('records')
+            'avg_days_held': avg_days_held,
+            'trades': self._clean_dict_for_json(trades_df.to_dict('records')),
+            'equity_curve': self._clean_dict_for_json(equity_df.to_dict('records'))
         }
+    
+    def _clean_dict_for_json(self, data):
+        """Replace NaN/Inf values with None for JSON serialization"""
+        import math
+        
+        if isinstance(data, list):
+            return [self._clean_dict_for_json(item) for item in data]
+        elif isinstance(data, dict):
+            return {k: self._clean_dict_for_json(v) for k, v in data.items()}
+        elif isinstance(data, float):
+            if math.isnan(data) or math.isinf(data):
+                return 0.0
+            return data
+        else:
+            return data
 
 
 # Helper function for easy integration
