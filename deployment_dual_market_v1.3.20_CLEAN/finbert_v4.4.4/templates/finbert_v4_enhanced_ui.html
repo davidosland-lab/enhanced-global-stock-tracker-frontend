@@ -341,6 +341,9 @@
                 <button onclick="openPortfolioBacktestModal()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg transition">
                     <i class="fas fa-briefcase mr-2"></i> Portfolio Backtest
                 </button>
+                <button onclick="openSwingBacktestModal()" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 rounded-lg transition">
+                    <i class="fas fa-chart-area mr-2"></i> Swing Trading
+                </button>
                 <button onclick="openOptimizeModal()" class="px-4 py-2 bg-amber-600 hover:bg-amber-700 rounded-lg transition">
                     <i class="fas fa-sliders-h mr-2"></i> Optimize Parameters
                 </button>
@@ -2366,6 +2369,185 @@
         }
 
         // ========================================================================
+        // SWING TRADING BACKTEST FUNCTIONS
+        // ========================================================================
+
+        let swingEquityChart = null;
+
+        function openSwingBacktestModal() {
+            document.getElementById('swingBacktestModal').style.display = 'flex';
+            
+            // Set default dates (10 months back for swing trading)
+            const endDate = new Date();
+            const startDate = new Date();
+            startDate.setMonth(startDate.getMonth() - 10);
+            
+            document.getElementById('swingStartDate').value = startDate.toISOString().split('T')[0];
+            document.getElementById('swingEndDate').value = endDate.toISOString().split('T')[0];
+            
+            // Hide results if shown
+            document.getElementById('swingResultsPanel').style.display = 'none';
+        }
+
+        function closeSwingBacktestModal() {
+            document.getElementById('swingBacktestModal').style.display = 'none';
+        }
+
+        async function runSwingBacktest() {
+            const symbol = document.getElementById('swingSymbol').value.trim().toUpperCase();
+            
+            if (!symbol) {
+                showTradeMessage('❌ Please enter a stock symbol', 'error');
+                return;
+            }
+            
+            // Show loading
+            document.getElementById('swingLoading').style.display = 'block';
+            document.getElementById('swingResultsPanel').style.display = 'none';
+            
+            try {
+                const response = await fetch(`${API_BASE}/api/backtest/swing`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        start_date: document.getElementById('swingStartDate').value,
+                        end_date: document.getElementById('swingEndDate').value,
+                        initial_capital: parseFloat(document.getElementById('swingCapital').value || 100000),
+                        holding_period: parseInt(document.getElementById('swingHoldingPeriod').value || 5),
+                        stop_loss_pct: parseFloat(document.getElementById('swingStopLoss').value || 3),
+                        confidence_threshold: parseFloat(document.getElementById('swingConfidence').value || 65) / 100,
+                        max_position_size: parseFloat(document.getElementById('swingMaxPosition').value || 25) / 100,
+                        use_real_sentiment: document.getElementById('swingUseRealSentiment').checked,
+                        use_lstm: document.getElementById('swingUseLSTM').checked
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                // Display results
+                displaySwingBacktestResults(data);
+                showTradeMessage('✅ Swing trading backtest completed successfully!', 'success');
+                
+            } catch (error) {
+                console.error('Swing backtest error:', error);
+                showTradeMessage(`❌ Backtest error: ${error.message}`, 'error');
+            } finally {
+                document.getElementById('swingLoading').style.display = 'none';
+            }
+        }
+
+        function displaySwingBacktestResults(data) {
+            // Show results panel
+            document.getElementById('swingResultsPanel').style.display = 'block';
+            
+            // Update key metrics
+            const totalReturn = ((data.final_value / data.initial_capital - 1) * 100).toFixed(2);
+            const returnClass = totalReturn >= 0 ? 'text-green-400' : 'text-red-400';
+            document.getElementById('swingTotalReturn').innerHTML = `<span class="${returnClass}">${totalReturn > 0 ? '+' : ''}${totalReturn}%</span>`;
+            
+            document.getElementById('swingWinRate').textContent = `${(data.win_rate * 100).toFixed(1)}%`;
+            document.getElementById('swingProfitFactor').textContent = data.profit_factor ? data.profit_factor.toFixed(2) : 'N/A';
+            document.getElementById('swingTotalTrades').textContent = data.total_trades;
+            
+            // Additional metrics
+            document.getElementById('swingSharpe').textContent = data.sharpe_ratio ? data.sharpe_ratio.toFixed(2) : 'N/A';
+            const maxDD = (data.max_drawdown * 100).toFixed(2);
+            document.getElementById('swingMaxDrawdown').textContent = `-${maxDD}%`;
+            document.getElementById('swingAvgHoldTime').textContent = data.avg_hold_time ? `${data.avg_hold_time.toFixed(1)} days` : 'N/A';
+            
+            // Draw equity curve
+            drawSwingEquityCurve(data.equity_curve || []);
+            
+            // Populate trade history
+            const tbody = document.getElementById('swingTradeHistory');
+            tbody.innerHTML = '';
+            
+            if (data.trades && data.trades.length > 0) {
+                data.trades.forEach(trade => {
+                    const row = document.createElement('tr');
+                    const pnl = trade.exit_price - trade.entry_price;
+                    const returnPct = ((trade.exit_price / trade.entry_price - 1) * 100).toFixed(2);
+                    const isProfit = pnl > 0;
+                    
+                    row.innerHTML = `
+                        <td class="px-4 py-2">${trade.entry_date}</td>
+                        <td class="px-4 py-2">${trade.exit_date}</td>
+                        <td class="px-4 py-2 text-right">$${trade.entry_price.toFixed(2)}</td>
+                        <td class="px-4 py-2 text-right">$${trade.exit_price.toFixed(2)}</td>
+                        <td class="px-4 py-2 text-right ${isProfit ? 'text-green-400' : 'text-red-400'}">
+                            ${isProfit ? '+' : ''}$${pnl.toFixed(2)}
+                        </td>
+                        <td class="px-4 py-2 text-right ${isProfit ? 'text-green-400' : 'text-red-400'}">
+                            ${isProfit ? '+' : ''}${returnPct}%
+                        </td>
+                        <td class="px-4 py-2 text-center">
+                            <span class="px-2 py-1 rounded text-xs ${isProfit ? 'bg-green-600' : 'bg-red-600'}">
+                                ${isProfit ? 'WIN' : 'LOSS'}
+                            </span>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            } else {
+                tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-4 text-center text-gray-400">No trades executed</td></tr>';
+            }
+            
+            // Scroll to results
+            document.getElementById('swingResultsPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+
+        function drawSwingEquityCurve(equityCurve) {
+            const chartDiv = document.getElementById('swingEquityChart');
+            
+            if (!equityCurve || equityCurve.length === 0) {
+                chartDiv.innerHTML = '<p class="text-gray-400 text-center py-8">No equity curve data available</p>';
+                return;
+            }
+            
+            const dates = equityCurve.map(point => point.date);
+            const values = equityCurve.map(point => point.value);
+            
+            const trace = {
+                x: dates,
+                y: values,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Portfolio Value',
+                line: {
+                    color: '#f43f5e',
+                    width: 2
+                },
+                fill: 'tozeroy',
+                fillcolor: 'rgba(244, 63, 94, 0.1)'
+            };
+            
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#cbd5e1' },
+                xaxis: {
+                    gridcolor: 'rgba(255,255,255,0.1)',
+                    title: 'Date'
+                },
+                yaxis: {
+                    gridcolor: 'rgba(255,255,255,0.1)',
+                    title: 'Portfolio Value ($)',
+                    tickformat: '$,.0f'
+                },
+                margin: { l: 60, r: 30, t: 30, b: 60 },
+                showlegend: false,
+                hovermode: 'x unified'
+            };
+            
+            Plotly.newPlot(chartDiv, [trace], layout, { responsive: true });
+        }
+
+        // ========================================================================
         // PARAMETER OPTIMIZATION FUNCTIONS
         // ========================================================================
 
@@ -3716,6 +3898,185 @@
                 <div id="portfolioLoading" style="display: none;" class="text-center py-8">
                     <div class="loading-spinner mx-auto mb-4"></div>
                     <p class="text-gray-400">Running portfolio backtest... This may take 2-3 minutes.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Swing Trading Backtest Modal -->
+    <div id="swingBacktestModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 1200px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h2>
+                    <i class="fas fa-chart-area text-rose-500 mr-2"></i> Swing Trading Backtest
+                    <span class="text-sm text-gray-400 ml-3">5-Day Position Holding with LSTM + Real Sentiment</span>
+                </h2>
+                <button onclick="closeSwingBacktestModal()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Configuration Panel -->
+                <div class="trading-panel">
+                    <h3 class="text-lg font-bold mb-4">
+                        <i class="fas fa-cog mr-2"></i> Swing Trading Configuration
+                    </h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Stock Symbol</label>
+                            <input type="text" id="swingSymbol" placeholder="e.g., AAPL" 
+                                   class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                                   value="AAPL">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Initial Capital ($)</label>
+                            <input type="number" id="swingCapital" placeholder="100000" 
+                                   class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                                   value="100000">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Start Date</label>
+                            <input type="date" id="swingStartDate" 
+                                   class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                                   value="2024-01-01">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">End Date</label>
+                            <input type="date" id="swingEndDate" 
+                                   class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                                   value="2024-11-01">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Holding Period (Days)</label>
+                            <input type="number" id="swingHoldingPeriod" placeholder="5" 
+                                   class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                                   value="5" min="1" max="30">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Stop Loss (%)</label>
+                            <input type="number" id="swingStopLoss" placeholder="3" 
+                                   class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                                   value="3" min="0" max="20" step="0.5">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Confidence Threshold (%)</label>
+                            <input type="number" id="swingConfidence" placeholder="65" 
+                                   class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                                   value="65" min="50" max="95" step="5">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-2">Max Position Size (%)</label>
+                            <input type="number" id="swingMaxPosition" placeholder="25" 
+                                   class="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+                                   value="25" min="10" max="100" step="5">
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="swingUseRealSentiment" checked 
+                                   class="mr-2 w-4 h-4 text-rose-600 bg-slate-700 border-slate-600 rounded">
+                            <span class="text-sm text-gray-400">Use Real Sentiment (FinBERT + Historical News)</span>
+                        </label>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="flex items-center">
+                            <input type="checkbox" id="swingUseLSTM" checked 
+                                   class="mr-2 w-4 h-4 text-rose-600 bg-slate-700 border-slate-600 rounded">
+                            <span class="text-sm text-gray-400">Use LSTM Neural Network for Pattern Recognition</span>
+                        </label>
+                    </div>
+
+                    <button onclick="runSwingBacktest()" 
+                            class="w-full px-6 py-3 bg-rose-600 hover:bg-rose-700 rounded-lg transition">
+                        <i class="fas fa-play mr-2"></i> Run Swing Trading Backtest
+                    </button>
+                </div>
+
+                <!-- Results Panel -->
+                <div id="swingResultsPanel" class="trading-panel mt-4" style="display: none;">
+                    <h3 class="text-lg font-bold mb-4">
+                        <i class="fas fa-chart-bar mr-2"></i> Swing Trading Results
+                    </h3>
+                    
+                    <!-- Key Metrics -->
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                        <div class="bg-slate-700 p-4 rounded-lg">
+                            <div class="text-gray-400 text-sm mb-1">Total Return</div>
+                            <div id="swingTotalReturn" class="text-2xl font-bold text-green-400">--</div>
+                        </div>
+                        <div class="bg-slate-700 p-4 rounded-lg">
+                            <div class="text-gray-400 text-sm mb-1">Win Rate</div>
+                            <div id="swingWinRate" class="text-2xl font-bold text-blue-400">--</div>
+                        </div>
+                        <div class="bg-slate-700 p-4 rounded-lg">
+                            <div class="text-gray-400 text-sm mb-1">Profit Factor</div>
+                            <div id="swingProfitFactor" class="text-2xl font-bold text-purple-400">--</div>
+                        </div>
+                        <div class="bg-slate-700 p-4 rounded-lg">
+                            <div class="text-gray-400 text-sm mb-1">Total Trades</div>
+                            <div id="swingTotalTrades" class="text-2xl font-bold text-amber-400">--</div>
+                        </div>
+                    </div>
+
+                    <!-- Additional Metrics -->
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                        <div class="bg-slate-700 p-3 rounded-lg">
+                            <div class="text-gray-400 text-xs mb-1">Sharpe Ratio</div>
+                            <div id="swingSharpe" class="text-xl font-bold">--</div>
+                        </div>
+                        <div class="bg-slate-700 p-3 rounded-lg">
+                            <div class="text-gray-400 text-xs mb-1">Max Drawdown</div>
+                            <div id="swingMaxDrawdown" class="text-xl font-bold text-red-400">--</div>
+                        </div>
+                        <div class="bg-slate-700 p-3 rounded-lg">
+                            <div class="text-gray-400 text-xs mb-1">Avg Hold Time</div>
+                            <div id="swingAvgHoldTime" class="text-xl font-bold">--</div>
+                        </div>
+                    </div>
+
+                    <!-- Equity Curve Chart -->
+                    <div class="mb-6">
+                        <h4 class="text-md font-semibold mb-2">Equity Curve</h4>
+                        <div id="swingEquityChart" style="height: 300px;"></div>
+                    </div>
+
+                    <!-- Trade History Table -->
+                    <div>
+                        <h4 class="text-md font-semibold mb-2">Trade History</h4>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="bg-slate-700">
+                                        <th class="px-4 py-2 text-left">Entry Date</th>
+                                        <th class="px-4 py-2 text-left">Exit Date</th>
+                                        <th class="px-4 py-2 text-right">Entry Price</th>
+                                        <th class="px-4 py-2 text-right">Exit Price</th>
+                                        <th class="px-4 py-2 text-right">P&L</th>
+                                        <th class="px-4 py-2 text-right">Return %</th>
+                                        <th class="px-4 py-2 text-center">Result</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="swingTradeHistory">
+                                    <!-- Populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loading Indicator -->
+                <div id="swingLoading" style="display: none;" class="text-center py-8">
+                    <div class="loading-spinner mx-auto mb-4"></div>
+                    <p class="text-gray-400">Running swing trading backtest... This may take 1-2 minutes.</p>
                 </div>
             </div>
         </div>
