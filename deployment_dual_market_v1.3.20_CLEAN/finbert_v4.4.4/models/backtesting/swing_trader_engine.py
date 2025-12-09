@@ -762,11 +762,26 @@ class SwingTraderEngine:
     def _calculate_metrics(self, symbol: str, start_date: str, end_date: str) -> Dict:
         """Calculate comprehensive performance metrics"""
         if not self.closed_trades:
+            # Return valid results with 0 trades instead of error
             return {
-                'error': 'No trades executed',
                 'symbol': symbol,
                 'start_date': start_date,
-                'end_date': end_date
+                'end_date': end_date,
+                'initial_capital': self.initial_capital,
+                'final_value': self.capital,
+                'total_return': 0.0,
+                'total_return_pct': 0.0,
+                'total_trades': 0,
+                'winning_trades': 0,
+                'losing_trades': 0,
+                'win_rate': 0.0,
+                'profit_factor': 0.0,
+                'sharpe_ratio': 0.0,
+                'max_drawdown': 0.0,
+                'avg_hold_time': 0.0,
+                'trades': [],
+                'equity_curve': [],
+                'message': 'No trades executed - strategy did not find any opportunities that met the criteria'
             }
         
         # Convert to DataFrame for easier analysis
