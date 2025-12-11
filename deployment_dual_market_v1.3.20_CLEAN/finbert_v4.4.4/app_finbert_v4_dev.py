@@ -1646,7 +1646,7 @@ def run_swing_trading_backtest():
         initial_capital = data.get('initial_capital', 100000.0)
         holding_period_days = data.get('holding_period_days', 5)
         stop_loss_percent = data.get('stop_loss_percent', 3.0)
-        confidence_threshold = data.get('confidence_threshold', 0.65)
+        confidence_threshold = data.get('confidence_threshold', 0.52)  # Lowered from 0.65!
         max_position_size = data.get('max_position_size', 0.25)
         use_real_sentiment = data.get('use_real_sentiment', True)
         use_lstm = data.get('use_lstm', True)
@@ -1725,6 +1725,14 @@ def run_swing_trading_backtest():
             use_real_sentiment=use_real_sentiment and news_data is not None,
             use_lstm=use_lstm
         )
+        
+        # DEBUG: Log position sizing parameters
+        logger.info(f"Engine initialized with:")
+        logger.info(f"  Initial Capital: ${initial_capital:,.2f}")
+        logger.info(f"  Max Position Size: {max_position_size:.1%} = ${initial_capital * max_position_size:,.2f} per trade")
+        logger.info(f"  Confidence Threshold: {confidence_threshold:.1%}")
+        logger.info(f"  Holding Period: {holding_period_days} days")
+        logger.info(f"  Stop Loss: {stop_loss_percent}%")
         
         # Phase 4: Run backtest
         results = engine.run_backtest(
