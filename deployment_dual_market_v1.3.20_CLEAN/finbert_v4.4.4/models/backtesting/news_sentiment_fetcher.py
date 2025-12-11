@@ -82,7 +82,7 @@ class NewsSentimentFetcher:
         
         logger.info(f"News sentiment fetcher initialized (FinBERT={'enabled' if self.finbert_model else 'disabled'})")
     
-    def get_historical_sentiment(
+    def fetch_historical_sentiment(
         self,
         symbol: str,
         start_date: datetime,
@@ -367,10 +367,10 @@ if __name__ == '__main__':
     # Test the sentiment fetcher
     fetcher = NewsSentimentFetcher(use_finbert=True)
     
-    sentiment_data = fetcher.get_historical_sentiment(
+    sentiment_data = fetcher.fetch_historical_sentiment(
         symbol='AAPL',
         start_date=datetime(2024, 1, 1),
-        end_date=datetime(2024, 12, 31)
+        end_date=datetime(2024, 31)
     )
     
     print(f"\nFetched {len(sentiment_data)} news articles")
