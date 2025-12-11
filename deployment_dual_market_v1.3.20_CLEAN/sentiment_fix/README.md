@@ -10,7 +10,7 @@
 
 ## 🔍 Root Cause Analysis
 
-### TWO Bugs Preventing Sentiment from Working!
+### THREE Bugs Preventing Sentiment from Working!
 
 ### Bug #1: Method Name Mismatch
 **File**: `news_sentiment_fetcher.py` (Line 85)
@@ -46,16 +46,36 @@ def fetch_historical_sentiment(self, symbol, start_date: datetime, end_date: dat
     logger.info(f"Fetching sentiment: {start_date.date()}")  # Calls .date() method!
 ```
 
+### Bug #3: Logger Not Defined During FinBERT Import
+**File**: `app_finbert_v4_dev.py` (Lines 36-57)
+
+```python
+# ❌ WRONG ORDER:
+# Line 36-45: Try to import FinBERT
+try:
+    from models.finbert_sentiment import finbert_analyzer
+    logger.info("FinBERT loaded")  # Line 45 - ERROR! logger not defined yet!
+except Exception as e:
+    print(f"Note: FinBERT not available ({e})")  # Catches the NameError
+
+# Line 53-57: Define logger (TOO LATE!)
+logging.basicConfig(...)
+logger = logging.getLogger(__name__)
+```
+
 ### What Happened
 1. **Bug #1**: API called `fetch_historical_sentiment()` but method was named `get_historical_sentiment()` ❌
-2. Fixed method name, but sentiment still 0.000! ❌
+2. Fixed Bug #1, but sentiment still 0.000! ❌
 3. **Bug #2**: API passed date **strings** but method expected **datetime objects** ❌
 4. Method tried to call `start_date.date()` on a string ❌
 5. `AttributeError: 'str' object has no attribute 'date'` raised
-6. Exception caught silently → `news_data = None`
-7. Sentiment always returned `0.0` (no news available)
+6. Fixed Bug #2, but FinBERT still showing fallback! ❌
+7. **Bug #3**: `logger.info()` called before `logger` was defined ❌
+8. `NameError: name 'logger' is not defined` raised during FinBERT import
+9. Exception caught → FinBERT import failed → Fallback keyword sentiment used
+10. All exceptions caught silently → Hard to debug!
 
-**Result**: FinBERT sentiment analysis was **NEVER USED** (TWO bugs prevented it)! 😱
+**Result**: FinBERT sentiment analysis was **NEVER USED** (THREE bugs prevented it)! 😱
 
 ---
 
@@ -97,7 +117,7 @@ COMPONENT SCORES:
 
 ---
 
-## ✅ The Fix (TWO Files Updated)
+## ✅ The Fix (THREE Bugs Fixed)
 
 ### Fix #1: Changed Method Name (`news_sentiment_fetcher.py`)
 ```python
@@ -106,7 +126,21 @@ def fetch_historical_sentiment(self, symbol, start_date, end_date):
     ...
 ```
 
-### Fix #2: Convert Strings to Datetime (`app_finbert_v4_dev.py`)
+### Fix #2: Move Logger Definition Before Imports (`app_finbert_v4_dev.py`)
+```python
+# ✅ FIXED (Lines 36-44): Configure logging FIRST
+logging.basicConfig(level=logging.INFO, format='...')
+logger = logging.getLogger(__name__)
+
+# ✅ FIXED (Lines 46-58): Then import FinBERT (logger now available)
+try:
+    from models.finbert_sentiment import finbert_analyzer
+    logger.info("✓ REAL FinBERT with news scraping loaded")  # Now works!
+except Exception as e:
+    logger.warning(f"FinBERT not available: {e}")
+```
+
+### Fix #3: Convert Strings to Datetime (`app_finbert_v4_dev.py`)
 ```python
 # ✅ FIXED (Line 1640-1643):
 from datetime import datetime as dt
@@ -121,7 +155,7 @@ news_data = sentiment_fetcher.fetch_historical_sentiment(
 )
 ```
 
-**Both bugs fixed - sentiment will now work!**
+**All THREE bugs fixed - sentiment will now work!**
 
 ### How FinBERT Works (Now Active)
 
@@ -404,8 +438,8 @@ This is for demo purposes. For real trading, ensure internet access for Yahoo Fi
 ## 📝 Technical Details
 
 ### Files Modified
-- `news_sentiment_fetcher.py` (1 line changed: method name)
-- `app_finbert_v4_dev.py` (7 lines changed: datetime conversion)
+- `news_sentiment_fetcher.py` (1 line: method name)
+- `app_finbert_v4_dev.py` (20 lines: logger moved + datetime conversion)
 
 ### Code Change
 ```python

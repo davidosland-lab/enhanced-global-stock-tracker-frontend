@@ -33,7 +33,17 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from config_dev import get_config, DevelopmentConfig
 from models.lstm_predictor import lstm_predictor, get_lstm_prediction
 
-# Import FinBERT sentiment analyzer with REAL news scraping (must be after other imports)
+# Suppress warnings
+warnings.filterwarnings('ignore')
+
+# Configure logging BEFORE importing FinBERT (so logger is available)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+# Import FinBERT sentiment analyzer with REAL news scraping
 FINBERT_AVAILABLE = False
 finbert_analyzer = None
 real_sentiment_module = None
@@ -44,17 +54,8 @@ try:
     real_sentiment_module = True
     logger.info("✓ REAL FinBERT with news scraping loaded")
 except (ImportError, ValueError, Exception) as e:
+    logger.warning(f"FinBERT not available ({e}). Using fallback sentiment.")
     print(f"Note: FinBERT not available ({e}). Using fallback sentiment.")
-
-# Suppress warnings
-warnings.filterwarnings('ignore')
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 # Load configuration
 config = get_config('development')
