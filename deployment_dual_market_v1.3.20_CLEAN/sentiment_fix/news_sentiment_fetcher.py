@@ -111,7 +111,11 @@ class NewsSentimentFetcher:
                 logger.info(f"Loading sentiment from cache: {cache_file}")
                 with open(cache_file, 'r') as f:
                     cached_data = json.load(f)
-                return pd.DataFrame(cached_data)
+                cached_df = pd.DataFrame(cached_data)
+                # Convert date strings to datetime objects (important for comparisons!)
+                if not cached_df.empty and 'date' in cached_df.columns:
+                    cached_df['date'] = pd.to_datetime(cached_df['date'])
+                return cached_df
             except Exception as e:
                 logger.warning(f"Cache read error: {e}. Fetching fresh data.")
         
