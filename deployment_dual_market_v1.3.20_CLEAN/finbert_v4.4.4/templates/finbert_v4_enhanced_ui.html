@@ -2484,13 +2484,16 @@
             if (data.trades && data.trades.length > 0) {
                 data.trades.forEach(trade => {
                     const row = document.createElement('tr');
-                    const pnl = trade.exit_price - trade.entry_price;
-                    const returnPct = ((trade.exit_price / trade.entry_price - 1) * 100).toFixed(2);
+                    // Use backend's actual P&L and percentage (not recalculated!)
+                    const pnl = trade.pnl || 0;
+                    const returnPct = (trade.pnl_percent || 0).toFixed(2);
+                    const shares = trade.shares || 1;
                     const isProfit = pnl > 0;
                     
                     row.innerHTML = `
                         <td class="px-4 py-2">${trade.entry_date}</td>
                         <td class="px-4 py-2">${trade.exit_date}</td>
+                        <td class="px-4 py-2 text-right font-semibold">${shares}</td>
                         <td class="px-4 py-2 text-right">$${trade.entry_price.toFixed(2)}</td>
                         <td class="px-4 py-2 text-right">$${trade.exit_price.toFixed(2)}</td>
                         <td class="px-4 py-2 text-right ${isProfit ? 'text-green-400' : 'text-red-400'}">
@@ -2508,7 +2511,7 @@
                     tbody.appendChild(row);
                 });
             } else {
-                tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-4 text-center text-gray-400">No trades executed</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="px-4 py-4 text-center text-gray-400">No trades executed</td></tr>';
             }
             
             // Scroll to results
@@ -4106,6 +4109,7 @@
                                     <tr class="bg-slate-700">
                                         <th class="px-4 py-2 text-left">Entry Date</th>
                                         <th class="px-4 py-2 text-left">Exit Date</th>
+                                        <th class="px-4 py-2 text-right">Shares</th>
                                         <th class="px-4 py-2 text-right">Entry Price</th>
                                         <th class="px-4 py-2 text-right">Exit Price</th>
                                         <th class="px-4 py-2 text-right">P&L</th>
