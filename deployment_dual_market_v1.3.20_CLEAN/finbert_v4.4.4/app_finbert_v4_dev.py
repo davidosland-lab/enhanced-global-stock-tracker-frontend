@@ -1637,6 +1637,11 @@ def run_swing_trading_backtest():
         start_date = data['start_date']
         end_date = data['end_date']
         
+        # Convert date strings to datetime objects for news fetcher
+        from datetime import datetime as dt
+        start_date_dt = dt.strptime(start_date, '%Y-%m-%d')
+        end_date_dt = dt.strptime(end_date, '%Y-%m-%d')
+        
         logger.info(f"=== SWING BACKTEST REQUEST ===")
         logger.info(f"Symbol: {symbol}")
         logger.info(f"Date Range: {start_date} to {end_date}")
@@ -1702,8 +1707,8 @@ def run_swing_trading_backtest():
                 sentiment_fetcher = NewsSentimentFetcher()
                 news_data = sentiment_fetcher.fetch_historical_sentiment(
                     symbol=symbol,
-                    start_date=start_date,
-                    end_date=end_date
+                    start_date=start_date_dt,
+                    end_date=end_date_dt
                 )
                 logger.info(f"Loaded {len(news_data) if news_data is not None else 0} news articles")
             except Exception as e:
