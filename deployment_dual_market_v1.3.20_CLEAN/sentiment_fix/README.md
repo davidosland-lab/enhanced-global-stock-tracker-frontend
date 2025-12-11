@@ -10,9 +10,10 @@
 
 ## 🔍 Root Cause Analysis
 
-### The Bug
-**File**: `news_sentiment_fetcher.py`  
-**Line**: 85
+### TWO Bugs Preventing Sentiment from Working!
+
+### Bug #1: Method Name Mismatch
+**File**: `news_sentiment_fetcher.py` (Line 85)
 
 ```python
 # ❌ WRONG METHOD NAME:
@@ -20,28 +21,41 @@ def get_historical_sentiment(self, symbol, start_date, end_date):
     ...
 ```
 
-### The API Call
-**File**: `app_finbert_v4_dev.py`  
-**Line**: 1703
+**File**: `app_finbert_v4_dev.py` (Line 1703)
 
 ```python
-# ✅ API TRIED TO CALL:
-news_data = sentiment_fetcher.fetch_historical_sentiment(
-    symbol=symbol,
-    start_date=start_date,
-    end_date=end_date
-)
+# API TRIED TO CALL:
+news_data = sentiment_fetcher.fetch_historical_sentiment(...)  # Different name!
+```
+
+### Bug #2: String vs DateTime Type Mismatch
+**File**: `app_finbert_v4_dev.py` (Line 1637-1638)
+
+```python
+# ❌ WRONG: Dates are STRINGS from frontend
+start_date = data['start_date']  # '2024-06-03' (string)
+end_date = data['end_date']      # '2024-06-24' (string)
+```
+
+**File**: `news_sentiment_fetcher.py` (Line 88-89)
+
+```python
+# METHOD EXPECTS DATETIME OBJECTS:
+def fetch_historical_sentiment(self, symbol, start_date: datetime, end_date: datetime):
+    ...
+    logger.info(f"Fetching sentiment: {start_date.date()}")  # Calls .date() method!
 ```
 
 ### What Happened
-1. API called `fetch_historical_sentiment()` ❌
-2. Class only had `get_historical_sentiment()` ❌
-3. Method not found → `AttributeError` exception
-4. Exception caught silently → `news_data = None`
-5. Engine received `None` for news data
-6. Sentiment always returned `0.0` (no news available)
+1. **Bug #1**: API called `fetch_historical_sentiment()` but method was named `get_historical_sentiment()` ❌
+2. Fixed method name, but sentiment still 0.000! ❌
+3. **Bug #2**: API passed date **strings** but method expected **datetime objects** ❌
+4. Method tried to call `start_date.date()` on a string ❌
+5. `AttributeError: 'str' object has no attribute 'date'` raised
+6. Exception caught silently → `news_data = None`
+7. Sentiment always returned `0.0` (no news available)
 
-**Result**: FinBERT sentiment analysis was **NEVER USED**! 😱
+**Result**: FinBERT sentiment analysis was **NEVER USED** (TWO bugs prevented it)! 😱
 
 ---
 
@@ -83,16 +97,31 @@ COMPONENT SCORES:
 
 ---
 
-## ✅ The Fix
+## ✅ The Fix (TWO Files Updated)
 
-### Changed Method Name
+### Fix #1: Changed Method Name (`news_sentiment_fetcher.py`)
 ```python
-# ✅ FIXED:
+# ✅ FIXED (Line 85):
 def fetch_historical_sentiment(self, symbol, start_date, end_date):
     ...
 ```
 
-**Now matches the API call!**
+### Fix #2: Convert Strings to Datetime (`app_finbert_v4_dev.py`)
+```python
+# ✅ FIXED (Line 1640-1643):
+from datetime import datetime as dt
+start_date_dt = dt.strptime(start_date, '%Y-%m-%d')
+end_date_dt = dt.strptime(end_date, '%Y-%m-%d')
+
+# ✅ FIXED (Line 1703-1707):
+news_data = sentiment_fetcher.fetch_historical_sentiment(
+    symbol=symbol,
+    start_date=start_date_dt,  # ← Now datetime object!
+    end_date=end_date_dt        # ← Now datetime object!
+)
+```
+
+**Both bugs fixed - sentiment will now work!**
 
 ### How FinBERT Works (Now Active)
 
@@ -138,14 +167,21 @@ https://raw.githubusercontent.com/davidosland-lab/enhanced-global-stock-tracker-
 
 ### Option 2: Manual Installation
 ```cmd
-1. Download fixed file:
+1. Download TWO fixed files:
+   
+   File 1: news_sentiment_fetcher.py
    https://raw.githubusercontent.com/davidosland-lab/enhanced-global-stock-tracker-frontend/finbert-v4.0-development/deployment_dual_market_v1.3.20_CLEAN/finbert_v4.4.4/models/backtesting/news_sentiment_fetcher.py
+   
+   File 2: app_finbert_v4_dev.py
+   https://raw.githubusercontent.com/davidosland-lab/enhanced-global-stock-tracker-frontend/finbert-v4.0-development/deployment_dual_market_v1.3.20_CLEAN/finbert_v4.4.4/app_finbert_v4_dev.py
 
-2. Backup current file:
+2. Backup current files:
    copy C:\Users\david\AATelS\finbert_v4.4.4\models\backtesting\news_sentiment_fetcher.py news_sentiment_fetcher.py.backup
+   copy C:\Users\david\AATelS\finbert_v4.4.4\app_finbert_v4_dev.py app_finbert_v4_dev.py.backup
 
-3. Replace with new file:
+3. Replace with new files:
    copy news_sentiment_fetcher.py C:\Users\david\AATelS\finbert_v4.4.4\models\backtesting\
+   copy app_finbert_v4_dev.py C:\Users\david\AATelS\finbert_v4.4.4\
 
 4. Restart server:
    cd C:\Users\david\AATelS
@@ -369,6 +405,7 @@ This is for demo purposes. For real trading, ensure internet access for Yahoo Fi
 
 ### Files Modified
 - `news_sentiment_fetcher.py` (1 line changed: method name)
+- `app_finbert_v4_dev.py` (7 lines changed: datetime conversion)
 
 ### Code Change
 ```python

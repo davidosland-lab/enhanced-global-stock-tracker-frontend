@@ -35,6 +35,13 @@ if not exist "news_sentiment_fetcher.py" (
     exit /b 1
 )
 
+if not exist "app_finbert_v4_dev.py" (
+    echo ERROR: app_finbert_v4_dev.py not found!
+    echo Please run this script from the sentiment_fix folder
+    pause
+    exit /b 1
+)
+
 REM Ask for FinBERT installation path
 set /p INSTALL_PATH="Enter FinBERT installation path (e.g., C:\Users\david\AATelS): "
 
@@ -54,20 +61,33 @@ for /f "tokens=2-4 delims=/ " %%a in ('date /t') do (set mydate=%%c-%%a-%%b)
 for /f "tokens=1-2 delims=/:" %%a in ("%TIME%") do (set mytime=%%a%%b)
 set TIMESTAMP=%mydate%_%mytime%
 
-echo Creating backup...
+echo Creating backups...
 if not exist "%INSTALL_PATH%\backups" mkdir "%INSTALL_PATH%\backups"
 copy "%INSTALL_PATH%\finbert_v4.4.4\models\backtesting\news_sentiment_fetcher.py" ^
      "%INSTALL_PATH%\backups\news_sentiment_fetcher.py.%TIMESTAMP%.backup" >nul
-echo ✓ Backup created: backups\news_sentiment_fetcher.py.%TIMESTAMP%.backup
+echo ✓ Backup created: news_sentiment_fetcher.py.%TIMESTAMP%.backup
+
+copy "%INSTALL_PATH%\finbert_v4.4.4\app_finbert_v4_dev.py" ^
+     "%INSTALL_PATH%\backups\app_finbert_v4_dev.py.%TIMESTAMP%.backup" >nul
+echo ✓ Backup created: app_finbert_v4_dev.py.%TIMESTAMP%.backup
 echo.
 
-REM Install fixed file
-echo Installing FinBERT sentiment fix...
+REM Install fixed files
+echo Installing FinBERT sentiment fixes...
 copy /Y "news_sentiment_fetcher.py" "%INSTALL_PATH%\finbert_v4.4.4\models\backtesting\news_sentiment_fetcher.py" >nul
 if %ERRORLEVEL% EQU 0 (
-    echo ✓ Fixed file installed successfully
+    echo ✓ Fixed news_sentiment_fetcher.py installed
 ) else (
-    echo ✗ Installation failed!
+    echo ✗ Installation of news_sentiment_fetcher.py failed!
+    pause
+    exit /b 1
+)
+
+copy /Y "app_finbert_v4_dev.py" "%INSTALL_PATH%\finbert_v4.4.4\app_finbert_v4_dev.py" >nul
+if %ERRORLEVEL% EQU 0 (
+    echo ✓ Fixed app_finbert_v4_dev.py installed
+) else (
+    echo ✗ Installation of app_finbert_v4_dev.py failed!
     pause
     exit /b 1
 )
