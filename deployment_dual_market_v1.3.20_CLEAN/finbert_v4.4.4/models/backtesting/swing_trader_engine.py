@@ -61,7 +61,7 @@ class SwingTraderEngine:
         technical_weight: float = 0.25,
         momentum_weight: float = 0.15,
         volume_weight: float = 0.10,
-        confidence_threshold: float = 0.65,
+        confidence_threshold: float = 0.52,  # Lowered from 0.65 - was too conservative!
         max_position_size: float = 0.25,
         use_real_sentiment: bool = True,
         use_lstm: bool = True,
@@ -81,7 +81,7 @@ class SwingTraderEngine:
             technical_weight: Weight for technical signals (25%)
             momentum_weight: Weight for momentum signals (15%)
             volume_weight: Weight for volume signals (10%)
-            confidence_threshold: Minimum confidence for entry (65%)
+            confidence_threshold: Minimum confidence for entry (52% - lowered for more trades)
             max_position_size: Max position as % of capital (25%)
             use_real_sentiment: Use real news sentiment (True) or skip (False)
             use_lstm: Use LSTM neural network (True) or fallback (False)
@@ -274,11 +274,22 @@ class SwingTraderEngine:
             volume_score * self.volume_weight
         )
         
-        # Generate prediction
-        if combined_score > 0.15:
+        # DEBUG LOGGING - See what scores are being generated
+        logger.info(
+            f"Signal for {symbol} on {current_date.date()}: "
+            f"Combined={combined_score:.3f} | "
+            f"Sentiment={sentiment_score:.3f} | "
+            f"LSTM={lstm_score:.3f} | "
+            f"Technical={technical_score:.3f} | "
+            f"Momentum={momentum_score:.3f} | "
+            f"Volume={volume_score:.3f}"
+        )
+        
+        # Generate prediction - LOWERED THRESHOLDS for more trades
+        if combined_score > 0.05:  # Was 0.15 - TOO HIGH!
             prediction = 'BUY'
             confidence = min(0.50 + combined_score * 0.5, 0.95)
-        elif combined_score < -0.15:
+        elif combined_score < -0.05:  # Was -0.15 - TOO HIGH!
             prediction = 'SELL'
             confidence = min(0.50 + abs(combined_score) * 0.5, 0.95)
         else:
@@ -454,9 +465,10 @@ class SwingTraderEngine:
             Sentiment score: -1.0 (very bearish) to +1.0 (very bullish)
         """
         if not self.use_real_sentiment or news_data is None or news_data.empty:
-            # Fallback: No sentiment data available
-            logger.debug(f"No sentiment data for {symbol} on {current_date}")
-            return 0.0  # Neutral
+            # Fallback: No sentiment data available - don't penalize, use technical/momentum instead
+            logger.debug(f"No sentiment data for {symbol} on {current_date} - using neutral")
+            # Return 0.0 but LOG that sentiment is missing so other components drive decisions
+            return 0.0  # Neutral - other components will drive signal
         
         try:
             # Get news from past N days (no look-ahead bias)
@@ -468,7 +480,8 @@ class SwingTraderEngine:
             
             if len(recent_news) == 0:
                 logger.debug(f"No news found for {symbol} in past {self.sentiment_lookback_days} days")
-                return 0.0  # No news = neutral
+                # No news doesn't mean neutral - use default bullish bias for swing trading
+                return 0.05  # Slight bullish bias when no news (swing = buy dips)
             
             # Calculate weighted average sentiment (more recent = higher weight)
             sentiments = []
