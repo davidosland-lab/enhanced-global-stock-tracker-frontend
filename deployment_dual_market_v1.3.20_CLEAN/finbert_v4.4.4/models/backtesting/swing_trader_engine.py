@@ -657,8 +657,16 @@ class SwingTraderEngine:
         position_value = self.capital * self.max_position_size
         shares = int(position_value / price)
         
+        # DEBUG LOGGING - Why only 1 share?
+        logger.info(f"POSITION SIZING DEBUG:")
+        logger.info(f"  Current Capital: ${self.capital:,.2f}")
+        logger.info(f"  Max Position Size: {self.max_position_size:.4f} ({self.max_position_size * 100:.2f}%)")
+        logger.info(f"  Position Value: ${position_value:,.2f}")
+        logger.info(f"  Stock Price: ${price:.2f}")
+        logger.info(f"  Calculated Shares: {shares}")
+        
         if shares == 0:
-            logger.warning(f"Cannot enter position: insufficient capital")
+            logger.warning(f"Cannot enter position: insufficient capital (capital=${self.capital:.2f}, position_value=${position_value:.2f})")
             return
         
         actual_cost = shares * price
