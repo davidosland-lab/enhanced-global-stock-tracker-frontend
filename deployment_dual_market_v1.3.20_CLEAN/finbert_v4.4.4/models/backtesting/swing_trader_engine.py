@@ -61,13 +61,23 @@ class SwingTraderEngine:
         technical_weight: float = 0.25,
         momentum_weight: float = 0.15,
         volume_weight: float = 0.10,
-        confidence_threshold: float = 0.52,  # Lowered from 0.65 - was too conservative!
+        confidence_threshold: float = 0.52,
         max_position_size: float = 0.25,
         use_real_sentiment: bool = True,
         use_lstm: bool = True,
         sentiment_lookback_days: int = 3,
         lstm_sequence_length: int = 60,
-        lstm_epochs: int = 50
+        lstm_epochs: int = 50,
+        # Phase 1 & 2 improvements
+        use_trailing_stop: bool = True,
+        trailing_stop_percent: float = 50.0,
+        use_profit_targets: bool = True,
+        quick_profit_target: float = 8.0,
+        max_profit_target: float = 12.0,
+        max_concurrent_positions: int = 3,
+        use_adaptive_holding: bool = True,
+        use_regime_detection: bool = True,
+        use_dynamic_weights: bool = True
     ):
         """
         Initialize 5-day swing trader with LSTM
@@ -101,12 +111,32 @@ class SwingTraderEngine:
         self.lstm_sequence_length = lstm_sequence_length
         self.lstm_epochs = lstm_epochs
         
-        # Model weights
+        # Phase 1 & 2: Enhanced features
+        self.use_trailing_stop = use_trailing_stop
+        self.trailing_stop_percent = trailing_stop_percent
+        self.use_profit_targets = use_profit_targets
+        self.quick_profit_target = quick_profit_target
+        self.max_profit_target = max_profit_target
+        self.max_concurrent_positions = max_concurrent_positions
+        self.use_adaptive_holding = use_adaptive_holding
+        self.use_regime_detection = use_regime_detection
+        self.use_dynamic_weights = use_dynamic_weights
+        
+        # Model weights (can be dynamically adjusted)
+        self.base_sentiment_weight = sentiment_weight
+        self.base_lstm_weight = lstm_weight
+        self.base_technical_weight = technical_weight
+        self.base_momentum_weight = momentum_weight
+        self.base_volume_weight = volume_weight
+        
         self.sentiment_weight = sentiment_weight
         self.lstm_weight = lstm_weight
         self.technical_weight = technical_weight
         self.momentum_weight = momentum_weight
         self.volume_weight = volume_weight
+        
+        # Market regime state
+        self.current_regime = "UNKNOWN"
         
         # Validate weights sum to 1.0
         total_weight = sentiment_weight + lstm_weight + technical_weight + momentum_weight + volume_weight
@@ -128,8 +158,13 @@ class SwingTraderEngine:
         self.daily_returns = []
         
         logger.info(
-            f"Swing trader initialized: {holding_period_days}-day hold, "
+            f"Swing trader initialized: {holding_period_days}-day hold (adaptive={use_adaptive_holding}), "
             f"sentiment={use_real_sentiment}, LSTM={self.use_lstm}, threshold={confidence_threshold}"
+        )
+        logger.info(
+            f"Phase 1&2 features: trailing_stop={use_trailing_stop}, "
+            f"profit_targets={use_profit_targets}, max_positions={max_concurrent_positions}, "
+            f"regime_detection={use_regime_detection}"
         )
     
     def run_backtest(
@@ -141,7 +176,7 @@ class SwingTraderEngine:
         news_data: Optional[pd.DataFrame] = None
     ) -> Dict:
         """
-        Run complete swing trading backtest
+        Run complete swing trading backtest with Phase 1 & 2 enhancements
         
         Args:
             symbol: Stock ticker
@@ -154,6 +189,7 @@ class SwingTraderEngine:
             Dictionary with backtest results and metrics
         """
         logger.info(f"Starting {self.holding_period_days}-day swing backtest for {symbol}")
+        logger.info(f"Phase 1&2 active: trailing_stop={self.use_trailing_stop}, profit_targets={self.use_profit_targets}, max_pos={self.max_concurrent_positions}")
         
         # Filter data to backtest period
         mask = (price_data.index >= start_date) & (price_data.index <= end_date)
@@ -180,12 +216,21 @@ class SwingTraderEngine:
                 continue  # Need at least 60 days for indicators
             
             current_price = backtest_data.loc[current_date, 'Close']
+            current_high = backtest_data.loc[current_date, 'High']
             
-            # Step 1: Check existing positions for exits
-            self._check_position_exits(current_date, current_price, backtest_data)
+            # PHASE 2: Detect market regime
+            if self.use_regime_detection and len(available_data) >= 200:
+                self.current_regime = self._detect_market_regime(available_data, current_date)
+                
+                # Adjust weights dynamically based on regime
+                news_count = len(news_data) if news_data is not None else 0
+                self._adjust_weights_for_regime(self.current_regime, news_count)
             
-            # Step 2: Generate entry signal if no position
-            if len(self.positions) == 0:
+            # Step 1: Check existing positions for exits (with trailing stop & profit targets)
+            self._check_position_exits(current_date, current_price, current_high, backtest_data)
+            
+            # Step 2: PHASE 1 - Allow multiple concurrent positions (up to max)
+            if len(self.positions) < self.max_concurrent_positions:
                 signal = self._generate_swing_signal(
                     symbol=symbol,
                     current_date=current_date,
@@ -198,7 +243,8 @@ class SwingTraderEngine:
                     self._enter_position(
                         date=current_date,
                         price=current_price,
-                        signal=signal
+                        signal=signal,
+                        price_data=available_data
                     )
             
             # Step 4: Track equity
@@ -208,7 +254,9 @@ class SwingTraderEngine:
                 'date': current_date,
                 'equity': total_equity,
                 'cash': self.capital,
-                'position_value': position_value
+                'position_value': position_value,
+                'num_positions': len(self.positions),
+                'regime': self.current_regime
             })
         
         # Close any remaining positions at end
@@ -651,16 +699,183 @@ class SwingTraderEngine:
             logger.error(f"Error in volume analysis: {e}")
             return 0.0
     
-    def _enter_position(self, date: datetime, price: float, signal: Dict):
-        """Enter a new swing trading position"""
-        # Calculate position size
-        position_value = self.capital * self.max_position_size
+    # ========================================================================
+    # PHASE 1 & 2: ENHANCED TRADING LOGIC
+    # ========================================================================
+    
+    def _detect_market_regime(self, price_data: pd.DataFrame, current_date: datetime) -> str:
+        """
+        Phase 2: Detect current market regime
+        
+        Returns:
+            'STRONG_UPTREND', 'MILD_UPTREND', 'RANGING', or 'DOWNTREND'
+        """
+        try:
+            if len(price_data) < 200:
+                return "UNKNOWN"
+            
+            # Calculate moving averages
+            ma_50 = price_data['Close'].rolling(50).mean()
+            ma_200 = price_data['Close'].rolling(200).mean()
+            
+            if current_date not in ma_50.index or current_date not in ma_200.index:
+                return "UNKNOWN"
+            
+            current_ma50 = ma_50.loc[current_date]
+            current_ma200 = ma_200.loc[current_date]
+            current_price = price_data.loc[current_date, 'Close']
+            
+            # Check for missing data
+            if pd.isna(current_ma50) or pd.isna(current_ma200):
+                return "UNKNOWN"
+            
+            # Classify regime
+            if current_price > current_ma50 > current_ma200:
+                # Uptrend - check strength
+                distance_from_ma50 = (current_price / current_ma50 - 1)
+                if distance_from_ma50 > 0.05:  # 5%+ above MA50
+                    return "STRONG_UPTREND"
+                else:
+                    return "MILD_UPTREND"
+            elif abs(current_price / current_ma50 - 1) < 0.03:  # Within 3% of MA
+                return "RANGING"
+            else:
+                return "DOWNTREND"
+        
+        except Exception as e:
+            logger.error(f"Error detecting regime: {e}")
+            return "UNKNOWN"
+    
+    def _calculate_trend_strength(self, price_data: pd.DataFrame, current_date: datetime) -> float:
+        """
+        Phase 2: Calculate trend strength (0.0 to 1.0)
+        Used for adaptive holding period
+        """
+        try:
+            if len(price_data) < 50:
+                return 0.5  # Default medium strength
+            
+            # ADX-like calculation
+            closes = price_data['Close'].values[-50:]
+            highs = price_data['High'].values[-50:]
+            lows = price_data['Low'].values[-50:]
+            
+            # Calculate directional movement
+            up_move = highs[1:] - highs[:-1]
+            down_move = lows[:-1] - lows[1:]
+            
+            avg_up = np.mean(np.maximum(up_move, 0))
+            avg_down = np.mean(np.maximum(down_move, 0))
+            
+            # Trend strength
+            if avg_up + avg_down == 0:
+                return 0.5
+            
+            trend_strength = abs(avg_up - avg_down) / (avg_up + avg_down)
+            return np.clip(trend_strength, 0.0, 1.0)
+        
+        except Exception as e:
+            logger.error(f"Error calculating trend strength: {e}")
+            return 0.5
+    
+    def _calculate_adaptive_holding_period(self, regime: str, trend_strength: float) -> int:
+        """
+        Phase 2: Calculate adaptive holding period based on market regime
+        
+        Strong uptrend: 10-15 days
+        Mild uptrend: 5-8 days
+        Ranging: 3-5 days
+        Downtrend: 3-5 days
+        """
+        if not self.use_adaptive_holding:
+            return self.holding_period_days
+        
+        if regime == "STRONG_UPTREND":
+            return 12  # Let winners run
+        elif regime == "MILD_UPTREND":
+            if trend_strength > 0.6:
+                return 8
+            else:
+                return 5
+        elif regime == "RANGING":
+            return 4  # Quick in/out
+        elif regime == "DOWNTREND":
+            return 3  # Exit fast
+        else:
+            return self.holding_period_days
+    
+    def _adjust_weights_for_regime(self, regime: str, news_count: int = 0):
+        """
+        Phase 2: Dynamically adjust component weights based on market regime
+        """
+        if not self.use_dynamic_weights:
+            return
+        
+        if regime == "STRONG_UPTREND":
+            # In strong trends, momentum and technical matter more
+            self.sentiment_weight = 0.15
+            self.lstm_weight = 0.20
+            self.technical_weight = 0.30
+            self.momentum_weight = 0.25
+            self.volume_weight = 0.10
+        elif regime == "RANGING":
+            # In ranging markets, sentiment and technical signals shine
+            if news_count > 10:
+                self.sentiment_weight = 0.35  # Lots of news
+                self.technical_weight = 0.30
+            else:
+                self.sentiment_weight = 0.20
+                self.technical_weight = 0.35
+            self.lstm_weight = 0.20
+            self.momentum_weight = 0.10
+            self.volume_weight = 0.10
+        elif regime == "DOWNTREND":
+            # In downtrends, be more cautious
+            self.sentiment_weight = 0.30  # Pay attention to news
+            self.lstm_weight = 0.25
+            self.technical_weight = 0.25
+            self.momentum_weight = 0.10
+            self.volume_weight = 0.10
+        else:
+            # Default weights
+            self.sentiment_weight = self.base_sentiment_weight
+            self.lstm_weight = self.base_lstm_weight
+            self.technical_weight = self.base_technical_weight
+            self.momentum_weight = self.base_momentum_weight
+            self.volume_weight = self.base_volume_weight
+    
+    def _calculate_dynamic_position_size(self) -> float:
+        """
+        Phase 1: Dynamic position sizing based on active positions
+        
+        Position 1: 25% of capital
+        Position 2: 20% of capital  
+        Position 3: 15% of capital
+        Total max: 60% deployed, 40% in reserve
+        """
+        active_positions = len(self.positions)
+        
+        if active_positions == 0:
+            return 0.25
+        elif active_positions == 1:
+            return 0.20
+        elif active_positions == 2:
+            return 0.15
+        else:
+            return 0.0  # No more capacity
+    
+    def _enter_position(self, date: datetime, price: float, signal: Dict, price_data: pd.DataFrame = None):
+        """Enter a new swing trading position with Phase 1 & 2 enhancements"""
+        # PHASE 1: Dynamic position sizing based on number of active positions
+        dynamic_position_size = self._calculate_dynamic_position_size()
+        position_value = self.capital * dynamic_position_size
         shares = int(position_value / price)
         
-        # DEBUG LOGGING - Why only 1 share?
-        logger.info(f"POSITION SIZING DEBUG:")
+        # DEBUG LOGGING
+        logger.info(f"POSITION SIZING (Phase 1 - Dynamic):")
         logger.info(f"  Current Capital: ${self.capital:,.2f}")
-        logger.info(f"  Max Position Size: {self.max_position_size:.4f} ({self.max_position_size * 100:.2f}%)")
+        logger.info(f"  Active Positions: {len(self.positions)}")
+        logger.info(f"  Dynamic Position Size: {dynamic_position_size:.4f} ({dynamic_position_size * 100:.2f}%)")
         logger.info(f"  Position Value: ${position_value:,.2f}")
         logger.info(f"  Stock Price: ${price:.2f}")
         logger.info(f"  Calculated Shares: {shares}")
@@ -683,8 +898,18 @@ class SwingTraderEngine:
         # Calculate stop loss price
         stop_loss_price = price * (1 - self.stop_loss_percent / 100.0)
         
-        # Calculate target exit date (N days later)
-        target_exit_date = date + timedelta(days=self.holding_period_days)
+        # PHASE 2: Adaptive holding period based on market regime
+        if self.use_adaptive_holding and price_data is not None:
+            trend_strength = self._calculate_trend_strength(price_data, date)
+            adaptive_holding_days = self._calculate_adaptive_holding_period(self.current_regime, trend_strength)
+        else:
+            adaptive_holding_days = self.holding_period_days
+        
+        target_exit_date = date + timedelta(days=adaptive_holding_days)
+        
+        # PHASE 1: Profit targets
+        quick_profit_price = price * (1 + self.quick_profit_target / 100.0) if self.use_profit_targets else None
+        max_profit_price = price * (1 + self.max_profit_target / 100.0) if self.use_profit_targets else None
         
         # Create position
         position = {
@@ -695,8 +920,17 @@ class SwingTraderEngine:
             'commission_paid': commission,
             'stop_loss_price': stop_loss_price,
             'target_exit_date': target_exit_date,
+            'adaptive_holding_days': adaptive_holding_days,
             'signal': signal,
-            'days_held': 0
+            'days_held': 0,
+            # Phase 1: Trailing stop tracking
+            'highest_price': price,
+            'trailing_stop_price': stop_loss_price,
+            # Phase 1: Profit targets
+            'quick_profit_price': quick_profit_price,
+            'max_profit_price': max_profit_price,
+            # Phase 2: Regime context
+            'entry_regime': self.current_regime
         }
         
         # Update capital
@@ -705,12 +939,14 @@ class SwingTraderEngine:
         
         logger.info(
             f"ENTER: {shares} shares @ ${price:.2f} on {date.date()}, "
-            f"stop=${stop_loss_price:.2f}, exit_target={target_exit_date.date()}, "
-            f"confidence={signal['confidence']:.2%}"
+            f"stop=${stop_loss_price:.2f}, holding={adaptive_holding_days}d, exit_target={target_exit_date.date()}, "
+            f"confidence={signal['confidence']:.2%}, regime={self.current_regime}"
         )
+        if self.use_profit_targets:
+            logger.info(f"  Profit targets: Quick=${quick_profit_price:.2f} (+{self.quick_profit_target}%), Max=${max_profit_price:.2f} (+{self.max_profit_target}%)")
     
-    def _check_position_exits(self, current_date: datetime, current_price: float, price_data: pd.DataFrame):
-        """Check if positions should be exited"""
+    def _check_position_exits(self, current_date: datetime, current_price: float, current_high: float, price_data: pd.DataFrame):
+        """Check if positions should be exited with Phase 1 & 2 enhancements"""
         for position in self.positions[:]:  # Copy list to modify during iteration
             position['days_held'] += 1
             
@@ -720,18 +956,54 @@ class SwingTraderEngine:
             else:
                 intraday_low = current_price
             
+            # PHASE 1: Update trailing stop if price moved higher
+            if self.use_trailing_stop:
+                # Track highest price since entry
+                position['highest_price'] = max(position['highest_price'], current_high)
+                
+                # Calculate trailing stop (50% of profit)
+                profit_from_entry = position['highest_price'] - position['entry_price']
+                trailing_distance = profit_from_entry * (self.trailing_stop_percent / 100.0)
+                new_trailing_stop = position['highest_price'] - trailing_distance
+                
+                # Only raise the trailing stop, never lower it
+                if new_trailing_stop > position['trailing_stop_price']:
+                    old_stop = position['trailing_stop_price']
+                    position['trailing_stop_price'] = new_trailing_stop
+                    logger.debug(
+                        f"Trailing stop updated: ${old_stop:.2f} -> ${new_trailing_stop:.2f} "
+                        f"(high=${position['highest_price']:.2f}, profit=${profit_from_entry:.2f})"
+                    )
+            
             # Exit reason
             exit_reason = None
             exit_price = current_price
             
-            # Check 1: Stop loss hit
-            if intraday_low <= position['stop_loss_price']:
+            # PHASE 1: Check profit targets FIRST (most profitable)
+            if self.use_profit_targets:
+                if position['max_profit_price'] and current_high >= position['max_profit_price']:
+                    exit_reason = f'MAX_PROFIT_TARGET_{self.max_profit_target}%'
+                    exit_price = position['max_profit_price']
+                elif position['quick_profit_price'] and current_high >= position['quick_profit_price']:
+                    # Only take quick profit if held at least 2 days
+                    if position['days_held'] >= 2:
+                        exit_reason = f'QUICK_PROFIT_TARGET_{self.quick_profit_target}%'
+                        exit_price = position['quick_profit_price']
+            
+            # Check 1: Trailing stop hit (Phase 1)
+            if not exit_reason and self.use_trailing_stop:
+                if intraday_low <= position['trailing_stop_price']:
+                    exit_reason = 'TRAILING_STOP'
+                    exit_price = position['trailing_stop_price']
+            
+            # Check 2: Regular stop loss hit
+            if not exit_reason and intraday_low <= position['stop_loss_price']:
                 exit_reason = 'STOP_LOSS'
                 exit_price = position['stop_loss_price']
             
-            # Check 2: Holding period complete
-            elif current_date >= position['target_exit_date']:
-                exit_reason = 'TARGET_EXIT'
+            # Check 3: Adaptive holding period complete (Phase 2)
+            if not exit_reason and current_date >= position['target_exit_date']:
+                exit_reason = f'TARGET_EXIT_{position["adaptive_holding_days"]}D'
                 exit_price = current_price
             
             # Exit if triggered
