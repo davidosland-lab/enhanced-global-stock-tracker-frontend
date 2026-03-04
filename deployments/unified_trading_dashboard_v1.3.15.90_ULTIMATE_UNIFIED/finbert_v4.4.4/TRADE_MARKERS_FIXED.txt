@@ -1,0 +1,111 @@
+================================================================================
+  FinBERT v4.4.4 - TRADE MARKERS EXTRACTION FIXED
+================================================================================
+
+PROBLEM FOUND AND FIXED:
+-------------------------
+From your console output:
+❌ "Extracted 0 trades from distribution"
+
+The trade distribution data structure was different than expected:
+
+WRONG (what I was looking for):
+  trade_distribution: {
+    large_win_details: [...],
+    medium_win_details: [...]
+  }
+
+CORRECT (actual structure):
+  trade_distribution: {
+    buckets: {...},
+    details: {
+      large_win: [...],
+      medium_win: [...],
+      small_win: [...],
+      small_loss: [...],
+      medium_loss: [...],
+      large_loss: [...]
+    },
+    labels: [...]
+  }
+
+WHAT I FIXED:
+-------------
+✅ Updated extraction code to look in trade_distribution.details
+✅ Iterate through each category (large_win, medium_win, etc.)
+✅ Combine all trades from all categories
+✅ Position markers on equity curve using date-to-equity mapping
+✅ Create buy/sell arrows at correct dates showing P&L amounts
+
+HOW MARKERS NOW WORK:
+----------------------
+1. Extract trades from trade_distribution.details object
+2. Build a map: date → equity value from equity_curve data
+3. For each trade:
+   - BUY marker: ▲ Green arrow at entry_date
+   - SELL marker: ▼ Green/Red arrow at exit_date
+     - Green if profit (+$XX)
+     - Red if loss (-$XX)
+     - Shows percentage return
+
+CONSOLE OUTPUT TO EXPECT:
+--------------------------
+✅ "Trade distribution data: {buckets, details, labels}"
+✅ "Found 2 trades in small_win" (or similar)
+✅ "Extracted 2 trades from distribution"
+✅ "Sample trade: {entry_date, exit_date, pnl, return}"
+✅ "Date to equity map has 253 entries"
+✅ "Created 4 markers total" (2 buys + 2 sells)
+✅ "Sample marker: {coord: [date, equity], ...}"
+✅ "Trade markers added to chart successfully"
+
+VISUAL RESULT:
+--------------
+On your equity curve, you should see:
+
+📈 Nov 6, 24 → Nov 5, 25 green line
+
+At specific dates:
+▲ BUY (green arrow pointing up)
+▼ +$93 (1.87%) (green arrow pointing down) - First trade profit
+▲ BUY (green arrow pointing up)  
+▼ +$93 (1.87%) (green arrow pointing down) - Second trade profit
+
+Since you had:
+- 2 total trades
+- 100% win rate  
+- $93.39 avg profit
+- Both trades should show green sell arrows with profit amounts
+
+INSTALL AND TEST:
+-----------------
+1. Extract: FinBERT_v4.4.4_TRADE_MARKERS_FIXED_20251106_080853.zip
+2. Run: INSTALL.bat (or just replace the HTML file if already installed)
+3. Run: START_FINBERT.bat
+4. Press F12 → Console tab
+5. Run the same backtest again (CBA.AX, Nov 6 24 to Nov 5 25)
+6. Watch console for the NEW messages above
+7. Check equity curve for buy/sell arrows
+
+WHAT TO LOOK FOR:
+-----------------
+Console should show:
+✅ "Found X trades in Y category" - confirms extraction working
+✅ "Extracted 2 trades" - your backtest has 2 trades
+✅ "Created 4 markers" - 2 buys + 2 sells
+
+Chart should show:
+✅ Green equity line (already showing)
+✅ 4 arrows total (2 up, 2 down) at specific dates
+✅ Labels showing BUY and profit amounts
+
+IF STILL NO MARKERS:
+--------------------
+Send me screenshot showing:
+1. The console output with the new messages
+2. Especially the "Sample trade:" line showing trade structure
+3. And "Created X markers" line
+
+This will confirm if the extraction is working and markers are being created.
+
+================================================================================

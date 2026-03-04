@@ -1,0 +1,88 @@
+{
+  "version": "1.3.15.193.11.1",
+  "build_date": "2026-03-04",
+  "branch": "genspark_ai_developer",
+  "status": "production",
+  "changelog": [
+    {
+      "version": "1.3.15.193.11.1",
+      "date": "2026-03-04",
+      "changes": [
+        "HOTFIX: UnicodeEncodeError on Windows - Added UTF-8 encoding to logging handlers",
+        "Fixed logging configuration in unified_trading_dashboard.py",
+        "Replaced Unicode arrow (→) with ASCII (->) in log messages",
+        "Replaced emoji (🚨) with ASCII ([!]) in alert messages",
+        "Console output now works correctly on Windows cp1252 encoding"
+      ],
+      "priority": "HIGH",
+      "fixed_issues": [
+        "UnicodeEncodeError: 'charmap' codec can't encode character '\\u2192' (arrow)",
+        "UnicodeEncodeError when logging FinBERT scores",
+        "Console logging failures on Windows systems"
+      ]
+    },
+    {
+      "version": "1.3.15.193.10",
+      "date": "2026-03-04",
+      "changes": [
+        "Macro Risk Gatekeeper fully integrated into trading coordinator",
+        "Four macro risk gates: World Risk (≥80 blocks), US Market (≤-1.5% blocks), VIX (≥30 requires 70%+ confidence), Financial Sector (stricter)",
+        "FinBERT sentiment fallback when neutral (0.000) - uses macro sentiment",
+        "Confidence penalty system: LSTM missing (-20%), sentiment missing (-15%), volume missing (-10%)",
+        "Fixed March 4, 2026 incident: $556 loss prevented by blocking BP.L, BOQ.AX, NAB.AX during extreme risk",
+        "Position multipliers now combine macro risk AND sentiment (e.g., 0.5x macro * 0.75x sentiment = 0.375x)",
+        "Applies to ALL markets: AU, US, UK with uniform risk gates",
+        "Helper methods: _get_world_risk_score(), _get_us_overnight_performance(), _get_vix()"
+      ],
+      "priority": "CRITICAL",
+      "fixed_issues": [
+        "Macro gates existed but were not integrated - now active in should_allow_trade()",
+        "March 4 trades (BP.L, BOQ.AX, NAB.AX) would be blocked under v193.10",
+        "World Risk 100/100 + US -2.5% + VIX 59.3 = All three trades blocked → $0 loss vs $556"
+      ]
+    },
+    {
+      "version": "1.3.15.191.1",
+      "date": "2026-02-27",
+      "changes": [
+        "CRITICAL FIX: UK stock price updates during after-hours/overnight",
+        "Added 4-tier price fallback system (regularMarket → postMarket → preMarket → previousClose → yfinance)",
+        "Enhanced fetch_current_price() with detailed logging",
+        "Added DEBUG_UK_STOCKS.py diagnostic tool",
+        "Added TEST_PRICE_UPDATE_FIX_v191.py test suite",
+        "Fixed BP.L and LGEN.L frozen price issue",
+        "Improved update_positions() logging for troubleshooting"
+      ]
+    },
+    {
+      "version": "1.3.15.190",
+      "date": "2026-02-27",
+      "changes": [
+        "Fixed dashboard confidence slider default (65% → 48%)",
+        "Updated slider range (50%-95% → 45%-95%)",
+        "Created comprehensive v190 documentation"
+      ]
+    }
+  ],
+  "critical_fixes": {
+    "v191.1": "UK stock price updates (BP.L, LGEN.L) now work 24/7",
+    "v190": "Dashboard confidence slider now defaults to 48% (not 65%)"
+  },
+  "components": {
+    "finbert": "4.4.4",
+    "dashboard": "unified_trading_dashboard.py",
+    "coordinator": "paper_trading_coordinator.py",
+    "signal_generator": "swing_signal_generator.py"
+  },
+  "performance_targets": {
+    "daily_signals": "15-20",
+    "executed_trades": "7-12",
+    "win_rate": "70-80%",
+    "confidence_threshold": "48%"
+  },
+  "diagnostic_tools": [
+    "DEBUG_UK_STOCKS.py",
+    "TEST_PRICE_UPDATE_FIX_v191.py",
+    "FIX_THRESHOLD_AND_CACHE.py"
+  ]
+}

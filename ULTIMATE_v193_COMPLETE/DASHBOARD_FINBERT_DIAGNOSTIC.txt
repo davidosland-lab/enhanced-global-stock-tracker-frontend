@@ -1,0 +1,433 @@
+═══════════════════════════════════════════════════════════════════════
+ 🔍 DASHBOARD FINBERT SENTIMENT ANALYSIS - DIAGNOSTIC REPORT
+═══════════════════════════════════════════════════════════════════════
+
+📸 SCREENSHOT ANALYSIS
+═══════════════════════════════════════════════════════════════════════
+
+Your screenshot shows the FinBERT Sentiment Analysis panel displaying:
+
+Header: "FinBERT Sentiment Analysis"
+
+Sentiment Bars:
+  🔴 Negative: ~30% (red bar)
+  🟡 Neutral:  ~10% (yellow bar)
+  🟢 Positive: ~35% (green bar)
+
+Status Banner:
+  ⚠️ "CAUTION: Moderate market sentiment (58/100)"
+
+═══════════════════════════════════════════════════════════════════════
+
+✅ WHAT'S WORKING
+═══════════════════════════════════════════════════════════════════════
+
+1. ✅ FinBERT Panel Displays Correctly
+   - Three-bar sentiment breakdown visible
+   - Color coding correct (red/yellow/green)
+   - Percentages showing
+
+2. ✅ Sentiment Data Loading
+   - Data loaded from morning report (au_morning_report.json)
+   - Overall sentiment score calculated (58/100)
+   - Trading gate status determined (CAUTION)
+
+3. ✅ v193.3 Fix Applied
+   - Cached sentiment analyzer working
+   - No repeated FinBERT initialization
+   - Loading from morning report, not real-time analysis
+
+═══════════════════════════════════════════════════════════════════════
+
+⚠️ POTENTIAL ISSUES IDENTIFIED
+═══════════════════════════════════════════════════════════════════════
+
+ISSUE #1: Percentages Don't Add to 100%
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Observed Values:
+  Negative: ~30%
+  Neutral:  ~10%
+  Positive: ~35%
+  ────────────────
+  TOTAL:    ~75% ❌ (should be 100%)
+
+Possible Causes:
+1. Bar widths based on sentiment scores, not normalized percentages
+2. Morning report contains raw FinBERT scores (0-1 range) not percentages
+3. Display logic doesn't normalize to 100%
+
+Expected Behavior:
+  The three bars should add to 100%:
+  - Negative: 40%
+  - Neutral:  13%
+  - Positive: 47%
+  ────────────────
+  TOTAL:    100% ✅
+
+ISSUE #2: Sentiment Score May Not Reflect Crisis
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Current Display:
+  Overall Sentiment: 58/100 (CAUTION - Moderate)
+
+Expected During Iran-Israel War:
+  Overall Sentiment: 45-55/100 (After v193.4 world risk adjustment)
+  Status: REDUCE or CAUTION
+
+Your Log Shows (from earlier):
+  Original sentiment: 76.6/100 (BUY)
+  World Risk: 85-90/100 (EXTREME)
+  Adjusted sentiment: 48.5/100 (penalty -28.1)
+
+Dashboard Shows:
+  58/100 (CAUTION) ❌ Should be ~48.5 after world risk adjustment
+
+Possible Causes:
+1. Dashboard loading old morning report (before v193.4 run)
+2. Morning report not regenerated after v193.4 fix applied
+3. Cache not refreshed (5-minute cache in load_morning_sentiment)
+
+═══════════════════════════════════════════════════════════════════════
+
+🔧 CODE ANALYSIS
+═══════════════════════════════════════════════════════════════════════
+
+FILE: core/unified_trading_dashboard.py
+LINES: 1646-1694
+
+Current Logic:
+──────────────
+
+```python
+# Lines 1641-1643: Load sentiment from morning report
+morning_sentiment = sentiment_int.load_morning_sentiment()
+if morning_sentiment and 'finbert_sentiment' in morning_sentiment:
+    finbert = morning_sentiment['finbert_sentiment']
+    scores = finbert.get('overall_scores', {})
+    
+    # Lines 1650-1651: Negative bar width
+    'width': f"{scores.get('negative', 0) * 100}%"
+    
+    # Lines 1668-1669: Neutral bar width
+    'width': f"{scores.get('neutral', 0) * 100}%"
+    
+    # Lines 1682-1683: Positive bar width
+    'width': f"{scores.get('positive', 0) * 100}%"
+```
+
+PROBLEM:
+────────
+Bar widths use raw scores × 100:
+- If scores are: {'negative': 0.30, 'neutral': 0.10, 'positive': 0.35}
+- Bars show: 30%, 10%, 35% → Total 75% ❌
+
+EXPECTED:
+─────────
+Scores should be normalized to sum to 1.0:
+- {'negative': 0.40, 'neutral': 0.13, 'positive': 0.47}
+- Bars show: 40%, 13%, 47% → Total 100% ✅
+
+═══════════════════════════════════════════════════════════════════════
+
+🐛 ROOT CAUSE
+═══════════════════════════════════════════════════════════════════════
+
+The morning report's FinBERT scores are NOT normalized.
+
+Morning Report Structure (au_morning_report.json):
+```json
+{
+  "finbert_sentiment": {
+    "overall_scores": {
+      "negative": 0.303,  // Raw score
+      "neutral": 0.102,   // Raw score
+      "positive": 0.354   // Raw score
+    }
+  }
+}
+```
+
+These are raw FinBERT output scores (softmax probabilities) that may not
+sum to exactly 1.0 due to:
+1. Rounding errors
+2. Model output precision
+3. Averaging across multiple articles
+
+Dashboard displays them directly without normalization:
+- width = score × 100
+- Result: bars don't fill 100% width
+
+═══════════════════════════════════════════════════════════════════════
+
+✅ RECOMMENDED FIXES
+═══════════════════════════════════════════════════════════════════════
+
+FIX #1: Normalize FinBERT Scores (RECOMMENDED)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Location: core/unified_trading_dashboard.py, lines 1641-1694
+
+CHANGE:
+```python
+# After loading scores
+scores = finbert.get('overall_scores', {})
+
+# ADD THIS: Normalize scores to sum to 1.0
+total = scores.get('negative', 0) + scores.get('neutral', 0) + scores.get('positive', 0)
+if total > 0:
+    scores_normalized = {
+        'negative': scores.get('negative', 0) / total,
+        'neutral': scores.get('neutral', 0) / total,
+        'positive': scores.get('positive', 0) / total
+    }
+else:
+    scores_normalized = {'negative': 0, 'neutral': 0, 'positive': 0}
+
+# Then use scores_normalized instead of scores in bar widths
+'width': f"{scores_normalized.get('negative', 0) * 100}%"
+```
+
+RESULT:
+  Bars will always add to 100% width ✅
+
+FIX #2: Update Morning Report After v193.4 Fix
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+The sentiment score (58/100) appears to be from an OLD morning report
+generated BEFORE the v193.4 fix was applied.
+
+SOLUTION:
+1. Apply v193.4 fix
+2. Re-run overnight pipeline:
+   python scripts\run_au_pipeline_v1.3.13.py
+3. Wait for new morning report generation
+4. Refresh dashboard (cache expires in 5 min)
+
+EXPECTED RESULT:
+  Sentiment: 48.5/100 (REDUCE)
+  Status: "REDUCE: Weak market sentiment (48.5/100, Risk: EXTREME)"
+  World Risk adjustment visible in logs
+
+FIX #3: Add World Risk Display to Dashboard
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Current dashboard doesn't show World Event Risk score.
+
+ADD NEW PANEL after FinBERT panel (line ~1730):
+
+```python
+# World Event Risk Panel
+if 'world_event_risk' in morning_sentiment:
+    world_risk = morning_sentiment['world_event_risk']
+    risk_score = world_risk.get('world_risk_score', 50)
+    risk_level = world_risk.get('risk_level', 'MODERATE')
+    
+    risk_colors = {
+        'LOW': '#4CAF50',
+        'MODERATE': '#FFC107',
+        'ELEVATED': '#FF9800',
+        'HIGH': '#FF5722',
+        'EXTREME': '#F44336'
+    }
+    
+    world_risk_panel = html.Div([
+        html.H3('World Event Risk', style={'color': '#ffffff'}),
+        html.Div([
+            html.Div(f"{risk_score:.1f}/100", 
+                     style={'fontSize': '48px', 'fontWeight': 'bold', 
+                            'color': risk_colors.get(risk_level, '#888')}),
+            html.Div(risk_level, 
+                     style={'fontSize': '24px', 'color': '#888'})
+        ])
+    ])
+```
+
+This will show:
+  World Event Risk
+  85.0/100
+  EXTREME (in red)
+
+═══════════════════════════════════════════════════════════════════════
+
+🧪 VERIFICATION STEPS
+═══════════════════════════════════════════════════════════════════════
+
+1. Check Morning Report File:
+   ─────────────────────────────
+   type "reports\screening\au_morning_report.json"
+   
+   Look for:
+   - "timestamp": When was it generated?
+   - "overall_sentiment": Is it ~48 or ~76?
+   - "world_event_risk": {"world_risk_score": 85-90?}
+
+2. Check Dashboard Cache:
+   ────────────────────────
+   The dashboard caches morning report for 5 minutes.
+   If report is stale:
+   - Wait 5 minutes
+   - Refresh browser (Ctrl+F5)
+   - Check if sentiment updates
+
+3. Test FinBERT Normalization:
+   ──────────────────────────────
+   Add debug logging in dashboard:
+   
+   ```python
+   scores = finbert.get('overall_scores', {})
+   total = sum(scores.values())
+   logger.info(f"[FINBERT] Raw scores: {scores}, Total: {total}")
+   ```
+   
+   Expected output:
+   [FINBERT] Raw scores: {'negative': 0.303, 'neutral': 0.102, 'positive': 0.354}, Total: 0.759
+
+4. Verify v193.4 Applied:
+   ─────────────────────────
+   Check log for latest pipeline run:
+   
+   type "logs\overnight_pipeline_20260303.log" | findstr "World Risk"
+   
+   Expected:
+   [World Event Risk] Score: 85-90/100 (EXTREME)
+   [Sentiment Adjusted] Original: 76.6 → Adjusted: 48.5
+
+═══════════════════════════════════════════════════════════════════════
+
+📊 EXPECTED DASHBOARD STATE (After All Fixes)
+═══════════════════════════════════════════════════════════════════════
+
+FinBERT Sentiment Analysis Panel:
+─────────────────────────────────
+  Negative: 40.0% (red bar, full width)
+  Neutral:  13.3% (yellow bar, full width)
+  Positive: 46.7% (green bar, full width)
+  ────────────────
+  TOTAL:    100% ✅
+
+Trading Gate Status:
+───────────────────
+  🔴 REDUCE: Weak market sentiment (48.5/100, Risk: EXTREME)
+
+World Event Risk Panel (NEW):
+─────────────────────────────
+  85.0/100
+  EXTREME (red)
+  
+  Top Topics:
+  - military_conflict
+  - major_war
+  - oil_shock
+
+═══════════════════════════════════════════════════════════════════════
+
+🚀 ACTION ITEMS (Priority Order)
+═══════════════════════════════════════════════════════════════════════
+
+IMMEDIATE (Do Now):
+───────────────────
+1. ✅ Apply v193.4 fix (if not already done)
+   - Edit world_event_monitor.py
+   - Or re-extract package
+
+2. ⏳ Re-run overnight pipeline
+   - python scripts\run_au_pipeline_v1.3.13.py
+   - Wait for completion (~20 min)
+   - Check logs for World Risk: 85-90/100
+
+3. ⏳ Refresh dashboard
+   - Wait 5 min (cache expiry)
+   - Ctrl+F5 to hard refresh
+   - Check sentiment drops to ~48.5/100
+
+SHORT-TERM (Next Update):
+─────────────────────────
+4. 🔧 Add FinBERT score normalization
+   - Edit core/unified_trading_dashboard.py
+   - Normalize scores before display
+   - Bars will always sum to 100%
+
+5. 🔧 Add World Event Risk panel
+   - Show risk score and level prominently
+   - Display top risk topics
+   - Color-coded by severity
+
+6. 🔧 Add sentiment adjustment details
+   - Show original vs adjusted sentiment
+   - Display world risk penalty
+   - Explain why sentiment lowered
+
+LONG-TERM (Nice to Have):
+─────────────────────────
+7. 📊 Add historical sentiment chart
+   - Track sentiment over time
+   - Show world risk impact
+   - Visualize crisis events
+
+8. 🔔 Add risk alerts
+   - Desktop notification for EXTREME risk
+   - Email alerts for position gates
+   - SMS for BLOCK status
+
+═══════════════════════════════════════════════════════════════════════
+
+💡 SUMMARY
+═══════════════════════════════════════════════════════════════════════
+
+CURRENT STATE:
+  ✅ FinBERT panel displays correctly
+  ✅ Sentiment data loading from morning report
+  ⚠️  Bars don't add to 100% (normalization issue)
+  ⚠️  Sentiment 58/100 seems old (should be ~48.5 after v193.4)
+  ❌  World Event Risk not displayed (85-90/100 EXTREME missing)
+
+ROOT CAUSES:
+  1. FinBERT scores not normalized before display
+  2. Morning report likely from before v193.4 fix
+  3. Dashboard doesn't show world risk component
+
+RECOMMENDED ACTIONS:
+  1. Apply v193.4 fix and regenerate morning report
+  2. Add score normalization to dashboard
+  3. Add world event risk display panel
+  4. Wait for cache refresh (5 min) and verify
+
+EXPECTED OUTCOME:
+  - Bars sum to 100% ✅
+  - Sentiment shows 48.5/100 (REDUCE) ✅
+  - World Risk shows 85-90/100 (EXTREME) ✅
+  - Position protection active ✅
+
+═══════════════════════════════════════════════════════════════════════
+
+📁 FILES TO REVIEW/MODIFY
+═══════════════════════════════════════════════════════════════════════
+
+1. core/unified_trading_dashboard.py
+   - Lines 1641-1694: FinBERT display logic
+   - Add normalization before display
+   - Add world risk panel
+
+2. reports/screening/au_morning_report.json
+   - Check timestamp and sentiment values
+   - Verify world_event_risk present
+   - Should be regenerated after v193.4
+
+3. pipelines/models/screening/world_event_monitor.py
+   - Verify v193.4 fix applied (lines 161-182)
+   - Formula should use base_risk = topic_severity * 100
+
+4. logs/overnight_pipeline_YYYYMMDD.log
+   - Check for World Risk: 85-90/100
+   - Verify sentiment adjustment applied
+   - Confirm v193.4 running
+
+═══════════════════════════════════════════════════════════════════════
+
+Generated: 2026-03-03 02:15 UTC
+Analysis: Dashboard FinBERT Sentiment Display
+Version: v1.3.15.193.4
+Status: ✅ Working, ⚠️ Improvements Needed
+
+═══════════════════════════════════════════════════════════════════════

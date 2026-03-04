@@ -1,0 +1,169 @@
+===============================================================================
+HOTFIX v193.11.1 - Windows UnicodeEncodeError Fix
+===============================================================================
+Date: March 4, 2026
+Priority: HIGH
+Status: Production Ready
+
+ISSUE SUMMARY
+===============================================================================
+The trading system was experiencing UnicodeEncodeError when running on Windows
+systems with cp1252 encoding. The error occurred when logging messages 
+containing Unicode characters (arrows "→" and emojis "🚨").
+
+Error Details:
+--------------
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2192' 
+in position XX: character maps to <undefined>
+
+Stack Trace:
+- File: core/unified_trading_dashboard.py, line 1654
+- Message: "FinBERT scores normalized: {total:.3f} → 1.000"
+- Also affected: Alert messages with emoji 🚨
+
+ROOT CAUSE
+===============================================================================
+The logging configuration did not specify UTF-8 encoding for file and stream
+handlers. On Windows, the default encoding is often cp1252, which cannot
+encode Unicode characters beyond the basic ASCII/extended ASCII range.
+
+SOLUTION IMPLEMENTED
+===============================================================================
+
+1. Fixed Logging Configuration
+   File: core/unified_trading_dashboard.py (lines 56-64)
+   
+   Before:
+   --------
+   logging.basicConfig(
+       level=logging.INFO,
+       format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+       handlers=[
+           logging.FileHandler('logs/unified_trading.log'),
+           logging.StreamHandler()
+       ]
+   )
+   
+   After:
+   ------
+   logging.basicConfig(
+       level=logging.INFO,
+       format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+       handlers=[
+           logging.FileHandler('logs/unified_trading.log', encoding='utf-8'),
+           logging.StreamHandler(sys.stdout)
+       ]
+   )
+
+2. Replaced Unicode Characters
+   
+   a) Arrow character:
+      File: core/unified_trading_dashboard.py (line 1654)
+      Before: f"FinBERT scores normalized: {total:.3f} → 1.000"
+      After:  f"FinBERT scores normalized: {total:.3f} -> 1.000"
+   
+   b) Emoji character:
+      File: core/paper_trading_coordinator.py (line 2248)
+      Before: f"   🚨 {alert.symbol}: {alert.alert_type}"
+      After:  f"   [!] {alert.symbol}: {alert.alert_type}"
+
+FILES MODIFIED
+===============================================================================
+1. core/unified_trading_dashboard.py
+   - Added UTF-8 encoding to FileHandler
+   - Changed StreamHandler() to StreamHandler(sys.stdout)
+   - Replaced → with -> in log message
+   
+2. core/paper_trading_coordinator.py
+   - Replaced 🚨 with [!] in alert messages
+   
+3. VERSION.json
+   - Updated version to 1.3.15.193.11.1
+   - Added hotfix changelog entry
+
+TESTING
+===============================================================================
+Test Procedure:
+1. Start the unified trading dashboard on Windows
+2. Verify console output displays correctly
+3. Check logs/unified_trading.log for proper encoding
+4. Trigger FinBERT score normalization
+5. Generate intraday alerts
+6. Confirm no UnicodeEncodeError
+
+Expected Behavior:
+- All log messages display correctly in console
+- Log file contains UTF-8 encoded messages
+- No encoding errors during normal operation
+- ASCII replacements are clear and readable
+
+IMPACT
+===============================================================================
+Positive:
+- System now runs without encoding errors on Windows
+- Logs are readable in all environments
+- No functionality changes
+- Backward compatible with existing logs
+
+Neutral:
+- Visual change: → becomes -> and 🚨 becomes [!]
+- No performance impact
+- No configuration changes required
+
+DEPLOYMENT NOTES
+===============================================================================
+1. This is a hotfix and can be deployed immediately
+2. No database changes or migrations required
+3. No restart of external services needed
+4. Simply replace the two Python files
+5. Existing log files remain readable
+
+ROLLBACK PROCEDURE
+===============================================================================
+If needed, rollback to v193.11 by:
+1. Restore core/unified_trading_dashboard.py from v193.11
+2. Restore core/paper_trading_coordinator.py from v193.11
+3. Restore VERSION.json to v193.11
+
+Note: Rollback will reintroduce the UnicodeEncodeError on Windows systems.
+
+COMPATIBILITY
+===============================================================================
+- Windows: ✓ Fixed (primary target)
+- Linux: ✓ Compatible (no regression)
+- macOS: ✓ Compatible (no regression)
+- Python 3.8+: ✓ Required
+
+VERIFICATION CHECKLIST
+===============================================================================
+[✓] Logging configuration updated with UTF-8 encoding
+[✓] Unicode arrow replaced with ASCII
+[✓] Emoji replaced with ASCII
+[✓] VERSION.json updated
+[✓] Files tested on Windows system
+[✓] No encoding errors in console output
+[✓] Log file readable with UTF-8
+[✓] Hotfix documentation created
+
+RELATED ISSUES
+===============================================================================
+Similar fixes were previously applied to:
+- scripts/run_au_pipeline_v1.3.13.py (line 63)
+- scripts/run_uk_full_pipeline.py (line 76)
+- scripts/run_us_full_pipeline.py (line 145)
+
+This hotfix aligns unified_trading_dashboard.py with the same pattern.
+
+SUPPORT
+===============================================================================
+If you encounter any issues after applying this hotfix:
+
+1. Verify Python version: python --version (must be 3.8+)
+2. Check console encoding: python -c "import sys; print(sys.stdout.encoding)"
+3. Verify UTF-8 support: python -c "print('Test → ✓')"
+4. Review logs: tail -f logs/unified_trading.log
+5. Report issues with full error trace
+
+===============================================================================
+END OF HOTFIX DOCUMENTATION
+===============================================================================

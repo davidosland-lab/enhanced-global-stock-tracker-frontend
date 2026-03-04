@@ -1,0 +1,70 @@
+================================================================================
+DASHBOARD FINBERT DISPLAY - ALTERNATIVE APPROACH
+================================================================================
+
+CURRENT BEHAVIOR:
+- Dashboard shows FinBERT sentiment from individual stock analysis
+- Falls back to neutral (33/34/33%) when no stock news found
+- Macro news sentiment is separate (World Risk uses it)
+
+ISSUE:
+- Small/invisible sentiment bars when stocks have no news
+- Doesn't reflect the actual market risk from macro events
+
+PROPOSED FIX:
+Show MACRO NEWS sentiment in FinBERT panel when stock sentiment is neutral
+
+IMPLEMENTATION:
+In unified_trading_dashboard.py, around line 1641-1658:
+
+```python
+if morning_sentiment and 'finbert_sentiment' in morning_sentiment:
+    finbert = morning_sentiment['finbert_sentiment']
+    scores = finbert.get('overall_scores', {})
+    
+    # Check if scores are neutral defaults (all ~0.33)
+    is_neutral_default = (
+        abs(scores.get('negative', 0) - 0.33) < 0.02 and
+        abs(scores.get('neutral', 0) - 0.33) < 0.02 and
+        abs(scores.get('positive', 0) - 0.33) < 0.02
+    )
+    
+    # If neutral defaults, try to use macro sentiment instead
+    if is_neutral_default:
+        macro_news = morning_sentiment.get('macro_news', {})
+        macro_sentiment_score = macro_news.get('sentiment_score', 0.0)
+        
+        if abs(macro_sentiment_score) > 0.1:  # Not neutral
+            # Convert macro sentiment (-1 to +1) to negative/neutral/positive split
+            if macro_sentiment_score < -0.15:  # Bearish
+                scores = {
+                    'negative': 0.5 + abs(macro_sentiment_score) * 0.3,
+                    'neutral': 0.25,
+                    'positive': 0.25 - abs(macro_sentiment_score) * 0.1
+                }
+            elif macro_sentiment_score > 0.15:  # Bullish
+                scores = {
+                    'negative': 0.25 - macro_sentiment_score * 0.1,
+                    'neutral': 0.25,
+                    'positive': 0.5 + macro_sentiment_score * 0.3
+                }
+            
+            # Normalize
+            total = sum(scores.values())
+            scores = {k: v/total for k, v in scores.items()}
+            
+            logger.info(f"[DASHBOARD] Using macro sentiment ({macro_sentiment_score:.3f}) for FinBERT display")
+```
+
+RESULT:
+- If individual stocks have news → Show stock sentiment
+- If no stock news (neutral defaults) → Show macro sentiment
+- Bars always reflect actual market conditions
+- More informative during crisis events
+
+ALTERNATIVE: Add "Source" indicator
+```python
+source_text = "Individual Stocks" if not is_neutral_default else "Macro News"
+```
+
+This way users know what they're looking at.

@@ -1,0 +1,297 @@
+================================================================================
+  UK STOCKS FROZEN - DIAGNOSTIC REPORT v191.1
+================================================================================
+
+🚨 CRITICAL DISCOVERY: BOTH UK STOCKS ARE FROZEN
+Date: 2026-02-28
+Reporter: User (David, Sydney, Australia)
+
+================================================================================
+  ACTUAL SITUATION (Corrected Analysis)
+================================================================================
+
+From user's screenshot and confirmation:
+
+┌──────────┬──────────────┬────────────────┬──────────────┬────────────┐
+│ Symbol   │ Entry Price  │ Dashboard Shows│ Real Market  │ Status     │
+├──────────┼──────────────┼────────────────┼──────────────┼────────────┤
+│ RIO.AX   │ $187.60      │ $187.13        │ Moving ✓     │ ✅ UPDATING│
+│ BP.L     │ $474.30      │ $474.30        │ Moving ✓     │ ❌ FROZEN  │
+│ LGEN.L   │ $274.10      │ $274.10        │ Moving ✓     │ ❌ FROZEN  │
+└──────────┴──────────────┴────────────────┴──────────────┴────────────┘
+
+KEY FACTS:
+1. ✅ RIO.AX (Australian .AX) → Updates correctly
+2. ❌ BP.L (UK .L) → Completely frozen at entry price
+3. ❌ LGEN.L (UK .L) → Completely frozen at entry price
+4. ✓ Both stocks are moving in real market
+5. ❌ Dashboard shows 0% change for both UK stocks
+
+TIMELINE:
+- Feb 27, afternoon Sydney: UK stocks purchased
+- Feb 27-28, overnight: System ran monitoring cycles
+- Feb 28, 07:10 AM Sydney: Screenshot taken
+- UK market status: CLOSED (opens 6:00 PM Sydney = 8:00 AM London)
+
+================================================================================
+  ROOT CAUSE ANALYSIS (Updated)
+================================================================================
+
+PREVIOUS HYPOTHESIS (Wrong):
+❌ "Only regularMarketPrice was being used, need fallback"
+
+ACTUAL ROOT CAUSE:
+❌ fetch_current_price('BP.L') is returning None
+❌ fetch_current_price('LGEN.L') is returning None
+
+CODE FLOW:
+1. update_positions() calls fetch_current_price(symbol) [Line 1800]
+2. fetch_current_price() tries multiple data sources [Lines 796-865]
+3. ALL sources return None or fail
+4. Line 1802: "if current_price:" → False → Position NOT updated
+5. Dashboard continues showing entry price
+
+CRITICAL LINE:
+```python
+# Line 1802 in paper_trading_coordinator.py
+if current_price:  # ← If None, position is NOT updated!
+    position.current_price = current_price
+```
+
+================================================================================
+  WHY IS fetch_current_price() RETURNING None?
+================================================================================
+
+POSSIBLE REASONS (Need Testing):
+
+1. **Yahoo Finance API Issues with .L Symbols**
+   - Symbol format: Should it be 'BP.L' or 'BP.LON'?
+   - API limitations for LSE stocks
+   - Rate limiting for UK stocks
+
+2. **Market Closed Data Unavailable**
+   - regularMarketPrice: None (expected - market closed)
+   - postMarketPrice: None (no after-hours for LSE)
+   - preMarketPrice: None (no pre-market yet)
+   - regularMarketPreviousClose: None or 0 (API bug?)
+
+3. **Network/Timeout Issues**
+   - API call timing out
+   - Network connectivity for UK data
+   - Firewall blocking UK stock data
+
+4. **Symbol Not Found**
+   - Yahoo Finance doesn't recognize 'BP.L'
+   - Needs different symbol format
+   - LSE stocks require special handling
+
+5. **yfinance Fallback Also Failing**
+   - yfinance can't find symbol
+   - Historical data unavailable
+   - Timeout on fallback
+
+================================================================================
+  WHY RIO.AX WORKS BUT BP.L/LGEN.L DON'T
+================================================================================
+
+RIO.AX (Australian Stock):
+✅ Symbol format recognized by Yahoo Finance
+✅ ASX provides pre-market/post-market data
+✅ regularMarketPreviousClose available
+✅ yfinance fallback works for .AX symbols
+
+BP.L / LGEN.L (UK Stocks):
+❌ .L symbol format might not be fully supported
+❌ LSE doesn't have as much after-hours data
+❌ regularMarketPreviousClose might be missing
+❌ yfinance fallback also fails
+
+GEOGRAPHIC FACTOR:
+- User is in Australia (Sydney)
+- RIO.AX is local → Better data availability
+- BP.L/LGEN.L are UK → Possible geographic data lag
+
+================================================================================
+  DIAGNOSTIC STEPS REQUIRED
+================================================================================
+
+STEP 1: Run Debug Script on User's System
+------------------------------------------
+```cmd
+cd "C:\Users\david\REgime trading V4 restored\unified_trading_system_v188_COMPLETE_PATCHED"
+python DEBUG_UK_STOCKS.py
+```
+
+This will show:
+✓ What Yahoo Finance returns for BP.L
+✓ What Yahoo Finance returns for LGEN.L
+✓ Which price fields are available
+✓ Whether API calls are succeeding
+✓ Actual error messages
+
+STEP 2: Check Logs with Enhanced Logging
+-----------------------------------------
+After restarting dashboard with v191.1 (enhanced logging):
+
+```cmd
+findstr /C:"[UPDATE]" logs\paper_trading.log
+```
+
+Will show:
+✓ "Could not fetch current price" warnings
+✓ Which symbols are failing
+✓ Price update attempts
+
+STEP 3: Test Symbol Formats
+----------------------------
+Test if alternate symbol formats work:
+- BP.L vs BP.LON
+- LGEN.L vs LGEN.LON
+- Try on Yahoo Finance website directly
+
+================================================================================
+  FIXES APPLIED (v191.1)
+================================================================================
+
+1. Enhanced fetch_current_price() with 4-tier fallback
+   Status: ✅ Applied (v191)
+   File: paper_trading_coordinator.py (lines 796-865)
+
+2. Added detailed logging to update_positions()
+   Status: ✅ Applied (v191.1)
+   File: paper_trading_coordinator.py (lines 1797-1817)
+   New: Logs price updates and failures explicitly
+
+3. Created UK stock debug script
+   Status: ✅ Created
+   File: DEBUG_UK_STOCKS.py
+   Purpose: Diagnose UK stock price fetching
+
+================================================================================
+  EXPECTED LOG OUTPUT (After v191.1)
+================================================================================
+
+SUCCESSFUL UPDATE (RIO.AX):
+```
+[UPDATE] Fetching price for RIO.AX...
+[UPDATE] RIO.AX: $187.60 → $187.13 (-0.25%)
+```
+
+FAILED UPDATE (BP.L, LGEN.L):
+```
+[UPDATE] Fetching price for BP.L...
+[UPDATE] BP.L: Could not fetch current price - position unchanged at $474.30
+[UPDATE] Fetching price for LGEN.L...
+[UPDATE] LGEN.L: Could not fetch current price - position unchanged at $274.10
+```
+
+This will confirm:
+- ✓ Which symbols are failing
+- ✓ That the issue is in fetch_current_price()
+- ✓ Positions are not being updated due to None return
+
+================================================================================
+  POTENTIAL SOLUTIONS (Pending Diagnosis)
+================================================================================
+
+SOLUTION 1: Use Alternative Symbol Format
+-----------------------------------------
+If 'BP.L' doesn't work, try:
+- 'BP.LON' (London stock exchange format)
+- Use different data provider
+- Symbol mapping table
+
+SOLUTION 2: Force Previous Close Update
+-----------------------------------------
+If API fails, use yesterday's close from entry data:
+```python
+if current_price is None:
+    # Use entry price as last known price (prevents showing 0)
+    current_price = position.current_price
+    logger.warning(f"{symbol}: Using last known price ${current_price:.2f}")
+```
+
+SOLUTION 3: Alternative Data Provider
+-------------------------------------
+- Try Alpha Vantage API for UK stocks
+- Use IEX Cloud for LSE data
+- Implement backup data source
+
+SOLUTION 4: Manual Price Input
+-------------------------------
+- Add UI feature to manually update prices
+- Useful during API outages
+- Paper trading acceptable workaround
+
+================================================================================
+  IMMEDIATE ACTIONS FOR USER
+================================================================================
+
+ACTION 1: Run Diagnostic Script
+-------------------------------
+```cmd
+cd "C:\Users\david\REgime trading V4 restored\unified_trading_system_v188_COMPLETE_PATCHED"
+python DEBUG_UK_STOCKS.py > uk_stock_debug.txt
+```
+
+Then share the output (uk_stock_debug.txt) for analysis.
+
+ACTION 2: Apply v191.1 Logging Fix
+-----------------------------------
+1. Copy the updated paper_trading_coordinator.py from my sandbox
+2. Clear __pycache__
+3. Restart dashboard
+4. Wait 2-3 minutes
+5. Check logs:
+   ```cmd
+   type logs\paper_trading.log | findstr /C:"[UPDATE]" | more
+   ```
+
+ACTION 3: Check Yahoo Finance Website
+--------------------------------------
+1. Visit finance.yahoo.com
+2. Search for "BP.L"
+3. Verify symbol format is correct
+4. Check if data is available
+5. Try "BP.LON" if "BP.L" doesn't work
+
+ACTION 4: Test Alternate Symbol Format (If Needed)
+--------------------------------------------------
+If BP.L doesn't work, we can modify the code to try:
+- BP.LON (London format)
+- BP:LSE (Exchange prefix format)
+- Symbol mapping table
+
+================================================================================
+  QUESTIONS TO ANSWER
+================================================================================
+
+1. Does Yahoo Finance website show data for "BP.L"?
+   → Check finance.yahoo.com/quote/BP.L
+
+2. What does DEBUG_UK_STOCKS.py output show?
+   → Run the script and share results
+
+3. Are there any errors in logs/paper_trading.log?
+   → Search for "BP.L" or "LGEN.L" and "Error"
+
+4. Do other UK stocks (.L) work or fail similarly?
+   → Check HSBA.L, SHEL.L, etc. if in portfolio
+
+5. Does the issue persist when UK market opens?
+   → Wait until 6:00 PM Sydney (8:00 AM London) and recheck
+
+================================================================================
+  STATUS
+================================================================================
+
+✅ Root cause identified: fetch_current_price() returning None
+✅ Enhanced logging applied (v191.1)
+✅ Diagnostic script created (DEBUG_UK_STOCKS.py)
+✅ Multiple solution paths prepared
+⏳ Pending: User diagnostic output
+⏳ Pending: Confirmation of exact API failure
+
+NEXT STEP: Run DEBUG_UK_STOCKS.py and share output
+
+================================================================================

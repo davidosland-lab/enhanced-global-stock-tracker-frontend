@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinBERT v4.0 - LSTM Enhanced Trading System</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #0a0f1c 0%, #1a1f2c 100%);
+            font-family: 'Inter', sans-serif;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.5);
+            backdrop-filter: blur(12px);
+            border-radius: 12px;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            margin-bottom: 20px;
+        }
+
+        .loading-spinner {
+            border: 3px solid rgba(59, 130, 246, 0.2);
+            border-radius: 50%;
+            border-top: 3px solid #3b82f6;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .prediction-badge {
+            display: inline-block;
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.875rem;
+        }
+
+        .prediction-BUY {
+            background: rgba(16, 185, 129, 0.2);
+            color: #10b981;
+            border: 1px solid #10b981;
+        }
+
+        .prediction-SELL {
+            background: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            border: 1px solid #ef4444;
+        }
+
+        .prediction-HOLD {
+            background: rgba(234, 179, 8, 0.2);
+            color: #eab308;
+            border: 1px solid #eab308;
+        }
+
+        .lstm-indicator {
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-block;
+            margin-left: 8px;
+        }
+
+        .market-selector {
+            display: inline-flex;
+            background: rgba(51, 65, 85, 0.3);
+            border-radius: 8px;
+            padding: 4px;
+        }
+
+        .market-btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .market-btn.active {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .quick-symbol {
+            padding: 8px 16px;
+            background: rgba(51, 65, 85, 0.5);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .quick-symbol:hover {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+            transform: translateY(-2px);
+        }
+
+        .confidence-bar {
+            height: 6px;
+            background: rgba(51, 65, 85, 0.5);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+            transition: width 0.5s ease;
+        }
+
+        .stat-card {
+            padding: 16px;
+            background: rgba(51, 65, 85, 0.3);
+            border-radius: 8px;
+            border-left: 3px solid #3b82f6;
+        }
+
+        .interval-btn {
+            padding: 6px 12px;
+            margin: 2px;
+            background: rgba(51, 65, 85, 0.5);
+            border: 1px solid rgba(148, 163, 184, 0.2);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+        }
+
+        .interval-btn:hover {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+        }
+
+        .interval-btn.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+    </style>
+</head>
+<body class="p-6">
+    <!-- Header -->
+    <div class="glass-panel p-6 mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold mb-2">
+                    <i class="fas fa-brain text-blue-500"></i> FinBERT v4.0
+                    <span class="lstm-indicator">LSTM ENHANCED</span>
+                </h1>
+                <p class="text-gray-400">Advanced AI-Powered Stock Prediction System</p>
+            </div>
+            <div class="text-right">
+                <div class="text-sm text-gray-400">Server Status</div>
+                <div class="text-green-400 font-semibold">
+                    <i class="fas fa-circle text-xs"></i> Connected
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Market Selector & Search -->
+    <div class="glass-panel p-6 mb-6">
+        <div class="flex flex-wrap items-center gap-4">
+            <div class="market-selector">
+                <div class="market-btn active" data-market="US">
+                    <i class="fas fa-flag-usa"></i> US Markets
+                </div>
+                <div class="market-btn" data-market="ASX">
+                    <i class="fas fa-globe-asia"></i> ASX
+                </div>
+                <div class="market-btn" data-market="CUSTOM">
+                    <i class="fas fa-search"></i> Custom
+                </div>
+            </div>
+
+            <div class="flex-1">
+                <input 
+                    type="text" 
+                    id="symbolInput" 
+                    placeholder="Enter stock symbol (e.g., AAPL or CBA.AX for ASX)"
+                    class="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-lg focus:border-blue-500 focus:outline-none"
+                >
+            </div>
+
+            <button 
+                onclick="analyzeStock()" 
+                class="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition"
+            >
+                <i class="fas fa-chart-line mr-2"></i> Analyze
+            </button>
+        </div>
+
+        <!-- Quick Access -->
+        <div class="mt-4">
+            <div class="text-sm text-gray-400 mb-2">Quick Access:</div>
+            <div id="quickSymbols" class="flex flex-wrap gap-2">
+                <!-- Will be populated based on selected market -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Chart Panel (2/3 width) -->
+        <div class="lg:col-span-2">
+            <div class="glass-panel p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold" id="chartTitle">Select a stock to begin</h2>
+                    <div id="intervalButtons">
+                        <button class="interval-btn active" data-interval="1d">1D</button>
+                        <button class="interval-btn" data-interval="5d">5D</button>
+                        <button class="interval-btn" data-interval="1mo">1M</button>
+                        <button class="interval-btn" data-interval="3mo">3M</button>
+                        <button class="interval-btn" data-interval="1y">1Y</button>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="priceChart"></canvas>
+                </div>
+
+                <div id="loadingIndicator" class="hidden flex justify-center items-center h-64">
+                    <div class="loading-spinner"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prediction & Stats Panel (1/3 width) -->
+        <div class="space-y-6">
+            <!-- ML Prediction Card -->
+            <div class="glass-panel p-6">
+                <h3 class="text-lg font-bold mb-4">
+                    <i class="fas fa-robot text-purple-500"></i> AI Prediction
+                </h3>
+                
+                <div id="predictionContent" class="text-center text-gray-500">
+                    <i class="fas fa-chart-line text-4xl mb-3 opacity-30"></i>
+                    <p>Analyze a stock to see predictions</p>
+                </div>
+
+                <div id="predictionData" class="hidden">
+                    <div class="text-center mb-4">
+                        <div id="predictionBadge" class="prediction-badge mb-3">HOLD</div>
+                        <div class="text-3xl font-bold mb-1" id="predictedPrice">$0.00</div>
+                        <div class="text-sm text-gray-400" id="priceChange">+$0.00 (+0.00%)</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="flex justify-between text-sm mb-2">
+                            <span class="text-gray-400">Confidence</span>
+                            <span class="font-semibold" id="confidenceValue">0%</span>
+                        </div>
+                        <div class="confidence-bar">
+                            <div id="confidenceFill" class="confidence-fill" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 text-sm">
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Model Type</span>
+                            <span class="font-semibold" id="modelType">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Accuracy</span>
+                            <span class="font-semibold" id="modelAccuracy">-</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-gray-400">Current Price</span>
+                            <span class="font-semibold" id="currentPrice">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Market Stats Card -->
+            <div class="glass-panel p-6">
+                <h3 class="text-lg font-bold mb-4">
+                    <i class="fas fa-chart-bar text-blue-500"></i> Market Data
+                </h3>
+                
+                <div id="statsContent" class="space-y-3">
+                    <div class="stat-card">
+                        <div class="text-xs text-gray-400 mb-1">Day High</div>
+                        <div class="text-lg font-bold" id="dayHigh">-</div>
+                    </div>
+                    <div class="stat-card" style="border-left-color: #ef4444;">
+                        <div class="text-xs text-gray-400 mb-1">Day Low</div>
+                        <div class="text-lg font-bold" id="dayLow">-</div>
+                    </div>
+                    <div class="stat-card" style="border-left-color: #8b5cf6;">
+                        <div class="text-xs text-gray-400 mb-1">Volume</div>
+                        <div class="text-lg font-bold" id="volume">-</div>
+                    </div>
+                    <div class="stat-card" style="border-left-color: #10b981;">
+                        <div class="text-xs text-gray-400 mb-1">Change</div>
+                        <div class="text-lg font-bold" id="change">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- LSTM Status Card -->
+            <div class="glass-panel p-6">
+                <h3 class="text-lg font-bold mb-4">
+                    <i class="fas fa-network-wired text-green-500"></i> LSTM Status
+                </h3>
+                
+                <div id="lstmStatus" class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">LSTM Enabled</span>
+                        <span class="font-semibold" id="lstmEnabled">Checking...</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Models Trained</span>
+                        <span class="font-semibold" id="modelsLoaded">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Current Symbol</span>
+                        <span class="font-semibold" id="currentSymbol">-</span>
+                    </div>
+                </div>
+
+                <div class="mt-4 pt-4 border-t border-slate-700">
+                    <button onclick="window.open('https://github.com/davidosland-lab/enhanced-global-stock-tracker-frontend', '_blank')" 
+                            class="w-full px-4 py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-sm transition">
+                        <i class="fab fa-github mr-2"></i> View on GitHub
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE = window.location.hostname === 'localhost' 
+            ? 'http://localhost:5001' 
+            : window.location.origin;
+
+        let currentSymbol = '';
+        let currentInterval = '1d';
+        let priceChart = null;
+
+        // Market presets
+        const marketPresets = {
+            US: ['AAPL', 'MSFT', 'GOOGL', 'TSLA', 'AMZN', 'NVDA', 'META', 'JPM'],
+            ASX: ['CBA.AX', 'BHP.AX', 'WBC.AX', 'ANZ.AX', 'NAB.AX', 'CSL.AX', 'WES.AX', 'RIO.AX']
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkHealth();
+            setupEventListeners();
+            updateQuickSymbols('US');
+        });
+
+        function setupEventListeners() {
+            // Market selector
+            document.querySelectorAll('.market-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.market-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    const market = btn.dataset.market;
+                    if (market !== 'CUSTOM') {
+                        updateQuickSymbols(market);
+                    }
+                });
+            });
+
+            // Interval buttons
+            document.querySelectorAll('.interval-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.interval-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentInterval = btn.dataset.interval;
+                    if (currentSymbol) {
+                        analyzeStock();
+                    }
+                });
+            });
+
+            // Enter key in search
+            document.getElementById('symbolInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    analyzeStock();
+                }
+            });
+        }
+
+        function updateQuickSymbols(market) {
+            const container = document.getElementById('quickSymbols');
+            const symbols = marketPresets[market] || [];
+            
+            container.innerHTML = symbols.map(symbol => 
+                `<div class="quick-symbol" onclick="selectQuickSymbol('${symbol}')">
+                    <i class="fas fa-chart-line mr-2"></i>${symbol}
+                </div>`
+            ).join('');
+        }
+
+        function selectQuickSymbol(symbol) {
+            document.getElementById('symbolInput').value = symbol;
+            analyzeStock();
+        }
+
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/api/health`);
+                const data = await response.json();
+                
+                document.getElementById('lstmEnabled').textContent = 
+                    data.lstm_status === 'loaded' ? '✅ Yes' : '⚠️ Limited';
+                document.getElementById('modelsLoaded').textContent = 
+                    data.models_loaded ? 'Yes' : 'No';
+            } catch (error) {
+                console.error('Health check failed:', error);
+                document.getElementById('lstmEnabled').textContent = '❌ Error';
+            }
+        }
+
+        async function analyzeStock() {
+            const input = document.getElementById('symbolInput').value.trim().toUpperCase();
+            if (!input) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+
+            currentSymbol = input;
+            document.getElementById('currentSymbol').textContent = currentSymbol;
+            document.getElementById('chartTitle').textContent = `${currentSymbol} Analysis`;
+
+            // Show loading
+            document.getElementById('loadingIndicator').classList.remove('hidden');
+            if (priceChart) {
+                priceChart.destroy();
+                priceChart = null;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/stock/${currentSymbol}?interval=${currentInterval}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Hide loading
+                document.getElementById('loadingIndicator').classList.add('hidden');
+                
+                // Update prediction
+                updatePrediction(data);
+                
+                // Update stats
+                updateStats(data);
+                
+                // Update chart
+                updateChart(data);
+                
+            } catch (error) {
+                console.error('Error analyzing stock:', error);
+                alert(`Failed to analyze ${currentSymbol}. Please check the symbol and try again.`);
+                document.getElementById('loadingIndicator').classList.add('hidden');
+            }
+        }
+
+        function updatePrediction(data) {
+            const prediction = data.ml_prediction;
+            
+            if (!prediction) {
+                return;
+            }
+
+            // Show prediction data
+            document.getElementById('predictionContent').classList.add('hidden');
+            document.getElementById('predictionData').classList.remove('hidden');
+
+            // Update prediction badge
+            const badge = document.getElementById('predictionBadge');
+            badge.textContent = prediction.prediction;
+            badge.className = `prediction-badge prediction-${prediction.prediction}`;
+
+            // Update prices
+            document.getElementById('predictedPrice').textContent = 
+                `$${prediction.predicted_price.toFixed(2)}`;
+            document.getElementById('currentPrice').textContent = 
+                `$${data.current_price.toFixed(2)}`;
+
+            const change = prediction.predicted_price - data.current_price;
+            const changePercent = (change / data.current_price * 100).toFixed(2);
+            const changeColor = change >= 0 ? 'text-green-400' : 'text-red-400';
+            const changeSign = change >= 0 ? '+' : '';
+            
+            document.getElementById('priceChange').innerHTML = 
+                `<span class="${changeColor}">${changeSign}$${change.toFixed(2)} (${changeSign}${changePercent}%)</span>`;
+
+            // Update confidence
+            const confidence = Math.round(prediction.confidence);
+            document.getElementById('confidenceValue').textContent = `${confidence}%`;
+            document.getElementById('confidenceFill').style.width = `${confidence}%`;
+
+            // Update model info
+            document.getElementById('modelType').textContent = prediction.model_type || 'Technical';
+            document.getElementById('modelAccuracy').textContent = 
+                prediction.model_accuracy ? `${prediction.model_accuracy.toFixed(1)}%` : 'N/A';
+        }
+
+        function updateStats(data) {
+            document.getElementById('dayHigh').textContent = `$${data.day_high.toFixed(2)}`;
+            document.getElementById('dayLow').textContent = `$${data.day_low.toFixed(2)}`;
+            
+            const volume = data.volume;
+            const volumeStr = volume > 1000000 
+                ? `${(volume / 1000000).toFixed(2)}M` 
+                : `${(volume / 1000).toFixed(2)}K`;
+            document.getElementById('volume').textContent = volumeStr;
+
+            const change = data.price_change;
+            const changePercent = data.price_change_percent;
+            const changeColor = change >= 0 ? 'text-green-400' : 'text-red-400';
+            const changeSign = change >= 0 ? '+' : '';
+            
+            document.getElementById('change').innerHTML = 
+                `<span class="${changeColor}">${changeSign}$${change.toFixed(2)} (${changeSign}${changePercent.toFixed(2)}%)</span>`;
+        }
+
+        function updateChart(data) {
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            const chartData = data.chart_data || [];
+
+            if (chartData.length === 0) {
+                return;
+            }
+
+            // Prepare data
+            const labels = chartData.map(d => new Date(d.date));
+            const prices = chartData.map(d => d.close);
+
+            // Destroy existing chart
+            if (priceChart) {
+                priceChart.destroy();
+            }
+
+            // Create gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(59, 130, 246, 0.3)');
+            gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
+
+            // Create chart
+            priceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: currentSymbol,
+                        data: prices,
+                        borderColor: '#3b82f6',
+                        backgroundColor: gradient,
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0,
+                        pointHoverRadius: 6,
+                        pointBackgroundColor: '#3b82f6',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            padding: 12,
+                            titleColor: '#e2e8f0',
+                            bodyColor: '#e2e8f0',
+                            borderColor: '#3b82f6',
+                            borderWidth: 1,
+                            displayColors: false,
+                            callbacks: {
+                                title: (items) => {
+                                    const date = new Date(items[0].parsed.x);
+                                    return date.toLocaleDateString('en-US', { 
+                                        year: 'numeric', 
+                                        month: 'short', 
+                                        day: 'numeric',
+                                        hour: currentInterval.includes('m') ? '2-digit' : undefined,
+                                        minute: currentInterval.includes('m') ? '2-digit' : undefined
+                                    });
+                                },
+                                label: (context) => {
+                                    return `Price: $${context.parsed.y.toFixed(2)}`;
+                                }
+                            }
+                        },
+                        zoom: {
+                            zoom: {
+                                wheel: {
+                                    enabled: true
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'x'
+                            },
+                            pan: {
+                                enabled: true,
+                                mode: 'x'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            grid: {
+                                color: 'rgba(148, 163, 184, 0.1)'
+                            },
+                            ticks: {
+                                color: '#94a3b8'
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(148, 163, 184, 0.1)'
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                callback: (value) => `$${value.toFixed(2)}`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+</html>
