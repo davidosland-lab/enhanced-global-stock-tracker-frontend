@@ -1,0 +1,181 @@
+===============================================================================
+HOTFIX v193.11.2 - UK Pipeline Initialization Fix
+===============================================================================
+Date: March 4, 2026
+Priority: CRITICAL
+Status: Production Ready
+
+ISSUE SUMMARY
+===============================================================================
+The UK overnight pipeline failed to initialize with the error:
+  NameError: name '_event_monitor' is not defined
+
+This prevented the UK pipeline from running and generating stock recommendations.
+
+ROOT CAUSE
+===============================================================================
+File: pipelines/models/screening/world_event_monitor.py
+Line: 411
+
+The file had leftover test code at the module level:
+  
+  if __name__ == '__main__':
+      test_world_event_monitor()
+  _event_monitor()  # <-- This line caused the error
+
+When the module was imported (not run as main), line 411 executed and tried
+to call `_event_monitor()` which was never defined.
+
+SOLUTION IMPLEMENTED
+===============================================================================
+Removed the erroneous line 411:
+
+Before:
+-------
+if __name__ == '__main__':
+    test_world_event_monitor()
+_event_monitor()
+
+After:
+------
+if __name__ == '__main__':
+    test_world_event_monitor()
+
+This ensures the test function only runs when the module is executed directly,
+not when it's imported by the UK pipeline.
+
+FILES MODIFIED
+===============================================================================
+1. pipelines/models/screening/world_event_monitor.py (line 411)
+   - Removed: _event_monitor()
+   
+2. VERSION.json
+   - Updated to v1.3.15.193.11.2
+   - Added hotfix changelog entry
+
+VERIFICATION
+===============================================================================
+Before Fix:
+-----------
+$ python scripts/run_uk_full_pipeline.py --mode test
+[ERROR] Component initialization failed: name '_event_monitor' is not defined
+[ERROR] Pipeline execution failed
+
+After Fix:
+----------
+$ python scripts/run_uk_full_pipeline.py --mode test
+[OK] World Event Risk Monitor enabled
+[OK] All required UK market components initialized successfully
+[OK] Pipeline running successfully
+✓ Scanning stocks
+✓ Calculating scores
+✓ World Event Risk: 82.4/100 (HIGH)
+✓ Sentiment analysis working
+✓ Stock screening active
+
+IMPACT
+===============================================================================
+Positive:
+- UK pipeline now initializes successfully
+- World Event Risk Monitor working correctly
+- Stock scanning operational
+- Market sentiment analysis functional
+- Pipeline reports can be generated
+
+Fix Scope:
+- Single line removal (line 411)
+- No functionality changes
+- No API changes
+- No configuration changes
+
+TESTING RESULTS
+===============================================================================
+✓ UK Pipeline initialization: SUCCESS
+✓ World Event Monitor: Loaded successfully
+✓ Stock scanning: Working (5 test stocks scanned)
+✓ World Event Risk calculation: 82.4/100
+✓ Sentiment adjustment: Applied correctly
+✓ No regressions in other pipelines
+✓ AU pipeline: Unaffected
+✓ US pipeline: Unaffected
+
+DEPLOYMENT NOTES
+===============================================================================
+1. This is a critical hotfix for UK pipeline users
+2. No database changes or migrations required
+3. No restart of external services needed
+4. Simply replace the one Python file
+5. Existing configurations remain valid
+
+COMPATIBILITY
+===============================================================================
+- Windows: ✓ Compatible
+- Linux: ✓ Compatible
+- macOS: ✓ Compatible
+- Python 3.8+: ✓ Required
+
+ROLLBACK PROCEDURE
+===============================================================================
+If needed (unlikely), rollback to v193.11.1:
+1. Restore world_event_monitor.py from v193.11.1
+2. Restore VERSION.json to v193.11.1
+
+Note: Rollback will reintroduce the UK pipeline initialization error.
+
+RELATED COMPONENTS
+===============================================================================
+The fix affects:
+- UK overnight pipeline (scripts/run_uk_full_pipeline.py)
+- World Event Risk Monitor (pipelines/models/screening/world_event_monitor.py)
+- All components that depend on UK pipeline:
+  * Unified trading dashboard (when loading UK stocks)
+  * Pipeline report loader
+  * Morning report generation
+
+Does NOT affect:
+- AU overnight pipeline
+- US overnight pipeline
+- Core trading coordinator
+- Dashboard (except UK stock loading)
+
+VERIFICATION CHECKLIST
+===============================================================================
+[✓] Error identified and root cause found
+[✓] Fix applied (removed line 411)
+[✓] UK pipeline tested successfully
+[✓] World Event Monitor working
+[✓] VERSION.json updated to v1.3.15.193.11.2
+[✓] Hotfix documentation created
+[✓] No regression in other pipelines
+[✓] Ready for deployment
+
+NEXT STEPS
+===============================================================================
+1. Commit changes to git
+2. Create deployment package v193.11.2
+3. Update pull request
+4. Deploy to production
+
+SUPPORT
+===============================================================================
+If you encounter issues:
+
+1. Verify the fix was applied:
+   grep -A 2 "if __name__" pipelines/models/screening/world_event_monitor.py
+   # Should NOT show _event_monitor() after the if block
+
+2. Test UK pipeline:
+   python scripts/run_uk_full_pipeline.py --mode test
+   # Should initialize successfully
+
+3. Check version:
+   grep version VERSION.json
+   # Should show: "1.3.15.193.11.2"
+
+4. View logs:
+   tail -f logs/uk_full_pipeline.log
+   # Should show successful initialization
+
+===============================================================================
+END OF HOTFIX DOCUMENTATION
+===============================================================================

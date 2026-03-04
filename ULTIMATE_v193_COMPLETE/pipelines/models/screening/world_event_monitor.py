@@ -408,4 +408,3 @@ def test_world_event_monitor():
 
 if __name__ == '__main__':
     test_world_event_monitor()
-_event_monitor()
