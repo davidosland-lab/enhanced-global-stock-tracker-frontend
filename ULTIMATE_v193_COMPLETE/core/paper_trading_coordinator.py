@@ -1052,10 +1052,11 @@ class PaperTradingCoordinator:
         else:
             return MarketSentiment.VERY_BEARISH
     
-    def should_allow_trade(self, symbol: str, signal: Dict, sentiment_score: float) -> Tuple[bool, float, str]:
+    def should_allow_trade(self, symbol: str, signal: Dict, sentiment_score: float, price_data=None) -> Tuple[bool, float, str]:
         """
         Check if trade should be allowed based on FinBERT v4.4.4 sentiment gates
         
+        **FIXED in v193.11.3**: Accept price_data to avoid redundant yfinance calls
         **NEW in v193.10**: Macro Risk Gatekeeper integration (World Risk, US Market, VIX, Sector rules)
         **FIXED in v1.3.15.52**: Now returns position_multiplier for dynamic sizing
         **NEW in v1.3.15.45**: Respects negative sentiment from morning report
@@ -1064,6 +1065,7 @@ class PaperTradingCoordinator:
             symbol: Stock symbol
             signal: Trading signal
             sentiment_score: Market sentiment (0-100)
+            price_data: Optional pre-fetched price data (avoids redundant yfinance call)
         
         Returns:
             Tuple of (allow_trade, position_multiplier, reason)
@@ -1166,9 +1168,13 @@ class PaperTradingCoordinator:
         if self.entry_strategy and is_buy_signal:
             try:
                 # Get price data for entry timing evaluation
-                import yfinance as yf
-                ticker = yf.Ticker(symbol)
-                hist = ticker.history(period='3mo')
+                # FIX v193.11.3: Use passed price_data to avoid redundant yfinance call
+                if price_data is None or price_data.empty:
+                    import yfinance as yf
+                    ticker = yf.Ticker(symbol)
+                    hist = ticker.history(period='3mo')
+                else:
+                    hist = price_data
                 
                 if not hist.empty and len(hist) >= 20:
                     entry_eval = self.entry_strategy.evaluate_entry_timing(
@@ -1681,7 +1687,9 @@ class PaperTradingCoordinator:
         try:
             # SENTIMENT GATE CHECK - Block trades based on FinBERT sentiment
             if not signal.get('type') == 'MANUAL':  # Don't block manual trades
-                gate, position_multiplier, reason = self.should_allow_trade(symbol, signal, self.last_market_sentiment)
+                # FIX v193.11.3: Pass price_data to avoid redundant yfinance call
+                price_data = self.fetch_market_data(symbol, period="3mo")
+                gate, position_multiplier, reason = self.should_allow_trade(symbol, signal, self.last_market_sentiment, price_data)
                 
                 # gate is boolean: True = allow, False = block
                 if not gate:
@@ -1714,8 +1722,8 @@ class PaperTradingCoordinator:
                 # Calculate shares automatically
                 base_size = self.config['swing_trading']['max_position_size']
                 
-                # Apply sentiment-based position multiplier
-                gate, position_multiplier, reason = self.should_allow_trade(symbol, signal, self.last_market_sentiment)
+                # FIX v193.11.3: Use position_multiplier already calculated above (avoid redundant call)
+                # The should_allow_trade was already called at the gate check
                 position_size = base_size * position_multiplier
                 
                 if position_multiplier != 1.0:
