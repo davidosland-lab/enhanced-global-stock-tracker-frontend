@@ -203,32 +203,6 @@ class SPIMonitor:
             logger.error(traceback.format_exc())
             return self._get_default_sentiment()
     
-            Dictionary with sentiment scores, predictions, and analysis
-        """
-        logger.info("Calculating market sentiment...")
-        
-        # Get ASX 200 current state
-        asx_data = self._get_asx_state()
-        
-        # Get US market closes
-        us_data = self._get_us_market_data()
-        
-        # Calculate gap prediction (now regime-aware)
-        gap_prediction = self._predict_opening_gap(asx_data, us_data, market_data)
-        
-        # Calculate sentiment score
-        sentiment_score = self._calculate_sentiment_score(us_data, gap_prediction, asx_data)
-        
-        return {
-            'timestamp': datetime.now(self.timezone).isoformat(),
-            'asx_200': asx_data,
-            'us_markets': us_data,
-            'gap_prediction': gap_prediction,
-            'sentiment_score': sentiment_score,
-            'recommendation': self._get_recommendation(sentiment_score, gap_prediction),
-            'market_data_used': market_data is not None  # Track if regime data was used
-        }
-    
     def _get_asx_state(self) -> Dict:
         """
         Get current ASX 200 state using yahooquery (primary) or Alpha Vantage (backup)
