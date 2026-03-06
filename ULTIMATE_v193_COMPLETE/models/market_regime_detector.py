@@ -356,8 +356,9 @@ class MarketRegimeDetector:
             strength = min(scores[primary], 1.0)
             return primary, strength
         
-        # Default to neutral
-        return MarketRegime.US_BROAD_RALLY, 0.3
+        # Default to risk-off when unable to determine regime (conservative approach)
+        logger.warning("[REGIME] Unable to determine regime from market data, defaulting to US_RISK_OFF")
+        return MarketRegime.US_RISK_OFF, 0.3
     
     def _calculate_sector_impacts(
         self,

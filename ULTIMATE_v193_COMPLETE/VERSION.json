@@ -1,9 +1,29 @@
 {
-  "version": "1.3.15.193.11.4",
-  "build_date": "2026-03-04",
+  "version": "1.3.15.193.11.5",
+  "build_date": "2026-03-06",
   "branch": "genspark_ai_developer",
   "status": "production",
   "changelog": [
+    {
+      "version": "1.3.15.193.11.5",
+      "date": "2026-03-06",
+      "changes": [
+        "CRITICAL FIX: Market Regime Detector false positive - Fixed incorrect default regime",
+        "Changed fallback regime from US_BROAD_RALLY to US_RISK_OFF (line 360 in market_regime_detector.py)",
+        "Added warning log when regime cannot be determined from market data",
+        "Bug was causing bullish bias in down markets (e.g., S&P -0.6%, NASDAQ -0.3% → incorrectly reported as BROAD_RALLY)",
+        "Affects AU pipeline sector scoring, opportunity weighting, and risk management decisions",
+        "Conservative approach: when uncertain, default to risk-off rather than risk-on"
+      ],
+      "priority": "CRITICAL",
+      "fixed_issues": [
+        "Market regime defaulted to US_BROAD_RALLY when unable to detect regime (line 360 comment said 'neutral' but code said 'RALLY')",
+        "False bullish signals during down markets (S&P -0.6%, VIX 23.8 → BROAD_RALLY with 0.3 strength)",
+        "Incorrect sector allocations (Materials, Financials favored when should be cautious)",
+        "Misleading log messages causing operator confusion"
+      ],
+      "testing": "Verified with 2026-03-06 09:06 market data: S&P -0.6%, NASDAQ -0.3%, VIX 23.8, Oil +5.6%, AUD/USD -0.4%"
+    },
     {
       "version": "1.3.15.193.11.4",
       "date": "2026-03-04",

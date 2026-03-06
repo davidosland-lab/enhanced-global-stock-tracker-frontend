@@ -1,0 +1,226 @@
+================================================================================
+PAPER TRADING PIPELINE SCANNING ANALYSIS
+================================================================================
+Date: 2026-03-06
+System Version: v193.11.4
+Analysis Focus: Pipeline report monitoring and market regime detection
+
+================================================================================
+QUESTION 1: DOES PAPER TRADING MODULE SCAN FOR NEW PIPELINE RUNS?
+================================================================================
+
+✅ **YES - CONFIRMED WORKING**
+
+The paper trading coordinator actively monitors for new/updated pipeline reports.
+
+IMPLEMENTATION DETAILS:
+-----------------------
+
+1. **Initialization** (line 361-364):
+   ```python
+   self._overnight_reports_cache = self._load_overnight_reports()
+   self._reports_last_check = datetime.now()
+   self._reports_check_interval = timedelta(minutes=30)  # Check every 30 minutes
+   self._processed_recommendations = set()  # Track which recommendations we've acted on
+   ```
+
+2. **Automatic Checking** (line 2285-2287 in run_trading_cycle):
+   ```python
+   # 6. Check for updated pipeline reports and process recommendations
+   if self._check_for_updated_reports():
+       logger.info("[PIPELINE] Processing fresh pipeline recommendations...")
+       self._process_pipeline_recommendations()
+   ```
+
+3. **Detection Method** (_check_for_updated_reports, lines 476-518):
+   - Runs every 30 minutes
+   - Scans reports/screening/ for morning_report.json files (au, us, uk)
+   - Compares file modification time with cached timestamp
+   - Detects both NEW reports and UPDATED reports
+   - Logs: "[PIPELINE] Detected updated/new {MARKET} morning report"
+   - Returns True if any reports changed, triggering processing
+
+4. **Report Locations Monitored**:
+   - reports/screening/au_morning_report.json
+   - reports/screening/us_morning_report.json
+   - reports/screening/uk_morning_report.json
+
+5. **Processing Logic** (_process_pipeline_recommendations, lines 621-695):
+   - Retrieves top 5 recommendations per market
+   - Filters out existing positions
+   - Evaluates each recommendation against trading criteria
+   - Executes BUY/SELL orders for actionable signals
+   - Tracks processed recommendations to avoid duplicates
+   - Logs all actions with detailed reasoning
+
+6. **Recommendation Extraction** (_get_pipeline_recommendations, lines 520-569):
+   - Accepts market parameter ('au', 'us', 'uk' or None for all)
+   - Extracts top_stocks array from each report
+   - Creates unique key: "{symbol}_{timestamp}"
+   - Returns recommendation dicts with:
+     * symbol
+     * signal (BUY, SELL, STRONG_BUY, etc.)
+     * opportunity_score
+     - sentiment
+     * market
+     * technical_signal
+     * report_age_hours
+
+EXECUTION FLOW IN TRADING CYCLE:
+---------------------------------
+1. Check market hours
+2. Update sentiment scores
+3. Run intraday scans (if interval elapsed)
+4. Update positions (prices, P&L)
+5. Check exits (early exits, regular stops)
+6. **→ Check for updated pipeline reports** ← THIS IS AUTOMATED
+7. **→ Process fresh pipeline recommendations if found** ← AUTOMATIC TRADES
+8. Scan for new entries (regular trading logic)
+9. Print portfolio status
+
+KEY FEATURES:
+-------------
+✅ Automatic detection every 30 minutes
+✅ Works for all three markets (AU, US, UK)
+✅ Prevents duplicate trades (tracks recommendation_key)
+✅ Respects max_total_positions limit
+✅ Logs all actions and decisions
+✅ Integrates with existing risk management
+✅ Calculates report age and skips stale recommendations
+✅ Market-aware symbol handling (.AX, .L, no suffix)
+
+VERIFICATION:
+-------------
+To verify this is working in your production environment:
+
+1. Check logs for these patterns:
+   "[PIPELINE] Detected updated/new {MARKET} morning report"
+   "[PIPELINE] Processing fresh pipeline recommendations..."
+   "[PIPELINE] Found {N} recommendations across all markets"
+   "[PIPELINE] Actionable: {symbol} ({market}) - {signal} @ score=..."
+
+2. Monitor these timings:
+   - Reports should be checked every 30 minutes
+   - Last check time is tracked in _reports_last_check
+   - File modification times are compared to cache timestamps
+
+3. Expected behavior:
+   - When overnight pipeline completes → JSON saved to reports/screening/
+   - Within 30 min → Paper trading detects new file
+   - Immediately → Processes recommendations
+   - Logs all actions
+
+================================================================================
+QUESTION 2: MARKET REGIME DETECTOR BUG - FALSE "BROAD RALLY" DETECTION
+================================================================================
+
+🚨 **CRITICAL BUG CONFIRMED** - Line 360 in market_regime_detector.py
+
+ACTUAL MARKET DATA (2026-03-06 09:06):
+---------------------------------------
+- S&P 500: -0.6% (DOWN)
+- NASDAQ: -0.3% (DOWN)
+- VIX: 23.8 (ELEVATED FEAR)
+- Oil: +5.6% (COMMODITY SPIKE)
+- USD Index: +0.3% (DOLLAR STRENGTH)
+- AUD/USD: -0.4% (AUSSIE WEAKNESS)
+
+DETECTED REGIME (INCORRECT):
+----------------------------
+MarketRegime.US_BROAD_RALLY (strength: 0.30, confidence: 0.45)
+Explanation: "Broad US market rally. ASX may see modest gains if commodities and AUD stable."
+
+ROOT CAUSE:
+-----------
+Line 360 in models/market_regime_detector.py:
+
+```python
+# Select primary regime (highest score)
+if scores:
+    primary = max(scores, key=scores.get)
+    strength = min(scores[primary], 1.0)
+    return primary, strength
+
+# Default to neutral  ← THIS COMMENT IS WRONG
+return MarketRegime.US_BROAD_RALLY, 0.3  ← DEFAULTS TO RALLY, NOT NEUTRAL!
+```
+
+PROBLEM:
+--------
+When the detector cannot determine a regime (scores dict is empty or no matches),
+it **incorrectly defaults to US_BROAD_RALLY** with 0.3 strength.
+
+This is WRONG because:
+1. Comment says "Default to neutral" but code says "US_BROAD_RALLY"
+2. Should default to RISK_OFF or NEUTRAL when markets are down
+3. Misleads trading logic into thinking markets are bullish
+4. Could cause inappropriate sector allocations (favor cyclicals in down market)
+
+CORRECT FIX:
+------------
+Line 360 should be:
+
+```python
+# Default to risk-off when unable to determine regime
+return MarketRegime.US_RISK_OFF, 0.3
+```
+
+OR better yet:
+
+```python
+# Default to neutral/cautious when unable to determine regime clearly
+return MarketRegime.US_MARKET_NEUTRAL, 0.3
+```
+
+IMPACT:
+-------
+- ❌ ASX pipeline gets bullish bias when it should be cautious
+- ❌ Sector impacts calculated incorrectly (Materials, Financials favored)
+- ❌ Position sizing may be too aggressive
+- ❌ Risk management gates may not trigger
+- ❌ Misleading logs confuse operators
+
+AFFECTED CODE PATHS:
+--------------------
+1. models/market_regime_detector.py (line 360)
+2. pipelines/models/screening/market_regime_engine.py (may share logic)
+3. pipelines/models/screening/dual_regime_analyzer.py (may inherit bug)
+4. All AU pipeline runs (uses regime for sector scoring)
+5. Opportunity scorer (weights recommendations by regime)
+
+RECOMMENDED ACTIONS:
+--------------------
+1. **IMMEDIATE FIX**: Change line 360 to return US_RISK_OFF or US_MARKET_NEUTRAL
+2. **VERIFY ENUMS**: Check MarketRegime enum has NEUTRAL or RISK_OFF option
+3. **TEST THOROUGHLY**: Run AU pipeline with various market conditions
+4. **ADD VALIDATION**: Log warning when defaulting to fallback regime
+5. **REVIEW SIMILAR CODE**: Check other regime detectors for same bug
+6. **ADD UNIT TESTS**: Test edge cases (empty data, missing fields, etc.)
+
+PRIORITY: 🔴 **CRITICAL**
+- Affects trading decisions
+- Creates false confidence
+- May lead to losses in down markets
+- Misleads operators with incorrect explanations
+
+================================================================================
+SUMMARY
+================================================================================
+
+✅ **PIPELINE SCANNING**: Fully functional, checks every 30 minutes, processes
+   recommendations automatically across AU/US/UK markets.
+
+🚨 **REGIME DETECTOR BUG**: Line 360 defaults to RALLY when it should default
+   to RISK_OFF or NEUTRAL. This is causing false bullish signals in down markets.
+
+NEXT STEPS:
+-----------
+1. Fix market_regime_detector.py line 360 (5 minutes)
+2. Test fix with current market data (10 minutes)
+3. Verify AU pipeline produces correct regime (5 minutes)
+4. Bump version to v193.11.5 (2 minutes)
+5. Document fix and deploy (10 minutes)
+
+TOTAL ESTIMATED TIME: 32 minutes
+
+================================================================================
