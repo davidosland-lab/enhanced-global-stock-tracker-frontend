@@ -875,7 +875,7 @@ app.layout = html.Div([
                 ),
                 # NEW v1.3.15.164: Auto-load button
                 html.Button(
-                    '📊 Auto-Load Top 50 from Pipeline Reports',
+                    '[LOAD] Auto-Load Top 50 from Pipeline Reports',
                     id='autoload-btn',
                     style={
                         'width': '100%',
@@ -1306,7 +1306,7 @@ def autoload_pipeline_stocks(n_clicks):
     """
     if not PIPELINE_LOADER_AVAILABLE:
         return '', html.Div(
-            '⚠️ Pipeline loader not available',
+            '[!] Pipeline loader not available',
             style={'color': '#FF9800'}
         )
     
@@ -1314,17 +1314,18 @@ def autoload_pipeline_stocks(n_clicks):
         logger.info("[AUTOLOAD] Loading top 50 stocks from pipeline reports...")
         
         # Load top 50 stocks from all markets
+        # Relaxed filters: confidence >= 20%, max age 168 hours (7 days)
         symbols, metadata = auto_load_pipeline_stocks(
             top_n=50,
             markets=['AU', 'UK', 'US'],
-            min_confidence=60.0,
-            max_age_hours=48
+            min_confidence=20.0,
+            max_age_hours=168
         )
         
         if not symbols:
             # No stocks found
             status_html = html.Div([
-                html.Span('⚠️ No stocks loaded', style={'color': '#FF9800', 'fontWeight': 'bold'}),
+                html.Span('[!] No stocks loaded', style={'color': '#FF9800', 'fontWeight': 'bold'}),
                 html.Br(),
                 html.Span('Check if pipeline reports exist in reports/screening/', style={'fontSize': '11px'})
             ])
@@ -1351,7 +1352,7 @@ def autoload_pipeline_stocks(n_clicks):
     except Exception as e:
         logger.error(f"[AUTOLOAD] Error: {e}")
         status_html = html.Div(
-            f'❌ Error: {str(e)[:100]}',
+            f'[ERROR] Error: {str(e)[:100]}',
             style={'color': '#F44336'}
         )
         return '', status_html
