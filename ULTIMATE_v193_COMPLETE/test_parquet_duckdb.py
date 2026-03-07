@@ -345,7 +345,7 @@ def run_all_tests():
         results['Pipeline Integration'] = test_pipeline_integration()
         
     except Exception as e:
-        logger.error(f"\n❌ Test failed with error: {e}", exc_info=True)
+        logger.error(f"\n[ERROR] Test failed with error: {e}", exc_info=True)
     
     # Summary
     logger.info("\n" + "="*80)
@@ -353,7 +353,7 @@ def run_all_tests():
     logger.info("="*80)
     
     for test_name, passed in results.items():
-        status = "[OK] PASS" if passed else "❌ FAIL"
+        status = "[OK] PASS" if passed else "[ERROR] FAIL"
         logger.info(f"  {test_name}: {status}")
     
     total_passed = sum(results.values())
@@ -362,7 +362,7 @@ def run_all_tests():
     logger.info(f"\nTotal: {total_passed}/{total_tests} tests passed")
     
     if total_passed == total_tests:
-        logger.info("\n🎉 ALL TESTS PASSED!")
+        logger.info("\n[PASS] ALL TESTS PASSED!")
         logger.info("\nFeatures Validated:")
         logger.info("  [OK] Parquet columnar storage (100x faster than CSV)")
         logger.info("  [OK] DuckDB SQL analytics (10-50x faster than pandas)")
@@ -377,7 +377,7 @@ def run_all_tests():
         logger.info("  3. View analytics dashboard")
         logger.info("  4. Monitor maker/taker edge")
     else:
-        logger.info("\n⚠️  Some tests failed. Review logs above.")
+        logger.info("\n[!]  Some tests failed. Review logs above.")
     
     logger.info(f"\nEnd Time: {datetime.now()}")
     logger.info("="*80)

@@ -16,7 +16,7 @@ CHANGELOG v193.10:
   * Volume missing: -10% confidence penalty
 - FIXED: March 4, 2026 incident ($556 loss) - macro gates now active
   * Would have blocked BP.L, BOQ.AX, NAB.AX on high risk day
-  * World Risk 100/100, US -2.5%, VIX 59.3 → All blocked
+  * World Risk 100/100, US -2.5%, VIX 59.3 -> All blocked
 - Position multipliers now combine macro risk AND sentiment
   * Example: Macro 0.5x * Sentiment 0.75x = 0.375x final position
 - Applies to ALL markets: AU, US, UK with same gates
@@ -1885,7 +1885,7 @@ class PaperTradingCoordinator:
                 
                 # Log price update
                 if abs(current_price - old_price) > 0.01:  # Only log if price changed
-                    logger.info(f"[UPDATE] {symbol}: ${old_price:.2f} → ${current_price:.2f} ({position.unrealized_pnl_pct:+.2f}%)")
+                    logger.info(f"[UPDATE] {symbol}: ${old_price:.2f} -> ${current_price:.2f} ({position.unrealized_pnl_pct:+.2f}%)")
                 
                 # Update trailing stop
                 if self.config['swing_trading']['use_trailing_stop']:

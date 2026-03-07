@@ -356,7 +356,7 @@ class IntradayScanner:
                     if alert and alert.signal_strength >= self.breakout_threshold:
                         alerts.append(alert)
                         logger.info(
-                            f"🚨 {alert.alert_type}: {symbol} | "
+                            f"[ALERT] {alert.alert_type}: {symbol} | "
                             f"Price={alert.price_change_pct:+.2f}%, "
                             f"Volume={alert.volume_ratio:.2f}x, "
                             f"Strength={alert.signal_strength:.1f}"
@@ -540,7 +540,7 @@ class CrossTimeframeCoordinator:
                     f"BOOSTED: Market sentiment {sentiment.sentiment_score:.1f} > {self.sentiment_boost_threshold} "
                     f"(+{boost_amount:.1f}% confidence)"
                 )
-                logger.info(f"🚀 BOOSTED {symbol} - strong market sentiment: {sentiment.sentiment_score:.1f}")
+                logger.info(f"[BOOST] BOOSTED {symbol} - strong market sentiment: {sentiment.sentiment_score:.1f}")
             
             return enhanced_signal
             

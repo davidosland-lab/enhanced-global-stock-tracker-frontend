@@ -238,7 +238,7 @@ class OrderManager:
                             logger.info(f"[OK] {order_type} order #{order_id} executed: {side} {quantity} {symbol} @ ${result['price']:.2f}")
                         else:
                             self.db.update_order_status(order_id, 'REJECTED')
-                            logger.warning(f"❌ {order_type} order #{order_id} rejected: {result.get('error')}")
+                            logger.warning(f"[ERROR] {order_type} order #{order_id} rejected: {result.get('error')}")
                 
                 # Sleep before next check
                 time.sleep(10)  # Check every 10 seconds

@@ -116,7 +116,7 @@ class PredictionScheduler:
     def _validate_us_predictions(self):
         """Validate US market predictions"""
         logger.info("=" * 80)
-        logger.info("🇺🇸 Running US Market Validation (Scheduled)")
+        logger.info("[US] Running US Market Validation (Scheduled)")
         logger.info("=" * 80)
         
         try:
@@ -140,12 +140,12 @@ class PredictionScheduler:
                 logger.info("No US predictions to validate")
                 
         except Exception as e:
-            logger.error(f"✗ Error in US validation: {e}", exc_info=True)
+            logger.error(f"[X] Error in US validation: {e}", exc_info=True)
     
     def _validate_au_predictions(self):
         """Validate Australian market predictions"""
         logger.info("=" * 80)
-        logger.info("🇦🇺 Running Australian Market Validation (Scheduled)")
+        logger.info("[AU] Running Australian Market Validation (Scheduled)")
         logger.info("=" * 80)
         
         try:
@@ -170,12 +170,12 @@ class PredictionScheduler:
                 logger.info("No Australian predictions to validate")
                 
         except Exception as e:
-            logger.error(f"✗ Error in AU validation: {e}", exc_info=True)
+            logger.error(f"[X] Error in AU validation: {e}", exc_info=True)
     
     def _validate_uk_predictions(self):
         """Validate UK market predictions"""
         logger.info("=" * 80)
-        logger.info("🇬🇧 Running UK Market Validation (Scheduled)")
+        logger.info("[UK] Running UK Market Validation (Scheduled)")
         logger.info("=" * 80)
         
         try:
@@ -200,7 +200,7 @@ class PredictionScheduler:
                 logger.info("No UK predictions to validate")
                 
         except Exception as e:
-            logger.error(f"✗ Error in UK validation: {e}", exc_info=True)
+            logger.error(f"[X] Error in UK validation: {e}", exc_info=True)
     
     def get_next_run_times(self):
         """Get next run times for all scheduled jobs"""

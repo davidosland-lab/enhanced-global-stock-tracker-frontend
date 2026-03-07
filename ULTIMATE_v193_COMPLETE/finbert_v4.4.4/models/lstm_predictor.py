@@ -342,9 +342,9 @@ class StockLSTMPredictor:
         """
         if not self.is_trained and not self.load_model():
             # FAIL LOUD: No fallback to low-accuracy simple prediction
-            logger.error(f"❌ LSTM MODEL NOT TRAINED for {symbol if symbol else 'symbol'}")
-            logger.error(f"❌ Prediction SKIPPED - System requires LSTM for 75-85% win rate target")
-            logger.error(f"❌ Simple fallback disabled (only 50-65% accuracy vs 75-85% target)")
+            logger.error(f"[ERROR] LSTM MODEL NOT TRAINED for {symbol if symbol else 'symbol'}")
+            logger.error(f"[ERROR] Prediction SKIPPED - System requires LSTM for 75-85% win rate target")
+            logger.error(f"[ERROR] Simple fallback disabled (only 50-65% accuracy vs 75-85% target)")
             return None  # Return None instead of fallback
         
         try:
@@ -356,19 +356,19 @@ class StockLSTMPredictor:
             
             # Check for feature mismatch between current data and trained scaler
             if hasattr(self.scaler, 'n_features_in_') and feature_data.shape[1] != self.scaler.n_features_in_:
-                logger.error(f"❌ CRITICAL: Feature mismatch for {symbol if symbol else 'symbol'}")
-                logger.error(f"❌ Data has {feature_data.shape[1]} features, scaler expects {self.scaler.n_features_in_}")
-                logger.error(f"❌ This should NOT happen after v1.3.15.123 8-feature restoration")
-                logger.error(f"❌ Prediction FAILED - System integrity compromised")
+                logger.error(f"[ERROR] CRITICAL: Feature mismatch for {symbol if symbol else 'symbol'}")
+                logger.error(f"[ERROR] Data has {feature_data.shape[1]} features, scaler expects {self.scaler.n_features_in_}")
+                logger.error(f"[ERROR] This should NOT happen after v1.3.15.123 8-feature restoration")
+                logger.error(f"[ERROR] Prediction FAILED - System integrity compromised")
                 return None  # FAIL LOUD - no fallback
             
             scaled_data = self.scaler.transform(feature_data)
             
             # Need at least sequence_length data points
             if len(scaled_data) < self.sequence_length:
-                logger.error(f"❌ INSUFFICIENT DATA for LSTM: {symbol if symbol else 'symbol'}")
-                logger.error(f"❌ Need {self.sequence_length} days, have {len(scaled_data)} days")
-                logger.error(f"❌ Prediction SKIPPED - Cannot meet 75-85% accuracy target")
+                logger.error(f"[ERROR] INSUFFICIENT DATA for LSTM: {symbol if symbol else 'symbol'}")
+                logger.error(f"[ERROR] Need {self.sequence_length} days, have {len(scaled_data)} days")
+                logger.error(f"[ERROR] Prediction SKIPPED - Cannot meet 75-85% accuracy target")
                 return None  # FAIL LOUD - no fallback
             
             # Prepare input sequence
@@ -446,9 +446,9 @@ class StockLSTMPredictor:
             return result
             
         except Exception as e:
-            logger.error(f"❌ CRITICAL: LSTM prediction exception for {symbol if symbol else 'symbol'}")
-            logger.error(f"❌ Error: {e}")
-            logger.error(f"❌ Prediction FAILED - System requires LSTM for 75-85% win rate")
+            logger.error(f"[ERROR] CRITICAL: LSTM prediction exception for {symbol if symbol else 'symbol'}")
+            logger.error(f"[ERROR] Error: {e}")
+            logger.error(f"[ERROR] Prediction FAILED - System requires LSTM for 75-85% win rate")
             import traceback
             traceback.print_exc()
             return None  # FAIL LOUD - no fallback to low-accuracy prediction

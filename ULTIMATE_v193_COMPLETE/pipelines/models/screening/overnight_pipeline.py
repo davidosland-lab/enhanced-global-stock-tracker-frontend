@@ -446,7 +446,7 @@ class OvernightPipeline:
             - Rates changes (US 10Y, AU 10Y proxy)
             - VIX level
         """
-        logger.info("📊 Fetching overnight market data for regime detection...")
+        logger.info("[CHART] Fetching overnight market data for regime detection...")
         
         if not MARKET_DATA_AVAILABLE or MarketDataFetcher is None:
             logger.warning("[!] MarketDataFetcher not available - regime detection will use defaults")
@@ -690,12 +690,12 @@ class OvernightPipeline:
                     
                     # Critical risk warnings
                     if world_risk['world_risk_score'] >= 85:
-                        logger.error(f"  [🚨] CRITICAL WORLD RISK - DEFENSIVE STANCE REQUIRED")
+                        logger.error(f"  [[ALERT]] CRITICAL WORLD RISK - DEFENSIVE STANCE REQUIRED")
                         logger.error(f"      Top Event: {world_risk['top_headlines'][0][:100] if world_risk['top_headlines'] else 'N/A'}")
                     elif world_risk['world_risk_score'] >= 75:
-                        logger.warning(f"  [⚠️] ELEVATED WORLD RISK - CAUTION ADVISED")
+                        logger.warning(f"  [[!]] ELEVATED WORLD RISK - CAUTION ADVISED")
                     elif world_risk['world_risk_score'] <= 30:
-                        logger.info(f"  [✅] LOW WORLD RISK - FAVORABLE GLOBAL CONDITIONS")
+                        logger.info(f"  [[OK]] LOW WORLD RISK - FAVORABLE GLOBAL CONDITIONS")
                     
                 except Exception as e:
                     logger.warning(f"[!] World event risk monitoring failed: {e}")
@@ -803,9 +803,9 @@ class OvernightPipeline:
             
             logger.info(f"[OK] Event Risk Assessment Complete:")
             logger.info(f"  Upcoming Events: {total_events}")
-            logger.info(f"  🚨 Regulatory Reports (Basel III/Pillar 3): {regulatory}")
+            logger.info(f"  [ALERT] Regulatory Reports (Basel III/Pillar 3): {regulatory}")
             logger.info(f"  [!]  Sit-Out Recommendations: {sit_outs}")
-            logger.info(f"  [!] High Risk Stocks (≥0.7): {high_risk}")
+            logger.info(f"  [!] High Risk Stocks (>=0.7): {high_risk}")
             
             # 🆕 v1.3.15.176: Dual Regime Analysis (Multi-Factor + HMM)
             if self.regime_analyzer:
@@ -939,7 +939,7 @@ class OvernightPipeline:
             logger.info(f"  Total: {summary['total']}")
             logger.info(f"  BUY: {summary['buy_count']} | SELL: {summary['sell_count']} | HOLD: {summary['hold_count']}")
             logger.info(f"  Avg Confidence: {summary['avg_confidence']:.1f}%")
-            logger.info(f"  High Confidence (≥70%): {summary['high_confidence_count']}")
+            logger.info(f"  High Confidence (>=70%): {summary['high_confidence_count']}")
             
             self.status['processed_stocks'] = len(predicted_stocks)
             
@@ -975,7 +975,7 @@ class OvernightPipeline:
             
             logger.info(f"[OK] Opportunities Scored:")
             logger.info(f"  Average Score: {summary['avg_score']:.1f}/100")
-            logger.info(f"  High Opportunities (≥80): {summary['high_opportunity_count']}")
+            logger.info(f"  High Opportunities (>=80): {summary['high_opportunity_count']}")
             logger.info(f"  Medium Opportunities (65-80): {summary['medium_opportunity_count']}")
             logger.info(f"  Low Opportunities (<65): {summary['low_opportunity_count']}")
             

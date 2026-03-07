@@ -255,7 +255,7 @@ class UKFullPipelineRunner:
             logger.info(f"Mode: PRESET/CUSTOM")
             logger.info(f"Symbols: {', '.join(symbols) if len(symbols) <= 10 else f'{len(symbols)} symbols'}")
         
-        logger.info(f"Initial Capital: £{capital:,.2f} GBP")
+        logger.info(f"Initial Capital: GBP{capital:,.2f} GBP")
         
         # Feature status
         features_enabled = []

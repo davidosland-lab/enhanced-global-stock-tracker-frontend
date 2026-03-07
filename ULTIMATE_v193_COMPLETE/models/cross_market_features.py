@@ -201,7 +201,7 @@ class CrossMarketFeatures:
         Returns:
             List of enhanced stock data dictionaries
         """
-        logger.info(f"🔧 Adding cross-market features to {len(stocks)} stocks...")
+        logger.info(f"[TOOL] Adding cross-market features to {len(stocks)} stocks...")
         
         enhanced_stocks = []
         for stock in stocks:
@@ -311,7 +311,7 @@ def test_cross_market_features():
         print(f"  Commodities: Iron ore {market_data['iron_ore_change']:+.1f}%, Oil {market_data['oil_change']:+.1f}%")
         print(f"  FX: AUD/USD {market_data['aud_usd_change']:+.1f}%, USD Index {market_data['usd_index_change']:+.1f}%")
         
-        print(f"\n🔧 Derived Features:")
+        print(f"\n[TOOL] Derived Features:")
         print(f"  ASX Relative Bias:    {stock.get('asx_relative_bias', 0):+.2f}  (NASDAQ - Iron ore)")
         print(f"  USD Pressure:         {stock.get('usd_pressure', 0):+.2f}  (USD strength)")
         print(f"  Commodity Momentum:   {stock.get('commodity_momentum', 0):+.2f}  (Avg commodities)")

@@ -66,8 +66,8 @@ def _load_finbert_if_needed():
         logger.info("[OK] FinBERT sentiment analysis loaded successfully (95% accuracy)")
         return True
     except (ImportError, ValueError, Exception) as e:
-        logger.warning(f"⚠ FinBERT not available: {e}")
-        logger.info("→ Falling back to keyword-based sentiment analysis (60% accuracy)")
+        logger.warning(f"[!] FinBERT not available: {e}")
+        logger.info("-> Falling back to keyword-based sentiment analysis (60% accuracy)")
         FINBERT_AVAILABLE = False
         _finbert_loaded = True  # Mark as attempted
         return False
@@ -213,7 +213,7 @@ class EnhancedMLPredictor:
             result['volume_analysis'] = volume_analysis
             
             logger.info(f"Volume analysis for {symbol}: {volume_analysis['volume_signal']} "
-                       f"(confidence {original_confidence:.1f}% → {adjusted_confidence:.1f}%)")
+                       f"(confidence {original_confidence:.1f}% -> {adjusted_confidence:.1f}%)")
         
         # Add sentiment to final result for UI display
         if sentiment_data:
@@ -275,17 +275,17 @@ class EnhancedMLPredictor:
         confidence = sentiment_data.get('confidence', 50)
         article_count = sentiment_data.get('article_count', 0)
         
-        # Strong positive sentiment → BUY
+        # Strong positive sentiment -> BUY
         if compound > 0.3:
             prediction = 'BUY'
             predicted_change = 2.0  # Expect 2% increase
             
-        # Strong negative sentiment → SELL
+        # Strong negative sentiment -> SELL
         elif compound < -0.3:
             prediction = 'SELL'
             predicted_change = -2.0  # Expect 2% decrease
             
-        # Neutral sentiment → HOLD
+        # Neutral sentiment -> HOLD
         else:
             prediction = 'HOLD'
             predicted_change = 0.3  # Small positive drift
@@ -498,9 +498,9 @@ class EnhancedMLPredictor:
                 
                 if not pd.isna(df['RSI'].iloc[-1]):
                     rsi_value = df['RSI'].iloc[-1]
-                    if rsi_value < 30:  # Oversold → BUY
+                    if rsi_value < 30:  # Oversold -> BUY
                         signals.append('BUY')
-                    elif rsi_value > 70:  # Overbought → SELL
+                    elif rsi_value > 70:  # Overbought -> SELL
                         signals.append('SELL')
                     else:
                         signals.append('HOLD')
@@ -1094,7 +1094,7 @@ def initialize_prediction_system():
             logger.info("    - AU markets:  16:15 AEDT (Mon-Fri)")
             logger.info("    - UK markets:  16:45 GMT (Mon-Fri)")
         except Exception as e:
-            logger.error(f"✗ Failed to initialize prediction system: {e}")
+            logger.error(f"[X] Failed to initialize prediction system: {e}")
 
 @app.route('/api/predictions/<path:symbol>')
 def get_daily_prediction(symbol):
@@ -2354,12 +2354,12 @@ if __name__ == '__main__':
         print("  • Stochastic Oscillator")
         print("  • ADX (Trend Strength)")
         print("  • ATR (Volatility Measure)")
-        print("  → Multi-indicator consensus voting system")
+        print("  -> Multi-indicator consensus voting system")
         print()
     else:
         print("📊 Technical Indicators (Basic):")
         print("  • SMA 20, RSI")
-        print("  → To enable 8+ indicators: pip install ta")
+        print("  -> To enable 8+ indicators: pip install ta")
         print()
     print("📊 Volume Analysis:")
     print("  • High Volume (>1.5x avg): +10% confidence boost")

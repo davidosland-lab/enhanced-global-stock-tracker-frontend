@@ -97,7 +97,7 @@ class PredictionManager:
                 logger.warning(f"[WARN]  {symbol}: {reason}")
         
         # Generate new prediction
-        logger.info(f"⚙ Generating new daily prediction for {symbol}")
+        logger.info(f"[*] Generating new daily prediction for {symbol}")
         try:
             prediction = self._generate_daily_prediction(symbol)
             
@@ -119,7 +119,7 @@ class PredictionManager:
             return prediction
             
         except Exception as e:
-            logger.error(f"✗ Error generating prediction for {symbol}: {e}")
+            logger.error(f"[X] Error generating prediction for {symbol}: {e}")
             raise
     
     def _generate_daily_prediction(self, symbol: str) -> Dict:
@@ -325,7 +325,7 @@ class PredictionManager:
         
         now = datetime.now(self.eastern)
         
-        logger.info(f"⚙ Validating {len(active_predictions)} active predictions...")
+        logger.info(f"[*] Validating {len(active_predictions)} active predictions...")
         
         for pred in active_predictions:
             try:
@@ -367,11 +367,11 @@ class PredictionManager:
                             errors.append(f"Failed to update prediction {pred['prediction_id']}")
                     else:
                         errors.append(f"Could not get closing price for {symbol} on {target_date.date()}")
-                        logger.warning(f"⚠ Could not validate {symbol}: No closing price data")
+                        logger.warning(f"[!] Could not validate {symbol}: No closing price data")
                         
             except Exception as e:
                 errors.append(f"Error validating prediction {pred.get('prediction_id', 'unknown')}: {str(e)}")
-                logger.error(f"✗ Error validating prediction: {e}")
+                logger.error(f"[X] Error validating prediction: {e}")
         
         # Update accuracy statistics for updated symbols
         for symbol in symbols_updated:
@@ -379,7 +379,7 @@ class PredictionManager:
                 self.prediction_db.update_accuracy_stats(symbol)
                 logger.info(f"[OK] Updated accuracy stats for {symbol}")
             except Exception as e:
-                logger.error(f"✗ Error updating stats for {symbol}: {e}")
+                logger.error(f"[X] Error updating stats for {symbol}: {e}")
         
         result = {
             'success': True,

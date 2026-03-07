@@ -5,10 +5,10 @@ Pipeline-to-Dashboard Signal Flow Diagnostic
 
 Tests the complete flow from overnight pipeline output to trading dashboard signals:
 
-1. Pipeline Output → Morning Report JSON
-2. Morning Report → Signal Adapter
-3. Signal Adapter → Trading Signals (BUY/SELL)
-4. Trading Signals → Dashboard Execution
+1. Pipeline Output -> Morning Report JSON
+2. Morning Report -> Signal Adapter
+3. Signal Adapter -> Trading Signals (BUY/SELL)
+4. Trading Signals -> Dashboard Execution
 
 This diagnostic validates:
 - Pipeline report format and data
@@ -51,7 +51,7 @@ except ImportError as e:
 
 class PipelineToDashboardDiagnostic:
     """
-    Diagnostic tool to test pipeline → dashboard signal flow
+    Diagnostic tool to test pipeline -> dashboard signal flow
     """
     
     def __init__(self, base_path: Optional[Path] = None):
@@ -76,9 +76,9 @@ class PipelineToDashboardDiagnostic:
         
         icon = {
             'PASS': '[OK]',
-            'FAIL': '❌',
-            'WARN': '⚠️',
-            'INFO': 'ℹ️'
+            'FAIL': '[ERROR]',
+            'WARN': '[!]',
+            'INFO': 'ℹ'
         }.get(status, '•')
         
         logger.info(f"{icon} {test_name}: {details}")
@@ -463,7 +463,7 @@ class PipelineToDashboardDiagnostic:
     def run_full_diagnostic(self, markets: List[str] = ['AU', 'UK', 'US']) -> Dict:
         """Run complete diagnostic test suite"""
         logger.info("\n" + "="*80)
-        logger.info("PIPELINE → DASHBOARD SIGNAL FLOW DIAGNOSTIC")
+        logger.info("PIPELINE -> DASHBOARD SIGNAL FLOW DIAGNOSTIC")
         logger.info("="*80)
         logger.info(f"Testing markets: {', '.join(markets)}")
         logger.info(f"Base path: {self.base_path}")
@@ -485,7 +485,7 @@ class PipelineToDashboardDiagnostic:
         adapter = self.test_signal_adapter_init()
         
         if not adapter:
-            logger.error("\n❌ CRITICAL: Cannot initialize signal adapter - stopping diagnostic")
+            logger.error("\n[ERROR] CRITICAL: Cannot initialize signal adapter - stopping diagnostic")
             return self.generate_summary()
         
         # Test 4-7: For each valid report
@@ -539,17 +539,17 @@ class PipelineToDashboardDiagnostic:
         
         logger.info(f"Total Tests: {total_tests}")
         logger.info(f"[OK] Passed: {passed}")
-        logger.info(f"❌ Failed: {failed}")
-        logger.info(f"⚠️  Warned: {warned}")
+        logger.info(f"[ERROR] Failed: {failed}")
+        logger.info(f"[!]  Warned: {warned}")
         logger.info(f"Success Rate: {self.results['summary']['success_rate']:.1f}%")
         
         # Overall verdict
         if failed == 0 and passed > 0:
-            verdict = "[OK] PASS - Pipeline → Dashboard signal flow is working"
+            verdict = "[OK] PASS - Pipeline -> Dashboard signal flow is working"
         elif failed > 0 and passed > failed:
-            verdict = "⚠️ PARTIAL - Some issues detected, but core flow works"
+            verdict = "[!] PARTIAL - Some issues detected, but core flow works"
         else:
-            verdict = "❌ FAIL - Critical issues blocking signal generation"
+            verdict = "[ERROR] FAIL - Critical issues blocking signal generation"
         
         logger.info(f"\n{verdict}")
         logger.info("="*80 + "\n")
@@ -564,7 +564,7 @@ class PipelineToDashboardDiagnostic:
         with open(output_path, 'w') as f:
             json.dump(self.results, f, indent=2, default=str)
         
-        logger.info(f"📄 Diagnostic report saved: {output_path}")
+        logger.info(f"[DOC] Diagnostic report saved: {output_path}")
 
 
 def main():
@@ -572,7 +572,7 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(
-        description='Test pipeline → dashboard signal flow'
+        description='Test pipeline -> dashboard signal flow'
     )
     parser.add_argument(
         '--markets',

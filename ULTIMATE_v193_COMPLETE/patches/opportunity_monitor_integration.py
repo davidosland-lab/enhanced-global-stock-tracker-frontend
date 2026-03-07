@@ -213,7 +213,7 @@ def process_opportunity_alerts(coordinator, opportunities: list) -> int:
                     f"(confidence={opp.confidence:.1f}%, urgency={opp.urgency.value})"
                 )
             else:
-                logger.warning(f"[OPPORTUNITY] ✗ Failed to enter {opp.symbol}")
+                logger.warning(f"[OPPORTUNITY] [X] Failed to enter {opp.symbol}")
                 
                 # Track as missed opportunity
                 if hasattr(coordinator, 'opportunity_monitor'):

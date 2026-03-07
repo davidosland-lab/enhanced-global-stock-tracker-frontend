@@ -263,7 +263,7 @@ class PositionManager:
                         'exit_price': current_price,
                         'result': result
                     })
-                    logger.warning(f"🛑 STOP-LOSS TRIGGERED: {symbol} @ ${current_price:.2f}")
+                    logger.warning(f"[STOP] STOP-LOSS TRIGGERED: {symbol} @ ${current_price:.2f}")
             
             # Check take-profit
             elif position['take_profit_price'] and current_price >= position['take_profit_price']:
@@ -276,7 +276,7 @@ class PositionManager:
                         'exit_price': current_price,
                         'result': result
                     })
-                    logger.info(f"🎯 TAKE-PROFIT HIT: {symbol} @ ${current_price:.2f}")
+                    logger.info(f"[TARGET] TAKE-PROFIT HIT: {symbol} @ ${current_price:.2f}")
         
         return {
             'success': True,

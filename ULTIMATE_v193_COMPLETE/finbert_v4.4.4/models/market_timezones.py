@@ -71,11 +71,11 @@ class MarketTimezoneManager:
         for market_code, market_info in self.markets.items():
             for suffix in market_info['suffixes']:
                 if suffix and symbol_upper.endswith(suffix):
-                    logger.info(f"Detected {symbol} → {market_code} market (suffix: {suffix})")
+                    logger.info(f"Detected {symbol} -> {market_code} market (suffix: {suffix})")
                     return market_code
         
         # Default to US market if no suffix matches
-        logger.info(f"Detected {symbol} → US market (default)")
+        logger.info(f"Detected {symbol} -> US market (default)")
         return 'US'
     
     def get_market_info(self, market_code: str) -> Dict:

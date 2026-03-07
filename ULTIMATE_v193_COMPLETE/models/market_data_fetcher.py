@@ -67,7 +67,7 @@ class MarketDataFetcher:
         
         # Check cache
         if use_cache and self._is_cache_valid():
-            logger.info("📦 Using cached market data")
+            logger.info("[CACHE] Using cached market data")
             return self.cache
         
         logger.info("[GLOBE] Fetching overnight market data...")
@@ -182,7 +182,7 @@ class MarketDataFetcher:
         
         Returns realistic sample data
         """
-        logger.info("📋 Using mock market data for testing")
+        logger.info("[LIST] Using mock market data for testing")
         
         return {
             'sp500_change': 0.5,

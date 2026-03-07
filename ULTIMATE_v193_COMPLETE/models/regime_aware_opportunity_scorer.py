@@ -583,7 +583,7 @@ class RegimeAwareOpportunityScorer:
         # Limit to top N
         filtered = filtered[:top_n]
         
-        logger.info(f"📋 Filtered to {len(filtered)} top opportunities (min_score={min_score}, top_n={top_n})")
+        logger.info(f"[LIST] Filtered to {len(filtered)} top opportunities (min_score={min_score}, top_n={top_n})")
         
         return filtered
 

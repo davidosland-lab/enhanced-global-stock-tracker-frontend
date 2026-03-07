@@ -114,7 +114,7 @@ class StockScanner:
                 
                 # Validate stock meets criteria
                 if not self.validate_stock(symbol):
-                    logger.debug(f"  ✗ {symbol}: Failed validation")
+                    logger.debug(f"  [X] {symbol}: Failed validation")
                     continue
                 
                 # Fetch stock data and calculate score
@@ -128,7 +128,7 @@ class StockScanner:
                 logger.info(f"Scan interrupted by user at {symbol}")
                 raise
             except Exception as e:
-                logger.warning(f"  ✗ {symbol}: Error - {str(e)}")
+                logger.warning(f"  [X] {symbol}: Error - {str(e)}")
                 continue
         
         # Sort by score and return top N

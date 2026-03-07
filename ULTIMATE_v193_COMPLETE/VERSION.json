@@ -6,23 +6,28 @@
   "changelog": [
     {
       "version": "1.3.15.193.11.5",
-      "date": "2026-03-06",
+      "date": "2026-03-07",
       "changes": [
-        "CRITICAL FIX: Market Regime Detector false positive - Fixed incorrect default regime",
+        "CRITICAL FIX: Removed ALL Unicode characters from logging to prevent Windows cp1252 encoding errors",
+        "Replaced 8 Unicode symbols with ASCII equivalents across 20 files (31 total replacements)",
+        "Symbols replaced: ✓→[OK], ✗→[X], →→->, ⚠→[!], 🚨→[ALERT], ❌→[ERROR], 🔒→[LOCKED], 📦→[CACHE]",
+        "Fixed UnicodeEncodeError in all pipelines: AU, US, UK",
+        "Fixed files: spi_monitor.py, lstm_predictor.py, app_finbert_v4_dev.py, finbert_sentiment.py, and 16 others",
+        "ALSO INCLUDED: Market Regime Detector false positive fix (US_BROAD_RALLY default → US_RISK_OFF)",
         "Changed fallback regime from US_BROAD_RALLY to US_RISK_OFF (line 360 in market_regime_detector.py)",
         "Added warning log when regime cannot be determined from market data",
-        "Bug was causing bullish bias in down markets (e.g., S&P -0.6%, NASDAQ -0.3% → incorrectly reported as BROAD_RALLY)",
-        "Affects AU pipeline sector scoring, opportunity weighting, and risk management decisions",
         "Conservative approach: when uncertain, default to risk-off rather than risk-on"
       ],
       "priority": "CRITICAL",
       "fixed_issues": [
+        "UnicodeEncodeError: 'charmap' codec can't encode character '\\u2713' (checkmark) on Windows",
+        "Logger calls with Unicode emoji/symbols failing on Windows console (cp1252 encoding)",
+        "Multiple files had Unicode in logger.info/warning/error calls causing pipeline failures",
         "Market regime defaulted to US_BROAD_RALLY when unable to detect regime (line 360 comment said 'neutral' but code said 'RALLY')",
         "False bullish signals during down markets (S&P -0.6%, VIX 23.8 → BROAD_RALLY with 0.3 strength)",
-        "Incorrect sector allocations (Materials, Financials favored when should be cautious)",
-        "Misleading log messages causing operator confusion"
+        "Incorrect sector allocations (Materials, Financials favored when should be cautious)"
       ],
-      "testing": "Verified with 2026-03-06 09:06 market data: S&P -0.6%, NASDAQ -0.3%, VIX 23.8, Oil +5.6%, AUD/USD -0.4%"
+      "testing": "Verified with 2026-03-06 09:06 market data: S&P -0.6%, NASDAQ -0.3%, VIX 23.8, Oil +5.6%, AUD/USD -0.4%. Hotfix script processed 20 files successfully."
     },
     {
       "version": "1.3.15.193.11.4",

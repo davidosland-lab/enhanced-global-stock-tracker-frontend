@@ -18,7 +18,7 @@ Features:
 - Real-time ASX data feed
 
 Scanning Modes:
-1. FULL SCAN: Scan all 240 stocks (8 sectors × 30 stocks) with regime intelligence
+1. FULL SCAN: Scan all 240 stocks (8 sectors x 30 stocks) with regime intelligence
 2. PRESET: Quick scan of predefined stock lists with regime intelligence
 
 Usage:
@@ -160,7 +160,7 @@ class AUPipelineRunner:
         if use_sector_scan:
             logger.info(f"Mode: FULL SECTOR SCAN")
             logger.info(f"Sectors Config: {sectors_config}")
-            logger.info(f"Expected Stocks: ~240 (8 sectors × 30 stocks)")
+            logger.info(f"Expected Stocks: ~240 (8 sectors x 30 stocks)")
         else:
             logger.info(f"Mode: PRESET/CUSTOM")
             logger.info(f"Symbols: {', '.join(symbols)}")
@@ -169,7 +169,7 @@ class AUPipelineRunner:
         
         # Regime intelligence status
         if use_regime_intelligence and REGIME_INTELLIGENCE_AVAILABLE:
-            logger.info(f"🧠 Regime Intelligence: ENABLED")
+            logger.info(f"[AI] Regime Intelligence: ENABLED")
             logger.info(f"   - Market regime detection")
             logger.info(f"   - Cross-market features (US/commodities/FX)")
             logger.info(f"   - Conditional opportunity scoring")

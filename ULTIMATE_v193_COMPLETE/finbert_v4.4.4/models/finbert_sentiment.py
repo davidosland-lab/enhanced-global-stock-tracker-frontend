@@ -99,7 +99,7 @@ class FinBERTSentimentAnalyzer:
             # Set environment variables for OFFLINE MODE (no HuggingFace checks)
             os.environ['TRANSFORMERS_OFFLINE'] = '1'
             os.environ['HF_HUB_OFFLINE'] = '1'
-            logger.info("🔒 OFFLINE MODE enabled - no HuggingFace network checks")
+            logger.info("[LOCKED] OFFLINE MODE enabled - no HuggingFace network checks")
             
             logger.info(f"Loading FinBERT model: {self.model_name}")
             

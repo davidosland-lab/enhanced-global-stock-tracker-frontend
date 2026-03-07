@@ -74,10 +74,10 @@ class SPIMonitor:
         # FIX v1.3.15.193.7: Initialize SPI Proxy for accurate futures tracking
         if SPI_PROXY_AVAILABLE:
             self.spi_proxy = SPIProxy()
-            logger.info("✓ SPI Proxy initialized (Advanced overnight futures tracking)")
+            logger.info("[OK] SPI Proxy initialized (Advanced overnight futures tracking)")
         else:
             self.spi_proxy = None
-            logger.warning("⚠ SPI Proxy unavailable - using basic US market correlation")
+            logger.warning("[!] SPI Proxy unavailable - using basic US market correlation")
         
         logger.info("SPI Monitor initialized")
     
@@ -141,7 +141,7 @@ class SPIMonitor:
                             'method': 'SPI_PROXY'
                         }
                         proxy_used = True
-                        logger.info(f"[SPI PROXY] ✓ Success! Gap: {proxy_result['proxy_move']:+.2f}%, "
+                        logger.info(f"[SPI PROXY] [OK] Success! Gap: {proxy_result['proxy_move']:+.2f}%, "
                                   f"Confidence: {proxy_result.get('confidence', 0.75):.0%}, "
                                   f"Regime: {proxy_result.get('regime', 'neutral')}")
                 except Exception as e:
@@ -409,7 +409,7 @@ class SPIMonitor:
                 proxy_result = self.spi_proxy.compute_spi_proxy()
                 
                 if proxy_result.get('available') and proxy_result.get('spi_proxy_pct') is not None:
-                    logger.info(f"[SPI PROXY] ✓ Success! Gap: {proxy_result['spi_proxy_pct']:+.2f}%, "
+                    logger.info(f"[SPI PROXY] [OK] Success! Gap: {proxy_result['spi_proxy_pct']:+.2f}%, "
                                f"Confidence: {proxy_result['confidence']:.0%}, "
                                f"Regime: {proxy_result['regime']}")
                     
@@ -427,9 +427,9 @@ class SPIMonitor:
                         'regime_adjusted': True
                     }
                 else:
-                    logger.warning("[SPI PROXY] ⚠ Proxy unavailable - falling back to US market correlation")
+                    logger.warning("[SPI PROXY] [!] Proxy unavailable - falling back to US market correlation")
             except Exception as e:
-                logger.error(f"[SPI PROXY] ✗ Error: {e} - falling back to US market correlation")
+                logger.error(f"[SPI PROXY] [X] Error: {e} - falling back to US market correlation")
         
         # FALLBACK: Original US market correlation method
         logger.info("[FALLBACK] Using US market correlation method")
@@ -534,10 +534,10 @@ class SPIMonitor:
             }
             
             logger.info(f"[REGIME] Gap Prediction Adjusted:")
-            logger.info(f"  VIX: {vix_level:.1f} ({regime_label}) → multiplier: {vol_multiplier:.2f}")
-            logger.info(f"  Oil: {oil_change:+.2f}% → impact: {commodity_impact:+.3f}%")
-            logger.info(f"  AUD/USD: {aud_usd_change:+.2f}% → impact: {aud_impact:+.3f}%")
-            logger.info(f"  Raw gap: {weighted_us_change * 0.65:+.2f}% → Adjusted: {predicted_gap:+.2f}%")
+            logger.info(f"  VIX: {vix_level:.1f} ({regime_label}) -> multiplier: {vol_multiplier:.2f}")
+            logger.info(f"  Oil: {oil_change:+.2f}% -> impact: {commodity_impact:+.3f}%")
+            logger.info(f"  AUD/USD: {aud_usd_change:+.2f}% -> impact: {aud_impact:+.3f}%")
+            logger.info(f"  Raw gap: {weighted_us_change * 0.65:+.2f}% -> Adjusted: {predicted_gap:+.2f}%")
         # ===== END REGIME ADJUSTMENTS =====
         
         # Calculate confidence based on US market agreement

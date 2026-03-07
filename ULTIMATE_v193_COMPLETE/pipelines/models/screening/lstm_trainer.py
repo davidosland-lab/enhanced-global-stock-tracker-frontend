@@ -221,9 +221,9 @@ class LSTMTrainer:
                 logger.info(f"[OK] Using FinBERT from local installation: {finbert_path}")
             elif finbert_path_aatels.exists():
                 finbert_path = finbert_path_aatels
-                logger.warning(f"⚠ Using FinBERT from AATelS (fallback): {finbert_path}")
-                logger.warning(f"⚠ Local FinBERT not found at: {finbert_path_relative}")
-                logger.warning(f"⚠ This may cause import errors. Please verify FinBERT installation.")
+                logger.warning(f"[!] Using FinBERT from AATelS (fallback): {finbert_path}")
+                logger.warning(f"[!] Local FinBERT not found at: {finbert_path_relative}")
+                logger.warning(f"[!] This may cause import errors. Please verify FinBERT installation.")
             else:
                 raise FileNotFoundError(
                     f"FinBERT not found. Tried:\n"

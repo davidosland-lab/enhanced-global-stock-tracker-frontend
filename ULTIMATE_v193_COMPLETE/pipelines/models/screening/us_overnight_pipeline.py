@@ -498,12 +498,12 @@ class USOvernightPipeline:
                     
                     # Critical risk warnings
                     if world_risk['world_risk_score'] >= 85:
-                        logger.error(f"  [🚨] CRITICAL WORLD RISK - DEFENSIVE STANCE REQUIRED")
+                        logger.error(f"  [[ALERT]] CRITICAL WORLD RISK - DEFENSIVE STANCE REQUIRED")
                         logger.error(f"      Top Event: {world_risk['top_headlines'][0][:100] if world_risk['top_headlines'] else 'N/A'}")
                     elif world_risk['world_risk_score'] >= 75:
-                        logger.warning(f"  [⚠️] ELEVATED WORLD RISK - CAUTION ADVISED")
+                        logger.warning(f"  [[!]] ELEVATED WORLD RISK - CAUTION ADVISED")
                     elif world_risk['world_risk_score'] <= 30:
-                        logger.info(f"  [✅] LOW WORLD RISK - FAVORABLE GLOBAL CONDITIONS")
+                        logger.info(f"  [[OK]] LOW WORLD RISK - FAVORABLE GLOBAL CONDITIONS")
                     
                 except Exception as e:
                     logger.warning(f"[!] World event risk monitoring failed: {e}")
@@ -730,7 +730,7 @@ class USOvernightPipeline:
             deduplicated.sort(key=lambda x: x.get('opportunity_score', 0), reverse=True)
             
             high_quality = sum(1 for s in deduplicated if s.get('opportunity_score', 0) >= 75)
-            logger.info(f"[OK] Scoring Complete: {high_quality} high-quality opportunities (≥75)")
+            logger.info(f"[OK] Scoring Complete: {high_quality} high-quality opportunities (>=75)")
             
             return deduplicated
             

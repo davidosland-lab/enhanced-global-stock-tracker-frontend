@@ -50,7 +50,7 @@ def train_lstm_for_stock(symbol):
         data = ticker.history(period='2y')
         
         if len(data) < 100:
-            print(f"❌ {symbol}: Not enough data ({len(data)} days)")
+            print(f"[ERROR] {symbol}: Not enough data ({len(data)} days)")
             print(f"   Minimum required: 100 days")
             return False
         
@@ -69,7 +69,7 @@ def train_lstm_for_stock(symbol):
         )
         
         if 'error' in result:
-            print(f"❌ {symbol}: Training failed - {result['error']}")
+            print(f"[ERROR] {symbol}: Training failed - {result['error']}")
             return False
         
         # Training successful
@@ -95,7 +95,7 @@ def train_lstm_for_stock(symbol):
         return True
         
     except Exception as e:
-        logger.error(f"❌ {symbol}: Training error - {str(e)}")
+        logger.error(f"[ERROR] {symbol}: Training error - {str(e)}")
         import traceback
         print(f"   Error details: {traceback.format_exc()}")
         return False
@@ -184,7 +184,7 @@ def main():
         print(f"  [OK] {symbol:8s} - {name}")
     
     if failed:
-        print(f"\n❌ Failed: {len(failed)}/{len(all_stocks)}")
+        print(f"\n[ERROR] Failed: {len(failed)}/{len(all_stocks)}")
         for symbol in failed:
             name = next((n for s, n in all_stocks if s == symbol), "")
             print(f"  ✗ {symbol:8s} - {name}")
@@ -206,7 +206,7 @@ def main():
     elif success_rate >= 50:
         print("⚠️  Some models failed. Check errors above.")
     else:
-        print("❌ Many models failed. Review errors and try again.")
+        print("[ERROR] Many models failed. Review errors and try again.")
     
     print("\n💡 Next Steps:")
     print("   1. Restart the FinBERT server to load trained models")
@@ -224,10 +224,10 @@ if __name__ == '__main__':
         success = main()
         sys.exit(0 if success else 1)
     except KeyboardInterrupt:
-        print("\n\n❌ Training interrupted by user")
+        print("\n\n[ERROR] Training interrupted by user")
         sys.exit(1)
     except Exception as e:
-        print(f"\n\n❌ Unexpected error: {e}")
+        print(f"\n\n[ERROR] Unexpected error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
