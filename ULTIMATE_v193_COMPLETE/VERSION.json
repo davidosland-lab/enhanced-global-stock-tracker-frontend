@@ -1,9 +1,36 @@
 {
-  "version": "1.3.15.193.11.6.2",
+  "version": "1.3.15.193.11.6.3",
   "build_date": "2026-03-08",
   "branch": "genspark_ai_developer",
   "status": "production",
   "changelog": [
+    {
+      "version": "1.3.15.193.11.6.3",
+      "date": "2026-03-08",
+      "changes": [
+        "CRITICAL FIX: Market sentiment analysis - Added missing SPIMonitor methods",
+        "Added _get_us_markets() as alias to _get_us_market_data() for backward compatibility",
+        "Added _get_default_sentiment() method for proper fallback when data unavailable",
+        "Fixed AttributeError: 'SPIMonitor' object has no attribute '_get_us_markets'",
+        "Fixed AttributeError: 'SPIMonitor' object has no attribute '_get_default_sentiment'",
+        "Market sentiment analysis now works properly for AU/UK/US pipelines",
+        "Proper neutral sentiment returned when Yahoo Finance or other sources fail",
+        "Bug existed in ALL previous versions including v193.11.5"
+      ],
+      "priority": "CRITICAL",
+      "modified_files": [
+        "pipelines/models/screening/spi_monitor.py (lines 388-423 - added missing methods)"
+      ],
+      "impact": "Market sentiment analysis was completely failing. Pipelines could not fetch overnight market data. Now working correctly with proper fallback.",
+      "fixed_issues": [
+        "AttributeError: 'SPIMonitor' object has no attribute '_get_us_markets' at line 119",
+        "AttributeError: 'SPIMonitor' object has no attribute '_get_default_sentiment' at lines 116, 123, 220",
+        "Market sentiment retrieval failed: method name mismatch (_get_us_markets vs _get_us_market_data)",
+        "No fallback sentiment when market data unavailable",
+        "AU/UK/US pipelines could not complete overnight market analysis phase"
+      ],
+      "testing": "Methods now exist, market sentiment analysis proceeds, proper fallback structure provided"
+    },
     {
       "version": "1.3.15.193.11.6.2",
       "date": "2026-03-08",
