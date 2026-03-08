@@ -158,8 +158,11 @@ class SPIMonitor:
                 gap_prediction['method'] = 'DIRECT_US_CORRELATION'
                 
                 if gap_prediction and 'predicted_gap_pct' in gap_prediction:
+                    confidence_val = gap_prediction.get('confidence', 0.75)
+                    # Handle both decimal (0.75) and percentage (75) formats
+                    confidence_display = confidence_val if confidence_val > 1 else confidence_val * 100
                     logger.info(f"[DIRECT] Gap: {gap_prediction['predicted_gap_pct']:+.2f}%, "
-                              f"Confidence: {gap_prediction.get('confidence', 0.75):.0%}, "
+                              f"Confidence: {confidence_display:.0f}%, "
                               f"Based on: S&P {us_data.get('SP500', {}).get('change_pct', 0):+.2f}%, "
                               f"NASDAQ {us_data.get('Nasdaq', {}).get('change_pct', 0):+.2f}%")
             
@@ -747,7 +750,7 @@ class SPIMonitor:
         sentiment['overnight_summary'] = {
             'generated_at': datetime.now(self.timezone).strftime('%Y-%m-%d %H:%M:%S %Z'),
             'market_status': self._get_market_status(),
-            'key_levels': self._calculate_key_levels(sentiment['asx_200'])
+            'key_levels': self._calculate_key_levels(sentiment['asx'])
         }
         
         return sentiment
@@ -818,7 +821,7 @@ def test_spi_monitor():
     print("-"*80)
     print("ASX 200 STATUS")
     print("-"*80)
-    asx = sentiment['asx_200']
+    asx = sentiment.get('asx', sentiment.get('asx_200', {}))
     if asx.get('available'):
         print(f"Last Close: {asx['last_close']:.2f}")
         print(f"Change (1-day): {asx['change_pct']:+.2f}%")
