@@ -127,10 +127,12 @@ class ProcessManager:
                 cmd = [sys.executable, str(self.scripts_path / 'run_au_pipeline_v1.3.13.py'), '--full-scan']
                 cwd = self.base_path
             elif service_name == 'uk_pipeline':
-                cmd = [sys.executable, str(self.scripts_path / 'run_uk_full_pipeline.py'), '--mode', mode]
+                # UK pipeline uses --mode with choices: 'full' or 'test' (not 'production')
+                cmd = [sys.executable, str(self.scripts_path / 'run_uk_full_pipeline.py'), '--mode', 'full']
                 cwd = self.base_path
             elif service_name == 'us_pipeline':
-                cmd = [sys.executable, str(self.scripts_path / 'run_us_full_pipeline.py'), '--mode', mode]
+                # US pipeline uses --mode with choices: 'full' or 'test' (not 'production')
+                cmd = [sys.executable, str(self.scripts_path / 'run_us_full_pipeline.py'), '--mode', 'full']
                 cwd = self.base_path
             elif service_name == 'dashboard':
                 cmd = [sys.executable, str(self.core_path / 'unified_trading_dashboard.py')]
