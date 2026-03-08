@@ -123,7 +123,8 @@ class ProcessManager:
             
             # Build command
             if service_name == 'au_pipeline':
-                cmd = [sys.executable, str(self.scripts_path / 'run_au_pipeline_v1.3.13.py'), '--mode', mode]
+                # AU pipeline doesn't use --mode, uses --full-scan for production
+                cmd = [sys.executable, str(self.scripts_path / 'run_au_pipeline_v1.3.13.py'), '--full-scan']
                 cwd = self.base_path
             elif service_name == 'uk_pipeline':
                 cmd = [sys.executable, str(self.scripts_path / 'run_uk_full_pipeline.py'), '--mode', mode]
