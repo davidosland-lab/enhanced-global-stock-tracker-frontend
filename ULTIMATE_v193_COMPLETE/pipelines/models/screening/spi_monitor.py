@@ -182,7 +182,7 @@ class SPIMonitor:
                 'predicted_gap_pct': gap_prediction['predicted_gap_pct'],
                 'confidence': gap_prediction.get('confidence', 0.7),
                 'direction': gap_prediction.get('direction', 'NEUTRAL'),
-                'recommendation': self._get_recommendation(sentiment_score, gap_prediction['predicted_gap_pct']),
+                'recommendation': self._get_recommendation(sentiment_score, gap_prediction),
                 'asx': asx_data,
                 'us_markets': us_data,
                 'gap_prediction': gap_prediction,
