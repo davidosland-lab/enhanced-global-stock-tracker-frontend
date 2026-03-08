@@ -710,6 +710,39 @@ class OvernightPipeline:
                         'top_headlines': []
                     }
             
+            # FINAL ADJUSTMENT: Adjust gap prediction based on final sentiment score
+            # If sentiment has been significantly adjusted by news/risk, modify gap prediction
+            if sentiment.get('macro_adjusted') or sentiment.get('world_risk_adjusted'):
+                original_gap = sentiment.get('predicted_gap_pct', 0)
+                final_sentiment = sentiment.get('sentiment_score', 50)
+                
+                # Sentiment 50 = neutral (no adjustment)
+                # Sentiment > 50 = bullish (increase gap if positive, reduce if negative)
+                # Sentiment < 50 = bearish (reduce gap if positive, increase if negative)
+                sentiment_deviation = (final_sentiment - 50) / 50  # -1.0 to +1.0
+                
+                # Apply adjustment: scale gap by sentiment
+                # Examples:
+                #   Sentiment 26.1/100 → deviation = -0.478 → reduce positive gap by ~48%
+                #   Sentiment 75/100 → deviation = +0.5 → increase positive gap by 50%
+                adjusted_gap = original_gap * (1 + (sentiment_deviation * 0.5))
+                
+                sentiment['predicted_gap_pct'] = adjusted_gap
+                sentiment['gap_adjusted'] = True
+                sentiment['original_gap_pct'] = original_gap
+                
+                logger.info(f"\n[OK] Gap Prediction Adjusted for News/Risk:")
+                logger.info(f"  Original Gap: {original_gap:+.2f}%")
+                logger.info(f"  Sentiment Score: {final_sentiment:.1f}/100 (deviation: {sentiment_deviation:+.2f})")
+                logger.info(f"  Adjusted Gap: {adjusted_gap:+.2f}%")
+                logger.info(f"  Impact: {(adjusted_gap - original_gap):+.2f} percentage points")
+                
+                # Update gap_prediction dict if it exists
+                if 'gap_prediction' in sentiment:
+                    sentiment['gap_prediction']['predicted_gap_pct'] = adjusted_gap
+                    sentiment['gap_prediction']['adjusted'] = True
+                    sentiment['gap_prediction']['original_gap'] = original_gap
+            
             return sentiment
             
         except Exception as e:
