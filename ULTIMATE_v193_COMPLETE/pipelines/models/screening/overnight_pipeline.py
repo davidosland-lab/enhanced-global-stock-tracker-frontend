@@ -715,33 +715,64 @@ class OvernightPipeline:
             if sentiment.get('macro_adjusted') or sentiment.get('world_risk_adjusted'):
                 original_gap = sentiment.get('predicted_gap_pct', 0)
                 final_sentiment = sentiment.get('sentiment_score', 50)
+                world_risk_score = sentiment.get('world_event_risk', {}).get('world_risk_score', 50)
                 
-                # Sentiment 50 = neutral (no adjustment)
-                # Sentiment > 50 = bullish (increase gap if positive, reduce if negative)
-                # Sentiment < 50 = bearish (reduce gap if positive, increase if negative)
+                # Determine sentiment adjustment factor based on world risk regime
+                # RISK-OFF (World Risk > 75): More aggressive adjustment (0.75)
+                # NORMAL (World Risk 40-75): Moderate adjustment (0.50)
+                # RISK-ON (World Risk < 40): Less adjustment (0.35)
+                if world_risk_score > 75:
+                    sentiment_factor = 0.75
+                    regime_label = "RISK-OFF"
+                elif world_risk_score < 40:
+                    sentiment_factor = 0.35
+                    regime_label = "RISK-ON"
+                else:
+                    sentiment_factor = 0.50
+                    regime_label = "NORMAL"
+                
+                # Sentiment deviation from neutral
                 sentiment_deviation = (final_sentiment - 50) / 50  # -1.0 to +1.0
                 
-                # Apply adjustment: scale gap by sentiment
-                # Examples:
-                #   Sentiment 26.1/100 → deviation = -0.478 → reduce positive gap by ~48%
-                #   Sentiment 75/100 → deviation = +0.5 → increase positive gap by 50%
-                adjusted_gap = original_gap * (1 + (sentiment_deviation * 0.5))
+                # Apply sentiment adjustment
+                adjusted_gap = original_gap * (1 + (sentiment_deviation * sentiment_factor))
+                
+                # CRITICAL RISK MULTIPLIER (when World Risk >= 85)
+                # This can flip positive gaps to negative during extreme events
+                risk_multiplier = 1.0
+                if world_risk_score >= 85:
+                    # Extreme risk: Apply strong dampening or reversal
+                    # If gap is positive and sentiment is very bearish, reduce aggressively
+                    risk_multiplier = 1.0 + ((world_risk_score - 85) / 100) * sentiment_deviation
+                    risk_multiplier = max(0.3, min(risk_multiplier, 1.7))  # Cap between 0.3x and 1.7x
+                    adjusted_gap = adjusted_gap * risk_multiplier
+                    
+                    logger.warning(f"  [[ALERT]] CRITICAL RISK MULTIPLIER APPLIED: {risk_multiplier:.2f}x")
+                    logger.warning(f"  World Risk: {world_risk_score:.0f}/100 - Gap heavily adjusted for extreme conditions")
                 
                 sentiment['predicted_gap_pct'] = adjusted_gap
                 sentiment['gap_adjusted'] = True
                 sentiment['original_gap_pct'] = original_gap
+                sentiment['sentiment_factor'] = sentiment_factor
+                sentiment['risk_multiplier'] = risk_multiplier
+                sentiment['regime_used'] = regime_label
                 
                 logger.info(f"\n[OK] Gap Prediction Adjusted for News/Risk:")
+                logger.info(f"  Regime: {regime_label} (Sentiment Factor: {sentiment_factor:.2f})")
                 logger.info(f"  Original Gap: {original_gap:+.2f}%")
                 logger.info(f"  Sentiment Score: {final_sentiment:.1f}/100 (deviation: {sentiment_deviation:+.2f})")
+                logger.info(f"  World Risk: {world_risk_score:.1f}/100")
+                if risk_multiplier != 1.0:
+                    logger.info(f"  Risk Multiplier: {risk_multiplier:.2f}x")
                 logger.info(f"  Adjusted Gap: {adjusted_gap:+.2f}%")
-                logger.info(f"  Impact: {(adjusted_gap - original_gap):+.2f} percentage points")
+                logger.info(f"  Total Impact: {(adjusted_gap - original_gap):+.2f} percentage points")
                 
                 # Update gap_prediction dict if it exists
                 if 'gap_prediction' in sentiment:
                     sentiment['gap_prediction']['predicted_gap_pct'] = adjusted_gap
                     sentiment['gap_prediction']['adjusted'] = True
                     sentiment['gap_prediction']['original_gap'] = original_gap
+                    sentiment['gap_prediction']['regime'] = regime_label
             
             return sentiment
             

@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 class SPIProxyConfig:
-    """Configuration for SPI proxy calculation"""
+    """Configuration for SPI proxy calculation with regime-based weights"""
     
     def __init__(self):
         # Data fetching
@@ -42,17 +42,55 @@ class SPIProxyConfig:
         self.ticker_iron = "TIO=F"  # Iron Ore futures (optional)
         self.ticker_brent = "BZ=F"  # Brent Crude (optional)
         
-        # Weights (must sum to ~1.0, accounting for negative weights)
-        self.w_es = 0.55  # E-mini S&P 500 (primary)
-        self.w_nq = 0.20  # NASDAQ
-        self.w_aud = -0.10  # Inverse relationship (AUD up → ASX down typically)
-        self.w_vix = -0.20  # Inverse relationship (VIX up → markets down)
-        self.w_iron = 0.20  # Iron ore (positive correlation with ASX Materials)
-        self.w_brent = 0.05  # Oil (small positive correlation)
+        # REGIME-BASED WEIGHTS (v193.11.6 Enhancement)
+        # Different weights for different market conditions
+        
+        # RISK-OFF Regime (VIX > 25, World Risk > 75, Major selloffs)
+        self.weights_risk_off = {
+            'w_es': 0.85,      # S&P dominates in risk-off
+            'w_nq': 0.15,      # NASDAQ less important
+            'w_aud': -0.05,    # AUD matters less
+            'w_vix': -0.40,    # VIX impact much stronger
+            'w_iron': 0.05,    # Commodities less important
+            'w_brent': 0.05,
+            'sentiment_factor': 0.75  # Sentiment adjustment more aggressive
+        }
+        
+        # NORMAL Regime (VIX 15-25, World Risk 40-75, Regular trading)
+        self.weights_normal = {
+            'w_es': 0.75,      # S&P primary driver (increased from 0.55)
+            'w_nq': 0.25,      # NASDAQ important (increased from 0.20)
+            'w_aud': -0.05,    # AUD minor inverse
+            'w_vix': -0.30,    # VIX moderate impact (increased from -0.20)
+            'w_iron': 0.10,    # Iron ore moderate (decreased from 0.20)
+            'w_brent': 0.05,
+            'sentiment_factor': 0.50  # Moderate sentiment adjustment
+        }
+        
+        # RISK-ON Regime (VIX < 15, World Risk < 40, Bull market)
+        self.weights_risk_on = {
+            'w_es': 0.65,      # S&P still important
+            'w_nq': 0.30,      # Tech matters more in bull markets
+            'w_aud': -0.05,    # AUD less important
+            'w_vix': -0.15,    # VIX less important
+            'w_iron': 0.15,    # Commodities more important
+            'w_brent': 0.10,   # Oil more important
+            'sentiment_factor': 0.35  # Less sentiment adjustment needed
+        }
+        
+        # Default to NORMAL regime weights (backward compatible)
+        self.w_es = self.weights_normal['w_es']
+        self.w_nq = self.weights_normal['w_nq']
+        self.w_aud = self.weights_normal['w_aud']
+        self.w_vix = self.weights_normal['w_vix']
+        self.w_iron = self.weights_normal['w_iron']
+        self.w_brent = self.weights_normal['w_brent']
         
         # Regime detection thresholds
         self.vix_jump_threshold = 3.0  # % VIX jump = risk-off
         self.proxy_z_risk_off_threshold = -1.0  # Z-score < -1.0 = risk-off
+        self.vix_risk_off_threshold = 25.0  # VIX > 25 = risk-off
+        self.vix_risk_on_threshold = 15.0   # VIX < 15 = risk-on
         
         # Caps and limits
         self.max_proxy_move = 3.5  # Cap proxy move at ±3.5%
@@ -302,16 +340,70 @@ class SPIProxy:
         
         return regime, confidence, risk_multiplier
     
-    def compute_spi_proxy(self) -> Dict:
+    def _detect_market_regime(self, vix_curr: Optional[float], world_risk_score: Optional[float] = None) -> str:
         """
-        Compute synthetic SPI 200 futures proxy
+        Detect current market regime for regime-based weight selection
+        
+        Args:
+            vix_curr: Current VIX level
+            world_risk_score: World event risk score (0-100)
+            
+        Returns:
+            'risk_off', 'risk_on', or 'normal'
+        """
+        # RISK-OFF conditions (priority order)
+        if world_risk_score is not None and world_risk_score > 75:
+            return 'risk_off'  # Critical world events
+        
+        if vix_curr is not None:
+            if vix_curr > self.config.vix_risk_off_threshold:  # VIX > 25
+                return 'risk_off'
+            elif vix_curr < self.config.vix_risk_on_threshold:  # VIX < 15
+                if world_risk_score is None or world_risk_score < 40:
+                    return 'risk_on'  # Low VIX + low risk
+        
+        return 'normal'  # Default regime
+    
+    def _apply_regime_weights(self, regime: str):
+        """
+        Apply regime-specific weights to config
+        
+        Args:
+            regime: 'risk_off', 'risk_on', or 'normal'
+        """
+        if regime == 'risk_off':
+            weights = self.config.weights_risk_off
+            logger.info(f"[REGIME] RISK-OFF detected - using aggressive S&P weighting (0.85)")
+        elif regime == 'risk_on':
+            weights = self.config.weights_risk_on
+            logger.info(f"[REGIME] RISK-ON detected - using tech-heavy weighting (NASDAQ 0.30)")
+        else:
+            weights = self.config.weights_normal
+            logger.info(f"[REGIME] NORMAL market - using balanced weighting")
+        
+        # Update config weights
+        self.config.w_es = weights['w_es']
+        self.config.w_nq = weights['w_nq']
+        self.config.w_aud = weights['w_aud']
+        self.config.w_vix = weights['w_vix']
+        self.config.w_iron = weights['w_iron']
+        self.config.w_brent = weights['w_brent']
+        
+        logger.info(f"  S&P Weight: {self.config.w_es:.2f}, NASDAQ: {self.config.w_nq:.2f}, VIX: {self.config.w_vix:.2f}")
+    
+    def compute_spi_proxy(self, world_risk_score: Optional[float] = None) -> Dict:
+        """
+        Compute synthetic SPI 200 futures proxy with regime-based weights
+        
+        Args:
+            world_risk_score: Optional world event risk score (0-100) for regime detection
         
         Returns:
             Dictionary with:
             - asof: timestamp
             - spi_proxy_pct: estimated SPI move %
             - spi_proxy_z: Z-score
-            - regime: market regime (risk_on/risk_off/neutral)
+            - regime: market regime (risk_on/risk_off/normal)
             - confidence: confidence level (0-1)
             - risk_multiplier: risk adjustment factor
             - drivers: breakdown of component moves
@@ -327,6 +419,10 @@ class SPIProxy:
         iron_curr, iron_prev = self._fetch_intraday_close(self.config.ticker_iron)
         brent_curr, brent_prev = self._fetch_intraday_close(self.config.ticker_brent)
         
+        # Detect market regime and apply appropriate weights
+        market_regime = self._detect_market_regime(vix_curr, world_risk_score)
+        self._apply_regime_weights(market_regime)
+        
         # Calculate percentage moves
         es_pct = self._pct_change(es_curr, es_prev)
         nq_pct = self._pct_change(nq_curr, nq_prev)
@@ -335,7 +431,7 @@ class SPIProxy:
         iron_pct = self._pct_change(iron_curr, iron_prev)
         brent_pct = self._pct_change(brent_curr, brent_prev)
         
-        # Calculate weighted proxy move
+        # Calculate weighted proxy move (now uses regime-specific weights)
         proxy_move = self._weighted_proxy_move(es_pct, nq_pct, vix_pct, 
                                               aud_pct, iron_pct, brent_pct)
         
