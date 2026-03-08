@@ -172,9 +172,9 @@ class SPIMonitor:
             
             # Calculate sentiment score
             sentiment_score = self._calculate_sentiment_score(
-                gap_prediction['predicted_gap_pct'],
-                gap_prediction.get('confidence', 0.7),
-                us_data
+                us_data,
+                gap_prediction,
+                asx_data
             )
             
             result = {
