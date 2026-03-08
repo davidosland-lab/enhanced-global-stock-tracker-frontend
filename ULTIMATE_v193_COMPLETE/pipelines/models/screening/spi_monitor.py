@@ -22,6 +22,13 @@ from pathlib import Path
 import pytz
 from yahooquery import Ticker
 
+# Setup logging BEFORE imports that might use it
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
 # FIX v1.3.15.193.7: Import SPI Proxy for accurate overnight futures tracking
 try:
     from .spi_proxy_advanced import SPIProxy, SPIProxyConfig
@@ -29,13 +36,6 @@ try:
 except ImportError:
     logger.warning("SPI Proxy module not available - will use basic prediction")
     SPI_PROXY_AVAILABLE = False
-
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
 
 
 class SPIMonitor:
