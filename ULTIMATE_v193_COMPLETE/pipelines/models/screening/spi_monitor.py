@@ -22,13 +22,6 @@ from pathlib import Path
 import pytz
 from yahooquery import Ticker
 
-# Setup logging BEFORE imports that might use it
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
 # FIX v1.3.15.193.7: Import SPI Proxy for accurate overnight futures tracking
 try:
     from .spi_proxy_advanced import SPIProxy, SPIProxyConfig
@@ -36,6 +29,13 @@ try:
 except ImportError:
     logger.warning("SPI Proxy module not available - will use basic prediction")
     SPI_PROXY_AVAILABLE = False
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 
 class SPIMonitor:
@@ -158,11 +158,8 @@ class SPIMonitor:
                 gap_prediction['method'] = 'DIRECT_US_CORRELATION'
                 
                 if gap_prediction and 'predicted_gap_pct' in gap_prediction:
-                    confidence_val = gap_prediction.get('confidence', 0.75)
-                    # Handle both decimal (0.75) and percentage (75) formats
-                    confidence_display = confidence_val if confidence_val > 1 else confidence_val * 100
                     logger.info(f"[DIRECT] Gap: {gap_prediction['predicted_gap_pct']:+.2f}%, "
-                              f"Confidence: {confidence_display:.0f}%, "
+                              f"Confidence: {gap_prediction.get('confidence', 0.75):.0%}, "
                               f"Based on: S&P {us_data.get('SP500', {}).get('change_pct', 0):+.2f}%, "
                               f"NASDAQ {us_data.get('Nasdaq', {}).get('change_pct', 0):+.2f}%")
             
@@ -175,9 +172,9 @@ class SPIMonitor:
             
             # Calculate sentiment score
             sentiment_score = self._calculate_sentiment_score(
-                us_data,
-                gap_prediction,
-                asx_data
+                gap_prediction['predicted_gap_pct'],
+                gap_prediction.get('confidence', 0.7),
+                us_data
             )
             
             result = {
@@ -185,7 +182,7 @@ class SPIMonitor:
                 'predicted_gap_pct': gap_prediction['predicted_gap_pct'],
                 'confidence': gap_prediction.get('confidence', 0.7),
                 'direction': gap_prediction.get('direction', 'NEUTRAL'),
-                'recommendation': self._get_recommendation(sentiment_score, gap_prediction),
+                'recommendation': self._get_recommendation(sentiment_score, gap_prediction['predicted_gap_pct']),
                 'asx': asx_data,
                 'us_markets': us_data,
                 'gap_prediction': gap_prediction,
@@ -386,40 +383,6 @@ class SPIMonitor:
                 continue
         
         return us_data
-    
-    def _get_us_markets(self) -> Dict:
-        """
-        Alias for _get_us_market_data() for backward compatibility
-        
-        Returns:
-            Dictionary with US market data
-        """
-        return self._get_us_market_data()
-    
-    def _get_default_sentiment(self) -> Dict:
-        """
-        Return default/neutral sentiment when market data is unavailable
-        
-        Returns:
-            Dictionary with neutral sentiment
-        """
-        return {
-            'sentiment_score': 50.0,
-            'predicted_gap_pct': 0.0,
-            'direction': 'NEUTRAL',
-            'confidence': 0.0,
-            'recommendation': 'WAIT - Insufficient market data',
-            'spi_available': False,
-            'method': 'DEFAULT',
-            'asx': {'available': False},
-            'us_markets': {},
-            'gap_prediction': {
-                'predicted_gap_pct': 0.0,
-                'confidence': 0,
-                'direction': 'neutral',
-                'method': 'DEFAULT'
-            }
-        }
     
     def _predict_opening_gap(self, asx_data: Dict, us_data: Dict, market_data: Optional[Dict] = None) -> Dict:
         """
@@ -750,7 +713,7 @@ class SPIMonitor:
         sentiment['overnight_summary'] = {
             'generated_at': datetime.now(self.timezone).strftime('%Y-%m-%d %H:%M:%S %Z'),
             'market_status': self._get_market_status(),
-            'key_levels': self._calculate_key_levels(sentiment['asx'])
+            'key_levels': self._calculate_key_levels(sentiment['asx_200'])
         }
         
         return sentiment
@@ -821,7 +784,7 @@ def test_spi_monitor():
     print("-"*80)
     print("ASX 200 STATUS")
     print("-"*80)
-    asx = sentiment.get('asx', sentiment.get('asx_200', {}))
+    asx = sentiment['asx_200']
     if asx.get('available'):
         print(f"Last Close: {asx['last_close']:.2f}")
         print(f"Change (1-day): {asx['change_pct']:+.2f}%")
