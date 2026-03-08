@@ -384,6 +384,40 @@ class SPIMonitor:
         
         return us_data
     
+    def _get_us_markets(self) -> Dict:
+        """
+        Alias for _get_us_market_data() for backward compatibility
+        
+        Returns:
+            Dictionary with US market data
+        """
+        return self._get_us_market_data()
+    
+    def _get_default_sentiment(self) -> Dict:
+        """
+        Return default/neutral sentiment when market data is unavailable
+        
+        Returns:
+            Dictionary with neutral sentiment
+        """
+        return {
+            'sentiment_score': 50.0,
+            'predicted_gap_pct': 0.0,
+            'direction': 'NEUTRAL',
+            'confidence': 0.0,
+            'recommendation': 'WAIT - Insufficient market data',
+            'spi_available': False,
+            'method': 'DEFAULT',
+            'asx': {'available': False},
+            'us_markets': {},
+            'gap_prediction': {
+                'predicted_gap_pct': 0.0,
+                'confidence': 0,
+                'direction': 'neutral',
+                'method': 'DEFAULT'
+            }
+        }
+    
     def _predict_opening_gap(self, asx_data: Dict, us_data: Dict, market_data: Optional[Dict] = None) -> Dict:
         """
         Predict ASX 200 opening gap based on SPI futures proxy or US market performance
