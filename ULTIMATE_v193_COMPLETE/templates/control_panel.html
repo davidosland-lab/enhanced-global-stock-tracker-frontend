@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading System Control Center</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0e27;
+            color: #e0e0e0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 5px;
+        }
+
+        .subtitle {
+            color: #b0b0b0;
+            font-size: 14px;
+        }
+
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .service-card {
+            background: #1a1f3a;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .service-card:hover {
+            border-color: #2a5298;
+            transform: translateY(-2px);
+        }
+
+        .service-card.running {
+            border-color: #4caf50;
+        }
+
+        .service-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .service-name {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-running {
+            background: #4caf50;
+            color: white;
+        }
+
+        .status-stopped {
+            background: #666;
+            color: white;
+        }
+
+        .service-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            transform: scale(1.05);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-start {
+            background: #4caf50;
+            color: white;
+        }
+
+        .btn-stop {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-logs {
+            background: #2196f3;
+            color: white;
+        }
+
+        .service-info {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .logs-container {
+            margin-top: 30px;
+            background: #1a1f3a;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .logs-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .logs-title {
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .logs-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        select {
+            padding: 8px 12px;
+            background: #0a0e27;
+            color: #e0e0e0;
+            border: 1px solid #333;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .log-output {
+            background: #000;
+            border-radius: 5px;
+            padding: 15px;
+            height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.4;
+            color: #0f0;
+        }
+
+        .log-line {
+            margin-bottom: 2px;
+        }
+
+        .log-error {
+            color: #ff5555;
+        }
+
+        .log-warning {
+            color: #ffaa00;
+        }
+
+        .log-info {
+            color: #00ff00;
+        }
+
+        .dashboard-container {
+            margin-top: 30px;
+            background: #1a1f3a;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .dashboard-iframe {
+            width: 100%;
+            height: 800px;
+            border: none;
+            border-radius: 5px;
+            background: white;
+        }
+
+        .btn-refresh {
+            padding: 8px 16px;
+            background: #ff9800;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #888;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .loading:after {
+            content: '...';
+            animation: pulse 1.5s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 Trading System Control Center</h1>
+            <p class="subtitle">Unified control panel for AU/UK/US pipelines, dashboard, and FinBERT</p>
+        </header>
+
+        <div class="services-grid" id="services-grid">
+            <!-- Service cards will be inserted here -->
+        </div>
+
+        <div class="logs-container">
+            <div class="logs-header">
+                <div class="logs-title">📋 Live Terminal Output</div>
+                <div class="logs-controls">
+                    <select id="log-service-select">
+                        <option value="">Select service...</option>
+                        <option value="au_pipeline">AU Pipeline</option>
+                        <option value="uk_pipeline">UK Pipeline</option>
+                        <option value="us_pipeline">US Pipeline</option>
+                        <option value="dashboard">Dashboard</option>
+                        <option value="finbert">FinBERT</option>
+                    </select>
+                    <button class="btn-refresh" onclick="clearLogs()">Clear</button>
+                    <button class="btn-refresh" onclick="toggleAutoScroll()">Auto-scroll: ON</button>
+                </div>
+            </div>
+            <div class="log-output" id="log-output">
+                <div class="loading">Select a service to view logs</div>
+            </div>
+        </div>
+
+        <div class="dashboard-container" id="dashboard-container" style="display: none;">
+            <div class="dashboard-header">
+                <div class="logs-title">📊 Live Trading Dashboard</div>
+                <button class="btn-refresh" onclick="refreshDashboard()">Refresh</button>
+            </div>
+            <iframe id="dashboard-iframe" class="dashboard-iframe" src=""></iframe>
+        </div>
+    </div>
+
+    <script>
+        // State
+        let currentLogService = null;
+        let logEventSource = null;
+        let autoScroll = true;
+        let servicesStatus = {};
+
+        // Service definitions
+        const services = [
+            { id: 'au_pipeline', name: 'AU Pipeline', desc: 'Australian market overnight screening' },
+            { id: 'uk_pipeline', name: 'UK Pipeline', desc: 'UK market overnight screening' },
+            { id: 'us_pipeline', name: 'US Pipeline', desc: 'US market overnight screening' },
+            { id: 'dashboard', name: 'Trading Dashboard', desc: 'Unified trading dashboard (port 8050)' },
+            { id: 'finbert', name: 'FinBERT Service', desc: 'Sentiment analysis service' }
+        ];
+
+        // Initialize
+        function init() {
+            renderServiceCards();
+            updateStatus();
+            setInterval(updateStatus, 5000); // Update every 5 seconds
+
+            // Log service selector
+            document.getElementById('log-service-select').addEventListener('change', (e) => {
+                selectLogService(e.target.value);
+            });
+        }
+
+        // Render service cards
+        function renderServiceCards() {
+            const grid = document.getElementById('services-grid');
+            grid.innerHTML = services.map(service => `
+                <div class="service-card" id="card-${service.id}">
+                    <div class="service-header">
+                        <div class="service-name">${service.name}</div>
+                        <div class="status-badge status-stopped" id="status-${service.id}">STOPPED</div>
+                    </div>
+                    <div class="service-buttons">
+                        <button class="btn-start" onclick="startService('${service.id}')">▶ Start</button>
+                        <button class="btn-stop" onclick="stopService('${service.id}')" disabled>⏹ Stop</button>
+                        <button class="btn-logs" onclick="viewLogs('${service.id}')">📋 Logs</button>
+                    </div>
+                    <div class="service-info">${service.desc}</div>
+                    <div class="service-info" id="info-${service.id}"></div>
+                </div>
+            `).join('');
+        }
+
+        // Update service status
+        async function updateStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                servicesStatus = data;
+
+                services.forEach(service => {
+                    const status = data[service.id];
+                    const statusBadge = document.getElementById(`status-${service.id}`);
+                    const card = document.getElementById(`card-${service.id}`);
+                    const info = document.getElementById(`info-${service.id}`);
+                    const startBtn = card.querySelector('.btn-start');
+                    const stopBtn = card.querySelector('.btn-stop');
+
+                    if (status.running) {
+                        statusBadge.textContent = 'RUNNING';
+                        statusBadge.className = 'status-badge status-running';
+                        card.classList.add('running');
+                        startBtn.disabled = true;
+                        stopBtn.disabled = false;
+                        info.textContent = `PID: ${status.pid}`;
+                    } else {
+                        statusBadge.textContent = 'STOPPED';
+                        statusBadge.className = 'status-badge status-stopped';
+                        card.classList.remove('running');
+                        startBtn.disabled = false;
+                        stopBtn.disabled = true;
+                        info.textContent = '';
+                    }
+                });
+
+                // Show/hide dashboard iframe
+                if (data.dashboard && data.dashboard.running) {
+                    showDashboard();
+                } else {
+                    hideDashboard();
+                }
+            } catch (error) {
+                console.error('Status update failed:', error);
+            }
+        }
+
+        // Start service
+        async function startService(serviceId) {
+            try {
+                const response = await fetch(`/api/start/${serviceId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: 'production' })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    console.log(`Started ${serviceId}`);
+                    updateStatus();
+                } else {
+                    alert(`Failed to start ${serviceId}: ${data.message}`);
+                }
+            } catch (error) {
+                alert(`Error starting ${serviceId}: ${error}`);
+            }
+        }
+
+        // Stop service
+        async function stopService(serviceId) {
+            if (!confirm(`Are you sure you want to stop ${serviceId}?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/stop/${serviceId}`, {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    console.log(`Stopped ${serviceId}`);
+                    updateStatus();
+                } else {
+                    alert(`Failed to stop ${serviceId}: ${data.message}`);
+                }
+            } catch (error) {
+                alert(`Error stopping ${serviceId}: ${error}`);
+            }
+        }
+
+        // View logs for service
+        function viewLogs(serviceId) {
+            document.getElementById('log-service-select').value = serviceId;
+            selectLogService(serviceId);
+        }
+
+        // Select log service
+        function selectLogService(serviceId) {
+            if (logEventSource) {
+                logEventSource.close();
+                logEventSource = null;
+            }
+
+            currentLogService = serviceId;
+            const output = document.getElementById('log-output');
+
+            if (!serviceId) {
+                output.innerHTML = '<div class="loading">Select a service to view logs</div>';
+                return;
+            }
+
+            // Load recent logs
+            fetch(`/api/logs/${serviceId}?lines=100`)
+                .then(res => res.json())
+                .then(data => {
+                    output.innerHTML = data.logs.map(formatLogLine).join('');
+                    scrollToBottom();
+                });
+
+            // Start streaming
+            logEventSource = new EventSource(`/api/logs/${serviceId}/stream`);
+            
+            logEventSource.onmessage = (event) => {
+                if (event.data === '[KEEPALIVE]') return;
+                
+                const line = document.createElement('div');
+                line.innerHTML = formatLogLine(event.data);
+                output.appendChild(line);
+
+                // Limit to 1000 lines
+                while (output.children.length > 1000) {
+                    output.removeChild(output.firstChild);
+                }
+
+                if (autoScroll) {
+                    scrollToBottom();
+                }
+            };
+
+            logEventSource.onerror = () => {
+                console.error('Log stream error');
+            };
+        }
+
+        // Format log line
+        function formatLogLine(line) {
+            let className = 'log-line';
+            if (line.includes('[ERROR]') || line.includes('ERROR') || line.includes('Failed')) {
+                className += ' log-error';
+            } else if (line.includes('[!]') || line.includes('WARNING')) {
+                className += ' log-warning';
+            } else if (line.includes('[OK]') || line.includes('SUCCESS')) {
+                className += ' log-info';
+            }
+            return `<div class="${className}">${escapeHtml(line)}</div>`;
+        }
+
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Scroll to bottom
+        function scrollToBottom() {
+            const output = document.getElementById('log-output');
+            output.scrollTop = output.scrollHeight;
+        }
+
+        // Clear logs
+        function clearLogs() {
+            document.getElementById('log-output').innerHTML = '';
+        }
+
+        // Toggle auto-scroll
+        function toggleAutoScroll() {
+            autoScroll = !autoScroll;
+            event.target.textContent = `Auto-scroll: ${autoScroll ? 'ON' : 'OFF'}`;
+        }
+
+        // Show dashboard
+        function showDashboard() {
+            const container = document.getElementById('dashboard-container');
+            const iframe = document.getElementById('dashboard-iframe');
+            
+            if (container.style.display === 'none') {
+                container.style.display = 'block';
+                iframe.src = 'http://localhost:8050';
+            }
+        }
+
+        // Hide dashboard
+        function hideDashboard() {
+            const container = document.getElementById('dashboard-container');
+            container.style.display = 'none';
+        }
+
+        // Refresh dashboard
+        function refreshDashboard() {
+            const iframe = document.getElementById('dashboard-iframe');
+            iframe.src = iframe.src;
+        }
+
+        // Initialize on load
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>
