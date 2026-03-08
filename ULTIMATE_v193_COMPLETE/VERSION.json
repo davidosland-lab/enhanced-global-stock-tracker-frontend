@@ -1,9 +1,35 @@
 {
-  "version": "1.3.15.193.11.6.3",
+  "version": "1.3.15.193.11.6.4",
   "build_date": "2026-03-08",
   "branch": "genspark_ai_developer",
   "status": "production",
   "changelog": [
+    {
+      "version": "1.3.15.193.11.6.4",
+      "date": "2026-03-08",
+      "changes": [
+        "CRITICAL FIX: Sentiment score calculation - Corrected argument order",
+        "Fixed _calculate_sentiment_score() being called with wrong parameter order",
+        "Error: 'float' object has no attribute 'values' at line 649",
+        "Method signature expects (us_data, gap_prediction, asx_data)",
+        "Was being called with (gap_pct_float, confidence_float, us_data)",
+        "Now passes correct Dict objects in correct order",
+        "Market sentiment calculation now completes successfully",
+        "Bug existed in ALL previous versions"
+      ],
+      "priority": "CRITICAL",
+      "modified_files": [
+        "pipelines/models/screening/spi_monitor.py (line 174-178 - fixed argument order)"
+      ],
+      "impact": "Sentiment score calculation was crashing. Market sentiment analysis incomplete. Now working correctly.",
+      "fixed_issues": [
+        "AttributeError: 'float' object has no attribute 'values' at line 649",
+        "_calculate_sentiment_score() received float instead of Dict as first parameter",
+        "Method couldn't iterate over us_data.values() because us_data was a float",
+        "Sentiment score always failed after gap prediction succeeded"
+      ],
+      "testing": "Correct data types passed, us_data.values() accessible, sentiment score calculated"
+    },
     {
       "version": "1.3.15.193.11.6.3",
       "date": "2026-03-08",
