@@ -172,9 +172,9 @@ class SPIMonitor:
             
             # Calculate sentiment score
             sentiment_score = self._calculate_sentiment_score(
-                gap_prediction['predicted_gap_pct'],
-                gap_prediction.get('confidence', 0.7),
-                us_data
+                us_data,
+                gap_prediction,
+                asx_data
             )
             
             result = {
@@ -182,7 +182,7 @@ class SPIMonitor:
                 'predicted_gap_pct': gap_prediction['predicted_gap_pct'],
                 'confidence': gap_prediction.get('confidence', 0.7),
                 'direction': gap_prediction.get('direction', 'NEUTRAL'),
-                'recommendation': self._get_recommendation(sentiment_score, gap_prediction['predicted_gap_pct']),
+                'recommendation': self._get_recommendation(sentiment_score, gap_prediction),
                 'asx': asx_data,
                 'us_markets': us_data,
                 'gap_prediction': gap_prediction,
@@ -696,6 +696,45 @@ class SPIMonitor:
             'risk_level': 'HIGH' if confidence < 50 else 'MEDIUM' if confidence < 75 else 'LOW'
         }
     
+    def _get_us_markets(self) -> Dict:
+        """
+        Alias for _get_us_market_data() for backward compatibility
+        
+        Returns:
+            Dictionary with US market data
+        """
+        return self._get_us_market_data()
+    
+    def _get_default_sentiment(self) -> Dict:
+        """
+        Return default/neutral sentiment when data is unavailable
+        
+        Returns:
+            Dictionary with neutral sentiment data
+        """
+        return {
+            'sentiment_score': 50.0,
+            'predicted_gap_pct': 0.0,
+            'confidence': 0.5,
+            'direction': 'NEUTRAL',
+            'recommendation': {
+                'stance': 'NEUTRAL',
+                'message': 'Market data unavailable. No clear direction.',
+                'expected_open': '+0.00%',
+                'confidence': '50%',
+                'risk_level': 'HIGH'
+            },
+            'asx': {'available': False},
+            'us_markets': {},
+            'gap_prediction': {
+                'predicted_gap_pct': 0.0,
+                'confidence': 0.5,
+                'direction': 'NEUTRAL',
+                'method': 'DEFAULT'
+            },
+            'method': 'DEFAULT'
+        }
+    
     def get_overnight_summary(self, market_data: Optional[Dict] = None) -> Dict:
         """
         Get complete overnight market summary for morning report
@@ -713,7 +752,7 @@ class SPIMonitor:
         sentiment['overnight_summary'] = {
             'generated_at': datetime.now(self.timezone).strftime('%Y-%m-%d %H:%M:%S %Z'),
             'market_status': self._get_market_status(),
-            'key_levels': self._calculate_key_levels(sentiment['asx_200'])
+            'key_levels': self._calculate_key_levels(sentiment.get('asx', sentiment.get('asx_200', {})))
         }
         
         return sentiment
@@ -784,7 +823,7 @@ def test_spi_monitor():
     print("-"*80)
     print("ASX 200 STATUS")
     print("-"*80)
-    asx = sentiment['asx_200']
+    asx = sentiment.get('asx', sentiment.get('asx_200', {}))
     if asx.get('available'):
         print(f"Last Close: {asx['last_close']:.2f}")
         print(f"Change (1-day): {asx['change_pct']:+.2f}%")
