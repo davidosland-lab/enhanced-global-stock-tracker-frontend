@@ -18,7 +18,7 @@ Data Sources (in priority order):
    - Euro Stoxx 50 (^STOXX50E) - Weight: 20%
 
 3. FTSE Futures:
-   - FTSE 100 Futures (Z=F) - Weight: 15%
+   - FTSE 100 Index (^FTSE) proxy for futures - Weight: 15%
 
 4. Currency:
    - GBP/USD (GBPUSD=X) - Weight: 15%
@@ -96,7 +96,7 @@ class RealtimeFTSEPredictor:
         self.component_weights = {
             'US': 0.35,         # US markets (overnight close)
             'Europe': 0.30,     # European markets (same day close)
-            'Futures': 0.15,    # FTSE futures (Z=F)
+            'Futures': 0.15,    # FTSE index (^FTSE) as futures proxy
             'FX': 0.10,         # Currency movements
             'Commodities': 0.10 # Commodity basket
         }
@@ -188,7 +188,9 @@ class RealtimeFTSEPredictor:
         eu_data = self.get_market_close_data(eu_symbols)
         
         # 3. Fetch FTSE Futures
-        futures_symbols = ['Z=F']  # FTSE 100 Futures
+        # NOTE: FTSE 100 futures not available on Yahoo Finance (Z=F doesn't work)
+        # Using FTSE 100 Index (^FTSE) as proxy - index tracks futures closely
+        futures_symbols = ['^FTSE']  # FTSE 100 Index (futures proxy)
         futures_data = self.get_market_close_data(futures_symbols)
         
         # 4. Fetch Currency Data
@@ -260,13 +262,13 @@ class RealtimeFTSEPredictor:
         # === CALCULATE FUTURES COMPONENT ===
         futures_component = 0.0
         
-        if 'Z=F' in futures_data:
-            ftse_futures_change = futures_data['Z=F']['change_pct']
-            futures_component = ftse_futures_change * self.component_weights['Futures']
+        if '^FTSE' in futures_data:
+            ftse_index_change = futures_data['^FTSE']['change_pct']
+            futures_component = ftse_index_change * self.component_weights['Futures']
             
-            logger.info(f"[FUTURES] FTSE Futures (Z=F): {ftse_futures_change:+.2f}% → Impact: {futures_component:+.2f}%")
+            logger.info(f"[FUTURES] FTSE Index (^FTSE): {ftse_index_change:+.2f}% → Impact: {futures_component:+.2f}%")
         else:
-            logger.warning("[FUTURES] No FTSE futures data available")
+            logger.warning("[FUTURES] No FTSE index data available")
         
         # === CALCULATE FX COMPONENT ===
         fx_component = 0.0
@@ -386,7 +388,7 @@ class RealtimeFTSEPredictor:
                     'STOXX': eu_data.get('^STOXX50E', {}).get('change_pct', None)
                 },
                 'futures': {
-                    'FTSE_Futures': futures_data.get('Z=F', {}).get('change_pct', None)
+                    'FTSE_Index': futures_data.get('^FTSE', {}).get('change_pct', None)
                 },
                 'fx': {
                     'GBPUSD': fx_data.get('GBPUSD=X', {}).get('change_pct', None),
@@ -446,8 +448,8 @@ if __name__ == "__main__":
             print(f"  DOW: {result['source_data']['us_markets']['Dow']:+.2f}%")
         if result['source_data']['europe_markets']['DAX']:
             print(f"  DAX: {result['source_data']['europe_markets']['DAX']:+.2f}%")
-        if result['source_data']['futures']['FTSE_Futures']:
-            print(f"  FTSE Futures: {result['source_data']['futures']['FTSE_Futures']:+.2f}%")
+        if result['source_data']['futures']['FTSE_Index']:
+            print(f"  FTSE Index: {result['source_data']['futures']['FTSE_Index']:+.2f}%")
         print(f"  VFTSE: {result['source_data'].get('vftse', 'N/A')}")
     
     print("="*80)
