@@ -1,0 +1,593 @@
+================================================================================
+UNIFIED TRADING SYSTEM - DEPLOYMENT GUIDE v193.11.6.11
+================================================================================
+Release Date: 2026-03-09
+Package: unified_trading_system_v193.11.6.11_COMPLETE.zip
+Size: 1.18 MB (1207 KB)
+Files: 311
+SHA-256: fa67d5b4f1fa64972ad45bfa74ce7a699ce157f36d2a6ff925b65a87a6fd6e01
+
+================================================================================
+🎯 WHAT'S NEW IN v193.11.6.11
+================================================================================
+
+✨ **MAJOR FEATURE: COMPLETE 3-MARKET GAP PREDICTION SYSTEM**
+
+NEW MODULE: US Market Gap Prediction (spx_proxy_realtime.py)
+├── Predicts S&P 500 opening gap using futures + Asian markets
+├── US Futures 70% weight (ES=F, NQ=F, YM=F) - PRIMARY signal
+├── Asian Markets 15% (Nikkei, Hang Seng, Shanghai) - sentiment
+├── Commodities 10% (Oil, Gold, Dollar) - risk indicators
+├── Europe Pre-Market 5% (DAX, STOXX futures) - confirmation
+├── VIX futures for confidence adjustment
+└── World risk integration for extreme conditions
+
+INTEGRATION: All Three Markets Now Have Gap Predictions
+├── AU (SPI): Uses actual US/UK market closes ✅
+├── UK (FTSE): Uses actual US/Europe market closes ✅
+└── US (S&P): Uses futures + Asian markets ✅ NEW!
+
+DASHBOARD: Gap Visualization for All Markets
+├── Market Hours & Gap Predictions panel shows all 3 gaps
+├── Color-coded: Green (+0.5%+), Red (-0.5%-), Orange (neutral)
+├── Confidence percentages displayed
+└── Real-time updates from morning reports
+
+PRE-MARKET TRADING: Enhanced Decision Support
+├── Risk-adjusted position sizing based on gap confidence
+├── Multi-factor validation (futures, Asian, commodities)
+├── World risk dampening for extreme conditions
+└── Consistent format across all markets
+
+================================================================================
+📦 PACKAGE CONTENTS
+================================================================================
+
+CORE MODULES (10 files):
+├── unified_trading_dashboard.py - Main trading dashboard with gap display
+├── paper_trading_coordinator.py - Trading execution with pre-market support
+├── pre_market_strategy.py - Gap-based trading strategy (NEW in v193.11.6.10)
+├── sentiment_integration.py - FinBERT v4.4.4 integration
+├── opportunity_monitor.py - Signal tracking
+├── market_entry_strategy.py - Entry timing logic
+├── macro_risk_gates.py - Risk management gates
+├── pipeline_report_loader.py - Morning report loader
+├── mobile_access.py - Mobile/network access
+└── auth.py - Authentication system
+
+PIPELINE MODULES (78 files):
+├── overnight_pipeline.py - AU market pipeline with gap prediction
+├── uk_overnight_pipeline.py - UK market pipeline with gap prediction
+├── us_overnight_pipeline.py - US market pipeline with gap prediction (UPDATED)
+├── spi_proxy_realtime.py - AU gap predictor (actual US/UK closes)
+├── ftse_proxy_realtime.py - UK gap predictor (actual US/Europe closes)
+├── spx_proxy_realtime.py - US gap predictor (futures + Asian) ✨ NEW!
+├── batch_predictor.py - ML predictions
+├── opportunity_scorer.py - Stock scoring
+├── report_generator.py - Morning report generation (UPDATED)
+├── spi_monitor.py - Market sentiment
+├── stock_scanner.py - AU stock scanner
+├── us_stock_scanner.py - US stock scanner
+├── uk_stock_scanner.py - UK stock scanner
+├── macro_news_monitor.py - Fed/economic news
+├── world_event_monitor.py - Geopolitical risk
+└── ... (63 more screening modules)
+
+SCRIPTS (20 files):
+├── run_au_full_pipeline.py - Run AU overnight pipeline
+├── run_uk_full_pipeline.py - Run UK overnight pipeline
+├── run_us_full_pipeline.py - Run US overnight pipeline
+├── test_pre_market_trading.py - Test pre-market gap trading
+└── ... (16 more utility scripts)
+
+CONFIGURATION (5 files):
+├── VERSION.json - Version info and changelog
+├── config/screening_config.json - Pipeline settings
+├── config/trading_config.json - Trading parameters
+├── requirements.txt - Python dependencies
+└── pipelines/config/screening_config.json - Screening config
+
+WEB INTERFACE (3 files):
+├── web_control_center.py - Web control panel
+├── templates/control_panel.html - Control panel UI
+└── START_WEB_CONTROL_CENTER.bat - Quick launcher
+
+BATCH FILES (12 files):
+├── INSTALL_FIRST_TIME.bat - Initial installation (35+ packages)
+├── START_DASHBOARD.bat - Launch trading dashboard
+├── START_WEB_CONTROL_CENTER.bat - Launch web control
+├── RUN_AU_PIPELINE.bat - Run AU overnight scan
+├── RUN_UK_PIPELINE.bat - Run UK overnight scan
+├── RUN_US_PIPELINE.bat - Run US overnight scan
+└── ... (6 more launchers)
+
+DOCUMENTATION (195 files):
+├── README.md - Main documentation
+├── DEPLOYMENT_GUIDE_v193.11.6.11_FINAL.txt - This file
+├── US_GAP_PREDICTION_COMPLETE_SUMMARY.txt - US gap implementation
+├── QUICK_START_v193.11.6.11.txt - Quick start guide
+├── VERSION.json - Detailed changelog
+└── ... (190 more docs)
+
+================================================================================
+⚙️ INSTALLATION INSTRUCTIONS
+================================================================================
+
+STEP 1: EXTRACT PACKAGE
+------------------------
+1. Extract unified_trading_system_v193.11.6.11_COMPLETE.zip
+2. Place in: C:\Users\YourName\trading\ (or your preferred location)
+3. You should see: ULTIMATE_v193_COMPLETE\ folder
+
+STEP 2: VERIFY PYTHON
+----------------------
+1. Open Command Prompt
+2. Run: python --version
+3. Ensure: Python 3.10+ (tested with 3.10, 3.11, 3.12)
+
+STEP 3: INSTALL DEPENDENCIES
+-----------------------------
+*** CRITICAL: Use INSTALL_FIRST_TIME.bat (installs 35+ packages) ***
+
+Option A: Double-click INSTALL_FIRST_TIME.bat (RECOMMENDED)
+   - Installs all 35+ required packages
+   - Sets up FinBERT v4.4.4
+   - Configures directories
+   - Takes 5-10 minutes
+
+Option B: Manual installation
+   cd ULTIMATE_v193_COMPLETE
+   pip install -r requirements.txt
+   
+Key Packages Installed:
+├── pandas, numpy (data processing)
+├── yfinance, yahooquery (market data)
+├── dash, plotly (dashboard)
+├── flask, flask-cors (web interface)
+├── transformers, torch (FinBERT)
+├── tensorflow (LSTM)
+├── beautifulsoup4, lxml (news scraping)
+└── ... (25+ more packages)
+
+STEP 4: VERIFY INSTALLATION
+----------------------------
+1. Open Command Prompt in ULTIMATE_v193_COMPLETE folder
+2. Run: python -c "import pandas, yfinance, dash; print('OK')"
+3. Should see: OK
+
+STEP 5: FIRST RUN TEST
+-----------------------
+1. Double-click: START_DASHBOARD.bat
+2. Wait for: "Dash is running on http://127.0.0.1:8050/"
+3. Open browser: http://localhost:8050
+4. You should see the trading dashboard
+
+If successful, press Ctrl+C to stop, proceed to configuration.
+
+================================================================================
+🔧 CONFIGURATION
+================================================================================
+
+1. TRADING PARAMETERS (config/trading_config.json)
+---------------------------------------------------
+{
+  "initial_capital": 100000,
+  "max_positions": 10,
+  "position_size_pct": 0.10,
+  "min_confidence": 48,
+  "stop_loss_pct": 0.05,
+  "take_profit_pct": 0.15
+}
+
+Adjust based on your risk tolerance.
+
+2. SCREENING PARAMETERS (pipelines/config/screening_config.json)
+-----------------------------------------------------------------
+{
+  "opportunity_score_threshold": 60,
+  "sentiment_threshold": 40,
+  "max_stocks_in_report": 10,
+  "lstm_training": {
+    "enabled": true,
+    "max_models_per_night": 100
+  }
+}
+
+3. GAP PREDICTION SETTINGS (In pipeline modules)
+-------------------------------------------------
+AU (overnight_pipeline.py):
+- US weight: 65%, Futures: 15%, UK: 10%, Commodities: 10%
+
+UK (uk_overnight_pipeline.py):
+- US: 35%, Europe: 30%, Futures: 15%, FX: 10%, Commodities: 10%
+
+US (us_overnight_pipeline.py):
+- Futures: 70%, Asian: 15%, Commodities: 10%, Europe: 5%
+
+No changes needed unless you want to adjust correlation weights.
+
+================================================================================
+🚀 USAGE GUIDE
+================================================================================
+
+METHOD 1: WEB CONTROL CENTER (RECOMMENDED)
+-------------------------------------------
+1. Double-click: START_WEB_CONTROL_CENTER.bat
+2. Open: http://localhost:5000
+3. Click buttons to start/stop services:
+   - AU Pipeline (overnight AU stock scan)
+   - UK Pipeline (overnight UK stock scan)
+   - US Pipeline (overnight US stock scan)
+   - Dashboard (trading interface)
+   - FinBERT (sentiment analysis)
+4. View real-time logs in the web interface
+5. Embedded dashboard in iframe
+
+METHOD 2: INDIVIDUAL LAUNCHERS
+-------------------------------
+Run Overnight Pipelines (generates gap predictions):
+├── Double-click: RUN_AU_PIPELINE.bat (generates AU SPI gap)
+├── Double-click: RUN_UK_PIPELINE.bat (generates UK FTSE gap)
+└── Double-click: RUN_US_PIPELINE.bat (generates US S&P gap)
+
+Each pipeline creates: reports/screening/{market}_morning_report.json
+
+View Results:
+└── Double-click: START_DASHBOARD.bat
+    Opens: http://localhost:8050
+    View gap predictions in "Market Hours & Gap Predictions" panel
+
+METHOD 3: COMMAND LINE
+----------------------
+cd ULTIMATE_v193_COMPLETE
+
+# Run overnight pipelines
+python scripts/run_au_full_pipeline.py
+python scripts/run_uk_full_pipeline.py
+python scripts/run_us_full_pipeline.py
+
+# Start dashboard
+python core/unified_trading_dashboard.py
+
+# Test pre-market trading
+python test_pre_market_trading.py --demo
+
+METHOD 4: PYTHON API
+--------------------
+# Test US gap prediction
+from pipelines.models.screening.spx_proxy_realtime import RealtimeSPXPredictor
+
+predictor = RealtimeSPXPredictor()
+result = predictor.compute_prediction()
+
+print(f"US Gap: {result['predicted_gap_pct']:+.2f}%")
+print(f"Direction: {result['direction']}")
+print(f"Confidence: {result['confidence']:.0f}%")
+
+# Analyze pre-market gaps for trading
+from core.paper_trading_coordinator import PaperTradingCoordinator
+
+coordinator = PaperTradingCoordinator(['SPY', 'QQQ'], 100000)
+results = coordinator.analyze_pre_market_gaps(execute_trades=False)
+
+print(results['us'])  # US gap analysis
+print(results['uk'])  # UK gap analysis
+print(results['au'])  # AU gap analysis
+
+================================================================================
+📊 DASHBOARD FEATURES
+================================================================================
+
+MARKET OVERVIEW PANEL
+├── Current positions with live P&L
+├── Win rate, total return, Sharpe ratio
+├── Portfolio composition chart
+└── Performance metrics
+
+MARKET HOURS & GAP PREDICTIONS (NEW!)
+├── ASX 200 (SPI) Gap: -0.57% ⬇️ BEARISH (70% conf)
+├── FTSE 100 Gap: -0.24% ⬇️ NEUTRAL (70% conf)
+└── S&P 500 Gap: -1.04% ⬇️ BEARISH (81% conf) ✨ NEW!
+
+TRADING SIGNALS PANEL
+├── Top 50 opportunities from overnight pipelines
+├── Confidence filter (default 48%)
+├── Load button to import from morning reports
+└── Signal details (prediction, sentiment, technical)
+
+POSITION MANAGEMENT
+├── Entry/exit with live prices
+├── Stop-loss and take-profit levels
+├── Position sizing based on confidence
+└── Pre-market gap-based entries
+
+PERFORMANCE CHARTS
+├── Equity curve (cumulative returns)
+├── Drawdown chart
+├── Win/loss distribution
+└── Sector allocation
+
+================================================================================
+🔍 GAP PREDICTION DETAILS
+================================================================================
+
+AU SPI GAP (Australian Market)
+-------------------------------
+Data Source: Actual US/UK market closes (yesterday's data)
+Weight Distribution:
+├── US Markets: 65% (S&P 50%, NASDAQ 30%, DOW 20%)
+├── Futures: 15% (ES=F, NQ=F overnight)
+├── UK Market: 10% (FTSE 100 close)
+└── Commodities: 10% (AUD, Iron Ore, Oil)
+
+Base Correlation: 0.65
+Confidence Adjustment: VIX-based
+Report Location: reports/screening/au_morning_report.json
+
+UK FTSE GAP (London Market)
+----------------------------
+Data Source: Actual US/Europe market closes
+Weight Distribution:
+├── US Markets: 35% (S&P, NASDAQ, DOW)
+├── Europe: 30% (DAX, CAC, STOXX)
+├── Futures: 15% (^FTSE index as proxy)
+├── FX: 10% (GBP/USD, EUR/GBP)
+└── Commodities: 10% (Oil, Gold, Copper)
+
+Base Correlation: 0.55
+Confidence Adjustment: VFTSE volatility
+Report Location: reports/screening/uk_morning_report.json
+
+US S&P GAP (New York Market) ✨ NEW!
+--------------------------------------
+Data Source: US Futures + Asian market closes
+Weight Distribution:
+├── US Futures: 70% (ES=F 50%, NQ=F 30%, YM=F 20%) ⭐ PRIMARY
+├── Asian Markets: 15% (Nikkei 50%, HSI 30%, Shanghai 20%)
+├── Commodities: 10% (Oil 40%, Gold 30%, Dollar 30%)
+└── Europe Pre-Market: 5% (DAX, STOXX futures)
+
+Base Correlation: 0.85 (highest - futures are very predictive)
+Confidence Adjustment: VIX futures
+Report Location: reports/screening/us_morning_report.json
+
+KEY INSIGHT:
+- AU/UK use ACTUAL closes (markets already closed)
+- US uses FUTURES (US market hasn't opened yet)
+- Futures correlation 0.85 > actual closes 0.65
+
+================================================================================
+🎯 PRE-MARKET TRADING WORKFLOW
+================================================================================
+
+STEP 1: RUN OVERNIGHT PIPELINES
+--------------------------------
+Evening (after US market close):
+1. Run: RUN_US_PIPELINE.bat
+   - Scans 240 US stocks
+   - Generates US morning report
+   - Predicts S&P 500 gap using futures
+
+Next Morning (after UK close, before AU open):
+2. Run: RUN_UK_PIPELINE.bat
+   - Scans UK stocks
+   - Generates UK morning report
+   - Predicts FTSE gap using US/Europe closes
+
+3. Run: RUN_AU_PIPELINE.bat
+   - Scans 200+ AU stocks
+   - Generates AU morning report
+   - Predicts SPI gap using US/UK closes
+
+STEP 2: ANALYZE GAP PREDICTIONS
+--------------------------------
+4. Run: python test_pre_market_trading.py --demo
+   - Shows gap analysis for all markets
+   - Position sizing recommendations
+   - Entry timing suggestions
+
+Example Output:
+```
+AU Market Gap Analysis:
+  Predicted Gap: -0.57% (BEARISH)
+  Confidence: 70%
+  Position Multiplier: BLOCK (extreme bearish)
+  Reason: Sentiment 3.4/100, World Risk 87.6/100
+
+UK Market Gap Analysis:
+  Predicted Gap: -0.24% (NEUTRAL)
+  Confidence: 70%
+  Position Multiplier: 0.42x
+  Recommended Symbols: BP.L, SHEL.L
+  Reason: Oil spike offset by extreme world risk
+
+US Market Gap Analysis:
+  Predicted Gap: -1.04% (BEARISH)
+  Confidence: 81%
+  Position Multiplier: 0.35x (reduced)
+  Recommended Symbols: XLE (energy), defensive sectors
+  Reason: Futures -2.0%, Asian -7%, high world risk
+```
+
+STEP 3: EXECUTE PRE-MARKET TRADES (OPTIONAL)
+---------------------------------------------
+5. python test_pre_market_trading.py --market uk --execute
+   - Analyzes UK gap prediction
+   - Executes trades based on gap confidence
+   - Risk-adjusted position sizing
+
+6. python test_pre_market_trading.py --market us --execute
+   - Analyzes US gap prediction
+   - Enters positions before 9:30 AM EST
+   - Uses futures data for timing
+
+STEP 4: MONITOR DASHBOARD
+--------------------------
+7. START_DASHBOARD.bat
+   - View all gap predictions
+   - Monitor positions
+   - Track P&L in real-time
+
+================================================================================
+🔒 RISK MANAGEMENT
+================================================================================
+
+MACRO RISK GATES (v193.10)
+---------------------------
+1. World Risk Gate
+   - Block if World Risk ≥ 80/100
+   - Reduce position 50% if ≥ 60/100
+
+2. US Market Gate
+   - Block if S&P ≤ -1.5%
+   - Reduce position 25% if ≤ -0.75%
+
+3. VIX Gate
+   - Block if VIX ≥ 30 and confidence < 70%
+   - Reduce position 25% if VIX ≥ 25
+
+4. Financial Sector Gate
+   - Block if World Risk ≥ 60
+   - Block if US Market ≤ -1.0%
+
+GAP PREDICTION GATES
+--------------------
+1. Confidence Gate
+   - Require ≥ 60% confidence for entry
+
+2. Magnitude Gate
+   - Require gap ≥ 0.3% for action
+
+3. Sentiment Alignment
+   - Dampen 15-25% if gap/sentiment disagree
+
+4. World Risk Dampening
+   - Reduce 50% if World Risk ≥ 85
+   - Reduce 25% if World Risk ≥ 80
+
+POSITION SIZING FORMULA
+-----------------------
+Position Size = Base × Confidence Factor × Gap Factor × Risk Multiplier
+
+Confidence Factor:
+- 60% conf = 0.6x
+- 70% conf = 0.85x
+- 80% conf = 1.0x
+- 90% conf = 1.2x
+
+Gap Factor:
+- 0.3% gap = 0.7x
+- 1.0% gap = 1.0x
+- 2.0% gap = 1.3x
+
+Risk Multiplier:
+- World Risk < 60: 1.0x
+- World Risk 60-80: 0.75x
+- World Risk 80-85: 0.5x
+- World Risk ≥ 85: 0.25x
+
+================================================================================
+🐛 TROUBLESHOOTING
+================================================================================
+
+ISSUE: Dashboard won't start
+SOLUTION:
+1. Check Python version: python --version (need 3.10+)
+2. Reinstall packages: INSTALL_FIRST_TIME.bat
+3. Check port 8050: netstat -ano | findstr :8050
+4. Kill process if needed: taskkill /PID <pid> /F
+
+ISSUE: Gap predictions showing 0.0%
+SOLUTION:
+1. Run overnight pipelines first (RUN_AU_PIPELINE.bat, etc.)
+2. Check reports exist: dir reports\screening\*_morning_report.json
+3. Check report age (must be < 24 hours)
+
+ISSUE: US gap prediction failing
+SOLUTION:
+1. Check futures data: python pipelines/models/screening/spx_proxy_realtime.py
+2. Verify internet connection (needs Yahoo Finance)
+3. Check log: logs/screening/us/us_overnight_pipeline.log
+
+ISSUE: No trading signals in dashboard
+SOLUTION:
+1. Lower confidence threshold (Settings panel, default 48%)
+2. Run overnight pipelines to generate signals
+3. Click "Load Top 50" button to import from reports
+
+ISSUE: ModuleNotFoundError
+SOLUTION:
+1. Run INSTALL_FIRST_TIME.bat (installs all 35+ packages)
+2. Do NOT use "pip install flask flask-cors" only (insufficient)
+3. Check: pip list | findstr "pandas numpy dash"
+
+ISSUE: UnicodeEncodeError on Windows
+SOLUTION:
+1. Already fixed in v193.11.5+
+2. All Unicode symbols replaced with ASCII
+3. Update to latest version if you see this error
+
+================================================================================
+📞 SUPPORT & DOCUMENTATION
+================================================================================
+
+INCLUDED DOCUMENTATION:
+├── README.md - Main documentation
+├── US_GAP_PREDICTION_COMPLETE_SUMMARY.txt - US gap details
+├── QUICK_START_v193.11.6.11.txt - Quick start guide
+├── VERSION.json - Complete changelog
+├── FTSE_FUTURES_TICKER_RESEARCH.txt - UK futures research
+├── SPI_vs_FTSE_PREDICTOR_COMPARISON.txt - Predictor comparison
+└── GAP_PREDICTION_DASHBOARD_INTEGRATION_COMPLETE.txt - Dashboard guide
+
+LOG FILES (for debugging):
+├── logs/screening/au/overnight_pipeline.log
+├── logs/screening/uk/uk_overnight_pipeline.log
+├── logs/screening/us/us_overnight_pipeline.log
+└── logs/paper_trading.log
+
+GITHUB REPOSITORY:
+https://github.com/davidosland-lab/enhanced-global-stock-tracker-frontend
+Branch: market-timing-critical-fix
+Commit: a9d7d56
+
+================================================================================
+✅ VERIFICATION CHECKLIST
+================================================================================
+
+After installation, verify:
+
+□ Python 3.10+ installed (python --version)
+□ All packages installed (pip list shows 35+ packages)
+□ Dashboard starts (START_DASHBOARD.bat works)
+□ Web control center works (START_WEB_CONTROL_CENTER.bat)
+□ At least one pipeline runs successfully
+□ Morning report generated (reports/screening/*.json)
+□ Gap predictions visible on dashboard
+□ Can load trading signals from reports
+□ Position entry/exit working
+□ Pre-market trading test runs (test_pre_market_trading.py)
+
+================================================================================
+🎉 DEPLOYMENT COMPLETE
+================================================================================
+
+Version: v193.11.6.11
+Package: unified_trading_system_v193.11.6.11_COMPLETE.zip
+Size: 1.18 MB
+Files: 311
+Status: PRODUCTION READY ✅
+
+New Features:
+✅ US market gap prediction using futures + Asian markets
+✅ Complete 3-market gap coverage (AU, UK, US)
+✅ Dashboard visualization for all gaps
+✅ Pre-market trading decision support
+✅ Risk-adjusted position sizing
+✅ World risk integration
+
+Thank you for using the Unified Trading System!
+
+For latest updates, check VERSION.json changelog.
+
+================================================================================

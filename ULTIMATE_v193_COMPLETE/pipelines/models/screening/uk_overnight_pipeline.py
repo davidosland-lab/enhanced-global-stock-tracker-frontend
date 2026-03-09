@@ -505,8 +505,50 @@ class UKOvernightPipeline:
                         # Add gap prediction to sentiment dict
                         sentiment['gap_prediction'] = gap_prediction
                         sentiment['predicted_gap_pct'] = realtime_result['predicted_gap_pct']
+                        
+                        # 🆕 v193.11.6.12: ADJUST SENTIMENT SCORE based on gap prediction
+                        # The gap prediction includes US (-1.33%), Asian markets (Nikkei -6.49%, AORD -2.9%), commodities
+                        # We should incorporate this broader market context into the sentiment score
+                        original_sentiment_score = sentiment_score
+                        
+                        # Gap prediction impact: -0.25% gap should reduce sentiment
+                        # Scale: ±1% gap = ±10 points sentiment adjustment
+                        gap_impact = realtime_result['predicted_gap_pct'] * 10  # -0.25% → -2.5 points
+                        
+                        # Apply gap-based adjustment with 60% weight (gap includes US/Asian/commodities)
+                        sentiment_score += gap_impact * 0.60
+                        
+                        # Clamp to 0-100
+                        sentiment_score = max(0, min(100, sentiment_score))
+                        
+                        # Update sentiment dict with adjusted score
+                        sentiment['sentiment_score'] = sentiment_score
+                        sentiment['overall']['score'] = sentiment_score
+                        sentiment['gap_adjusted_sentiment'] = True
+                        sentiment['sentiment_before_gap_adjust'] = original_sentiment_score
+                        sentiment['gap_impact_points'] = gap_impact * 0.60
+                        
+                        logger.info(f"[OK] Sentiment Adjusted for Gap Prediction (includes US/Asian/Commodities):")
+                        logger.info(f"    Original Sentiment: {original_sentiment_score:.1f}/100")
+                        logger.info(f"    Gap Impact: {gap_impact * 0.60:+.1f} points (gap {realtime_result['predicted_gap_pct']:+.2f}% × 60% weight)")
+                        logger.info(f"    Adjusted Sentiment: {sentiment_score:.1f}/100")
+                        
+                        # Also incorporate source breakdown logging
+                        if 'source_data' in realtime_result:
+                            src = realtime_result.get('source_data', {})
+                            logger.info(f"    Gap Source Data:")
+                            if 'us_markets' in src:
+                                us = src['us_markets']
+                                logger.info(f"      US Markets: S&P {us.get('SP500', 0):+.2f}%, NASDAQ {us.get('Nasdaq', 0):+.2f}%, DOW {us.get('Dow', 0):+.2f}%")
+                            if 'asian_markets' in src:
+                                asian = src['asian_markets']
+                                logger.info(f"      Asian Markets: Nikkei {asian.get('Nikkei', 0):+.2f}%, AORD {asian.get('AORD', 0):+.2f}%")
+                            if 'commodities' in src:
+                                comm = src['commodities']
+                                logger.info(f"      Commodities: Oil {comm.get('Oil', 0):+.2f}%, Gold {comm.get('Gold', 0):+.2f}%")
                     else:
                         logger.warning("[REALTIME FTSE] Prediction unavailable - no gap prediction")
+                        logger.warning("    Sentiment score NOT adjusted for US/Asian markets (gap predictor unavailable)")
                         gap_prediction = {
                             'predicted_gap_pct': 0.0,
                             'confidence': 0.0,
@@ -514,6 +556,7 @@ class UKOvernightPipeline:
                         }
                         sentiment['gap_prediction'] = gap_prediction
                         sentiment['predicted_gap_pct'] = 0.0
+                        sentiment['gap_adjusted_sentiment'] = False
                         
                 except Exception as e:
                     logger.warning(f"[REALTIME FTSE] Failed: {e}")

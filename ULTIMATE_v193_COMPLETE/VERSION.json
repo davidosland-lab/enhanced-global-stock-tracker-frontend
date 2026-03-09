@@ -1,9 +1,51 @@
 {
-  "version": "1.3.15.193.11.6.11",
+  "version": "1.3.15.193.11.6.12",
   "build_date": "2026-03-09",
   "branch": "market-timing-critical-fix",
   "status": "production",
   "changelog": [
+    {
+      "version": "1.3.15.193.11.6.12",
+      "date": "2026-03-09",
+      "changes": [
+        "CRITICAL FIX: Sentiment scores now incorporate gap prediction data (US/Asian/Commodities)",
+        "PROBLEM: Sentiment calculated from local data only (FTSE, VIX, GBP/USD for UK)",
+        "  - UK sentiment 28.3/100 did NOT reflect US -1.33%, Nikkei -6.49%, AORD -2.9%",
+        "  - Gap prediction includes those markets but sentiment score didn't",
+        "  - Result: Sentiment too high given global bearish conditions",
+        "SOLUTION: Adjust sentiment based on gap prediction components",
+        "UK Pipeline (uk_overnight_pipeline.py):",
+        "  - Now adjusts sentiment by gap impact × 60% weight",
+        "  - Example: Gap -0.25% → sentiment adjustment -1.5 points",
+        "  - Logs original vs adjusted sentiment with breakdown",
+        "  - Shows US/Asian/Commodity source data in logs",
+        "US Pipeline (us_overnight_pipeline.py):",
+        "  - Now adjusts sentiment by gap impact × 70% weight (futures highly predictive)",
+        "  - Example: Gap -1.04% → sentiment adjustment -7.3 points",
+        "  - Logs futures, Asian, commodities source data",
+        "  - Gap prediction already includes those markets, now sentiment reflects them",
+        "EXPECTED IMPROVEMENT:",
+        "  - UK sentiment with gap -0.25% (US -1.33%, Nikkei -6.49%):",
+        "    OLD: 28.3/100 (gap data not in sentiment)",
+        "    NEW: ~26.8/100 (gap -0.25% × 10 × 60% = -1.5 points)",
+        "  - US sentiment with gap -1.04% (futures -2%, Nikkei -7%):",
+        "    OLD: 15.2/100 (after macro adjust only)",
+        "    NEW: ~7.9/100 (gap -1.04% × 10 × 70% = -7.3 points)",
+        "TECHNICAL DETAILS:",
+        "  - Gap impact scale: ±1% gap = ±10 sentiment points",
+        "  - UK weight: 60% (gap includes US 35%, Europe 30%, others)",
+        "  - US weight: 70% (gap includes futures 70% which are highly predictive)",
+        "  - Logged fields: sentiment_before_gap_adjust, gap_impact_points, gap_adjusted_sentiment=True",
+        "  - Source data logged: US markets, Asian markets, commodities with actual %"
+      ],
+      "priority": "CRITICAL",
+      "modified_files": [
+        "pipelines/models/screening/uk_overnight_pipeline.py (Added gap-based sentiment adjustment)",
+        "pipelines/models/screening/us_overnight_pipeline.py (Added gap-based sentiment adjustment)"
+      ],
+      "impact": "Sentiment scores now accurately reflect broader market conditions (US, Asian, commodities) instead of only local data. Prevents over-optimistic sentiment when global markets are bearish.",
+      "user_feedback": "User noted: 'AORD was down -2.9% and Nikkei was down -6.49%. The gap prediction should incorporate sentiment from the whole article and from Asian markets.' This fix addresses exactly that issue."
+    },
     {
       "version": "1.3.15.193.11.6.11",
       "date": "2026-03-09",

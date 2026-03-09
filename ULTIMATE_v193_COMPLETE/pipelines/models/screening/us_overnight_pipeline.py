@@ -559,8 +559,34 @@ class USOvernightPipeline:
                     
                     sentiment['predicted_gap_pct'] = gap_prediction.get('predicted_gap_pct', 0.0)
                     
+                    # 🆕 v193.11.6.12: ADJUST SENTIMENT SCORE based on gap prediction
+                    # The gap prediction includes futures, Asian markets (Nikkei -6.49%, etc.), commodities
+                    # We should incorporate this broader market context into the sentiment score
+                    original_sentiment_score = sentiment['overall']['score']
+                    
+                    # Gap prediction impact: -1.04% gap should reduce sentiment
+                    # Scale: ±1% gap = ±10 points sentiment adjustment
+                    gap_impact = gap_prediction.get('predicted_gap_pct', 0.0) * 10  # -1.04% → -10.4 points
+                    
+                    # Apply gap-based adjustment with 70% weight (gap is highly predictive for US)
+                    adjusted_sentiment = original_sentiment_score + (gap_impact * 0.70)
+                    
+                    # Clamp to 0-100
+                    adjusted_sentiment = max(0, min(100, adjusted_sentiment))
+                    
+                    # Update sentiment dict with adjusted score
+                    sentiment['overall']['score'] = adjusted_sentiment
+                    sentiment['gap_adjusted_sentiment'] = True
+                    sentiment['sentiment_before_gap_adjust'] = original_sentiment_score
+                    sentiment['gap_impact_points'] = gap_impact * 0.70
+                    
+                    logger.info(f"\n[OK] Sentiment Adjusted for Gap Prediction (includes Futures/Asian/Commodities):")
+                    logger.info(f"    Original Sentiment: {original_sentiment_score:.1f}/100")
+                    logger.info(f"    Gap Impact: {gap_impact * 0.70:+.1f} points (gap {gap_prediction.get('predicted_gap_pct', 0.0):+.2f}% × 70% weight)")
+                    logger.info(f"    Adjusted Sentiment: {adjusted_sentiment:.1f}/100")
+                    
                     # Log gap prediction results
-                    logger.info(f"[OK] S&P 500 Gap Prediction Complete:")
+                    logger.info(f"\n[OK] S&P 500 Gap Prediction Complete:")
                     logger.info(f"  Predicted Gap: {gap_prediction.get('predicted_gap_pct', 0.0):+.2f}%")
                     logger.info(f"  Direction: {gap_prediction.get('direction', 'NEUTRAL')}")
                     logger.info(f"  Confidence: {gap_prediction.get('confidence', 0.0):.0f}%")
@@ -570,6 +596,20 @@ class USOvernightPipeline:
                         logger.info(f"\n  Component Breakdown:")
                         for component, value in gap_prediction['breakdown'].items():
                             logger.info(f"    {component}: {value:+.3f}%")
+                    
+                    # Also log source data if available
+                    if 'source_data' in gap_prediction:
+                        src = gap_prediction.get('source_data', {})
+                        logger.info(f"\n  Gap Source Data:")
+                        if 'futures' in src:
+                            fut = src['futures']
+                            logger.info(f"    US Futures: S&P {fut.get('SP500_Futures', 0):+.2f}%, NASDAQ {fut.get('Nasdaq_Futures', 0):+.2f}%, DOW {fut.get('Dow_Futures', 0):+.2f}%")
+                        if 'asian' in src:
+                            asian = src['asian']
+                            logger.info(f"    Asian Markets: Nikkei {asian.get('Nikkei', 0):+.2f}%, HSI {asian.get('HangSeng', 0):+.2f}%, Shanghai {asian.get('Shanghai', 0):+.2f}%")
+                        if 'commodities' in src:
+                            comm = src['commodities']
+                            logger.info(f"    Commodities: Oil {comm.get('Oil', 0):+.2f}%, Gold {comm.get('Gold', 0):+.2f}%, Dollar {comm.get('Dollar', 0):+.2f}%")
                     
                     if 'vix_futures' in gap_prediction:
                         logger.info(f"  VIX Futures: {gap_prediction['vix_futures']:.2f}")
