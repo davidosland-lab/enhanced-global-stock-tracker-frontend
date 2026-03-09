@@ -1,9 +1,55 @@
 {
-  "version": "1.3.15.193.11.6.8",
+  "version": "1.3.15.193.11.6.9",
   "build_date": "2026-03-09",
   "branch": "market-timing-critical-fix",
   "status": "production",
   "changelog": [
+    {
+      "version": "1.3.15.193.11.6.9",
+      "date": "2026-03-09",
+      "changes": [
+        "CRITICAL FIX: Sentiment adjustment logic inverted - Now correctly AMPLIFIES when signals agree",
+        "Fixed overnight_pipeline.py sentiment/gap adjustment calculation",
+        "OLD LOGIC (WRONG): Bearish sentiment + negative gap → DAMPENED negative (became less negative)",
+        "NEW LOGIC (CORRECT): Bearish sentiment + negative gap → AMPLIFIED negative (became more negative)",
+        "Example with user data:",
+        "  Original Gap: -0.75%, Sentiment: 3.4/100 (extremely bearish), World Risk: 87.6/100",
+        "  OLD: Adjusted to -0.22% (dampened by +0.53pp) ❌ WRONG - reduced the negative move!",
+        "  NEW: Adjusted to -1.38% (amplified by -0.63pp) ✅ CORRECT - strengthened the negative move!",
+        "When sentiment and gap AGREE (both bearish or both bullish): AMPLIFY the move",
+        "When sentiment and gap DISAGREE (contradictory signals): DAMPEN the move",
+        "Risk multiplier also fixed: World Risk >= 85 now AMPLIFIES agreeing signals (1.0x → 1.5x)",
+        "Added clear logging: Shows 'AGREE → AMPLIFY' or 'DISAGREE → DAMPEN' in output"
+      ],
+      "priority": "CRITICAL",
+      "modified_files": [
+        "pipelines/models/screening/overnight_pipeline.py (lines 734-756: corrected sentiment adjustment logic)",
+        "pipelines/models/screening/overnight_pipeline.py (lines 758-777: fixed risk multiplier amplification)",
+        "pipelines/models/screening/overnight_pipeline.py (lines 787-793: enhanced logging output)"
+      ],
+      "impact": "Gap predictions now respond correctly to sentiment. Bearish sentiment amplifies negative gaps instead of reducing them. Fixes anomaly where extreme bearish sentiment (3.4/100) with high world risk (87.6/100) was making negative gaps LESS negative.",
+      "fixed_issues": [
+        "Sentiment adjustment reducing negative gaps when it should amplify them",
+        "Total Impact showing +0.53pp when it should be negative (strengthening bearish move)",
+        "Risk multiplier dampening instead of amplifying during extreme risk events",
+        "Inverted logic: (1 + negative_deviation) was reducing magnitude instead of increasing it"
+      ],
+      "testing": "With original gap -0.75%, sentiment 3.4/100, world risk 87.6/100: OLD adjusted to -0.22% (wrong), NEW adjusts to -1.38% (correct amplification)",
+      "technical_details": {
+        "adjustment_logic": {
+          "signals_agree": "AMPLIFY: adjusted_gap = original_gap * (1 + abs(deviation) * factor)",
+          "signals_disagree": "DAMPEN: adjusted_gap = original_gap * (1 - abs(deviation) * factor * 0.5)",
+          "risk_amplifier": "When World Risk >= 85 and signals agree: multiply by 1.0 to 1.5x",
+          "risk_dampener": "When World Risk >= 85 and signals disagree: multiply by 0.6x to 1.0x"
+        },
+        "example_scenarios": {
+          "bearish_reinforcement": "Gap -0.75%, Sentiment 3.4/100 → -1.38% (amplified)",
+          "bullish_reinforcement": "Gap +0.75%, Sentiment 96/100 → +1.38% (amplified)",
+          "mixed_signals_dampen": "Gap +0.75%, Sentiment 10/100 → +0.40% (dampened)",
+          "neutral_no_change": "Gap +0.50%, Sentiment 50/100 → +0.50% (no adjustment)"
+        }
+      }
+    },
     {
       "version": "1.3.15.193.11.6.8",
       "date": "2026-03-09",

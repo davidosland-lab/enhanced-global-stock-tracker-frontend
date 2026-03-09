@@ -734,21 +734,48 @@ class OvernightPipeline:
                 # Sentiment deviation from neutral
                 sentiment_deviation = (final_sentiment - 50) / 50  # -1.0 to +1.0
                 
-                # Apply sentiment adjustment
-                adjusted_gap = original_gap * (1 + (sentiment_deviation * sentiment_factor))
+                # FIX v193.11.6.9: Correct sentiment adjustment logic
+                # When sentiment is bearish (< 50) and gap is negative: AMPLIFY the negative
+                # When sentiment is bullish (> 50) and gap is positive: AMPLIFY the positive
+                # When sentiment and gap disagree: DAMPEN the move
+                
+                # Determine if sentiment agrees with gap direction
+                gap_is_negative = original_gap < 0
+                sentiment_is_bearish = final_sentiment < 50
+                signals_agree = (gap_is_negative and sentiment_is_bearish) or (not gap_is_negative and not sentiment_is_bearish)
+                
+                if signals_agree:
+                    # Sentiment confirms gap direction → AMPLIFY
+                    # More extreme sentiment = stronger amplification
+                    adjustment_magnitude = abs(sentiment_deviation) * sentiment_factor
+                    adjusted_gap = original_gap * (1 + adjustment_magnitude)
+                else:
+                    # Sentiment contradicts gap direction → DAMPEN
+                    # Use negative adjustment to reduce gap magnitude
+                    adjustment_magnitude = abs(sentiment_deviation) * sentiment_factor * 0.5  # Dampen less aggressively
+                    adjusted_gap = original_gap * (1 - adjustment_magnitude)
                 
                 # CRITICAL RISK MULTIPLIER (when World Risk >= 85)
-                # This can flip positive gaps to negative during extreme events
+                # This amplifies moves during extreme events
                 risk_multiplier = 1.0
                 if world_risk_score >= 85:
-                    # Extreme risk: Apply strong dampening or reversal
-                    # If gap is positive and sentiment is very bearish, reduce aggressively
-                    risk_multiplier = 1.0 + ((world_risk_score - 85) / 100) * sentiment_deviation
-                    risk_multiplier = max(0.3, min(risk_multiplier, 1.7))  # Cap between 0.3x and 1.7x
+                    # FIX v193.11.6.9: Correct extreme risk amplification
+                    # Extreme risk should AMPLIFY negative sentiment, not dampen it
+                    
+                    risk_intensity = (world_risk_score - 85) / 15  # 0.0 at 85, 1.0 at 100
+                    
+                    if signals_agree:
+                        # Sentiment and gap agree → AMPLIFY even more
+                        risk_multiplier = 1.0 + (risk_intensity * 0.5)  # Up to 1.5x at risk=100
+                    else:
+                        # Sentiment and gap disagree → DAMPEN heavily
+                        risk_multiplier = 1.0 - (risk_intensity * 0.4)  # Down to 0.6x at risk=100
+                    
+                    risk_multiplier = max(0.5, min(risk_multiplier, 1.8))  # Cap between 0.5x and 1.8x
                     adjusted_gap = adjusted_gap * risk_multiplier
                     
                     logger.warning(f"  [[ALERT]] CRITICAL RISK MULTIPLIER APPLIED: {risk_multiplier:.2f}x")
-                    logger.warning(f"  World Risk: {world_risk_score:.0f}/100 - Gap heavily adjusted for extreme conditions")
+                    logger.warning(f"  World Risk: {world_risk_score:.0f}/100 - {'Amplifying' if signals_agree else 'Dampening'} gap for extreme conditions")
                 
                 sentiment['predicted_gap_pct'] = adjusted_gap
                 sentiment['gap_adjusted'] = True
@@ -756,11 +783,14 @@ class OvernightPipeline:
                 sentiment['sentiment_factor'] = sentiment_factor
                 sentiment['risk_multiplier'] = risk_multiplier
                 sentiment['regime_used'] = regime_label
+                sentiment['signals_agree'] = signals_agree
+                sentiment['adjustment_type'] = 'AMPLIFY' if signals_agree else 'DAMPEN'
                 
                 logger.info(f"\n[OK] Gap Prediction Adjusted for News/Risk:")
                 logger.info(f"  Regime: {regime_label} (Sentiment Factor: {sentiment_factor:.2f})")
                 logger.info(f"  Original Gap: {original_gap:+.2f}%")
                 logger.info(f"  Sentiment Score: {final_sentiment:.1f}/100 (deviation: {sentiment_deviation:+.2f})")
+                logger.info(f"  Sentiment & Gap: {'AGREE' if signals_agree else 'DISAGREE'} → {'AMPLIFY' if signals_agree else 'DAMPEN'}")
                 logger.info(f"  World Risk: {world_risk_score:.1f}/100")
                 if risk_multiplier != 1.0:
                     logger.info(f"  Risk Multiplier: {risk_multiplier:.2f}x")
