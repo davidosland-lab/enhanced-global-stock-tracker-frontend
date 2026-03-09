@@ -82,6 +82,14 @@ try:
 except ImportError:
     MacroNewsMonitor = None
 
+# 🆕 v193.11.6.10: Realtime US market gap prediction (futures + Asian markets)
+try:
+    from .spx_proxy_realtime import RealtimeSPXPredictor
+    REALTIME_SPX_AVAILABLE = True
+except ImportError:
+    RealtimeSPXPredictor = None
+    REALTIME_SPX_AVAILABLE = False
+
 # Setup logging
 # FIX v1.3.15.118.2: Go up 4 levels to reach project root
 # Path: pipelines/models/screening/ -> pipelines/models/ -> pipelines/ -> root/
@@ -207,6 +215,14 @@ class USOvernightPipeline:
             except ImportError:
                 self.world_event_monitor = None
                 logger.info("  World Event Risk Monitor disabled (world_event_monitor module not found)")
+            
+            # 🆕 v193.11.6.10: Realtime S&P 500 Predictor (pre-market gap analysis)
+            if REALTIME_SPX_AVAILABLE:
+                self.spx_predictor = RealtimeSPXPredictor()
+                logger.info("[OK] Realtime S&P 500 Predictor initialized (futures + Asian markets for gap)")
+            else:
+                self.spx_predictor = None
+                logger.info("  Realtime S&P 500 Predictor disabled (spx_proxy_realtime module not found)")
             
             logger.info("[OK] All required US market components initialized successfully")
         except Exception as e:
@@ -517,6 +533,57 @@ class USOvernightPipeline:
                         'top_topics': [],
                         'top_headlines': []
                     }
+            
+            # 🆕 v193.11.6.10: S&P 500 Gap Prediction (futures + Asian markets)
+            if hasattr(self, 'spx_predictor') and self.spx_predictor is not None:
+                try:
+                    logger.info("")
+                    logger.info("="*80)
+                    logger.info("PHASE 1.5: S&P 500 GAP PREDICTION (Futures + Asian Markets)")
+                    logger.info("="*80)
+                    
+                    # Get world risk score for gap prediction adjustment
+                    world_risk_score = None
+                    if 'world_event_risk' in sentiment:
+                        world_risk_score = sentiment['world_event_risk'].get('world_risk_score')
+                    
+                    gap_prediction = self.spx_predictor.compute_prediction(world_risk_score=world_risk_score)
+                    
+                    # Add gap prediction to sentiment
+                    sentiment['gap_prediction'] = {
+                        'predicted_gap_pct': gap_prediction.get('predicted_gap_pct', 0.0),
+                        'confidence': gap_prediction.get('confidence', 0.0),
+                        'direction': gap_prediction.get('direction', 'NEUTRAL'),
+                        'method': gap_prediction.get('method', 'REALTIME_FUTURES_ASIAN')
+                    }
+                    
+                    sentiment['predicted_gap_pct'] = gap_prediction.get('predicted_gap_pct', 0.0)
+                    
+                    # Log gap prediction results
+                    logger.info(f"[OK] S&P 500 Gap Prediction Complete:")
+                    logger.info(f"  Predicted Gap: {gap_prediction.get('predicted_gap_pct', 0.0):+.2f}%")
+                    logger.info(f"  Direction: {gap_prediction.get('direction', 'NEUTRAL')}")
+                    logger.info(f"  Confidence: {gap_prediction.get('confidence', 0.0):.0f}%")
+                    logger.info(f"  Method: {gap_prediction.get('method', 'REALTIME_FUTURES_ASIAN')}")
+                    
+                    if 'breakdown' in gap_prediction:
+                        logger.info(f"\n  Component Breakdown:")
+                        for component, value in gap_prediction['breakdown'].items():
+                            logger.info(f"    {component}: {value:+.3f}%")
+                    
+                    if 'vix_futures' in gap_prediction:
+                        logger.info(f"  VIX Futures: {gap_prediction['vix_futures']:.2f}")
+                    
+                except Exception as e:
+                    logger.warning(f"[!] S&P 500 gap prediction failed: {e}")
+                    logger.warning(f"Traceback: {traceback.format_exc()}")
+                    sentiment['gap_prediction'] = {
+                        'predicted_gap_pct': 0.0,
+                        'confidence': 0.0,
+                        'direction': 'NEUTRAL',
+                        'method': 'UNAVAILABLE'
+                    }
+                    sentiment['predicted_gap_pct'] = 0.0
             
             return sentiment
             

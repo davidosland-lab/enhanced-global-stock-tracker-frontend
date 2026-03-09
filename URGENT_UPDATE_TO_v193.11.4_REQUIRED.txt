@@ -1,0 +1,261 @@
+================================================================================
+URGENT: YOU ARE RUNNING AN OLD VERSION WITH THE BUG!
+================================================================================
+Date: 2026-03-06
+Error: SyntaxError in spi_monitor.py (line 797)
+Status: ALREADY FIXED IN v193.11.4 - YOU NEED TO UPDATE
+
+================================================================================
+THE PROBLEM
+================================================================================
+
+You're seeing this error:
+```
+SyntaxError: unterminated triple-quoted string literal (detected at line 862)
+File: spi_monitor.py, line 797
+```
+
+This error occurs in:
+Location: C:\Users\david\Regime trading V5\ULTIMATE_v193_COMPLETE\
+
+WHY IT'S HAPPENING:
+- ❌ You're running an OLD version of the code
+- ✅ The bug was ALREADY FIXED in v193.11.4 (commit ac7ce0a on 2026-03-04)
+- ✅ The fixed version is available in: unified_trading_system_v193.11.4_COMPLETE.zip
+
+Your current version has 29 triple-quotes (ODD - causes syntax error)
+Fixed version has 28 triple-quotes (EVEN - no syntax error)
+
+================================================================================
+SOLUTION: DOWNLOAD AND INSTALL v193.11.4
+================================================================================
+
+Step 1: Download Latest Package
+--------------------------------
+Download from GitHub:
+Repository: https://github.com/davidosland-lab/enhanced-global-stock-tracker-frontend
+Branch: market-timing-critical-fix
+File: unified_trading_system_v193.11.4_COMPLETE.zip (1.6 MB)
+
+OR if you have access to /home/user/webapp/:
+Copy: unified_trading_system_v193.11.4_COMPLETE.zip
+
+
+Step 2: Backup Your Current Setup (IMPORTANT!)
+-----------------------------------------------
+1. Close all running pipelines and dashboard
+2. Backup your current directory:
+   ```cmd
+   cd "C:\Users\david\Regime trading V5\"
+   xcopy "ULTIMATE_v193_COMPLETE" "ULTIMATE_v193_COMPLETE_BACKUP_%date:~-4,4%%date:~-10,2%%date:~-7,2%" /E /I /H
+   ```
+
+3. Backup important data:
+   - Copy "ULTIMATE_v193_COMPLETE\state\" folder (your trading state)
+   - Copy "ULTIMATE_v193_COMPLETE\config\" folder (your configurations)
+   - Copy any custom JSON files (my_stocks.json, live_trading_config.json)
+
+
+Step 3: Extract New Version
+----------------------------
+1. Delete OLD version (or rename it):
+   ```cmd
+   cd "C:\Users\david\Regime trading V5\"
+   rename ULTIMATE_v193_COMPLETE ULTIMATE_v193_COMPLETE_OLD
+   ```
+
+2. Extract NEW version:
+   - Right-click unified_trading_system_v193.11.4_COMPLETE.zip
+   - Select "Extract All..."
+   - Extract to: C:\Users\david\Regime trading V5\
+   - This creates: C:\Users\david\Regime trading V5\ULTIMATE_v193_COMPLETE\
+
+
+Step 4: Restore Your Data
+--------------------------
+Copy your saved data back:
+```cmd
+xcopy "ULTIMATE_v193_COMPLETE_BACKUP_*\state\*" "ULTIMATE_v193_COMPLETE\state\" /E /Y
+xcopy "ULTIMATE_v193_COMPLETE_BACKUP_*\config\*" "ULTIMATE_v193_COMPLETE\config\" /E /Y
+```
+
+
+Step 5: Verify Fix
+------------------
+```cmd
+cd "C:\Users\david\Regime trading V5\ULTIMATE_v193_COMPLETE"
+python -c "with open('pipelines/models/screening/spi_monitor.py') as f: content=f.read(); count=content.count('\"\"\"'); print(f'Triple-quotes: {count}'); print('✅ FIXED!' if count==28 else '❌ STILL BROKEN!')"
+```
+
+Expected Output:
+```
+Triple-quotes: 28
+✅ FIXED!
+```
+
+
+Step 6: Test AU Pipeline
+-------------------------
+```cmd
+cd "C:\Users\david\Regime trading V5\ULTIMATE_v193_COMPLETE"
+python scripts\run_au_pipeline_v1.3.13.py --preset "ASX Banks" --ignore-market-hours
+```
+
+Expected: Pipeline runs without SyntaxError
+
+================================================================================
+WHAT'S IN v193.11.4
+================================================================================
+
+This version includes ALL fixes:
+
+✅ v193.11.4 - AU Pipeline Syntax Error Fix (YOUR ISSUE!)
+   - Removed 25 lines of orphaned duplicate code
+   - Fixed triple-quote count: 29 → 28
+   - AU pipeline now works
+
+✅ v193.11.3 - yfinance Redundant API Calls Fix
+   - 67% reduction in API calls
+   - UK pipeline timing issues resolved
+
+✅ v193.11.2 - UK Pipeline Initialization Fix
+   - Fixed _event_monitor() error
+
+✅ v193.11.1 - Windows Encoding Fix
+   - UTF-8 logging
+   - Unicode character fixes
+
+✅ v193.11/v193.10 - Macro Risk Gatekeeper
+   - All risk gates integrated
+
+================================================================================
+WHY YOU'RE SEEING THE OLD BUG
+================================================================================
+
+Timeline:
+1. 2026-03-04 19:05 GMT - Bug was FIXED (commit ac7ce0a)
+2. 2026-03-04 19:12 GMT - Package v193.11.4 created with fix
+3. 2026-03-06 07:05 GMT - YOU ran old version (still has bug)
+
+You're running code from BEFORE the fix was applied!
+
+Your Windows directory:
+C:\Users\david\Regime trading V5\ULTIMATE_v193_COMPLETE\
+
+This is likely from:
+- v193.11.1 (2026-03-04 06:14) - Has the bug
+- v193.11.2 (2026-03-04 08:40) - Has the bug
+- v193.11.3 (2026-03-04 09:46) - Has the bug
+
+You need:
+- v193.11.4 (2026-03-04 19:12) - Fixed!
+
+================================================================================
+VERIFICATION COMMANDS
+================================================================================
+
+Before Update (OLD version - should show error):
+```cmd
+cd "C:\Users\david\Regime trading V5\ULTIMATE_v193_COMPLETE"
+type VERSION.json | findstr "version"
+```
+Expected: "version": "1.3.15.193.11.1" or "1.3.15.193.11.2" or "1.3.15.193.11.3"
+
+After Update (NEW version - should be fixed):
+```cmd
+cd "C:\Users\david\Regime trading V5\ULTIMATE_v193_COMPLETE"
+type VERSION.json | findstr "version"
+```
+Expected: "version": "1.3.15.193.11.4"
+
+================================================================================
+QUICK FIX (MANUAL - IF YOU CAN'T DOWNLOAD PACKAGE)
+================================================================================
+
+If you can't download the package right now, manually fix the file:
+
+1. Open in text editor:
+   C:\Users\david\Regime trading V5\ULTIMATE_v193_COMPLETE\pipelines\models\screening\spi_monitor.py
+
+2. Find line 204:
+   ```python
+   return self._get_default_sentiment()
+   ```
+
+3. The NEXT lines (206-230) should be:
+   ```python
+   
+   def _get_asx_state(self) -> Dict:
+   ```
+
+4. If you see THIS instead (lines 206-230):
+   ```python
+   
+       Dictionary with sentiment scores, predictions, and analysis
+   """
+   logger.info("Calculating market sentiment...")
+   
+   # Get ASX 200 current state
+   asx_data = self._get_asx_state()
+   ... (more duplicate code)
+   ```
+
+5. DELETE lines 206-230 (all the duplicate code)
+
+6. Save file
+
+7. Test:
+   ```cmd
+   python -c "with open('pipelines/models/screening/spi_monitor.py') as f: content=f.read(); print('Triple-quotes:', content.count('\"\"\"'))"
+   ```
+   Expected: Triple-quotes: 28
+
+================================================================================
+IMPORTANT: DON'T RUN OLD VERSION!
+================================================================================
+
+The bug will ALWAYS occur if you run any version before v193.11.4:
+
+❌ v193.11.3 and earlier - Has the bug
+✅ v193.11.4 - Fixed
+
+You MUST update to v193.11.4 or the error will keep happening!
+
+================================================================================
+SUPPORT
+================================================================================
+
+If you still see the error after updating:
+
+1. Verify version:
+   ```cmd
+   type ULTIMATE_v193_COMPLETE\VERSION.json | findstr "version"
+   ```
+   Must show: "version": "1.3.15.193.11.4"
+
+2. Verify file is fixed:
+   ```cmd
+   python -c "with open('ULTIMATE_v193_COMPLETE/pipelines/models/screening/spi_monitor.py') as f: print('Quotes:', f.read().count('\"\"\"'))"
+   ```
+   Must show: Quotes: 28
+
+3. If still broken, you extracted the WRONG zip file
+   - Make sure you extracted: unified_trading_system_v193.11.4_COMPLETE.zip
+   - NOT: unified_trading_system_v193.11.3_COMPLETE.zip or earlier
+
+================================================================================
+SUMMARY
+================================================================================
+
+Problem: SyntaxError in spi_monitor.py
+Cause: You're running OLD code (before fix was applied)
+Solution: Update to v193.11.4
+
+The fix EXISTS, you just need to INSTALL it!
+
+Download: unified_trading_system_v193.11.4_COMPLETE.zip (1.6 MB)
+Location: GitHub or /home/user/webapp/unified_trading_system_v193.11.4_COMPLETE.zip
+
+================================================================================
+END OF URGENT UPDATE NOTICE
+================================================================================

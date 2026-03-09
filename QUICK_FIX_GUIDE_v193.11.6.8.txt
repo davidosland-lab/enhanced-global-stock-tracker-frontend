@@ -1,0 +1,102 @@
+================================================================================
+  QUICK FIX GUIDE - v193.11.6.8
+  2-Minute Update Instructions
+================================================================================
+
+🎯 WHAT WAS FIXED:
+   1. SPI predictions now use ACTUAL US/UK market closes (not futures)
+   2. Confidence displays as "75%" (not "7500%")
+   3. Predictions now match market direction (negative markets → negative gaps)
+
+📦 PACKAGE:
+   File: unified_trading_system_v193.11.6.8_COMPLETE.zip (2.4 MB)
+   Location: /home/user/webapp/
+   SHA-256: 393c2e50234394c68715a92b6fd2c2f1d8e79805e1a48c69967eef708896fa05
+
+================================================================================
+INSTALLATION (EXISTING USERS) - 2 MINUTES
+================================================================================
+
+1. STOP pipelines in Web Control Center
+
+2. DOWNLOAD the ZIP file from /home/user/webapp/unified_trading_system_v193.11.6.8_COMPLETE.zip
+
+3. EXTRACT these 3 files to: C:\Users\david\Regime trading V5\ULTIMATE_v193_COMPLETE\
+
+   ✅ pipelines/models/screening/spi_monitor.py (overwrite)
+   ✅ pipelines/models/screening/spi_proxy_realtime.py (new file)
+   ✅ VERSION.json (overwrite)
+
+4. RESTART by running: START_WEB_CONTROL_CENTER.bat
+
+5. TEST: Start AU Pipeline and look for this in logs:
+   
+   ✅ CORRECT (v193.11.6.8):
+      [REALTIME] ✅ Success! Gap: -0.57%, Confidence: 70%, Direction: BEARISH
+      [REALTIME] Breakdown: US=-0.56%, Futures=-0.29%, UK=-0.05%, Commodities=+0.34%
+   
+   ❌ OLD (if you still see this, update didn't work):
+      [SPI PROXY] Gap: +0.12%, Confidence: 7500%
+
+================================================================================
+WHAT TO EXPECT
+================================================================================
+
+Before (v193.11.6 - BROKEN):
+  Markets: S&P -1.33%, NASDAQ -1.59%, DOW -0.95%
+  Prediction: +0.12% BULLISH ❌ WRONG DIRECTION
+  Confidence: 7500% ❌ DISPLAY BUG
+
+After (v193.11.6.8 - FIXED):
+  Markets: S&P -1.33%, NASDAQ -1.59%, DOW -0.95%
+  Prediction: -0.57% BEARISH ✅ CORRECT DIRECTION
+  Confidence: 70% ✅ CORRECT DISPLAY
+
+================================================================================
+VERIFICATION
+================================================================================
+
+✅ Realtime predictor initialized:
+   Look for: "[OK] Realtime SPI Predictor initialized"
+
+✅ Using actual market data:
+   Look for: "[REALTIME] Using actual US/UK market close data..."
+
+✅ Confidence correct:
+   Should show: "70%", "75%", "80%" (not "7500%")
+
+✅ Direction matches markets:
+   Negative US → Negative gap prediction
+   Positive US → Positive gap prediction
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Problem: Still seeing "7500%"
+  → Clear __pycache__ folders and restart
+
+Problem: Still wrong predictions
+  → Check logs for "[REALTIME]" - if missing, file not updated
+
+Problem: "ModuleNotFoundError: spi_proxy_realtime"
+  → File not extracted - check pipelines/models/screening/ folder
+
+================================================================================
+SUPPORT FILES
+================================================================================
+
+Full documentation:
+  - DEPLOYMENT_READY_v193.11.6.8_FINAL.txt (deployment guide)
+  - COMPREHENSIVE_FIX_SUMMARY_v193.11.6.8.txt (technical details)
+
+GitHub:
+  - https://github.com/davidosland-lab/enhanced-global-stock-tracker-frontend
+  - Branch: market-timing-critical-fix
+  - Commit: 856e668
+
+================================================================================
+
+✅ READY TO DEPLOY - All critical bugs fixed!
+
+================================================================================

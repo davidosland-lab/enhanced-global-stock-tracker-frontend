@@ -1,9 +1,86 @@
 {
-  "version": "1.3.15.193.11.6.10",
+  "version": "1.3.15.193.11.6.11",
   "build_date": "2026-03-09",
   "branch": "market-timing-critical-fix",
   "status": "production",
   "changelog": [
+    {
+      "version": "1.3.15.193.11.6.11",
+      "date": "2026-03-09",
+      "changes": [
+        "MAJOR FEATURE: US Market Gap Prediction - Futures + Asian Markets Integration",
+        "NEW MODULE: pipelines/models/screening/spx_proxy_realtime.py - S&P 500 gap predictor",
+        "  - Uses US FUTURES (ES=F, NQ=F, YM=F) as primary signal (70% weight)",
+        "  - Incorporates Asian markets (Nikkei, Hang Seng, Shanghai) for sentiment (15% weight)",
+        "  - Monitors overnight commodities (Oil, Gold, Dollar) for risk indicators (10% weight)",
+        "  - European pre-market futures (DAX, STOXX) for confirmation (5% weight)",
+        "  - VIX futures for confidence adjustment",
+        "INTEGRATION: us_overnight_pipeline.py - Gap prediction in morning reports",
+        "  - Added Phase 1.5: S&P 500 Gap Prediction after world risk analysis",
+        "  - Saves gap_prediction dict in market_sentiment section",
+        "  - Includes predicted_gap_pct, confidence, direction, method, component breakdown",
+        "  - World risk score adjusts gap prediction confidence and magnitude",
+        "UPDATED: report_generator.py - Gap prediction in trading reports",
+        "  - Added gap_prediction to market_sentiment in save_trading_report()",
+        "  - Includes world_risk_score in report root for all markets",
+        "  - Standardized format across AU, UK, US morning reports",
+        "UPDATED: unified_trading_dashboard.py - Gap display for all markets",
+        "  - Shows US gap alongside AU SPI and UK FTSE gaps",
+        "  - Color-coded visualization (green/red/orange by direction)",
+        "  - Confidence and method display",
+        "KEY DIFFERENCE FROM UK/AU:",
+        "  - UK/AU use ACTUAL US/UK market CLOSES (already happened)",
+        "  - US uses FUTURES + ASIAN markets (US hasn't opened yet)",
+        "  - Futures are highly predictive (85% base correlation)",
+        "GAP PREDICTION WEIGHTING:",
+        "  US: Futures 70% (ES 50%, NQ 30%, YM 20%), Asian 15% (Nikkei 50%, HSI 30%, Shanghai 20%)",
+        "  Commodities 10% (Oil 40%, Gold 30%, Dollar 30%), Europe Pre-Market 5% (DAX 60%, STOXX 40%)",
+        "  UK FTSE: US 35%, Europe 30%, Futures 15%, FX 10%, Commodities 10%",
+        "  AU SPI: US 65%, Futures 15%, UK 10%, Commodities 10%",
+        "TEST RESULTS (2026-03-09):",
+        "  S&P Futures: -1.94%, NASDAQ Futures: -2.27%, DOW Futures: -2.11%",
+        "  Asian: Nikkei -6.98%, HSI +1.72%, Shanghai +0.38%",
+        "  Commodities: Oil +26.05%, Gold -1.06%, Dollar +0.55%",
+        "  Predicted US Gap: -1.08% (BEARISH, 84% confidence)"
+      ],
+      "priority": "MAJOR",
+      "new_files": [
+        "pipelines/models/screening/spx_proxy_realtime.py (650 lines - US gap predictor using futures + Asian data)"
+      ],
+      "modified_files": [
+        "pipelines/models/screening/us_overnight_pipeline.py (Added SPX predictor import, initialization, gap prediction phase)",
+        "pipelines/models/screening/report_generator.py (Added gap_prediction and world_risk_score to trading reports)",
+        "core/unified_trading_dashboard.py (Updated to display US gap alongside AU/UK gaps)"
+      ],
+      "impact": "Complete 3-market gap prediction coverage. US market now has pre-market gap analysis using futures. All three markets (AU, UK, US) provide gap predictions for dashboard and trading decisions.",
+      "technical_details": {
+        "us_futures_correlation": "0.85 (very high - futures are excellent US gap predictors)",
+        "asian_correlation": "0.35 (moderate - sentiment indicator only)",
+        "commodity_correlation": "Oil inverse 0.5, Gold inverse 0.3, Dollar inverse 0.4",
+        "vix_adjustment": "<15 = 95% conf, 15-25 = 100% conf, 25-30 = 90% conf, >30 = 80% conf",
+        "world_risk_dampening": ">75 reduces confidence and gap magnitude"
+      },
+      "example_output": {
+        "us_bearish_gap": {
+          "gap": "-1.08%",
+          "confidence": "84%",
+          "direction": "BEARISH",
+          "breakdown": {
+            "futures": "-1.451%",
+            "asian": "-0.152%",
+            "commodities": "+0.524%",
+            "europe": "+0.000%"
+          },
+          "source": {
+            "sp_futures": "-1.94%",
+            "nq_futures": "-2.27%",
+            "ym_futures": "-2.11%",
+            "nikkei": "-6.98%",
+            "hsi": "+1.72%"
+          }
+        }
+      }
+    },
     {
       "version": "1.3.15.193.11.6.10",
       "date": "2026-03-09",

@@ -1,0 +1,255 @@
+====================================================================================
+ASCII Logging Standards - Quick Reference Card
+====================================================================================
+
+Version: v193.11.5
+Date: 2026-03-07
+Purpose: Prevent Windows UnicodeEncodeError in logger calls
+
+====================================================================================
+✅ APPROVED ASCII TAGS
+====================================================================================
+
+Status & Results:
+  [OK]      - Success, completion, affirmative result
+  [X]       - Failure, negative result, operation failed
+  [PASS]    - Test passed, validation successful
+  [FAIL]    - Test failed, validation error
+
+Warnings & Errors:
+  [!]       - Warning, caution, attention needed
+  [ERROR]   - Error condition, critical failure
+  [ALERT]   - High-priority warning, urgent attention
+  [STOP]    - Stopped, halted, terminated
+
+Operations:
+  [*]       - Processing, working, in progress
+  [LOCKED]  - Security/access restriction, locked resource
+  [CACHE]   - Using cached data
+  [BOOST]   - Enhancement, amplification, optimization
+
+Data & Output:
+  [CHART]   - Data visualization, chart generation
+  [LIST]    - Enumeration, collection, array
+  [DOC]     - Documentation, report, file
+  [TARGET]  - Goal, objective, target reached
+
+Components:
+  [AI]      - Artificial intelligence component, ML model
+  [TOOL]    - Utility function, helper tool
+
+Markets:
+  [US]      - United States market
+  [UK]      - United Kingdom market
+  [AU]      - Australian market
+
+====================================================================================
+✅ APPROVED ASCII SYMBOLS
+====================================================================================
+
+Arrows & Relations:
+  ->        - Instead of → (rightward arrow)
+  >=        - Instead of ≥ (greater than or equal)
+  <=        - Instead of ≤ (less than or equal)
+  !=        - Instead of ≠ (not equal)
+
+Math:
+  x         - Instead of × (multiplication)
+  /         - Instead of ÷ (division)
+  +/-       - Instead of ± (plus-minus)
+
+Currency:
+  USD       - Instead of $
+  GBP       - Instead of £
+  EUR       - Instead of €
+  AUD       - Instead of A$
+
+Formatting:
+  ...       - Instead of … (ellipsis)
+  --        - Instead of — (em dash)
+  (c)       - Instead of © (copyright)
+
+====================================================================================
+❌ NEVER USE THESE IN LOGGER CALLS
+====================================================================================
+
+Checkmarks & Crosses:
+  ✓ ✗ ✅ ❌ ⛔ 🚫
+
+Arrows:
+  → ← ↑ ↓ ⇒ ⇐
+
+Warning Symbols:
+  ⚠ ⚠️ 🚨 🛑
+
+Emojis:
+  🎉 🎯 🚀 🔒 📦 📊 📋 📄 🔧 ⚙ 🧠 💰 📈 📉
+  😀 😊 👍 👎 🙏 💻 🖥️ 📱 ⚡ 🔥 💡 ⭐ 🌟
+
+Flag Emojis:
+  🇺🇸 🇬🇧 🇦🇺 🇪🇺 🇨🇳 🇯🇵
+
+Math Symbols:
+  ≥ ≤ ≠ ≈ ∞ Σ ∫ ∆
+
+Currency Symbols:
+  $ £ € ¥ ¢
+
+Special Characters:
+  © ® ™ ° µ × ÷ ± … — – ·
+
+====================================================================================
+📝 CODE EXAMPLES
+====================================================================================
+
+❌ WRONG:
+```python
+logger.info(f"✓ Fetched {len(data)} records")
+logger.error(f"❌ Failed to connect to {server}")
+logger.warning(f"⚠ Rate limit approaching: {count}/1000")
+logger.info(f"Initial Capital: £{capital:,.2f} GBP")
+logger.info(f"  High Confidence (≥70%): {count}")
+```
+
+✅ CORRECT:
+```python
+logger.info(f"[OK] Fetched {len(data)} records")
+logger.error(f"[ERROR] Failed to connect to {server}")
+logger.warning(f"[!] Rate limit approaching: {count}/1000")
+logger.info(f"Initial Capital: GBP {capital:,.2f}")
+logger.info(f"  High Confidence (>=70%): {count}")
+```
+
+====================================================================================
+🔧 AUTOMATED CLEANUP
+====================================================================================
+
+If you accidentally use Unicode in logger calls, run the cleanup script:
+
+python HOTFIX_v193.11.5_REMOVE_ALL_UNICODE_LOGGING.py
+
+This will automatically replace all Unicode characters with ASCII equivalents
+in your Python files.
+
+====================================================================================
+✅ VERIFICATION
+====================================================================================
+
+Check for Unicode in logger calls:
+
+# Linux/Mac:
+grep -r "logger\.\(info\|warning\|error\|debug\)" --include="*.py" | \
+  grep -P '[^\x00-\x7F]'
+
+# Windows PowerShell:
+Select-String -Path *.py -Pattern "logger\.(info|warning|error|debug)" -Encoding UTF8 | 
+  Where-Object { $_.Line -match "[^\x00-\x7F]" }
+
+Expected result: No matches (all ASCII)
+
+====================================================================================
+📋 COMMON REPLACEMENTS GUIDE
+====================================================================================
+
+Success Messages:
+  ✓ Success              → [OK] Success
+  ✓ Complete             → [OK] Complete
+  ✅ Validated           → [OK] Validated
+
+Error Messages:
+  ❌ Error               → [ERROR] Error
+  ✗ Failed               → [X] Failed
+  🚫 Blocked             → [STOP] Blocked
+
+Warning Messages:
+  ⚠ Warning              → [!] Warning
+  🚨 Alert               → [ALERT] Alert
+  🛑 Stop                → [STOP] Stop
+
+Processing Messages:
+  ⚙ Processing          → [*] Processing
+  🔧 Configuring        → [TOOL] Configuring
+  🚀 Optimizing         → [BOOST] Optimizing
+
+Data Messages:
+  📊 Generating chart   → [CHART] Generating chart
+  📋 Creating list      → [LIST] Creating list
+  📄 Saving report      → [DOC] Saving report
+
+Market Messages:
+  🇺🇸 US market         → [US] US market
+  🇬🇧 UK market         → [UK] UK market
+  🇦🇺 AU market         → [AU] AU market
+
+Currency:
+  £100,000              → GBP 100,000
+  $50,000               → USD 50,000
+  €75,000               → EUR 75,000
+
+Comparisons:
+  Score ≥ 70            → Score >= 70
+  Confidence ≤ 50%      → Confidence <= 50%
+  Price ≠ target        → Price != target
+
+====================================================================================
+🎯 BEST PRACTICES
+====================================================================================
+
+1. Use tags at the START of messages:
+   ✅ logger.info("[OK] Operation completed")
+   ❌ logger.info("Operation completed ✓")
+
+2. Be CONSISTENT with tag usage:
+   ✅ Always use [OK] for success
+   ❌ Don't mix [OK], [SUCCESS], [DONE], etc.
+
+3. Use tags for FILTERING logs:
+   grep "[ERROR]" logfile.log  # Find all errors
+   grep "[ALERT]" logfile.log  # Find all alerts
+
+4. Keep messages READABLE:
+   ✅ logger.info("[OK] Processed 150 records in 2.3s")
+   ❌ logger.info("[OK][CHART][*] 150 2.3s")
+
+5. Use appropriate LOG LEVELS:
+   logger.info("[OK] ...")     # Normal success
+   logger.warning("[!] ...")   # Warnings
+   logger.error("[ERROR] ...")  # Errors
+   logger.debug("[*] ...")     # Debug/processing
+
+====================================================================================
+📚 REFERENCE
+====================================================================================
+
+Full Documentation:
+  - HOTFIX_v193.11.5_UNICODE_COMPLETE_REMOVAL.txt
+  - FINAL_SUMMARY_v193.11.5_UNICODE_FIX_COMPLETE.txt
+
+Cleanup Script:
+  - HOTFIX_v193.11.5_REMOVE_ALL_UNICODE_LOGGING.py
+
+Version Info:
+  - VERSION.json (v1.3.15.193.11.5)
+
+Support:
+  - GitHub: davidosland-lab/enhanced-global-stock-tracker-frontend
+  - Pull Request: #11
+
+====================================================================================
+✅ COMPLIANCE CHECK
+====================================================================================
+
+Before committing code, verify:
+
+□ No Unicode characters in logger calls
+□ All tags use approved ASCII equivalents
+□ Currency symbols replaced with 3-letter codes
+□ Math symbols (≥, ≤) replaced with >=, <=
+□ All emojis removed from production logging
+□ Console output tested on Windows cp1252
+
+====================================================================================
+
+Print this card and keep it visible while coding!
+
+====================================================================================

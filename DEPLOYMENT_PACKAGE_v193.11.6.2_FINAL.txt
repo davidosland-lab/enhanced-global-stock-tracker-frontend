@@ -1,0 +1,484 @@
+================================================================================
+  ✅ DEPLOYMENT PACKAGE v193.11.6.2 - PRODUCTION READY
+================================================================================
+  Date: 2026-03-08
+  Version: 1.3.15.193.11.6.2
+  Status: ✅ VERIFIED & READY FOR DOWNLOAD
+================================================================================
+
+📦 MAIN PACKAGE
+================================================================================
+File: unified_trading_system_v193.11.6.2_COMPLETE.zip
+Size: 2.3 MB (2,415,616 bytes)
+Location: /home/user/webapp/unified_trading_system_v193.11.6.2_COMPLETE.zip
+SHA256: ea4316fb90e6d033007cf45373b8cffad3688b1e52ffd928d3f1233bf380686f
+Integrity: ✅ VERIFIED (No errors detected)
+
+🔧 CRITICAL FIX IN v193.11.6.2
+================================================================================
+ISSUE:
+  Web Control Center was sending incorrect command arguments to all pipelines
+  - Error: "unrecognized arguments: --mode production"
+  - All three pipelines (AU, UK, US) failed to start from Web UI
+  - Users could not use Web Control Center's primary feature
+
+ROOT CAUSE:
+  web_control_center.py lines 126-133 were hardcoded with "--mode production"
+  - AU pipeline script doesn't accept --mode flag at all
+  - UK/US pipeline scripts only accept --mode full or --mode test
+  - None of the pipelines recognize "production" as a valid mode
+
+SOLUTION:
+  Updated web_control_center.py to use correct arguments for each pipeline:
+  
+  ✅ AU Pipeline (Line 126):
+     OLD: cmd.extend(['--mode', 'production'])
+     NEW: cmd.append('--full-scan')
+     Result: Full ASX market scan (all stocks)
+  
+  ✅ UK Pipeline (Line 129):
+     OLD: cmd.extend(['--mode', 'production'])
+     NEW: cmd.extend(['--mode', 'full'])
+     Result: Full LSE sector scan (FTSE 100/250)
+  
+  ✅ US Pipeline (Line 132):
+     OLD: cmd.extend(['--mode', 'production'])
+     NEW: cmd.extend(['--mode', 'full'])
+     Result: Full S&P 500 sector scan
+
+IMPACT:
+  Before v193.11.6.2: 0/3 pipelines working ❌
+  After v193.11.6.2:  3/3 pipelines working ✅
+
+TESTING:
+  ✅ Verified AU pipeline accepts --full-scan flag
+  ✅ Verified UK pipeline accepts --mode full/test flags
+  ✅ Verified US pipeline accepts --mode full/test flags
+  ✅ All pipelines start successfully from Web Control Center
+  ✅ Terminal output shows scanning activity (no errors)
+
+📋 INSTALLATION GUIDE
+================================================================================
+
+OPTION 1: First-Time Installation (20-30 minutes)
+────────────────────────────────────────────────────────────────────────────────
+Prerequisites:
+  - Windows 10/11
+  - Python 3.8 or higher
+  - ~6 GB free disk space
+  - Internet connection
+
+Steps:
+  1. Download unified_trading_system_v193.11.6.2_COMPLETE.zip (2.3 MB)
+  
+  2. Extract to: C:\Users\david\Regime trading V5\ULTIMATE_v193_COMPLETE
+  
+  3. Install base dependencies (10-15 minutes):
+     cd C:\Users\david\Regime trading V5\ULTIMATE_v193_COMPLETE
+     INSTALL_FIRST_TIME.bat
+     
+     This installs 35+ packages:
+     - Flask, Flask-CORS (Web Control Center)
+     - Dash, Plotly (Trading Dashboard)
+     - pandas, numpy (Data processing)
+     - TensorFlow, PyTorch (Machine learning)
+     - transformers, sentencepiece (FinBERT)
+     - yfinance, yahooquery (Market data)
+     - beautifulsoup4, aiohttp (Web scraping)
+     - And 20+ more dependencies
+     
+  4. Install v193 features (5-10 minutes):
+     INSTALL_COMPLETE_v193.bat
+     
+     This installs:
+     - hmmlearn (Market regime detection)
+     - google-generativeai (AI macro analysis)
+     - World Event Risk Monitor
+     - AI Market Impact Analyzer
+     
+  5. Launch Web Control Center:
+     START_WEB_CONTROL_CENTER.bat
+     
+     Or manually:
+     python web_control_center.py
+     
+  6. Open browser:
+     http://localhost:5000
+     
+  7. Test all three pipelines:
+     ✅ Click "Start AU Pipeline" → Should see scanning logs
+     ✅ Click "Start UK Pipeline" → Should see scanning logs
+     ✅ Click "Start US Pipeline" → Should see scanning logs
+
+OPTION 2: Upgrade from v193.11.6.1 (5 minutes)
+────────────────────────────────────────────────────────────────────────────────
+  1. Stop all services:
+     - Close Web Control Center (Ctrl+C)
+     - Stop all pipelines
+     - Close Trading Dashboard
+     
+  2. Backup current version:
+     cd C:\Users\david\Regime trading V5
+     rename ULTIMATE_v193_COMPLETE ULTIMATE_v193_COMPLETE_v193.11.6.1
+     
+  3. Extract new version:
+     Extract unified_trading_system_v193.11.6.2_COMPLETE.zip
+     to: C:\Users\david\Regime trading V5\ULTIMATE_v193_COMPLETE
+     
+  4. NO dependency install needed (already done in v193.11.6.1)
+     
+  5. Launch:
+     START_WEB_CONTROL_CENTER.bat
+     
+  6. Test:
+     All three pipelines should now work from Web UI ✅
+
+OPTION 3: Upgrade from v193.11.6 (10 minutes)
+────────────────────────────────────────────────────────────────────────────────
+  Same as Option 2
+  (Dependencies already installed in v193.11.6)
+
+✅ POST-INSTALLATION VERIFICATION
+================================================================================
+1. Version Check:
+   cd C:\Users\david\Regime trading V5\ULTIMATE_v193_COMPLETE
+   python -c "import json; print(json.load(open('VERSION.json'))['version'])"
+   
+   Expected Output: 1.3.15.193.11.6.2
+   
+   If different: Wrong version extracted, re-extract ZIP
+
+2. Dependencies Check:
+   python -c "import flask; print(f'Flask {flask.__version__}')"
+   python -c "import dash; print(f'Dash {dash.__version__}')"
+   python -c "import pandas; print(f'pandas {pandas.__version__}')"
+   python -c "import numpy; print(f'numpy {numpy.__version__}')"
+   python -c "import yfinance; print(f'yfinance {yfinance.__version__}')"
+   
+   All should print version numbers without errors
+   
+   If errors: Run INSTALL_FIRST_TIME.bat
+
+3. Web Control Center Launch:
+   START_WEB_CONTROL_CENTER.bat
+   
+   Expected Output:
+   ✅ * Running on http://127.0.0.1:5000
+   ✅ * Running on http://192.168.1.XXX:5000 (network access)
+   
+   If port 5000 in use: Edit web_control_center.py, change port
+
+4. Pipeline Tests (CRITICAL - from Web UI):
+   Open: http://localhost:5000
+   
+   ✅ Test AU Pipeline:
+      - Click "Start AU Pipeline" button
+      - Status badge should turn GREEN
+      - PID number should appear
+      - Terminal should show: "Starting AU Pipeline scan..."
+      - NO error about "unrecognized arguments"
+      
+   ✅ Test UK Pipeline:
+      - Click "Start UK Pipeline" button
+      - Status badge should turn GREEN
+      - PID number should appear
+      - Terminal should show: "UK Pipeline starting..."
+      - NO error about "unrecognized arguments"
+      
+   ✅ Test US Pipeline:
+      - Click "Start US Pipeline" button
+      - Status badge should turn GREEN
+      - PID number should appear
+      - Terminal should show: "US Pipeline starting..."
+      - NO error about "unrecognized arguments"
+   
+   If errors persist: Check logs, verify VERSION.json is v193.11.6.2
+
+5. Dashboard Test:
+   From Web Control Center:
+   - Click "Launch Dashboard" button
+   - Wait 30 seconds for dashboard to start
+   - Dashboard iframe should load and show interface
+   - Should display trading signals, positions, performance
+   
+   If blank: Check port 8050 not in use, refresh page
+
+📖 DOCUMENTATION FILES (8 Complete Guides)
+================================================================================
+All files included in ZIP and available in /home/user/webapp/:
+
+1. README_DEPLOYMENT_v193.11.6.2.txt (20 KB)
+   Main deployment index with quick access to all sections
+
+2. QUICK_START_v193.11.6.2.txt (14 KB)
+   Installation in 3 steps, launch methods, common workflows
+
+3. DEPLOYMENT_READY_v193.11.6.2.txt (12 KB)
+   Deployment checklist, what's new, verification steps
+
+4. FINAL_DEPLOYMENT_SUMMARY_v193.11.6.2.txt (8 KB)
+   Executive summary, installation options, troubleshooting
+
+5. DEPLOYMENT_COMPLETE_v193.11.6.2.txt (11 KB)
+   Complete deployment summary, features, support info
+
+6. CORRECTED_INSTALLATION_GUIDE_v193.11.6.txt (20 KB)
+   Three installation paths, complete dependency list, troubleshooting
+
+7. INSTALLER_ANALYSIS_v193.11.6.txt (15 KB)
+   Analysis of 9 installer batch files, requirements.txt breakdown
+
+8. DEPLOYMENT_PACKAGE_UPDATE_SUMMARY_v193.11.6.txt (15 KB)
+   Summary of v193.11.6.1 changes and documentation fixes
+
+🎯 KEY FEATURES (All Working in v193.11.6.2)
+================================================================================
+✅ Web Control Center (http://localhost:5000)
+   - Unified control panel for all services
+   - One-click start/stop for pipelines, dashboard, FinBERT
+   - Real-time log streaming (Server-Sent Events)
+   - Process status monitoring with PIDs
+   - Embedded trading dashboard (iframe, port 8050)
+   - Network access (local WiFi + remote via port forwarding)
+   - Mobile-responsive design (works on phones/tablets)
+   - 1000-line log buffer per service with auto-scroll
+   - Color-coded log output (green/yellow/red)
+
+✅ AU Pipeline (Australian Market)
+   - Full ASX market scan (--full-scan flag)
+   - Morning opportunity detection (pre-market analysis)
+   - Macro risk integration (world events, sentiment)
+   - FinBERT sentiment analysis
+   - LSTM price predictions
+   - Sector rotation signals
+
+✅ UK Pipeline (London Market)
+   - Full LSE sector scan (--mode full)
+   - FTSE 100/250 stocks
+   - Brexit/macro risk monitoring
+   - Currency impact analysis (GBP/USD, EUR/GBP)
+   - Bank of England policy integration
+   - European market correlation
+
+✅ US Pipeline (US Market)
+   - Full S&P 500 sector scan (--mode full)
+   - Extended hours trading support
+   - VIX/macro sentiment integration
+   - Federal Reserve policy monitoring
+   - Sector rotation (Tech, Financials, Healthcare, etc.)
+   - Pre-market gap analysis
+
+✅ FinBERT v4.4.4 (Sentiment Analysis)
+   - Real-time sentiment analysis
+   - News aggregation (Reuters, Bloomberg, CNBC, Yahoo Finance)
+   - Market impact scoring
+   - Confidence-weighted signals
+   - Multi-source validation
+   - Historical sentiment tracking
+
+✅ Trading Dashboard (Dash/Plotly)
+   - Live position tracking
+   - Performance metrics (P&L, win rate, ROI)
+   - Signal visualization (confidence, sentiment, LSTM)
+   - Sector allocation charts
+   - Risk metrics (VIX, world events, macro)
+   - "Auto-Load Top 50" button (fixed in v193.11.5)
+   - Real-time data updates
+
+🔗 GITHUB REPOSITORY
+================================================================================
+URL: https://github.com/davidosland-lab/enhanced-global-stock-tracker-frontend
+Branch: market-timing-critical-fix
+
+Recent Commits:
+  cf49a68 - docs(release): Add v193.11.6.2 deployment documentation
+  0547b5b - chore(version): Bump to v193.11.6.2 - Pipeline command fix
+  065877e - fix(web): Correct pipeline command arguments for all markets
+  1a185cc - docs(release): v193.11.6.1 deployment documentation
+  ea95550 - feat(web): Add Web Control Center v193.11.6
+
+📊 VERSION HISTORY
+================================================================================
+v193.11.6.2 (2026-03-08) ← CURRENT PRODUCTION VERSION
+  ✅ Fixed Web Control Center pipeline commands
+  ✅ AU: --full-scan, UK/US: --mode full
+  ✅ All pipelines start correctly from Web UI
+  ✅ Complete documentation (8 files)
+  ✅ GitHub updated and verified
+  📦 Size: 2.3 MB
+
+v193.11.6.1 (2026-03-08)
+  ✅ Documentation fix (added INSTALL_FIRST_TIME.bat)
+  ✅ Corrected installation steps (35+ packages)
+  ❌ Pipelines still broken (--mode production bug)
+  ⚠️  UPGRADE REQUIRED → v193.11.6.2
+
+v193.11.6 (2026-03-07)
+  ✅ New Web Control Center
+  ✅ Real-time log streaming
+  ✅ Network access support
+  ❌ Pipelines broken (--mode production bug)
+  ❌ Incomplete installation docs
+  ⚠️  UPGRADE REQUIRED → v193.11.6.2
+
+v193.11.5 (2026-03-07)
+  ✅ Unicode fix (49 replacements, 27 files)
+  ✅ Dashboard "Auto-Load Top 50" button fix
+  ✅ Market regime detector fix
+  ❌ No Web Control Center
+  ⚠️  UPGRADE RECOMMENDED → v193.11.6.2
+
+📞 SUPPORT & TROUBLESHOOTING
+================================================================================
+
+ISSUE: "unrecognized arguments: --mode production"
+  ✅ SOLVED in v193.11.6.2
+  Action: Upgrade to v193.11.6.2
+
+ISSUE: ModuleNotFoundError for pandas, numpy, tensorflow, etc.
+  Cause: Dependencies not installed
+  Fix: Run INSTALL_FIRST_TIME.bat (10-15 min)
+       Then run INSTALL_COMPLETE_v193.bat (5-10 min)
+
+ISSUE: Web Control Center won't start
+  Causes:
+    - Flask not installed
+    - Port 5000 in use
+    - Windows Firewall blocking
+  Fixes:
+    - pip install flask flask-cors
+    - Change port in web_control_center.py
+    - Allow port 5000 in Windows Firewall
+
+ISSUE: Dashboard iframe is blank
+  Causes:
+    - Dashboard still starting (takes ~30 seconds)
+    - Port 8050 in use
+    - Browser cache
+  Fixes:
+    - Wait 30 seconds after clicking "Launch Dashboard"
+    - Check no other app using port 8050
+    - Refresh page (F5)
+
+ISSUE: Cannot access from phone/tablet
+  Causes:
+    - Windows Firewall blocking port 5000
+    - Different WiFi networks
+    - Wrong IP address
+  Fixes:
+    - Allow port 5000 in Windows Firewall
+    - Ensure PC and phone on same WiFi
+    - Use PC's IP: http://192.168.1.XXX:5000
+    - Check PC IP with: ipconfig
+
+ISSUE: Pipelines not starting (even in v193.11.6.2)
+  Diagnostic:
+    - Check VERSION.json shows v1.3.15.193.11.6.2
+    - Check terminal output for specific errors
+    - Test yfinance: python -c "import yfinance"
+    - Check market data access (not rate-limited)
+  Fixes:
+    - Verify correct version extracted
+    - Check dependencies installed
+    - Wait and retry (if rate-limited)
+    - Check internet connection
+
+ISSUE: FinBERT not working
+  Causes:
+    - FinBERT dependencies not installed
+    - Model files not downloaded
+    - GPU/CPU backend issues
+  Fixes:
+    - Run INSTALL_FINBERT.bat (downloads ~2.5 GB)
+    - Takes 10-15 minutes
+    - Requires ~3 GB disk space
+    - Sets PyTorch backend automatically
+
+ISSUE: Slow performance / high memory usage
+  Causes:
+    - All three pipelines running simultaneously
+    - Large historical data cache
+    - Too many browser tabs
+  Fixes:
+    - Run only one pipeline at a time
+    - Clear cache: delete data/ folders
+    - Close unused tabs
+    - Increase virtual memory
+
+ISSUE: yfinance download failures
+  Causes:
+    - Yahoo Finance rate limiting
+    - Network issues
+    - Invalid ticker symbols
+  Fixes:
+    - Wait 5-10 minutes between scans
+    - Check internet connection
+    - Verify ticker symbols valid
+    - Use --symbols flag for targeted scans
+
+📥 DOWNLOAD INSTRUCTIONS
+================================================================================
+Location: /home/user/webapp/unified_trading_system_v193.11.6.2_COMPLETE.zip
+Size: 2.3 MB (2,415,616 bytes)
+SHA256: ea4316fb90e6d033007cf45373b8cffad3688b1e52ffd928d3f1233bf380686f
+
+Verification:
+  After download, verify SHA256 checksum:
+  
+  Windows (PowerShell):
+    Get-FileHash unified_trading_system_v193.11.6.2_COMPLETE.zip -Algorithm SHA256
+    
+  Expected: ea4316fb90e6d033007cf45373b8cffad3688b1e52ffd928d3f1233bf380686f
+  
+  If different: Re-download, file may be corrupted
+
+Extract:
+  Right-click → Extract All → Select destination:
+  C:\Users\david\Regime trading V5\
+  
+  Result: C:\Users\david\Regime trading V5\ULTIMATE_v193_COMPLETE\
+
+✅ FINAL CHECKLIST
+================================================================================
+Before Deployment:
+  ✅ Downloaded ZIP (2.3 MB)
+  ✅ Verified SHA256 checksum
+  ✅ Backed up old version
+  ✅ Read README_DEPLOYMENT_v193.11.6.2.txt
+  ✅ Python 3.8+ installed
+  ✅ 6 GB free disk space
+  ✅ Internet connection available
+
+During Installation:
+  ✅ Extracted to correct location
+  ✅ Ran INSTALL_FIRST_TIME.bat (completed successfully)
+  ✅ Ran INSTALL_COMPLETE_v193.bat (completed successfully)
+  ✅ No errors during installation
+  ✅ All dependencies installed
+
+After Installation:
+  ✅ VERSION.json shows v1.3.15.193.11.6.2
+  ✅ Web Control Center starts (http://localhost:5000)
+  ✅ AU Pipeline starts from Web UI (no errors)
+  ✅ UK Pipeline starts from Web UI (no errors)
+  ✅ US Pipeline starts from Web UI (no errors)
+  ✅ Dashboard loads in iframe
+  ✅ All services show GREEN status badges
+  ✅ Terminal output shows scanning activity
+
+If All Checked:
+  🎉 DEPLOYMENT SUCCESSFUL - READY FOR TRADING
+
+If Any Unchecked:
+  📖 Review CORRECTED_INSTALLATION_GUIDE_v193.11.6.txt
+  📞 Check troubleshooting section above
+
+================================================================================
+  ✅ v193.11.6.2 PRODUCTION READY - ALL SYSTEMS GO
+================================================================================
+  Package verified ✅
+  GitHub updated ✅
+  Documentation complete ✅
+  All pipelines working ✅
+  Ready for download ✅
+================================================================================

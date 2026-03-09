@@ -1,0 +1,407 @@
+================================================================================
+DEPLOYMENT SUMMARY v193.11.6.10 - Pre-Market Gap Prediction Trading
+================================================================================
+Date: 2026-03-09
+Version: 1.3.15.193.11.6.10
+Branch: market-timing-critical-fix
+Commit: 780b13a
+Status: PRODUCTION READY
+================================================================================
+
+MAJOR FEATURE: PRE-MARKET GAP PREDICTION TRADING INTEGRATION
+============================================================
+
+This release implements a comprehensive pre-market trading strategy that uses
+overnight gap predictions (AU SPI, UK FTSE futures) to make intelligent entry
+decisions before market open.
+
+NEW CAPABILITIES:
+----------------
+✅ Gap-based position entry with confidence-weighted sizing
+✅ Multi-gate risk validation (confidence, world risk, sentiment)
+✅ Intelligent entry timing (NOW/WAIT_2MIN/WAIT_5MIN/AT_OPEN)
+✅ Position multiplier: 0.25x to 1.5x based on conviction level
+✅ Integration with existing risk management and sentiment gates
+
+DEPLOYMENT PACKAGE CONTENTS:
+==========================
+
+Package: unified_trading_system_v193.11.6.10_COMPLETE.zip
+Size: 161 KB
+SHA-256: 696bbe751e3ba43469f901a327e4935e538f89231e2cc29693e8d734791f45f7
+
+Files Included:
+--------------
+1. core/pre_market_strategy.py (NEW - 550 lines)
+   - Comprehensive gap trading strategy module
+   - Risk-adjusted position sizing
+   - Multi-gate validation logic
+   
+2. core/paper_trading_coordinator.py (UPDATED)
+   - Added analyze_pre_market_gaps() method
+   - Pre-market strategy initialization
+   - Trade execution with gap-based sizing
+   
+3. pipelines/models/screening/uk_overnight_pipeline.py (UPDATED)
+   - Enhanced report format with gap_prediction
+   - World risk score in root level
+   
+4. pipelines/models/screening/ftse_proxy_realtime.py (NEW - 450 lines)
+   - UK FTSE gap prediction engine
+   - Uses actual US/EU market closes
+   - VIX-adjusted confidence
+   
+5. test_pre_market_trading.py (NEW - 400 lines)
+   - Demo script with sample data
+   - Live analysis from overnight reports
+   - Position calculation breakdown
+   
+6. VERSION.json (UPDATED)
+   - Bumped to v193.11.6.10
+   - Comprehensive changelog
+
+INSTALLATION INSTRUCTIONS:
+=========================
+
+1. BACKUP YOUR SYSTEM (CRITICAL):
+   ```
+   cd C:\Users\david\Regime trading V5
+   xcopy ULTIMATE_v193_COMPLETE ULTIMATE_v193_COMPLETE_BACKUP_20260309 /E /I
+   ```
+
+2. STOP ALL RUNNING PROCESSES:
+   - Close Web Control Center
+   - Stop all pipeline scripts
+   - Terminate any Python processes
+
+3. EXTRACT NEW FILES:
+   ```
+   # Navigate to installation directory
+   cd C:\Users\david\Regime trading V5
+   
+   # Extract the deployment package
+   # Use 7-Zip or Windows Explorer to extract:
+   # unified_trading_system_v193.11.6.10_COMPLETE.zip
+   
+   # Files will be placed in correct locations:
+   # - ULTIMATE_v193_COMPLETE/core/pre_market_strategy.py
+   # - ULTIMATE_v193_COMPLETE/core/paper_trading_coordinator.py
+   # - ULTIMATE_v193_COMPLETE/pipelines/models/screening/uk_overnight_pipeline.py
+   # - ULTIMATE_v193_COMPLETE/pipelines/models/screening/ftse_proxy_realtime.py
+   # - ULTIMATE_v193_COMPLETE/test_pre_market_trading.py
+   # - ULTIMATE_v193_COMPLETE/VERSION.json
+   ```
+
+4. VERIFY INSTALLATION:
+   ```
+   cd ULTIMATE_v193_COMPLETE
+   python -c "import json; print(json.load(open('VERSION.json'))['version'])"
+   # Should output: 1.3.15.193.11.6.10
+   
+   # Test imports
+   python -c "from core.pre_market_strategy import PreMarketStrategy; print('OK')"
+   python -c "from pipelines.models.screening.ftse_proxy_realtime import RealtimeFTSEPredictor; print('OK')"
+   ```
+
+5. RESTART SYSTEM:
+   ```
+   START_WEB_CONTROL_CENTER.bat
+   ```
+
+6. VERIFY GAP PREDICTIONS IN LOGS:
+   Look for these log entries when UK pipeline runs:
+   ```
+   [REALTIME FTSE] Computing pre-market gap prediction...
+   [REALTIME FTSE] Gap Prediction: +0.50%
+   [REALTIME FTSE] Confidence: 70%
+   [REALTIME FTSE] Direction: BULLISH
+   [REALTIME FTSE] Breakdown: US=-0.22%, EU=-0.21%, Futures=0.00%, FX=+0.02%, Commodities=+0.91%
+   ```
+
+USAGE GUIDE:
+===========
+
+A. DEMO MODE (Test without trading):
+   ```
+   cd ULTIMATE_v193_COMPLETE
+   python test_pre_market_trading.py --demo
+   ```
+   
+   This will show:
+   - Sample UK gap scenario (+0.50% bullish gap)
+   - Sample AU gap scenario (-0.57% bearish gap)
+   - Position calculation breakdown
+   - Entry decisions with reasoning
+
+B. LIVE ANALYSIS (From overnight reports):
+   ```
+   # First run overnight pipelines
+   python scripts/run_uk_full_pipeline.py
+   python scripts/run_au_full_pipeline.py
+   
+   # Then analyze gaps
+   python test_pre_market_trading.py --market uk
+   python test_pre_market_trading.py --market au
+   ```
+
+C. AUTOMATED TRADING (Execute pre-market entries):
+   ```
+   # After overnight pipeline completes, run:
+   python test_pre_market_trading.py --execute
+   
+   # Or specific market:
+   python test_pre_market_trading.py --market uk --execute
+   ```
+   
+   This will:
+   - Load gap predictions from morning reports
+   - Analyze risk and sentiment
+   - Calculate position sizes
+   - Execute trades for recommended symbols
+   - Log all decisions
+
+D. INTEGRATION WITH PAPER TRADING:
+   ```python
+   from core.paper_trading_coordinator import PaperTradingCoordinator
+   
+   # Initialize coordinator
+   coordinator = PaperTradingCoordinator(
+       symbols=['BP.L', 'SHEL.L', 'HSBA.L'],
+       initial_capital=100000.0
+   )
+   
+   # Run pre-market analysis
+   results = coordinator.analyze_pre_market_gaps(execute_trades=True)
+   
+   # Check results
+   for market, decision in results.items():
+       print(f"{market}: Entry={decision['should_enter']}, "
+             f"Position={decision['position_multiplier']:.2f}x")
+   ```
+
+GAP PREDICTION METHODOLOGY:
+==========================
+
+UK FTSE Gap Prediction:
+-----------------------
+Weighting:
+- US Markets: 65% (S&P 50%, NASDAQ 30%, DOW 20%)
+- Overnight Futures: 15% (Z=F FTSE futures)
+- Europe: 10% (DAX, CAC correlation 0.40)
+- FX & Commodities: 10% (GBP/USD 50%, Oil 25%, Metals 25%)
+
+Confidence Adjustment:
+- Base confidence: 75%
+- VIX < 20: +5% (calm markets = higher confidence)
+- VIX 20-30: 0% (normal volatility)
+- VIX > 30: -10% (high volatility = lower confidence)
+
+Example (2026-03-09 data):
+- S&P 500: -1.33%, NASDAQ: -1.59%, DOW: -0.95%
+- DAX: -0.94%, FTSE futures: unavailable
+- Oil: +24.6% (Iran conflict)
+- VIX: 29.49
+Result: +0.50% bullish gap (driven by oil), 70% confidence
+
+AU SPI Gap Prediction:
+---------------------
+Weighting:
+- US Markets: 65% (S&P 50%, NASDAQ 30%, DOW 20%)
+- Overnight Futures: 15% (ES, NQ S&P/NASDAQ futures)
+- UK/Europe: 10% (FTSE, DAX)
+- Commodities: 10% (AUD/USD 50%, Iron Ore 25%, Oil 25%)
+
+Confidence Adjustment: Same as UK (VIX-based)
+
+Example (2026-03-09 data):
+Result: -0.57% bearish gap, 70% confidence
+
+POSITION SIZING LOGIC:
+=====================
+
+Formula: base_mult × confidence_factor × gap_factor × risk_multiplier
+
+Components:
+-----------
+1. Base Multiplier (0.5 - 1.0):
+   - AU: 0.925x (correlation 0.85)
+   - UK: 0.875x (correlation 0.75)
+
+2. Confidence Factor (0.6 - 1.2):
+   - 60% confidence = 0.6x
+   - 70% confidence = 0.85x
+   - 80% confidence = 1.0x
+   - 90% confidence = 1.2x
+
+3. Gap Factor (0.7 - 1.3):
+   - 0.3% gap = 0.7x
+   - 1.0% gap = 1.0x
+   - 2.0% gap = 1.3x
+
+4. Risk Multiplier (0.5 - 1.0):
+   - World Risk < 80: 1.0x
+   - World Risk 80-85: 0.75x
+   - World Risk >= 85: 0.5x
+   
+5. Sentiment Adjustment (-15%):
+   - If sentiment and gap disagree: × 0.85
+
+Final Position: Clamped to 0.25x - 1.5x
+
+EXAMPLES:
+--------
+UK Scenario (2026-03-09):
+- Gap: +0.50%, Confidence: 70%, Sentiment: 29.2, World Risk: 87.6
+- Calculation:
+  * Base: 0.875x (UK correlation)
+  * Confidence: 0.85x (70%)
+  * Gap: 0.85x (0.5% gap)
+  * Risk: 0.5x (world risk 87.6)
+  * Sentiment: 0.85x (disagree: bullish gap, bearish sentiment)
+  * Final: 0.875 × 0.85 × 0.85 × 0.5 × 0.85 = 0.268x → 0.27x
+- Decision: ENTER with small position
+
+AU Scenario (2026-03-09):
+- Gap: -0.57%, Confidence: 70%, Sentiment: 3.4, World Risk: 87.6
+- Decision: BLOCK (extreme bearish sentiment + high risk)
+
+RISK GATES:
+==========
+
+Gate 1: Confidence Threshold
+- Minimum: 60%
+- Blocks trades with low prediction confidence
+
+Gate 2: Gap Magnitude
+- Minimum: 0.3%
+- Ignores tiny gaps (noise)
+
+Gate 3: World Risk Check
+- >= 85: Position reduced 50%
+- >= 80: Position reduced 25%
+
+Gate 4: Sentiment Alignment
+- Extreme bearish (< 20) + negative gap: BLOCK
+- Bearish (< 35) + negative gap: Reduce position 25%
+
+Gate 5: Direction Consistency
+- Gap and sentiment disagree: Reduce position 15%
+
+ENTRY TIMING:
+============
+
+Based on gap magnitude and confidence:
+
+- NOW: Gap >= 1.5% AND Confidence >= 75%
+  → Strong conviction, enter immediately
+
+- WAIT_2MIN: Gap >= 1.0% AND Confidence >= 70%
+  → Good signal, wait for initial volatility
+
+- WAIT_5MIN: Gap >= 0.5% OR Confidence >= 65%
+  → Moderate signal, wait for market to settle
+
+- AT_OPEN: Weak signals
+  → Wait for official market open
+
+TESTING & VALIDATION:
+====================
+
+Test Cases Passed:
+-----------------
+✅ UK bullish gap (+0.50%) with extreme world risk (87.6)
+   Result: Small position (0.27x) correctly calculated
+
+✅ AU bearish gap (-0.57%) with extreme bearish sentiment (3.4)
+   Result: BLOCKED correctly due to double bearish + high risk
+
+✅ Position multiplier clamping (0.25x - 1.5x)
+   Result: All scenarios within bounds
+
+✅ Multi-gate validation
+   Result: All gates functioning correctly
+
+✅ Report format compatibility
+   Result: gap_prediction saved and loaded correctly
+
+MONITORING & VERIFICATION:
+=========================
+
+Check Logs for Success:
+----------------------
+1. UK Pipeline Run:
+   ```
+   grep "REALTIME FTSE" logs/screening/uk/uk_overnight_pipeline.log
+   ```
+   Should show: "Gap Prediction: X.XX%"
+
+2. Pre-Market Analysis:
+   ```
+   grep "PRE-MARKET" logs/paper_trading.log
+   ```
+   Should show decision logic and position sizing
+
+3. Position Entries:
+   ```
+   grep "ENTER.*Pre-market gap" logs/paper_trading.log
+   ```
+   Shows executed pre-market trades
+
+Expected Log Output (Success):
+-----------------------------
+```
+[PRE-MARKET] OVERNIGHT GAP ANALYSIS
+[UK] Gap Analysis:
+  Gap: +0.50%
+  Confidence: 70%
+  Sentiment: 29.2/100
+  World Risk: 87.6/100
+[POSITION CALC]
+  Base: 0.88x (market correlation 0.75)
+  Confidence: 0.85x (conf 70%)
+  Gap: 0.85x (magnitude 0.50%)
+  Risk: 0.50x (world risk 87.6)
+  FINAL: 0.27x (clamped 0.25x - 1.5x)
+[DECISION]
+  Should Enter: YES
+  Position Size: 0.27x normal
+  Risk Level: EXTREME
+  Entry Timing: WAIT_5MIN
+  Symbols: BP.L, SHEL.L
+```
+
+ROLLBACK PROCEDURE (if needed):
+==============================
+
+If any issues occur:
+
+1. Stop all processes
+2. Restore backup:
+   ```
+   cd C:\Users\david\Regime trading V5
+   rmdir /S /Q ULTIMATE_v193_COMPLETE
+   xcopy ULTIMATE_v193_COMPLETE_BACKUP_20260309 ULTIMATE_v193_COMPLETE /E /I
+   ```
+3. Restart Web Control Center
+
+SUPPORT & CONTACT:
+=================
+
+GitHub Repository:
+https://github.com/davidosland-lab/enhanced-global-stock-tracker-frontend
+
+Branch: market-timing-critical-fix
+Commit: 780b13a
+
+Deployment Package:
+Location: /home/user/webapp/unified_trading_system_v193.11.6.10_COMPLETE.zip
+SHA-256: 696bbe751e3ba43469f901a327e4935e538f89231e2cc29693e8d734791f45f7
+
+For questions or issues, refer to:
+- test_pre_market_trading.py (demo script with examples)
+- core/pre_market_strategy.py (comprehensive documentation in docstrings)
+- VERSION.json (detailed changelog)
+
+================================================================================
+END OF DEPLOYMENT SUMMARY v193.11.6.10
+================================================================================

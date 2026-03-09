@@ -1153,7 +1153,16 @@ class ReportGenerator:
                 'confidence': spi_sentiment.get('confidence', 'MODERATE'),
                 'risk_rating': spi_sentiment.get('risk_rating', 'Moderate'),
                 'volatility_level': spi_sentiment.get('volatility_level', 'Normal'),
-                'recommendation': spi_sentiment.get('recommendation', 'HOLD')
+                'recommendation': spi_sentiment.get('recommendation', 'HOLD'),
+                # 🆕 v193.11.6.10: Add gap prediction if available
+                'gap_prediction': spi_sentiment.get('gap_prediction', {
+                    'predicted_gap_pct': 0.0,
+                    'confidence': 0.0,
+                    'direction': 'NEUTRAL',
+                    'method': 'UNAVAILABLE'
+                }),
+                # 🆕 v193: Add world risk score if available
+                'world_risk_score': spi_sentiment.get('world_event_risk', {}).get('world_risk_score', 50.0)
             },
             'top_opportunities': opportunities[:10] if opportunities else []
         }

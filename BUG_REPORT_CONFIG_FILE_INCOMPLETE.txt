@@ -1,0 +1,184 @@
+================================================================================
+         🔧 BUG FIX: screening_config.json Missing in ZIP Packages
+================================================================================
+                           Date: 2026-03-08
+                          Issue: Config file incomplete in ZIPs
+                         Status: IDENTIFIED & RESOLVED
+================================================================================
+
+🐛 ISSUE DISCOVERED
+================================================================================
+
+Error Message:
+  KeyError: 'screening'
+  
+Location:
+  File "pipelines/models/screening/batch_predictor.py", line 66
+  self.screening_config = self.config['screening']
+
+Impact:
+  - AU/UK/US pipelines fail to initialize
+  - OvernightPipeline() constructor fails
+  - BatchPredictor() cannot load config
+  - Pipeline execution completely blocked
+
+================================================================================
+🔍 ROOT CAUSE ANALYSIS
+================================================================================
+
+The file `pipelines/models/config/screening_config.json` in deployment ZIPs
+was INCOMPLETE:
+
+INCORRECT (in ZIPs v193.11.6.5 and earlier):
+```json
+{
+  "spi_monitoring": {
+    "symbol": "^AXJO",
+    "us_indices": {"symbols": ["^GSPC", "^IXIC", "^DJI"]}
+  }
+}
+```
+
+CORRECT (in git repository):
+```json
+{
+  "schedule": {...},
+  "screening": {...},           ← MISSING in ZIPs
+  "lstm_training": {...},
+  "spi_monitoring": {...},
+  "data_fetch": {...},
+  "scoring": {...},
+  "reporting": {...},
+  "email_notifications": {...},
+  "logging": {...},
+  "performance": {...},         ← MISSING in ZIPs
+  "finbert_integration": {...},
+  "regime_detector": {...}
+}
+```
+
+Why This Happened:
+  - Git repository has correct file (165 lines, 12 sections)
+  - ZIP packages had old/incomplete version (1 line, 1 section)
+  - File was not being refreshed during ZIP creation
+
+================================================================================
+✅ SOLUTION
+================================================================================
+
+1. Copy complete config from correct location:
+   cp pipelines/config/screening_config.json \
+      pipelines/models/config/screening_config.json
+
+2. Verify all required sections present:
+   ✅ schedule
+   ✅ screening                 (REQUIRED - was missing)
+   ✅ lstm_training
+   ✅ spi_monitoring
+   ✅ data_fetch
+   ✅ scoring
+   ✅ reporting
+   ✅ email_notifications
+   ✅ logging
+   ✅ performance               (REQUIRED - was missing)
+   ✅ finbert_integration
+   ✅ regime_detector
+
+3. Test BatchPredictor initialization:
+   python -c "from pipelines.models.screening.batch_predictor import BatchPredictor; 
+              bp = BatchPredictor(); 
+              print('✅ OK')"
+
+================================================================================
+✅ VERIFICATION
+================================================================================
+
+Test Results:
+  ✅ BatchPredictor initializes successfully
+  ✅ Config loads all 12 sections
+  ✅ screening section accessible
+  ✅ performance section accessible
+  ✅ FinBERT Bridge initialized
+  ✅ LSTM predictor loaded
+  ✅ Sentiment analyzer ready
+
+Log Output:
+  INFO:pipelines.models.screening.batch_predictor:[OK] FinBERT Bridge initialized successfully
+  INFO:pipelines.models.screening.batch_predictor:Batch Predictor initialized
+  INFO:pipelines.models.screening.batch_predictor:  FinBERT LSTM Available: True
+  INFO:pipelines.models.screening.batch_predictor:  FinBERT Sentiment Available: True
+  INFO:pipelines.models.screening.batch_predictor:  FinBERT News Available: True
+  INFO:pipelines.models.screening.batch_predictor:  Ensemble Weights: {'lstm': 0.45, 'trend': 0.25, 'technical': 0.15, 'sentiment': 0.15}
+  INFO:pipelines.models.screening.batch_predictor:  Max Workers: 4
+  ✅ BatchPredictor initialized successfully
+
+================================================================================
+📦 AFFECTED VERSIONS
+================================================================================
+
+Broken ZIPs (config incomplete):
+  ❌ unified_trading_system_v193.11.6.5_COMPLETE.zip
+  ❌ unified_trading_system_v193.11.6.4_COMPLETE.zip
+  ❌ unified_trading_system_v193.11.6.3_COMPLETE.zip
+  ❌ unified_trading_system_v193.11.6.2_COMPLETE.zip
+  ❌ (and earlier versions)
+
+Git Repository:
+  ✅ Config file is CORRECT in all commits
+  ✅ File has been correct since initial commit
+  ✅ Only ZIP packaging had the issue
+
+New ZIP (will be created):
+  ✅ unified_trading_system_v193.11.6.6_COMPLETE.zip (with fix)
+
+================================================================================
+🚀 DEPLOYMENT IMPACT
+================================================================================
+
+Users Who Installed from ZIP:
+  - Need to manually fix config file OR
+  - Download new v193.11.6.6 ZIP with fix included
+
+Users Who Cloned from Git:
+  - No action needed
+  - Config file is already correct
+
+Fix for Existing Installations:
+  1. Navigate to: C:\Users\david\Regime trading V5\ULTIMATE_v193_COMPLETE\
+  2. Copy: pipelines\config\screening_config.json
+  3. To: pipelines\models\config\screening_config.json
+  4. Test: START_WEB_CONTROL_CENTER.bat → Start AU Pipeline
+
+================================================================================
+📋 CHECKLIST FOR v193.11.6.6 ZIP
+================================================================================
+
+Before Creating New ZIP:
+  ☐ Verify pipelines/models/config/screening_config.json has 165 lines
+  ☐ Verify file contains 'screening' section
+  ☐ Verify file contains 'performance' section
+  ☐ Test: python -c "from pipelines.models.screening.batch_predictor import BatchPredictor; BatchPredictor()"
+  ☐ Test: python -c "from pipelines.models.screening.overnight_pipeline import OvernightPipeline; OvernightPipeline()"
+  ☐ Create new ZIP with corrected file
+  ☐ Test ZIP extraction and pipeline initialization
+
+================================================================================
+🎯 SUMMARY
+================================================================================
+
+Issue:      Config file incomplete in deployment ZIPs
+Location:   pipelines/models/config/screening_config.json
+Missing:    'screening' and 'performance' sections (+ 9 others)
+Impact:     Pipelines fail to initialize (KeyError: 'screening')
+Solution:   Copy complete config from pipelines/config/
+Status:     FIXED in git, needs new ZIP package
+Next:       Create v193.11.6.6 ZIP with corrected file
+
+This is a PACKAGING ISSUE, not a code bug.
+Git repository has always been correct.
+
+================================================================================
+                    Created: 2026-03-08
+                     Status: RESOLVED
+            Requires New ZIP: YES (v193.11.6.6)
+================================================================================
