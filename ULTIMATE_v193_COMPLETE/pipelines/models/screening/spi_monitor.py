@@ -158,8 +158,11 @@ class SPIMonitor:
                 gap_prediction['method'] = 'DIRECT_US_CORRELATION'
                 
                 if gap_prediction and 'predicted_gap_pct' in gap_prediction:
+                    confidence_val = gap_prediction.get('confidence', 0.75)
+                    # Convert to percentage if decimal (0.75 -> 75%)
+                    confidence_pct = confidence_val * 100 if confidence_val <= 1.0 else confidence_val
                     logger.info(f"[DIRECT] Gap: {gap_prediction['predicted_gap_pct']:+.2f}%, "
-                              f"Confidence: {gap_prediction.get('confidence', 0.75):.0%}, "
+                              f"Confidence: {confidence_pct:.0f}%, "
                               f"Based on: S&P {us_data.get('SP500', {}).get('change_pct', 0):+.2f}%, "
                               f"NASDAQ {us_data.get('Nasdaq', {}).get('change_pct', 0):+.2f}%")
             
