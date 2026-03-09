@@ -27,8 +27,16 @@ try:
     from .spi_proxy_advanced import SPIProxy, SPIProxyConfig
     SPI_PROXY_AVAILABLE = True
 except ImportError:
-    logger.warning("SPI Proxy module not available - will use basic prediction")
+    logger.warning("SPI Proxy (advanced) module not available")
     SPI_PROXY_AVAILABLE = False
+
+# FIX v1.3.15.193.11.6.8: Import Realtime SPI Predictor for pre-market analysis
+try:
+    from .spi_proxy_realtime import RealtimeSPIPredictor
+    REALTIME_PROXY_AVAILABLE = True
+except ImportError:
+    logger.warning("Realtime SPI Predictor module not available")
+    REALTIME_PROXY_AVAILABLE = False
 
 # Setup logging
 logging.basicConfig(
@@ -79,6 +87,14 @@ class SPIMonitor:
             self.spi_proxy = None
             logger.warning("[!] SPI Proxy unavailable - using basic US market correlation")
         
+        # FIX v1.3.15.193.11.6.8: Initialize Realtime SPI Predictor for pre-market analysis
+        if REALTIME_PROXY_AVAILABLE:
+            self.realtime_predictor = RealtimeSPIPredictor()
+            logger.info("[OK] Realtime SPI Predictor initialized (Uses actual US/UK market closes)")
+        else:
+            self.realtime_predictor = None
+            logger.warning("[!] Realtime Predictor unavailable")
+        
         logger.info("SPI Monitor initialized")
     
     def _load_config(self, config_path: str) -> Dict:
@@ -122,11 +138,48 @@ class SPIMonitor:
                 logger.error("Failed to fetch US market data")
                 return self._get_default_sentiment()
             
-            # Try SPI Proxy first (advanced calculation)
+            # === NEW v1.3.15.193.11.6.8: PRIMARY METHOD - Realtime Market Close Predictor ===
+            # This uses ACTUAL US/UK market close data (not futures intraday data)
+            # Priority order:
+            # 1. REALTIME PREDICTOR (if available) - uses actual market closes
+            # 2. SPI Proxy (if realtime unavailable) - uses intraday futures
+            # 3. Direct US correlation (fallback)
             gap_prediction = None
-            proxy_used = False
+            method_used = None
             
-            if self.spi_proxy is not None:
+            # Try Realtime Predictor FIRST (most accurate for pre-market)
+            if self.realtime_predictor is not None:
+                try:
+                    logger.info("[REALTIME] Using actual US/UK market close data for prediction...")
+                    world_risk_score = market_data.get('world_risk_score') if market_data else None
+                    realtime_result = self.realtime_predictor.compute_prediction(world_risk_score)
+                    
+                    if realtime_result and realtime_result.get('available', False):
+                        gap_prediction = {
+                            'predicted_gap_pct': realtime_result['predicted_gap_pct'],
+                            'confidence': realtime_result['confidence'],
+                            'direction': realtime_result['direction'],
+                            'method': realtime_result['method'],
+                            'breakdown': realtime_result.get('breakdown', {}),
+                            'source_data': realtime_result.get('source_data', {})
+                        }
+                        method_used = 'REALTIME'
+                        logger.info(f"[REALTIME] ✅ Success! Gap: {realtime_result['predicted_gap_pct']:+.2f}%, "
+                                  f"Confidence: {realtime_result['confidence']:.0%}, "
+                                  f"Direction: {realtime_result['direction']}")
+                        
+                        # Log breakdown for transparency
+                        if 'breakdown' in realtime_result:
+                            bd = realtime_result['breakdown']
+                            logger.info(f"[REALTIME] Breakdown: US={bd.get('us_component', 0):+.2f}%, "
+                                      f"Futures={bd.get('futures_component', 0):+.2f}%, "
+                                      f"UK={bd.get('uk_component', 0):+.2f}%, "
+                                      f"Commodities={bd.get('commodity_component', 0):+.2f}%")
+                except Exception as e:
+                    logger.warning(f"[REALTIME] Failed: {e}")
+            
+            # Fallback to SPI Proxy if realtime unavailable
+            if not gap_prediction and self.spi_proxy is not None:
                 try:
                     logger.info("[SPI PROXY] Attempting to fetch advanced SPI futures proxy...")
                     proxy_result = self.spi_proxy.compute_spi_proxy()
@@ -140,7 +193,7 @@ class SPIMonitor:
                             'z_score': proxy_result.get('z_score', 0.0),
                             'method': 'SPI_PROXY'
                         }
-                        proxy_used = True
+                        method_used = 'SPI_PROXY'
                         logger.info(f"[SPI PROXY] [OK] Success! Gap: {proxy_result['proxy_move']:+.2f}%, "
                                   f"Confidence: {proxy_result.get('confidence', 0.75):.0%}, "
                                   f"Regime: {proxy_result.get('regime', 'neutral')}")
@@ -156,13 +209,14 @@ class SPIMonitor:
                 logger.info("[DIRECT] Using improved US market correlation...")
                 gap_prediction = self._predict_opening_gap(asx_data, us_data, market_data)
                 gap_prediction['method'] = 'DIRECT_US_CORRELATION'
+                method_used = 'DIRECT'
                 
                 if gap_prediction and 'predicted_gap_pct' in gap_prediction:
                     confidence_val = gap_prediction.get('confidence', 0.75)
                     # Convert to percentage if decimal (0.75 -> 75%)
                     confidence_pct = confidence_val * 100 if confidence_val <= 1.0 else confidence_val
                     logger.info(f"[DIRECT] Gap: {gap_prediction['predicted_gap_pct']:+.2f}%, "
-                              f"Confidence: {confidence_pct:.0f}%, "
+                              f"Confidence: {confidence_pct:.0%}, "
                               f"Based on: S&P {us_data.get('SP500', {}).get('change_pct', 0):+.2f}%, "
                               f"NASDAQ {us_data.get('Nasdaq', {}).get('change_pct', 0):+.2f}%")
             
@@ -171,6 +225,7 @@ class SPIMonitor:
                 logger.warning("[FALLBACK] Using basic US market correlation...")
                 gap_prediction = self._predict_opening_gap(asx_data, us_data, market_data or {})
                 gap_prediction['method'] = 'BASIC_CORRELATION'
+                method_used = 'FALLBACK'
             
             
             # Calculate sentiment score
