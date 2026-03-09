@@ -1,9 +1,89 @@
 {
-  "version": "1.3.15.193.11.6.9",
+  "version": "1.3.15.193.11.6.10",
   "build_date": "2026-03-09",
   "branch": "market-timing-critical-fix",
   "status": "production",
   "changelog": [
+    {
+      "version": "1.3.15.193.11.6.10",
+      "date": "2026-03-09",
+      "changes": [
+        "MAJOR FEATURE: Pre-Market Gap Prediction Trading Integration",
+        "NEW MODULE: core/pre_market_strategy.py - Comprehensive gap trading strategy",
+        "  - Analyzes gap predictions from overnight pipelines (AU SPI, UK FTSE)",
+        "  - Risk-adjusted position sizing based on gap confidence, world risk, sentiment",
+        "  - Intelligent entry timing (NOW/WAIT_2MIN/WAIT_5MIN/AT_OPEN)",
+        "  - Multi-gate validation (confidence, magnitude, world risk, sentiment)",
+        "  - Position multiplier: 0.25x to 1.5x based on conviction level",
+        "INTEGRATION: paper_trading_coordinator.py - Pre-market trading support",
+        "  - New method: analyze_pre_market_gaps() - Loads gap predictions and executes trades",
+        "  - Automatic position sizing using gap confidence multipliers",
+        "  - Pre-market price fetching with fallback logic",
+        "  - Full integration with existing risk management and sentiment gates",
+        "UPDATED: uk_overnight_pipeline.py - Gap prediction in morning reports",
+        "  - Saves gap_prediction dict in market_sentiment section",
+        "  - Includes predicted_gap_pct, confidence, direction, method, breakdown",
+        "  - World risk score added to trading report root level",
+        "DEMO: test_pre_market_trading.py - Demonstration script",
+        "  - Shows gap analysis with sample data (UK bullish gap, AU bearish gap)",
+        "  - Live analysis from overnight reports with optional trade execution",
+        "  - Position calculation breakdown and decision logging",
+        "GAP PREDICTION WEIGHTING:",
+        "  UK FTSE: US 65% (S&P 50%, NASDAQ 30%, DOW 20%), Futures 15%, UK 10%, Commodities 10%",
+        "  AU SPI: US 65%, Futures 15%, UK 10%, Commodities 10%",
+        "USAGE EXAMPLE:",
+        "  coordinator = PaperTradingCoordinator(symbols, capital)",
+        "  results = coordinator.analyze_pre_market_gaps(execute_trades=True)",
+        "  # Automatically enters positions based on gap signals with risk-adjusted sizing"
+      ],
+      "priority": "MAJOR",
+      "modified_files": [
+        "core/pre_market_strategy.py (NEW: 550 lines - Gap trading strategy module)",
+        "core/paper_trading_coordinator.py (Added pre_market_strategy init and analyze_pre_market_gaps method)",
+        "pipelines/models/screening/uk_overnight_pipeline.py (Added gap_prediction and world_risk_score to report)",
+        "test_pre_market_trading.py (NEW: 400 lines - Demo script for gap trading)"
+      ],
+      "impact": "Enables pre-market entry decisions based on overnight gap predictions. Addresses user request: 'It would be a very useful way to make pre market opening trading decisions. After that our traditional methods would take over.' Gap predictions now directly influence position entries with confidence-based sizing.",
+      "use_cases": [
+        "Pre-market trading on UK stocks using FTSE gap prediction (e.g., BP.L, SHEL.L on oil spike)",
+        "Pre-market trading on AU stocks using SPI gap prediction (e.g., BHP.AX, RIO.AX)",
+        "Risk-adjusted entry sizing during high volatility (reduces position to 0.5x at world risk 85+)",
+        "Avoiding false signals when gap and sentiment disagree (position reduced 15-25%)"
+      ],
+      "technical_details": {
+        "gap_analysis_gates": [
+          "Gate 1: Confidence threshold (default 60%)",
+          "Gate 2: Gap magnitude threshold (default 0.3%)",
+          "Gate 3: World risk check (85+ reduces 50%, 80+ reduces 25%)",
+          "Gate 4: Sentiment check (block if <20 with negative gap)",
+          "Gate 5: Direction consistency (dampen 15% if sentiment/gap disagree)"
+        ],
+        "position_multiplier_formula": "base * confidence_factor * gap_factor * risk_multiplier",
+        "confidence_factor": "60% conf = 0.6x, 70% = 0.85x, 80% = 1.0x, 90% = 1.2x",
+        "gap_factor": "0.3% gap = 0.7x, 1.0% = 1.0x, 2.0% = 1.3x",
+        "market_correlation": "AU 0.85, UK 0.75 (used as base multiplier)"
+      },
+      "example_output": {
+        "uk_bullish_gap": {
+          "gap": "+0.50%",
+          "confidence": "70%",
+          "sentiment": "29.2/100",
+          "world_risk": "87.6/100",
+          "decision": "ENTER (reduced position)",
+          "position_mult": "0.42x",
+          "reason": "Bullish gap from commodities but extreme world risk reduces conviction",
+          "symbols": ["BP.L", "SHEL.L"]
+        },
+        "au_bearish_gap": {
+          "gap": "-0.57%",
+          "confidence": "70%",
+          "sentiment": "3.4/100",
+          "world_risk": "87.6/100",
+          "decision": "BLOCK",
+          "reason": "Extreme bearish conditions (sentiment 3.4) with negative gap and high world risk"
+        }
+      }
+    },
     {
       "version": "1.3.15.193.11.6.9",
       "date": "2026-03-09",

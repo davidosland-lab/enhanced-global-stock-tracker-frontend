@@ -41,6 +41,14 @@ try:
 except ImportError:
     EmailNotifier = None
 
+# FIX v1.3.15.193.11.6.10: Import Realtime FTSE Predictor for pre-market gap analysis
+try:
+    from .ftse_proxy_realtime import RealtimeFTSEPredictor
+    REALTIME_FTSE_AVAILABLE = True
+except ImportError:
+    logger.warning("Realtime FTSE Predictor module not available")
+    REALTIME_FTSE_AVAILABLE = False
+
 try:
     from .lstm_trainer import LSTMTrainer
 except ImportError:
@@ -196,6 +204,14 @@ class UKOvernightPipeline:
             except ImportError:
                 self.world_event_monitor = None
                 logger.info("  World Event Risk Monitor disabled (world_event_monitor module not found)")
+            
+            # FIX v1.3.15.193.11.6.10: Initialize Realtime FTSE Predictor for pre-market gap analysis
+            if REALTIME_FTSE_AVAILABLE:
+                self.ftse_predictor = RealtimeFTSEPredictor()
+                logger.info("[OK] Realtime FTSE Predictor initialized (Uses actual US/EU market closes)")
+            else:
+                self.ftse_predictor = None
+                logger.warning("[!] Realtime FTSE Predictor unavailable")
             
             logger.info("[OK] All required UK market components initialized successfully")
         except Exception as e:
@@ -456,6 +472,68 @@ class UKOvernightPipeline:
             logger.info(f"  Risk Rating: {risk_rating}")
             logger.info(f"  Recommendation: {recommendation}")
             
+            # FIX v1.3.15.193.11.6.10: Add FTSE gap prediction using realtime market closes
+            gap_prediction = None
+            if self.ftse_predictor is not None:
+                try:
+                    logger.info("")
+                    logger.info("[REALTIME FTSE] Computing pre-market gap prediction...")
+                    realtime_result = self.ftse_predictor.compute_prediction()
+                    
+                    if realtime_result and realtime_result.get('available', False):
+                        gap_prediction = {
+                            'predicted_gap_pct': realtime_result['predicted_gap_pct'],
+                            'confidence': realtime_result['confidence'],
+                            'direction': realtime_result['direction'],
+                            'method': realtime_result['method'],
+                            'breakdown': realtime_result.get('breakdown', {})
+                        }
+                        
+                        logger.info(f"[REALTIME FTSE] Gap Prediction: {realtime_result['predicted_gap_pct']:+.2f}%")
+                        logger.info(f"[REALTIME FTSE] Confidence: {realtime_result['confidence']:.0%}")
+                        logger.info(f"[REALTIME FTSE] Direction: {realtime_result['direction']}")
+                        
+                        # Log breakdown for transparency
+                        if 'breakdown' in realtime_result:
+                            bd = realtime_result['breakdown']
+                            logger.info(f"[REALTIME FTSE] Breakdown: US={bd.get('us_component', 0):+.2f}%, "
+                                      f"EU={bd.get('europe_component', 0):+.2f}%, "
+                                      f"Futures={bd.get('futures_component', 0):+.2f}%, "
+                                      f"FX={bd.get('fx_component', 0):+.2f}%, "
+                                      f"Commodities={bd.get('commodity_component', 0):+.2f}%")
+                        
+                        # Add gap prediction to sentiment dict
+                        sentiment['gap_prediction'] = gap_prediction
+                        sentiment['predicted_gap_pct'] = realtime_result['predicted_gap_pct']
+                    else:
+                        logger.warning("[REALTIME FTSE] Prediction unavailable - no gap prediction")
+                        gap_prediction = {
+                            'predicted_gap_pct': 0.0,
+                            'confidence': 0.0,
+                            'direction': 'NEUTRAL'
+                        }
+                        sentiment['gap_prediction'] = gap_prediction
+                        sentiment['predicted_gap_pct'] = 0.0
+                        
+                except Exception as e:
+                    logger.warning(f"[REALTIME FTSE] Failed: {e}")
+                    gap_prediction = {
+                        'predicted_gap_pct': 0.0,
+                        'confidence': 0.0,
+                        'direction': 'NEUTRAL'
+                    }
+                    sentiment['gap_prediction'] = gap_prediction
+                    sentiment['predicted_gap_pct'] = 0.0
+            else:
+                # No FTSE predictor available
+                gap_prediction = {
+                    'predicted_gap_pct': 0.0,
+                    'confidence': 0.0,
+                    'direction': 'NEUTRAL'
+                }
+                sentiment['gap_prediction'] = gap_prediction
+                sentiment['predicted_gap_pct'] = 0.0
+            
             # Initialize macro_news with default (v193.2 bugfix)
             macro_news = {
                 'article_count': 0,
@@ -612,6 +690,83 @@ class UKOvernightPipeline:
                         logger.warning(f"  [[!]] ELEVATED WORLD RISK - CAUTION ADVISED")
                     elif world_risk['world_risk_score'] <= 30:
                         logger.info(f"  [[OK]] LOW WORLD RISK - FAVORABLE GLOBAL CONDITIONS")
+                    
+                    # FIX v1.3.15.193.11.6.10: Apply gap adjustment based on sentiment and world risk
+                    if gap_prediction and gap_prediction['predicted_gap_pct'] != 0.0:
+                        original_gap = gap_prediction['predicted_gap_pct']
+                        final_sentiment = sentiment['sentiment_score']
+                        world_risk_score = world_risk['world_risk_score']
+                        
+                        # Determine sentiment adjustment factor based on world risk regime
+                        if world_risk_score > 75:
+                            sentiment_factor = 0.75
+                            regime_label = "RISK-OFF"
+                        elif world_risk_score < 40:
+                            sentiment_factor = 0.35
+                            regime_label = "RISK-ON"
+                        else:
+                            sentiment_factor = 0.50
+                            regime_label = "NORMAL"
+                        
+                        # Sentiment deviation from neutral
+                        sentiment_deviation = (final_sentiment - 50) / 50  # -1.0 to +1.0
+                        
+                        # FIX v193.11.6.9: Correct sentiment adjustment logic
+                        # When sentiment and gap agree: AMPLIFY
+                        # When sentiment and gap disagree: DAMPEN
+                        gap_is_negative = original_gap < 0
+                        sentiment_is_bearish = final_sentiment < 50
+                        signals_agree = (gap_is_negative and sentiment_is_bearish) or (not gap_is_negative and not sentiment_is_bearish)
+                        
+                        if signals_agree:
+                            # AMPLIFY
+                            adjustment_magnitude = abs(sentiment_deviation) * sentiment_factor
+                            adjusted_gap = original_gap * (1 + adjustment_magnitude)
+                        else:
+                            # DAMPEN
+                            adjustment_magnitude = abs(sentiment_deviation) * sentiment_factor * 0.5
+                            adjusted_gap = original_gap * (1 - adjustment_magnitude)
+                        
+                        # Apply risk multiplier for extreme conditions
+                        risk_multiplier = 1.0
+                        if world_risk_score >= 85:
+                            risk_intensity = (world_risk_score - 85) / 15
+                            
+                            if signals_agree:
+                                risk_multiplier = 1.0 + (risk_intensity * 0.5)
+                            else:
+                                risk_multiplier = 1.0 - (risk_intensity * 0.4)
+                            
+                            risk_multiplier = max(0.5, min(risk_multiplier, 1.8))
+                            adjusted_gap = adjusted_gap * risk_multiplier
+                            
+                            logger.warning(f"  [[ALERT]] CRITICAL RISK MULTIPLIER APPLIED: {risk_multiplier:.2f}x")
+                            logger.warning(f"  World Risk: {world_risk_score:.0f}/100 - {'Amplifying' if signals_agree else 'Dampening'} gap for extreme conditions")
+                        
+                        sentiment['predicted_gap_pct'] = adjusted_gap
+                        sentiment['gap_adjusted'] = True
+                        sentiment['original_gap_pct'] = original_gap
+                        sentiment['sentiment_factor'] = sentiment_factor
+                        sentiment['risk_multiplier'] = risk_multiplier
+                        sentiment['regime_used'] = regime_label
+                        sentiment['signals_agree'] = signals_agree
+                        sentiment['adjustment_type'] = 'AMPLIFY' if signals_agree else 'DAMPEN'
+                        
+                        # Update gap_prediction dict
+                        sentiment['gap_prediction']['predicted_gap_pct'] = adjusted_gap
+                        sentiment['gap_prediction']['adjusted'] = True
+                        sentiment['gap_prediction']['original_gap'] = original_gap
+                        
+                        logger.info(f"\n[OK] Gap Prediction Adjusted for News/Risk:")
+                        logger.info(f"  Regime: {regime_label} (Sentiment Factor: {sentiment_factor:.2f})")
+                        logger.info(f"  Original Gap: {original_gap:+.2f}%")
+                        logger.info(f"  Sentiment Score: {final_sentiment:.1f}/100 (deviation: {sentiment_deviation:+.2f})")
+                        logger.info(f"  Sentiment & Gap: {'AGREE' if signals_agree else 'DISAGREE'} → {'AMPLIFY' if signals_agree else 'DAMPEN'}")
+                        logger.info(f"  World Risk: {world_risk_score:.1f}/100")
+                        if risk_multiplier != 1.0:
+                            logger.info(f"  Risk Multiplier: {risk_multiplier:.2f}x")
+                        logger.info(f"  Adjusted Gap: {adjusted_gap:+.2f}%")
+                        logger.info(f"  Total Impact: {(adjusted_gap - original_gap):+.2f} percentage points")
                     
                 except Exception as e:
                     logger.warning(f"[!] World event risk monitoring failed: {e}")
@@ -997,8 +1152,10 @@ Full traceback:
                     'confidence': uk_sentiment.get('confidence', 'MODERATE'),
                     'risk_rating': uk_sentiment.get('risk_rating', 'Moderate'),
                     'volatility_level': uk_sentiment.get('volatility_level', 'Normal'),
-                    'recommendation': uk_sentiment.get('recommendation', 'HOLD')
+                    'recommendation': uk_sentiment.get('recommendation', 'HOLD'),
+                    'gap_prediction': uk_sentiment.get('gap_prediction', {})
                 },
+                'world_risk_score': uk_sentiment.get('world_risk_score', 50),
                 'top_opportunities': [
                     {
                         'symbol': opp['symbol'],

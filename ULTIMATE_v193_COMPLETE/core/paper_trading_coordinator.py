@@ -356,6 +356,15 @@ class PaperTradingCoordinator:
             self.entry_strategy = None
             logger.warning("[ENTRY] Entry timing disabled - may buy at tops")
         
+        # Initialize Pre-Market Strategy (v193.11.6.10) - Gap prediction trading
+        try:
+            from core.pre_market_strategy import PreMarketStrategy
+            self.pre_market_strategy = PreMarketStrategy(config=self.config.get('pre_market', {}))
+            logger.info("[PRE-MARKET] Gap prediction strategy enabled (AU SPI, UK FTSE futures)")
+        except ImportError as e:
+            self.pre_market_strategy = None
+            logger.warning(f"[PRE-MARKET] Gap prediction strategy not available: {e}")
+        
         # Load overnight reports on startup
         logger.info("[STARTUP] Loading overnight pipeline reports...")
         self._overnight_reports_cache = self._load_overnight_reports()
@@ -785,6 +794,163 @@ class PaperTradingCoordinator:
         )
         
         return opportunities
+    
+    def analyze_pre_market_gaps(self, execute_trades: bool = False) -> Dict:
+        """
+        Analyze gap predictions from overnight pipelines and determine trading strategy
+        
+        **NEW in v193.11.6.10**: Pre-market gap prediction trading
+        - Loads gap predictions from AU/UK overnight reports
+        - Analyzes gap vs sentiment vs world risk
+        - Calculates optimal position sizing
+        - Optionally executes trades based on gap signals
+        
+        Args:
+            execute_trades: If True, execute trades based on gap analysis
+            
+        Returns:
+            Dict with analysis results for each market
+        """
+        if not self.pre_market_strategy:
+            logger.warning("[PRE-MARKET] Gap prediction strategy not available")
+            return {}
+        
+        logger.info("\n" + "="*80)
+        logger.info("[PRE-MARKET] OVERNIGHT GAP ANALYSIS")
+        logger.info("="*80)
+        
+        # Load overnight reports if not already loaded
+        if not hasattr(self, '_overnight_reports_cache'):
+            self._overnight_reports_cache = self._load_overnight_reports()
+        
+        reports = self._overnight_reports_cache
+        results = {}
+        
+        # Analyze each market with gap predictions
+        for market in ['au', 'uk']:  # AU and UK have gap predictions, US TBD
+            if market not in reports:
+                logger.info(f"[PRE-MARKET] No {market.upper()} report available")
+                continue
+            
+            report = reports[market]
+            market_sentiment_data = report.get('market_sentiment', {})
+            
+            # Extract gap prediction
+            gap_prediction = market_sentiment_data.get('gap_prediction', {})
+            if not gap_prediction or 'predicted_gap_pct' not in gap_prediction:
+                # Try alternate structure
+                if 'predicted_gap_pct' in market_sentiment_data:
+                    gap_prediction = {
+                        'predicted_gap_pct': market_sentiment_data.get('predicted_gap_pct', 0),
+                        'confidence': market_sentiment_data.get('confidence', 0),
+                        'direction': market_sentiment_data.get('direction', 'NEUTRAL')
+                    }
+                else:
+                    logger.info(f"[PRE-MARKET] No gap prediction found in {market.upper()} report")
+                    continue
+            
+            # Extract market data
+            sentiment_score = market_sentiment_data.get('sentiment_score', 50)
+            world_risk_score = report.get('world_risk_score', 50)
+            top_stocks = report.get('top_opportunities', report.get('top_stocks', []))
+            
+            logger.info(f"\n[{market.upper()}] Gap Analysis:")
+            logger.info(f"  Gap: {gap_prediction.get('predicted_gap_pct', 0):+.2f}%")
+            logger.info(f"  Confidence: {gap_prediction.get('confidence', 0):.0f}%")
+            logger.info(f"  Sentiment: {sentiment_score:.1f}/100")
+            logger.info(f"  World Risk: {world_risk_score:.1f}/100")
+            logger.info(f"  Top Stocks: {len(top_stocks)}")
+            
+            # Analyze gap opportunity
+            decision = self.pre_market_strategy.analyze_gap_opportunity(
+                market=market,
+                gap_prediction=gap_prediction,
+                world_risk_score=world_risk_score,
+                sentiment_score=sentiment_score,
+                top_stocks=top_stocks
+            )
+            
+            results[market] = decision
+            
+            # Execute trades if requested and decision is to enter
+            if execute_trades and decision['should_enter']:
+                logger.info(f"\n[{market.upper()}] EXECUTING PRE-MARKET TRADES")
+                logger.info(f"  Position Multiplier: {decision['position_multiplier']:.2f}x")
+                logger.info(f"  Entry Timing: {decision['timing']}")
+                logger.info(f"  Symbols: {', '.join(decision['recommended_symbols'])}")
+                
+                # Calculate position size with multiplier
+                base_position_size = self.config['risk_management']['position_size_pct'] / 100.0
+                adjusted_size = base_position_size * decision['position_multiplier']
+                
+                # Enter positions for recommended symbols
+                for symbol in decision['recommended_symbols']:
+                    # Check if we already have this position
+                    if symbol in self.positions:
+                        logger.info(f"  [SKIP] {symbol} - already have position")
+                        continue
+                    
+                    # Check max positions
+                    if len(self.positions) >= self.config['risk_management']['max_total_positions']:
+                        logger.info(f"  [SKIP] Max positions reached ({len(self.positions)})")
+                        break
+                    
+                    # Fetch current/pre-market price
+                    price_data = self.fetch_market_data(symbol, period="5d")
+                    if price_data is None or price_data.empty:
+                        logger.warning(f"  [ERROR] Could not fetch data for {symbol}")
+                        continue
+                    
+                    current_price = self.fetch_current_price(symbol)
+                    if not current_price:
+                        current_price = price_data['Close'].iloc[-1]
+                    
+                    # Calculate shares based on adjusted position size
+                    position_value = self.current_capital * adjusted_size
+                    shares = int(position_value / current_price)
+                    
+                    if shares < 1:
+                        logger.warning(f"  [SKIP] {symbol} - position too small ({shares} shares)")
+                        continue
+                    
+                    # Find stock data from report for confidence
+                    stock_confidence = 60.0  # Default
+                    for stock in top_stocks:
+                        if stock.get('symbol') == symbol:
+                            stock_confidence = stock.get('confidence', 60.0)
+                            break
+                    
+                    # Enter position
+                    logger.info(
+                        f"  [ENTER] {symbol} @ ${current_price:.2f} "
+                        f"x{shares} shares = ${shares * current_price:.2f} "
+                        f"({adjusted_size*100:.1f}% of capital)"
+                    )
+                    
+                    try:
+                        self.enter_position(
+                            symbol=symbol,
+                            entry_price=current_price,
+                            confidence=stock_confidence,
+                            signal_strength=decision['gap_data']['confidence'],
+                            entry_reason=f"Pre-market gap: {decision['entry_reason']}",
+                            position_size_override=adjusted_size  # Pass multiplier
+                        )
+                        logger.info(f"  [OK] Position entered successfully")
+                    except Exception as e:
+                        logger.error(f"  [ERROR] Failed to enter position: {e}")
+            
+            elif decision['should_enter']:
+                logger.info(f"\n[{market.upper()}] Gap signal detected but execute_trades=False")
+                logger.info(f"  Set execute_trades=True to enter positions")
+            else:
+                logger.info(f"\n[{market.upper()}] No entry signal - {decision['entry_reason']}")
+        
+        logger.info("\n" + "="*80)
+        logger.info("[PRE-MARKET] Gap analysis complete")
+        logger.info("="*80 + "\n")
+        
+        return results
     
     # =========================================================================
     # DATA FETCHING
