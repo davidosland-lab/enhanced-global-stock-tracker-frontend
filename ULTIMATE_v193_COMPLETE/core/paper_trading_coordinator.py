@@ -463,12 +463,29 @@ class PaperTradingCoordinator:
                             report['age_hours'] = age_hours
                         
                         top_count = len(report.get('top_stocks', []))
-                        logger.info(
-                            f"[OK] Loaded {market.upper()} morning report - "
-                            f"{top_count} opportunities, "
-                            f"sentiment {report.get('overall_sentiment', 0):.1f}, "
-                            f"age {report.get('age_hours', 0):.1f}h"
-                        )
+                        
+                        # Extract gap prediction if available
+                        market_sentiment = report.get('market_sentiment', {})
+                        gap_prediction = market_sentiment.get('gap_prediction', {})
+                        
+                        if gap_prediction and 'predicted_gap_pct' in gap_prediction:
+                            gap_pct = gap_prediction['predicted_gap_pct']
+                            gap_conf = gap_prediction.get('confidence', 0)
+                            gap_dir = gap_prediction.get('direction', 'NEUTRAL')
+                            logger.info(
+                                f"[OK] Loaded {market.upper()} morning report - "
+                                f"{top_count} opportunities, "
+                                f"sentiment {report.get('overall_sentiment', 0):.1f}, "
+                                f"gap {gap_pct:+.2f}% ({gap_dir}, {gap_conf:.0%} conf), "
+                                f"age {report.get('age_hours', 0):.1f}h"
+                            )
+                        else:
+                            logger.info(
+                                f"[OK] Loaded {market.upper()} morning report - "
+                                f"{top_count} opportunities, "
+                                f"sentiment {report.get('overall_sentiment', 0):.1f}, "
+                                f"age {report.get('age_hours', 0):.1f}h"
+                            )
                 except Exception as e:
                     logger.warning(f"[WARN] Error loading {market.upper()} report: {e}")
             else:

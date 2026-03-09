@@ -148,8 +148,44 @@ def get_sentiment_analyzer():
     return _sentiment_analyzer
 
 # Create market status panel
+
+def _load_gap_predictions():
+    """
+    Load gap predictions from overnight pipeline reports
+    
+    Returns:
+        Dict with market -> gap_prediction data
+    """
+    predictions = {}
+    report_base = Path(__file__).parent.parent / 'reports' / 'screening'
+    
+    for market in ['au', 'uk', 'us']:
+        report_path = report_base / f'{market}_morning_report.json'
+        
+        if report_path.exists():
+            try:
+                with open(report_path, 'r') as f:
+                    report = json.load(f)
+                
+                # Extract gap prediction from market_sentiment
+                market_sentiment = report.get('market_sentiment', {})
+                gap_prediction = market_sentiment.get('gap_prediction', {})
+                
+                if gap_prediction and 'predicted_gap_pct' in gap_prediction:
+                    predictions[market] = {
+                        'predicted_gap_pct': gap_prediction['predicted_gap_pct'],
+                        'confidence': gap_prediction.get('confidence', 0),
+                        'direction': gap_prediction.get('direction', 'NEUTRAL'),
+                        'available': True
+                    }
+                    logger.debug(f"[DASHBOARD] Loaded {market.upper()} gap: {gap_prediction['predicted_gap_pct']:+.2f}%")
+            except Exception as e:
+                logger.debug(f"[DASHBOARD] Error loading {market.upper()} gap prediction: {e}")
+    
+    return predictions
+
 def create_market_status_panel():
-    """Create market status panel showing exchange hours and holidays"""
+    """Create market status panel showing exchange hours, holidays, and gap predictions"""
     if not MARKET_CALENDAR_AVAILABLE or market_calendar is None:
         return html.Div()  # Return empty if calendar not available
     
@@ -158,8 +194,11 @@ def create_market_status_panel():
     nyse_info = market_calendar.get_market_status(Exchange.NYSE)
     lse_info = market_calendar.get_market_status(Exchange.LSE)
     
-    def format_status_card(info):
-        """Format individual exchange status card"""
+    # Load gap predictions from morning reports
+    gap_predictions = _load_gap_predictions()
+    
+    def format_status_card(info, gap_data=None):
+        """Format individual exchange status card with gap prediction"""
         # Determine status color and icon
         if info.status == MarketStatus.OPEN:
             status_color = '#4CAF50'
@@ -206,6 +245,34 @@ def create_market_status_panel():
                 minutes = int((total_seconds % 3600) // 60)
                 time_info = f"Opens in {hours}h {minutes}m"
         
+        # Build gap prediction section if available
+        gap_section = []
+        if gap_data and gap_data.get('available', False):
+            gap_pct = gap_data['predicted_gap_pct']
+            confidence = gap_data.get('confidence', 0) * 100  # Convert to percentage
+            direction = gap_data.get('direction', 'NEUTRAL')
+            
+            # Determine gap color and icon
+            if gap_pct > 0.5:
+                gap_color = '#4CAF50'  # Green for bullish
+                gap_icon = '📈'
+            elif gap_pct < -0.5:
+                gap_color = '#F44336'  # Red for bearish
+                gap_icon = '📉'
+            else:
+                gap_color = '#FF9800'  # Orange for neutral
+                gap_icon = '➡️'
+            
+            gap_section = [
+                html.Div([
+                    html.Span(gap_icon, style={'marginRight': '5px'}),
+                    html.Span(f"Gap: {gap_pct:+.2f}%", 
+                             style={'color': gap_color, 'fontWeight': 'bold', 'fontSize': '13px'})
+                ], style={'marginTop': '8px', 'marginBottom': '3px'}),
+                html.P(f"{direction} • {confidence:.0f}% confidence", 
+                      style={'color': '#888', 'fontSize': '10px', 'margin': '0'})
+            ]
+        
         return html.Div([
             html.Div([
                 html.H4(info.exchange.value, 
@@ -218,7 +285,8 @@ def create_market_status_panel():
                 html.P(local_time_str, 
                       style={'color': '#ccc', 'fontSize': '12px', 'margin': '3px 0'}),
                 html.P(time_info if time_info else '  ', 
-                      style={'color': '#888', 'fontSize': '11px', 'margin': '3px 0', 'minHeight': '15px'})
+                      style={'color': '#888', 'fontSize': '11px', 'margin': '3px 0', 'minHeight': '15px'}),
+                *gap_section  # Add gap prediction if available
             ])
         ], style={
             'backgroundColor': '#1e1e1e',
@@ -231,12 +299,12 @@ def create_market_status_panel():
     
     return html.Div([
         html.Div([
-            html.H3('🕐 Market Hours & Status', 
+            html.H3('🕐 Market Hours & Gap Predictions', 
                    style={'color': '#2196F3', 'margin': '0 0 15px 0', 'fontSize': '18px'}),
             html.Div([
-                format_status_card(asx_info),
-                format_status_card(nyse_info),
-                format_status_card(lse_info)
+                format_status_card(asx_info, gap_predictions.get('au')),
+                format_status_card(nyse_info, gap_predictions.get('us')),
+                format_status_card(lse_info, gap_predictions.get('uk'))
             ], style={
                 'display': 'flex',
                 'gap': '15px',
