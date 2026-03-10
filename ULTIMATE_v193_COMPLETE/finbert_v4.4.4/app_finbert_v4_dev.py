@@ -438,9 +438,9 @@ class EnhancedMLPredictor:
         indicator_details = {}
         
         if TA_AVAILABLE and 'Close' in df.columns:
-            # ═══════════════════════════════════════════════════════════
+            # [U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550]
             # ADVANCED INDICATORS (using 'ta' library)
-            # ═══════════════════════════════════════════════════════════
+            # [U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550]
             
             try:
                 # 1. Simple Moving Averages (SMA)
@@ -601,9 +601,9 @@ class EnhancedMLPredictor:
                 logger.warning(f"ATR calculation error: {e}")
         
         else:
-            # ═══════════════════════════════════════════════════════════
+            # [U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550]
             # BASIC INDICATORS (fallback when 'ta' not available)
-            # ═══════════════════════════════════════════════════════════
+            # [U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550]
             
             closes = df['Close'].values[-20:]
             
@@ -630,9 +630,9 @@ class EnhancedMLPredictor:
                 signals.append('HOLD')
             indicator_details['rsi'] = rsi
         
-        # ═══════════════════════════════════════════════════════════
+        # [U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550]
         # CONSENSUS DECISION (Multi-Indicator Voting)
-        # ═══════════════════════════════════════════════════════════
+        # [U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550]
         
         if len(signals) == 0:
             return {
@@ -868,13 +868,13 @@ def index():
     <html>
     <head><title>FinBERT v4.0 Development</title></head>
     <body style="font-family: Arial; margin: 40px;">
-        <h1>🚀 FinBERT v4.0 Development Server</h1>
+        <h1>[ROCKET] FinBERT v4.0 Development Server</h1>
         <h2>Features Enabled:</h2>
         <ul>
-            <li>LSTM Models: {'[OK] Enabled' if config.FEATURES.get('USE_LSTM') else '❌ Disabled'}</li>
-            <li>XGBoost: {'[OK] Enabled' if config.FEATURES.get('USE_XGBOOST') else '❌ Disabled'}</li>
-            <li>WebSocket: {'[OK] Enabled' if config.FEATURES.get('ENABLE_WEBSOCKET') else '❌ Disabled'}</li>
-            <li>Database: {'[OK] Enabled' if config.FEATURES.get('ENABLE_DATABASE') else '❌ Disabled'}</li>
+            <li>LSTM Models: {'[OK] Enabled' if config.FEATURES.get('USE_LSTM') else '[ERROR] Disabled'}</li>
+            <li>XGBoost: {'[OK] Enabled' if config.FEATURES.get('USE_XGBOOST') else '[ERROR] Disabled'}</li>
+            <li>WebSocket: {'[OK] Enabled' if config.FEATURES.get('ENABLE_WEBSOCKET') else '[ERROR] Disabled'}</li>
+            <li>Database: {'[OK] Enabled' if config.FEATURES.get('ENABLE_DATABASE') else '[ERROR] Disabled'}</li>
         </ul>
         <h2>API Endpoints:</h2>
         <ul>
@@ -2323,49 +2323,49 @@ if __name__ == '__main__':
     
     print("=" * 70)
     print("  FinBERT v4.4.4 Development Server - FULL AI/ML Experience")
-    print("  🆕 NEW: 8+ Technical Indicators (+5-8% Accuracy)")
+    print("  [NEW] NEW: 8+ Technical Indicators (+5-8% Accuracy)")
     print("=" * 70)
     print()
-    print("🎯 Features:")
-    print(f"{'[OK]' if ml_predictor.lstm_enabled else '○'} LSTM Neural Networks: {'Trained & Loaded' if ml_predictor.lstm_enabled else 'Available (needs training)'}")
-    print(f"{'[OK]' if ml_predictor.finbert_enabled else '○'} FinBERT Sentiment (15% Weight): {'Active as Independent Model' if ml_predictor.finbert_enabled else 'Not installed'}")
-    print(f"{'[OK]' if TA_AVAILABLE else '○'} Advanced Technical Indicators: {'8+ indicators (MACD, BB, Stoch, etc.)' if TA_AVAILABLE else 'Basic (SMA, RSI) - Install ta library'}")
+    print("[TARGET] Features:")
+    print(f"{'[OK]' if ml_predictor.lstm_enabled else 'o'} LSTM Neural Networks: {'Trained & Loaded' if ml_predictor.lstm_enabled else 'Available (needs training)'}")
+    print(f"{'[OK]' if ml_predictor.finbert_enabled else 'o'} FinBERT Sentiment (15% Weight): {'Active as Independent Model' if ml_predictor.finbert_enabled else 'Not installed'}")
+    print(f"{'[OK]' if TA_AVAILABLE else 'o'} Advanced Technical Indicators: {'8+ indicators (MACD, BB, Stoch, etc.)' if TA_AVAILABLE else 'Basic (SMA, RSI) - Install ta library'}")
     print("[OK] Volume Analysis: Confirms trend strength")
     print("[OK] Ensemble Predictions (4-Model Weighted System)")
     print("[OK] Multi-Indicator Consensus (Voting System)")
     print("[OK] Real-time Market Data (Yahoo Finance)")
     print("[OK] Candlestick & Volume Charts")
     print()
-    print("📊 Model Weights:")
+    print("[CHART] Model Weights:")
     if ml_predictor.lstm_enabled:
-        print("  • LSTM Neural Network:  45%")
-    print("  • Trend Analysis:       25%")
-    print("  • Technical Indicators: 15%")
+        print("  * LSTM Neural Network:  45%")
+    print("  * Trend Analysis:       25%")
+    print("  * Technical Indicators: 15%")
     if ml_predictor.finbert_enabled:
-        print("  • FinBERT Sentiment:    15%")
+        print("  * FinBERT Sentiment:    15%")
     print()
     if TA_AVAILABLE:
-        print("📊 Technical Indicators (8+):")
-        print("  • SMA 20, 50, 200 (Moving Averages)")
-        print("  • EMA 12, 26 (Exponential MAs)")
-        print("  • RSI (Relative Strength Index)")
-        print("  • MACD (Trend Momentum)")
-        print("  • Bollinger Bands (Volatility)")
-        print("  • Stochastic Oscillator")
-        print("  • ADX (Trend Strength)")
-        print("  • ATR (Volatility Measure)")
+        print("[CHART] Technical Indicators (8+):")
+        print("  * SMA 20, 50, 200 (Moving Averages)")
+        print("  * EMA 12, 26 (Exponential MAs)")
+        print("  * RSI (Relative Strength Index)")
+        print("  * MACD (Trend Momentum)")
+        print("  * Bollinger Bands (Volatility)")
+        print("  * Stochastic Oscillator")
+        print("  * ADX (Trend Strength)")
+        print("  * ATR (Volatility Measure)")
         print("  -> Multi-indicator consensus voting system")
         print()
     else:
-        print("📊 Technical Indicators (Basic):")
-        print("  • SMA 20, RSI")
+        print("[CHART] Technical Indicators (Basic):")
+        print("  * SMA 20, RSI")
         print("  -> To enable 8+ indicators: pip install ta")
         print()
-    print("📊 Volume Analysis:")
-    print("  • High Volume (>1.5x avg): +10% confidence boost")
-    print("  • Low Volume (<0.5x avg):  -15% confidence penalty")
+    print("[CHART] Volume Analysis:")
+    print("  * High Volume (>1.5x avg): +10% confidence boost")
+    print("  * Low Volume (<0.5x avg):  -15% confidence penalty")
     print()
-    print("📊 API Endpoints:")
+    print("[CHART] API Endpoints:")
     print(f"  /api/stock/<symbol>    - Stock data with AI predictions")
     print(f"  /api/sentiment/<symbol> - FinBERT sentiment analysis")
     print(f"  /api/train/<symbol>     - Train LSTM model (POST)")
@@ -2373,14 +2373,14 @@ if __name__ == '__main__':
     print(f"  /api/health             - System health")
     print()
     if not ml_predictor.lstm_enabled:
-        print("💡 To train LSTM model:")
+        print("[IDEA] To train LSTM model:")
         print("   python models/train_lstm.py --symbol AAPL --epochs 50")
         print()
     if not ml_predictor.finbert_enabled:
-        print("💡 To enable FinBERT sentiment:")
+        print("[IDEA] To enable FinBERT sentiment:")
         print("   pip install -r requirements-full.txt")
         print()
-    print(f"🚀 Server starting on http://localhost:{config.PORT}")
+    print(f"[ROCKET] Server starting on http://localhost:{config.PORT}")
     print("=" * 70)
     
     app.run(

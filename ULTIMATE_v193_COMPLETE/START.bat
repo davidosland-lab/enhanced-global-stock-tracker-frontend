@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================================
-REM UNIFIED TRADING SYSTEM v1.3.15.90 - MAIN MENU
+REM UNIFIED TRADING SYSTEM v193.11.6.21 - MAIN MENU
 REM ============================================================================
 
 REM Change to script directory
@@ -10,7 +10,7 @@ cd /d "%~dp0"
 cls
 echo.
 echo ============================================================================
-echo  UNIFIED TRADING SYSTEM v1.3.15.90
+echo  UNIFIED TRADING SYSTEM v193.11.6.21
 echo ============================================================================
 echo.
 echo  Choose an option:
@@ -25,7 +25,10 @@ echo    5. Run AU Pipeline Only (ASX) - ~20 minutes
 echo    6. Run US Pipeline Only (NYSE/NASDAQ) - ~20 minutes
 echo    7. Run UK Pipeline Only (LSE) - ~20 minutes
 echo.
-echo    8. Exit
+echo  --- LSTM Model Training ---
+echo    8. Train Individual Stocks (CBA.AX, AAPL, etc.) - Interactive
+echo.
+echo    9. Exit
 echo.
 echo ============================================================================
 echo  Market Trading Hours (for reference):
@@ -34,7 +37,7 @@ echo    US (NYSE):       09:30-16:00 EST   (14:30-21:00 UTC)
 echo    UK (LSE):        08:00-16:30 GMT   (08:00-16:30 UTC)
 echo ============================================================================
 echo.
-set /p choice="Enter your choice (1-8): "
+set /p choice="Enter your choice (1-9): "
 
 if "%choice%"=="1" goto COMPLETE
 if "%choice%"=="2" goto FINBERT
@@ -43,7 +46,8 @@ if "%choice%"=="4" goto PIPELINES_ALL
 if "%choice%"=="5" goto PIPELINE_AU
 if "%choice%"=="6" goto PIPELINE_US
 if "%choice%"=="7" goto PIPELINE_UK
-if "%choice%"=="8" goto EXIT
+if "%choice%"=="8" goto TRAIN_INDIVIDUAL
+if "%choice%"=="9" goto EXIT
 echo Invalid choice, please try again.
 pause
 goto MENU
@@ -375,8 +379,60 @@ echo.
 pause
 goto MENU
 
+:TRAIN_INDIVIDUAL
+cls
+echo.
+echo ============================================================================
+echo  Train Individual Stocks - LSTM Model Trainer
+echo ============================================================================
+echo.
+echo  This tool allows you to train LSTM models for specific stocks.
+echo.
+echo  Use this for:
+echo    - Large-cap stocks not in overnight top 20 (e.g., CBA.AX, NAB.AX)
+echo    - Stocks you want to trade that lack LSTM models
+echo    - Quick model training without running full pipeline
+echo.
+echo  How it works:
+echo    1. You enter stock symbols interactively (CBA.AX, AAPL, BP.L, etc.)
+echo    2. System trains LSTM models for each stock (~3 min per stock)
+echo    3. Models saved to: finbert_v4.4.4/models/saved_models/
+echo    4. Restart dashboard to use new models
+echo.
+echo  Benefits:
+echo    - No more "LSTM failed - not enough data" errors
+echo    - No -20% confidence penalty for these stocks
+echo    - Models updated in same location as overnight pipeline models
+echo    - Full 5-component signal generation (Sentiment + LSTM + Technical + Momentum + Volume)
+echo.
+echo  Example stocks to train:
+echo    AU: CBA.AX, NAB.AX, WBC.AX, ANZ.AX (banks)
+echo    AU: WOW.AX, WES.AX, CSL.AX (retail/healthcare)
+echo    US: AAPL, GOOGL, MSFT, TSLA, NVDA
+echo    UK: BP.L, HSBA.L, VOD.L, BARC.L
+echo.
+echo ============================================================================
+echo.
+pause
+
+REM Save current directory
+set ORIGINAL_DIR=%CD%
+
+REM Activate virtual environment
+call venv\Scripts\activate.bat
+
+REM Return to original directory
+cd /d "%ORIGINAL_DIR%"
+
+REM Run individual stock trainer
+call "%ORIGINAL_DIR%\TRAIN_INDIVIDUAL_STOCKS.bat"
+
+echo.
+pause
+goto MENU
+
 :EXIT
 echo.
-echo Thank you for using Unified Trading System v1.3.15.90
+echo Thank you for using Unified Trading System v193.11.6.21
 echo.
 exit /b 0

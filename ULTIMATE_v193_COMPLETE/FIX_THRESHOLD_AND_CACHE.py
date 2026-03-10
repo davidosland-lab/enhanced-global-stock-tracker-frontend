@@ -41,18 +41,18 @@ def delete_python_cache(base_path: Path) -> List[Path]:
         try:
             shutil.rmtree(pycache_dir)
             deleted.append(pycache_dir)
-            print(f"✓ Deleted {pycache_dir.relative_to(base_path)}")
+            print(f"[OK] Deleted {pycache_dir.relative_to(base_path)}")
         except Exception as e:
-            print(f"✗ Failed to delete {pycache_dir}: {e}")
+            print(f"[X] Failed to delete {pycache_dir}: {e}")
     
     # Find and delete .pyc files
     for pyc_file in base_path.rglob('*.pyc'):
         try:
             pyc_file.unlink()
             deleted.append(pyc_file)
-            print(f"✓ Deleted {pyc_file.relative_to(base_path)}")
+            print(f"[OK] Deleted {pyc_file.relative_to(base_path)}")
         except Exception as e:
-            print(f"✗ Failed to delete {pyc_file}: {e}")
+            print(f"[X] Failed to delete {pyc_file}: {e}")
     
     return deleted
 
@@ -101,10 +101,10 @@ def create_live_trading_config(config_path: Path) -> bool:
         config_path.parent.mkdir(parents=True, exist_ok=True)
         with open(config_path, 'w') as f:
             json.dump(config, f, indent=2)
-        print(f"✓ Created {config_path}")
+        print(f"[OK] Created {config_path}")
         return True
     except Exception as e:
-        print(f"✗ Failed to create config: {e}")
+        print(f"[X] Failed to create config: {e}")
         return False
 
 def verify_patches(base_path: Path) -> List[Tuple[str, str, bool]]:
@@ -173,25 +173,25 @@ def main():
     # Step 1: Delete Python cache
     print_banner("Step 1: Deleting Python bytecode cache")
     deleted_paths = delete_python_cache(base_path)
-    print(f"\n✓ Deleted {len(deleted_paths)} cache files/directories\n")
+    print(f"\n[OK] Deleted {len(deleted_paths)} cache files/directories\n")
     
     # Step 2: Create live_trading_config.json
     print_banner("Step 2: Creating live_trading_config.json")
     config_path = base_path / 'config' / 'live_trading_config.json'
     
     if config_path.exists():
-        print(f"⚠ File already exists: {config_path}")
+        print(f"[!] File already exists: {config_path}")
         print("  Creating backup...")
         backup_path = config_path.with_suffix('.json.backup')
         shutil.copy2(config_path, backup_path)
-        print(f"✓ Backup created: {backup_path}")
+        print(f"[OK] Backup created: {backup_path}")
     
     success = create_live_trading_config(config_path)
     
     if success:
-        print(f"\n✓ Configuration file created with 48% threshold\n")
+        print(f"\n[OK] Configuration file created with 48% threshold\n")
     else:
-        print(f"\n✗ Failed to create configuration file\n")
+        print(f"\n[X] Failed to create configuration file\n")
         return 1
     
     # Step 3: Verify patches
@@ -200,7 +200,7 @@ def main():
     
     all_correct = True
     for file_path, expected, is_correct in patch_results:
-        status = "✓" if is_correct else "✗"
+        status = "[OK]" if is_correct else "[X]"
         print(f"{status} {file_path}: {expected}")
         if not is_correct:
             all_correct = False
@@ -212,18 +212,18 @@ def main():
     print(f"Patch verification: {'All patches correct' if all_correct else 'Some patches incorrect'}")
     
     if all_correct and success and deleted_paths:
-        print("\n✓ Fix completed successfully!")
+        print("\n[OK] Fix completed successfully!")
         print("\nNext steps:")
         print("1. Stop the dashboard (Ctrl+C)")
         print("2. Restart: python core/unified_trading_dashboard.py")
         print("3. Verify trades now pass at 48%+ confidence")
         print("\nExpected results:")
-        print("  - BP.L: 52.1% ≥ 48% → PASS (was blocked at 65%)")
-        print("  - HSBA.L: 53.0% ≥ 48% → PASS (was blocked at 65%)")
-        print("  - RIO.AX: 54.4% ≥ 48% → PASS (was blocked at 52%)")
+        print("  - BP.L: 52.1% >= 48% -> PASS (was blocked at 65%)")
+        print("  - HSBA.L: 53.0% >= 48% -> PASS (was blocked at 65%)")
+        print("  - RIO.AX: 54.4% >= 48% -> PASS (was blocked at 52%)")
         return 0
     else:
-        print("\n⚠ Fix completed with warnings - please review above")
+        print("\n[!] Fix completed with warnings - please review above")
         return 1
 
 if __name__ == '__main__':

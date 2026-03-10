@@ -36,9 +36,9 @@ def emergency_fix():
     print(f"  {original_line.strip()}")
     
     # Check if it needs fixing
-    if '📦' in original_line:
+    if '[CACHE]' in original_line:
         print("\n[!] FOUND UNICODE EMOJI - Fixing...")
-        lines[69] = original_line.replace('📦', '[CACHE]')
+        lines[69] = original_line.replace('[CACHE]', '[CACHE]')
         
         # Write back
         with open(file_path, 'w', encoding='utf-8') as f:
@@ -83,6 +83,6 @@ if __name__ == '__main__':
         print("You may need to edit the file manually:")
         print(f"  1. Open: models\\market_data_fetcher.py")
         print(f"  2. Go to line 70")
-        print(f"  3. Replace 📦 with [CACHE]")
+        print(f"  3. Replace [CACHE] with [CACHE]")
         print(f"  4. Save and retry")
         sys.exit(1)

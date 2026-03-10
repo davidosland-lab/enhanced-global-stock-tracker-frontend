@@ -62,7 +62,7 @@ try:
 except ImportError:
     EventRiskGuard = None
 
-# 🆕 Dual Regime Analyzer (Multi-Factor + HMM)
+# [NEW] Dual Regime Analyzer (Multi-Factor + HMM)
 try:
     from .dual_regime_analyzer import DualRegimeAnalyzer
 except ImportError:
@@ -82,7 +82,7 @@ try:
 except ImportError:
     MacroNewsMonitor = None
 
-# 🆕 v193.11.6.10: Realtime US market gap prediction (futures + Asian markets)
+# [NEW] v193.11.6.10: Realtime US market gap prediction (futures + Asian markets)
 try:
     from .spx_proxy_realtime import RealtimeSPXPredictor
     REALTIME_SPX_AVAILABLE = True
@@ -151,7 +151,7 @@ class USOvernightPipeline:
             self.scanner = USStockScanner()
             self.market_monitor = USMarketMonitor()
             
-            # 🆕 v1.3.15.176: Dual Regime Analyzer (Multi-Factor + HMM)
+            # [NEW] v1.3.15.176: Dual Regime Analyzer (Multi-Factor + HMM)
             if DualRegimeAnalyzer is not None:
                 self.regime_analyzer = DualRegimeAnalyzer(market='US')
                 logger.info("[OK] Dual Regime Analyzer enabled (Multi-Factor + HMM for US market)")
@@ -207,7 +207,7 @@ class USOvernightPipeline:
                 self.macro_monitor = None
                 logger.info("  Macro News Monitor disabled")
             
-            # 🆕 v193: Optional: World Event Risk Monitor
+            # [NEW] v193: Optional: World Event Risk Monitor
             try:
                 from .world_event_monitor import WorldEventMonitor
                 self.world_event_monitor = WorldEventMonitor()
@@ -216,7 +216,7 @@ class USOvernightPipeline:
                 self.world_event_monitor = None
                 logger.info("  World Event Risk Monitor disabled (world_event_monitor module not found)")
             
-            # 🆕 v193.11.6.10: Realtime S&P 500 Predictor (pre-market gap analysis)
+            # [NEW] v193.11.6.10: Realtime S&P 500 Predictor (pre-market gap analysis)
             if REALTIME_SPX_AVAILABLE:
                 self.spx_predictor = RealtimeSPXPredictor()
                 logger.info("[OK] Realtime S&P 500 Predictor initialized (futures + Asian markets for gap)")
@@ -406,7 +406,7 @@ class USOvernightPipeline:
                         original_score = sentiment['overall']['score']
                         
                         # Scale macro sentiment from [-1, 1] to impact points [-15, +15]
-                        # Increased from ±10 to ±15 to better capture global uncertainty
+                        # Increased from +/-10 to +/-15 to better capture global uncertainty
                         macro_impact = macro_news['sentiment_score'] * 15
                         
                         # Apply weighted adjustment (macro news = 35% of overall sentiment)
@@ -448,7 +448,7 @@ class USOvernightPipeline:
                     }
                     sentiment['macro_news'] = macro_news
             
-            # 🆕 v193 Phase 1.4: World Event Risk Monitoring
+            # [NEW] v193 Phase 1.4: World Event Risk Monitoring
             if hasattr(self, 'world_event_monitor') and self.world_event_monitor is not None:
                 try:
                     logger.info("")
@@ -534,7 +534,7 @@ class USOvernightPipeline:
                         'top_headlines': []
                     }
             
-            # 🆕 v193.11.6.10: S&P 500 Gap Prediction (futures + Asian markets)
+            # [NEW] v193.11.6.10: S&P 500 Gap Prediction (futures + Asian markets)
             if hasattr(self, 'spx_predictor') and self.spx_predictor is not None:
                 try:
                     logger.info("")
@@ -559,14 +559,14 @@ class USOvernightPipeline:
                     
                     sentiment['predicted_gap_pct'] = gap_prediction.get('predicted_gap_pct', 0.0)
                     
-                    # 🆕 v193.11.6.12: ADJUST SENTIMENT SCORE based on gap prediction
+                    # [NEW] v193.11.6.12: ADJUST SENTIMENT SCORE based on gap prediction
                     # The gap prediction includes futures, Asian markets (Nikkei -6.49%, etc.), commodities
                     # We should incorporate this broader market context into the sentiment score
                     original_sentiment_score = sentiment['overall']['score']
                     
                     # Gap prediction impact: -1.04% gap should reduce sentiment
-                    # Scale: ±1% gap = ±10 points sentiment adjustment
-                    gap_impact = gap_prediction.get('predicted_gap_pct', 0.0) * 10  # -1.04% → -10.4 points
+                    # Scale: +/-1% gap = +/-10 points sentiment adjustment
+                    gap_impact = gap_prediction.get('predicted_gap_pct', 0.0) * 10  # -1.04% -> -10.4 points
                     
                     # Apply gap-based adjustment with 70% weight (gap is highly predictive for US)
                     adjusted_sentiment = original_sentiment_score + (gap_impact * 0.70)
@@ -582,7 +582,7 @@ class USOvernightPipeline:
                     
                     logger.info(f"\n[OK] Sentiment Adjusted for Gap Prediction (includes Futures/Asian/Commodities):")
                     logger.info(f"    Original Sentiment: {original_sentiment_score:.1f}/100")
-                    logger.info(f"    Gap Impact: {gap_impact * 0.70:+.1f} points (gap {gap_prediction.get('predicted_gap_pct', 0.0):+.2f}% × 70% weight)")
+                    logger.info(f"    Gap Impact: {gap_impact * 0.70:+.1f} points (gap {gap_prediction.get('predicted_gap_pct', 0.0):+.2f}% x 70% weight)")
                     logger.info(f"    Adjusted Sentiment: {adjusted_sentiment:.1f}/100")
                     
                     # Log gap prediction results
@@ -638,11 +638,11 @@ class USOvernightPipeline:
             }
     
     def _analyze_market_regime(self) -> Dict:
-        """🆕 v1.3.15.176: Analyze market regime using Dual Method (Multi-Factor + HMM)"""
+        """[NEW] v1.3.15.176: Analyze market regime using Dual Method (Multi-Factor + HMM)"""
         logger.info("Analyzing US market regime...")
         
         try:
-            # 🆕 v1.3.15.176: Use dual regime analyzer if available
+            # [NEW] v1.3.15.176: Use dual regime analyzer if available
             if hasattr(self, 'regime_analyzer') and self.regime_analyzer:
                 logger.info("[DUAL] Running comprehensive regime analysis (Multi-Factor + HMM)...")
                 dual_regime = self.regime_analyzer.analyze()
@@ -1065,7 +1065,7 @@ Full traceback:
             except Exception as e:
                 logger.warning(f"CSV export failed: {e}")
         
-        # 🆕 INTEGRATION FIX: Save in format expected by trading platform
+        # [NEW] INTEGRATION FIX: Save in format expected by trading platform
         # Signal adapter looks for: reports/screening/us_morning_report.json
         try:
             trading_report_dir = BASE_PATH / 'reports' / 'screening'

@@ -163,7 +163,7 @@ class WorldEventMonitor:
         # Formula adjusted to give topic severity primary weight:
         #   - Topic severity contributes 60-95 points directly (not just 15%)
         #   - Fear/anger/neg_sent provide additional boost (5-35 points)
-        #   - This ensures major_war (95) → ~85-95 score, not just 19
+        #   - This ensures major_war (95) -> ~85-95 score, not just 19
         
         # Start with topic severity as base (contributes 60-95% of score)
         base_risk = topic_severity * 100  # Convert back from 0-1 to 0-100 scale

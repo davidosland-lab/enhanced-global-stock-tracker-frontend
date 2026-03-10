@@ -32,15 +32,15 @@ is_london_open = london_open <= current_time <= london_close
 
 print(f"London Exchange Hours: 08:00 - 16:30 GMT")
 print(f"Current Time: {current_time.strftime('%H:%M:%S')} GMT")
-print(f"Market Status: {'🟢 OPEN' if is_london_open else '🔴 CLOSED'}")
+print(f"Market Status: {'[OK] OPEN' if is_london_open else '[ALERT] CLOSED'}")
 
 if not is_london_open:
     if current_time < london_open:
         minutes_until_open = ((datetime.combine(now.date(), london_open) - 
                               datetime.combine(now.date(), current_time)).seconds // 60)
-        print(f"⏰ Market opens in: {minutes_until_open} minutes")
+        print(f"[ALARM] Market opens in: {minutes_until_open} minutes")
     else:
-        print(f"⏰ Market closed for the day")
+        print(f"[ALARM] Market closed for the day")
 
 print()
 
@@ -67,16 +67,16 @@ for symbol in test_symbols:
         print(f"\n{symbol}:")
         print(f"  1-day data: {len(hist_1d)} bars (should be 0 before market open)")
         print(f"  5-day data: {len(hist_5d)} bars (historical)")
-        print(f"  Previous close: £{prev_close:.3f}" if prev_close else "  Previous close: N/A")
-        print(f"  Current price: £{current_price:.3f}" if current_price else "  Current price: N/A (market closed)")
+        print(f"  Previous close: GBP{prev_close:.3f}" if prev_close else "  Previous close: N/A")
+        print(f"  Current price: GBP{current_price:.3f}" if current_price else "  Current price: N/A (market closed)")
         
         if len(hist_1d) == 0 and not is_london_open:
-            print(f"  ⚠ No intraday data (market not open yet)")
+            print(f"  [!] No intraday data (market not open yet)")
         
         if len(hist_5d) > 0:
             last_close = hist_5d['Close'].iloc[-1]
             last_date = hist_5d.index[-1]
-            print(f"  Last close: £{last_close:.3f} on {last_date.strftime('%Y-%m-%d')}")
+            print(f"  Last close: GBP{last_close:.3f} on {last_date.strftime('%Y-%m-%d')}")
         
     except Exception as e:
         print(f"\n{symbol}: Error - {e}")
@@ -92,7 +92,7 @@ print()
 print("1. fetch_market_data(symbol, '3mo'):")
 print("   [OK] Returns: Historical data (60-90 days)")
 print("   [OK] Latest bar: Yesterday's close")
-print("   → Signal CAN be generated based on historical data")
+print("   -> Signal CAN be generated based on historical data")
 print()
 print("2. fetch_current_price(symbol):")
 print("   If market CLOSED:")
@@ -105,7 +105,7 @@ print("3. generate_swing_signal() result:")
 print("   [OK] Signal generated using yesterday's close")
 print("   [OK] Confidence calculated on historical pattern")
 print("   [OK] Entry timing uses yesterday's data")
-print("   → Signal is VALID but based on STALE data")
+print("   -> Signal is VALID but based on STALE data")
 print()
 
 # Test 4: The Real Issue
@@ -159,9 +159,9 @@ if uk_report.exists():
     print(f"  Recommendation: {recommendation}")
     
     if sent_index < 30:
-        print(f"  ⚠ SENTIMENT TOO LOW - All trades BLOCKED")
+        print(f"  [!] SENTIMENT TOO LOW - All trades BLOCKED")
     elif sent_index < 45:
-        print(f"  ⚠ LOW SENTIMENT - Positions reduced to 50%")
+        print(f"  [!] LOW SENTIMENT - Positions reduced to 50%")
     else:
         print(f"  [OK] Sentiment allows trading")
     
@@ -176,9 +176,9 @@ if uk_report.exists():
             score = opp.get('opportunity_score', 0)
             print(f"    {i}. {sym}: Confidence={conf:.1f}%, Score={score:.1f}")
 else:
-    print(f"✗ UK morning report NOT found")
+    print(f"[X] UK morning report NOT found")
     print(f"  Expected: {uk_report}")
-    print(f"  → Pipeline hasn't run yet OR report missing")
+    print(f"  -> Pipeline hasn't run yet OR report missing")
 
 print()
 
@@ -189,7 +189,7 @@ print("="*80)
 print()
 
 if not is_london_open:
-    print("🔴 MARKET IS CURRENTLY CLOSED")
+    print("[ALERT] MARKET IS CURRENTLY CLOSED")
     print()
     print("Most Likely Reasons:")
     print()
@@ -200,7 +200,7 @@ if not is_london_open:
     print()
     print("2. ENTRY TIMING BLOCKING (15% probability)")
     print("   - If stocks closed high yesterday")
-    print("   - Entry scores 40-59 → 'WAIT_FOR_DIP'")
+    print("   - Entry scores 40-59 -> 'WAIT_FOR_DIP'")
     print("   - Waiting for intraday pullback")
     print()
     print("3. LOW SENTIMENT (<30) (5% probability)")
@@ -208,12 +208,12 @@ if not is_london_open:
     print("   - All trades blocked until sentiment improves")
     print()
     print("RECOMMENDATION:")
-    print("  → Wait for London market to open (08:00 GMT)")
-    print("  → System will get real-time prices")
-    print("  → Entry timing will recalculate with live data")
-    print("  → Trades should execute if conditions met")
+    print("  -> Wait for London market to open (08:00 GMT)")
+    print("  -> System will get real-time prices")
+    print("  -> Entry timing will recalculate with live data")
+    print("  -> Trades should execute if conditions met")
 else:
-    print("🟢 MARKET IS CURRENTLY OPEN")
+    print("[OK] MARKET IS CURRENTLY OPEN")
     print()
     print("If no trades yet, check:")
     print()

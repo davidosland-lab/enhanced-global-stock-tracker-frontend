@@ -21,7 +21,7 @@ def check_file_content(filepath, search_text, should_contain=True, description="
                 print(f"[OK] {description}")
                 return True
             else:
-                print(f"✗ {description}")
+                print(f"[X] {description}")
                 print(f"  File: {filepath}")
                 if should_contain:
                     print(f"  Missing: {search_text}")
@@ -29,7 +29,7 @@ def check_file_content(filepath, search_text, should_contain=True, description="
                     print(f"  Found (should not exist): {search_text}")
                 return False
     except Exception as e:
-        print(f"✗ {description}")
+        print(f"[X] {description}")
         print(f"  Error: {e}")
         return False
 
@@ -144,7 +144,7 @@ def main():
         print("5. Test training: curl -X POST http://localhost:5001/api/train/AAPL ...")
         sys.exit(0)
     else:
-        print("✗ SOME FIXES MISSING - PACKAGE NEEDS UPDATE")
+        print("[X] SOME FIXES MISSING - PACKAGE NEEDS UPDATE")
         print()
         print("This package may not be the latest version.")
         print("Please download the updated package again.")

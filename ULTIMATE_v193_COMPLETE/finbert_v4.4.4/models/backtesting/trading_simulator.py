@@ -89,7 +89,7 @@ class TradingSimulator:
         self.total_commission_paid = 0.0
         
         logger.info(
-            f"Trading simulator initialized (capital=${initial_capital:,.2f}, "
+            f"Trading simulator initialized (capital=USD{initial_capital:,.2f}, "
             f"commission={commission_rate*100:.2f}%, slippage={slippage_rate*100:.3f}%)"
         )
     
@@ -116,7 +116,7 @@ class TradingSimulator:
             if pnl_pct <= -self.stop_loss_pct:
                 logger.info(
                     f"Stop-loss triggered at {timestamp}: "
-                    f"Entry ${entry_price:.2f}, Current ${current_price:.2f}, "
+                    f"Entry USD{entry_price:.2f}, Current USD{current_price:.2f}, "
                     f"Loss {pnl_pct:.2%}"
                 )
                 result = self._close_single_position(position, timestamp, current_price, reason='STOP_LOSS')
@@ -126,7 +126,7 @@ class TradingSimulator:
             elif pnl_pct >= self.take_profit_pct:
                 logger.info(
                     f"Take-profit triggered at {timestamp}: "
-                    f"Entry ${entry_price:.2f}, Current ${current_price:.2f}, "
+                    f"Entry USD{entry_price:.2f}, Current USD{current_price:.2f}, "
                     f"Profit {pnl_pct:.2%}"
                 )
                 result = self._close_single_position(position, timestamp, current_price, reason='TAKE_PROFIT')
@@ -259,8 +259,8 @@ class TradingSimulator:
             self.total_trades += 1
             
             logger.info(
-                f"Opened LONG position: {shares:.2f} shares @ ${price:.2f} "
-                f"(confidence={confidence:.2f}, commission=${commission:.2f})"
+                f"Opened LONG position: {shares:.2f} shares @ USD{price:.2f} "
+                f"(confidence={confidence:.2f}, commission=USD{commission:.2f})"
             )
             
             return {
@@ -335,8 +335,8 @@ class TradingSimulator:
             self.positions.remove(position)
             
             logger.info(
-                f"Closed position ({reason}): {position.shares:.2f} shares @ ${price:.2f} "
-                f"(Entry ${position.entry_price:.2f}, P&L=${pnl:.2f}, return={return_pct*100:.2f}%)"
+                f"Closed position ({reason}): {position.shares:.2f} shares @ USD{price:.2f} "
+                f"(Entry USD{position.entry_price:.2f}, P&L=USD{pnl:.2f}, return={return_pct*100:.2f}%)"
             )
             
             return {
@@ -414,8 +414,8 @@ class TradingSimulator:
                 closed_count += 1
                 
                 logger.info(
-                    f"Closed LONG position: {position.shares:.2f} shares @ ${price:.2f} "
-                    f"(P&L=${pnl:.2f}, return={return_pct*100:.2f}%)"
+                    f"Closed LONG position: {position.shares:.2f} shares @ USD{price:.2f} "
+                    f"(P&L=USD{pnl:.2f}, return={return_pct*100:.2f}%)"
                 )
                 
             except Exception as e:

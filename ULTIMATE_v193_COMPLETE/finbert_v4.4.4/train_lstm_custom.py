@@ -105,7 +105,7 @@ def train_lstm_for_stock(symbol):
     
     try:
         # Download 2 years of data for better training
-        print(f"📊 Downloading {symbol} data (2 years)...")
+        print(f"[CHART] Downloading {symbol} data (2 years)...")
         ticker = yf.Ticker(symbol)
         data = ticker.history(period='2y')
         
@@ -115,10 +115,10 @@ def train_lstm_for_stock(symbol):
             return False
         
         print(f"[OK] Downloaded {len(data)} days of data")
-        print(f"   Using last close price: ${data['Close'].iloc[-1]:.2f}")
+        print(f"   Using last close price: USD{data['Close'].iloc[-1]:.2f}")
         
         # Train LSTM using the train_model_for_symbol function
-        print(f"🧠 Training LSTM (this may take 5-15 minutes)...")
+        print(f"[U+1F9E0] Training LSTM (this may take 5-15 minutes)...")
         print(f"   Epochs: 50, Sequence Length: 60")
         
         # Train the model (this includes data preparation and model saving)
@@ -168,7 +168,7 @@ def get_user_stock_selection():
         List of (symbol, name) tuples
     """
     print("\n" + "="*70)
-    print("  📋 STOCK SELECTION")
+    print("  [U+1F4CB] STOCK SELECTION")
     print("="*70)
     print()
     print("How would you like to select stocks?")
@@ -182,7 +182,7 @@ def get_user_stock_selection():
     
     if choice == '1':
         # Pre-defined lists
-        print("\n📋 Available pre-defined lists:")
+        print("\n[U+1F4CB] Available pre-defined lists:")
         print()
         for i, (key, stocks) in enumerate(SUGGESTED_STOCKS.items(), 1):
             print(f"  {i}. {key.upper()} ({len(stocks)} stocks)")
@@ -205,7 +205,7 @@ def get_user_stock_selection():
     
     elif choice == '2':
         # Manual entry
-        print("\n📝 Enter stock symbols (comma-separated)")
+        print("\n[NOTE] Enter stock symbols (comma-separated)")
         print("   Examples: AAPL,MSFT,GOOGL or CBA.AX,BHP.AX")
         print()
         symbols_input = input("Stock symbols: ").strip()
@@ -217,7 +217,7 @@ def get_user_stock_selection():
         # Parse symbols
         symbols = [s.strip().upper() for s in symbols_input.split(',')]
         
-        print(f"\n🔍 Validating {len(symbols)} symbols...")
+        print(f"\n[SEARCH] Validating {len(symbols)} symbols...")
         validated_stocks = []
         
         for symbol in symbols:
@@ -236,7 +236,7 @@ def get_user_stock_selection():
     
     elif choice == '3':
         # Load from file
-        print("\n📁 File format options:")
+        print("\n[U+1F4C1] File format options:")
         print("   - Plain text: One symbol per line (e.g., stocks.txt)")
         print("   - JSON: [{\"symbol\": \"AAPL\", \"name\": \"Apple Inc.\"}, ...]")
         print()
@@ -272,7 +272,7 @@ def get_user_stock_selection():
                     symbols = [s.strip().upper() for s in content.split('\n') if s.strip()]
                     validated_stocks = []
                     
-                    print(f"🔍 Validating {len(symbols)} symbols from file...")
+                    print(f"[SEARCH] Validating {len(symbols)} symbols from file...")
                     for symbol in symbols:
                         if symbol and not symbol.startswith('#'):  # Skip comments
                             name = get_stock_name(symbol)
@@ -304,7 +304,7 @@ def main():
     args = parser.parse_args()
     
     print("="*70)
-    print("  🚀 CUSTOM LSTM TRAINING")
+    print("  [ROCKET] CUSTOM LSTM TRAINING")
     print("="*70)
     print(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print()
@@ -314,7 +314,7 @@ def main():
         # Command-line symbols
         symbols = [s.strip().upper() for s in args.symbols.split(',')]
         all_stocks = [(s, get_stock_name(s)) for s in symbols if s]
-        print(f"📋 Training {len(all_stocks)} stocks from command line:")
+        print(f"[U+1F4CB] Training {len(all_stocks)} stocks from command line:")
     
     elif args.file:
         # Load from file
@@ -328,7 +328,7 @@ def main():
                 else:
                     symbols = [s.strip().upper() for s in content.split('\n') if s.strip()]
                     all_stocks = [(s, get_stock_name(s)) for s in symbols if s and not s.startswith('#')]
-            print(f"📋 Training {len(all_stocks)} stocks from file '{args.file}':")
+            print(f"[U+1F4CB] Training {len(all_stocks)} stocks from file '{args.file}':")
         except Exception as e:
             print(f"[ERROR] Error loading file: {e}")
             return False
@@ -336,7 +336,7 @@ def main():
     elif args.list:
         # Pre-defined list
         all_stocks = SUGGESTED_STOCKS[args.list]
-        print(f"📋 Training {len(all_stocks)} stocks from '{args.list}' list:")
+        print(f"[U+1F4CB] Training {len(all_stocks)} stocks from '{args.list}' list:")
     
     else:
         # Interactive mode (default)
@@ -348,7 +348,7 @@ def main():
         print(f"  {i:2d}. {symbol:8s} - {name}")
     print()
     
-    print(f"⏱️  Estimated time: {len(all_stocks) * 10} minutes ({len(all_stocks) * 10 / 60:.1f} hours)")
+    print(f"[TIMER]  Estimated time: {len(all_stocks) * 10} minutes ({len(all_stocks) * 10 / 60:.1f} hours)")
     print()
     
     # Confirmation
@@ -382,7 +382,7 @@ def main():
     total_duration = (datetime.now() - start_time).total_seconds()
     
     print("\n" + "="*70)
-    print("  📊 TRAINING SUMMARY")
+    print("  [CHART] TRAINING SUMMARY")
     print("="*70)
     
     successful = [s for s, success in results.items() if success]
@@ -397,9 +397,9 @@ def main():
         print(f"\n[ERROR] Failed: {len(failed)}/{len(all_stocks)}")
         for symbol in failed:
             name = next((n for s, n in all_stocks if s == symbol), "")
-            print(f"  ✗ {symbol:8s} - {name}")
+            print(f"  [X] {symbol:8s} - {name}")
     
-    print(f"\n⏱️  Total time: {total_duration/60:.1f} minutes ({total_duration/3600:.1f} hours)")
+    print(f"\n[TIMER]  Total time: {total_duration/60:.1f} minutes ({total_duration/3600:.1f} hours)")
     print(f"   Average per stock: {total_duration/len(all_stocks):.1f} seconds")
     
     print(f"\nCompleted at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -407,18 +407,18 @@ def main():
     
     # Success rate
     success_rate = len(successful) / len(all_stocks) * 100 if all_stocks else 0
-    print(f"\n🎯 Success Rate: {success_rate:.1f}%")
+    print(f"\n[TARGET] Success Rate: {success_rate:.1f}%")
     
     if success_rate == 100:
-        print("🎉 Perfect! All models trained successfully!")
+        print("[CELEBRATE] Perfect! All models trained successfully!")
     elif success_rate >= 80:
-        print("👍 Great! Most models trained successfully!")
+        print("[U+1F44D] Great! Most models trained successfully!")
     elif success_rate >= 50:
-        print("⚠️  Some models failed. Check errors above.")
+        print("[!]  Some models failed. Check errors above.")
     else:
         print("[ERROR] Many models failed. Review errors and try again.")
     
-    print("\n💡 Next Steps:")
+    print("\n[IDEA] Next Steps:")
     print("   1. Restart the FinBERT server to load trained models")
     print("   2. Test predictions on trained stocks (should be more accurate)")
     print("   3. Monitor accuracy improvements over time")

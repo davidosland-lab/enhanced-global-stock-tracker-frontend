@@ -231,7 +231,7 @@ class PredictionDatabase:
             prediction_id = cursor.lastrowid
             conn.commit()
             logger.info(f"[OK] Stored prediction {prediction_id} for {prediction_data['symbol']} - "
-                       f"{prediction_data['prediction']} @ ${prediction_data['predicted_price']:.2f}")
+                       f"{prediction_data['prediction']} @ USD{prediction_data['predicted_price']:.2f}")
             
             return prediction_id
             
@@ -301,7 +301,7 @@ class PredictionDatabase:
         conn.commit()
         conn.close()
         
-        logger.info(f"[OK] Updated prediction {prediction_id}: Actual=${actual_price:.2f}, "
+        logger.info(f"[OK] Updated prediction {prediction_id}: Actual=USD{actual_price:.2f}, "
                    f"Error={prediction_error_percent:.2f}%, Correct={is_correct}")
         
         return True

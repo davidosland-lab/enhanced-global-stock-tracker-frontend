@@ -51,7 +51,7 @@ VOL_SPIKE_MULT = 1.35   # if realized vol > 1.35x 30d median => add haircut
 XJO_TICKER = "^AXJO"  # ASX 200 index
 RISK_FREE = 0.02     # used in beta calc (not essential)
 
-# 🆕 Basel III and regulatory report keywords
+# [NEW] Basel III and regulatory report keywords
 REGULATORY_KEYWORDS = [
     'basel iii', 'pillar 3', 'prudential disclosure', 'apra',
     'capital adequacy', 'liquidity coverage', 'net stable funding'
@@ -74,16 +74,16 @@ class GuardResult:
     has_upcoming_event: bool
     days_to_event: Optional[int]
     event_type: Optional[str]
-    event_title: Optional[str]  # 🆕 for regulatory reports
-    event_url: Optional[str]    # 🆕 for regulatory reports
+    event_title: Optional[str]  # [NEW] for regulatory reports
+    event_url: Optional[str]    # [NEW] for regulatory reports
     avg_sentiment_72h: Optional[float]
     vol_spike: bool
     risk_score: float          # 0..1 (1 = highest risk)
     weight_haircut: float      # 0..1 fraction to reduce target weight
     skip_trading: bool         # True if sit out window
     suggested_hedge_beta: Optional[float]  # beta vs XJO (rolling)
-    suggested_hedge_ratio: Optional[float] # dollars short XJO per $ long ticker
-    warning_message: Optional[str] = None  # 🆕 Human-readable warning
+    suggested_hedge_ratio: Optional[float] # dollars short XJO per USD long ticker
+    warning_message: Optional[str] = None  # [NEW] Human-readable warning
 
 
 # -----------------------------
@@ -561,6 +561,32 @@ class EventRiskGuard:
         except Exception as e:
             logger.warning(f"Market Regime Engine analysis failed: {e}")
             return None
+    
+    def get_latest_regime(self) -> Dict:
+        """
+        Public method to get the latest market regime data.
+        Used by dual_regime_analyzer.py for comprehensive regime analysis.
+        
+        Returns:
+            Dictionary containing regime_label, crash_risk_score, and other regime data
+        """
+        regime_data = self._get_full_regime_data()
+        
+        if regime_data is None:
+            # Return default data when regime engine is not available
+            return {
+                'regime_label': 'UNKNOWN',
+                'crash_risk_score': 0.0,
+                'method': 'multi_factor',
+                'confidence': 'LOW',
+                'available': False
+            }
+        
+        # Add method identifier
+        regime_data['method'] = 'multi_factor'
+        regime_data['available'] = True
+        
+        return regime_data
 
     def assess(self, ticker: str) -> GuardResult:
         """
@@ -592,7 +618,7 @@ class EventRiskGuard:
             e_url = next_evt.url
             days_to = max(0, (next_evt.date - now).days)
             
-            # 🆕 Check if regulatory report (Basel III, Pillar 3)
+            # [NEW] Check if regulatory report (Basel III, Pillar 3)
             is_regulatory = self._check_regulatory_keywords(next_evt) or \
                            e_type in ['basel_iii', 'regulatory', 'pillar_3']
             
@@ -602,10 +628,10 @@ class EventRiskGuard:
                 warning = f"[!] Earnings in {days_to}d - within {EARNINGS_BUFFER_DAYS}d buffer"
             elif is_regulatory and abs((next_evt.date - now).days) <= EARNINGS_BUFFER_DAYS:
                 skip = True
-                warning = f"🚨 REGULATORY REPORT in {days_to}d - HIGH RISK (Basel III/Pillar 3)"
+                warning = f"[ALERT] REGULATORY REPORT in {days_to}d - HIGH RISK (Basel III/Pillar 3)"
             elif e_type == 'dividend' and abs((next_evt.date - now).days) <= DIV_BUFFER_DAYS:
                 skip = True
-                warning = f"📅 Dividend in {days_to}d - within {DIV_BUFFER_DAYS}d buffer"
+                warning = f"[U+1F4C5] Dividend in {days_to}d - within {DIV_BUFFER_DAYS}d buffer"
 
         # Sentiment last 72h
         headlines = self._news_headlines(ticker)
@@ -619,7 +645,7 @@ class EventRiskGuard:
         if has_evt:
             risk += 0.45
             if e_type == 'earnings' or self._check_regulatory_keywords(next_evt):
-                risk += 0.20  # 🆕 Higher weight for regulatory reports
+                risk += 0.20  # [NEW] Higher weight for regulatory reports
         
         if avg_sent is not None and avg_sent < NEG_SENTIMENT_THRES:
             risk += 0.25
@@ -649,7 +675,7 @@ class EventRiskGuard:
         beta = rolling_beta(ticker, XJO_TICKER)
         hedge_ratio = None
         if beta is not None and beta > 0:
-            # Simple: $ hedge = beta * $ long to be market-neutral vs index
+            # Simple: USD hedge = beta * USD long to be market-neutral vs index
             hedge_ratio = beta
 
         return GuardResult(
@@ -743,9 +769,9 @@ def create_guard_dataframe(results: Dict[str, GuardResult]) -> pd.DataFrame:
         rows.append({
             'ticker': ticker,
             'has_event': gr.has_upcoming_event,
-            'event_type': gr.event_type or '—',
-            'event_title': gr.event_title or '—',
-            'event_url': gr.event_url or '—',
+            'event_type': gr.event_type or '---',
+            'event_title': gr.event_title or '---',
+            'event_url': gr.event_url or '---',
             'days_to_event': gr.days_to_event if gr.days_to_event is not None else 999,
             'sentiment_72h': gr.avg_sentiment_72h if gr.avg_sentiment_72h is not None else 0.0,
             'vol_spike': gr.vol_spike,
@@ -754,7 +780,7 @@ def create_guard_dataframe(results: Dict[str, GuardResult]) -> pd.DataFrame:
             'skip_trading': gr.skip_trading,
             'hedge_beta': gr.suggested_hedge_beta,
             'hedge_ratio': gr.suggested_hedge_ratio,
-            'warning': gr.warning_message or '—'
+            'warning': gr.warning_message or '---'
         })
     
     df = pd.DataFrame(rows)

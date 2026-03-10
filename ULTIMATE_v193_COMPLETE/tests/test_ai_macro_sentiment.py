@@ -145,7 +145,7 @@ def test_ai_analyzer_standalone():
         assert result['impact_score'] < -0.4, "Crisis should produce bearish score"
         assert result['severity'] in ['HIGH', 'CRITICAL'], "Crisis should be HIGH or CRITICAL severity"
         assert result['recommendation'] in ['RISK_OFF', 'CAUTION'], "Crisis should recommend RISK_OFF"
-        print("\n✅ PASS: Crisis detected correctly")
+        print("\n[OK] PASS: Crisis detected correctly")
         
         # Test 2: Trade war scenario (should be BEARISH)
         print("\n[Test 1.2] Trade War Scenario")
@@ -158,7 +158,7 @@ def test_ai_analyzer_standalone():
         print(f"\nExplanation:\n  {result['explanation']}")
         
         assert result['impact_score'] < -0.3, "Trade war should be bearish"
-        print("\n✅ PASS: Trade war detected correctly")
+        print("\n[OK] PASS: Trade war detected correctly")
         
         # Test 3: Positive scenario (should be BULLISH)
         print("\n[Test 1.3] Positive Scenario (Rate Cuts + Trade Deal)")
@@ -171,7 +171,7 @@ def test_ai_analyzer_standalone():
         print(f"\nExplanation:\n  {result['explanation']}")
         
         assert result['impact_score'] > 0.2, "Positive news should be bullish"
-        print("\n✅ PASS: Positive events detected correctly")
+        print("\n[OK] PASS: Positive events detected correctly")
         
         # Test 4: Neutral scenario
         print("\n[Test 1.4] Neutral Scenario")
@@ -184,13 +184,13 @@ def test_ai_analyzer_standalone():
         print(f"\nExplanation:\n  {result['explanation']}")
         
         assert abs(result['impact_score']) < 0.15, "Neutral news should have near-zero impact"
-        print("\n✅ PASS: Neutral events detected correctly")
+        print("\n[OK] PASS: Neutral events detected correctly")
         
-        print("\n✅ ALL AI ANALYZER TESTS PASSED")
+        print("\n[OK] ALL AI ANALYZER TESTS PASSED")
         return True
     
     except Exception as e:
-        print(f"\n❌ FAIL: {e}")
+        print(f"\n[ERROR] FAIL: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -237,23 +237,23 @@ def test_macro_news_with_ai():
                 print(f"  Score: {ai_impact['score']:+.2f}")
                 print(f"  Severity: {ai_impact['severity']}")
                 print(f"  Recommendation: {ai_impact['recommendation']}")
-                print("✅ AI metadata present in articles")
+                print("[OK] AI metadata present in articles")
             else:
-                print("⚠️  WARNING: AI metadata not found in articles (may be using fallback)")
+                print("[!]  WARNING: AI metadata not found in articles (may be using fallback)")
         
         # Validation
         assert result['sentiment_score'] < -0.3, f"Crisis should produce bearish sentiment (got {result['sentiment_score']})"
         assert result['sentiment_label'] == 'BEARISH', f"Label should be BEARISH (got {result['sentiment_label']})"
-        print("\n✅ PASS: AI-enhanced sentiment analysis working correctly")
+        print("\n[OK] PASS: AI-enhanced sentiment analysis working correctly")
         
         # Restore original method
         monitor._scrape_global_news = original_scrape
         
-        print("\n✅ MACRO NEWS INTEGRATION TEST PASSED")
+        print("\n[OK] MACRO NEWS INTEGRATION TEST PASSED")
         return True
     
     except Exception as e:
-        print(f"\n❌ FAIL: {e}")
+        print(f"\n[ERROR] FAIL: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -274,34 +274,34 @@ def test_comparison_old_vs_new():
         print("-" * 80)
         
         # Simulate old FinBERT-only analysis
-        print("\n📊 OLD METHOD (FinBERT only):")
+        print("\n[CHART] OLD METHOD (FinBERT only):")
         old_score = monitor._finbert_sentiment(CRISIS_ARTICLES)
         print(f"  Score: {old_score:+.3f}")
         if abs(old_score) < 0.15:
-            print("  ⚠️  PROBLEM: FinBERT sees this as NEUTRAL (misses geopolitical impact)")
+            print("  [!]  PROBLEM: FinBERT sees this as NEUTRAL (misses geopolitical impact)")
         
         # New AI-enhanced analysis
-        print("\n🤖 NEW METHOD (AI-enhanced):")
+        print("\n[U+1F916] NEW METHOD (AI-enhanced):")
         new_score = monitor._analyze_sentiment(CRISIS_ARTICLES)
         print(f"  Score: {new_score:+.3f}")
         if new_score < -0.4:
-            print("  ✅ CORRECT: AI recognizes this as HIGH BEARISH event")
+            print("  [OK] CORRECT: AI recognizes this as HIGH BEARISH event")
         
         improvement = abs(new_score) - abs(old_score)
-        print(f"\n📈 Improvement: {improvement:+.3f} points")
+        print(f"\n[UP] Improvement: {improvement:+.3f} points")
         
         if improvement > 0.3:
-            print("✅ SIGNIFICANT IMPROVEMENT: AI correctly identifies crisis severity")
+            print("[OK] SIGNIFICANT IMPROVEMENT: AI correctly identifies crisis severity")
         elif improvement > 0.1:
-            print("✅ MODERATE IMPROVEMENT: AI adds better context")
+            print("[OK] MODERATE IMPROVEMENT: AI adds better context")
         else:
-            print("⚠️  MINIMAL IMPROVEMENT: Check if AI is active")
+            print("[!]  MINIMAL IMPROVEMENT: Check if AI is active")
         
-        print("\n✅ COMPARISON TEST COMPLETE")
+        print("\n[OK] COMPARISON TEST COMPLETE")
         return True
     
     except Exception as e:
-        print(f"\n❌ FAIL: {e}")
+        print(f"\n[ERROR] FAIL: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -335,20 +335,20 @@ def main():
     print("="*80)
     
     for test_name, passed in results:
-        status = "✅ PASS" if passed else "❌ FAIL"
+        status = "[OK] PASS" if passed else "[ERROR] FAIL"
         print(f"{status}: {test_name}")
     
     all_passed = all(result[1] for result in results)
     
     if all_passed:
-        print("\n🎉 ALL TESTS PASSED - AI-Enhanced Sentiment Analysis Ready!")
-        print("\n📝 Next Steps:")
+        print("\n[CELEBRATE] ALL TESTS PASSED - AI-Enhanced Sentiment Analysis Ready!")
+        print("\n[NOTE] Next Steps:")
         print("  1. Run tonight's overnight pipeline (AU/UK/US)")
         print("  2. Check pipeline reports for AI sentiment scores")
         print("  3. Verify Iran-US conflict shows BEARISH (-0.60 to -0.85)")
         print("  4. Monitor paper trading positions (should reduce risk exposure)")
     else:
-        print("\n⚠️  SOME TESTS FAILED - Review errors above")
+        print("\n[!]  SOME TESTS FAILED - Review errors above")
     
     return 0 if all_passed else 1
 

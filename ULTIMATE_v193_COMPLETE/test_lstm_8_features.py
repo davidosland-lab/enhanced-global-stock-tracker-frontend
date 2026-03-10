@@ -31,17 +31,17 @@ try:
     from lstm_predictor import StockLSTMPredictor
     print("[OK] LSTM predictor imported successfully")
 except ImportError as e:
-    print(f"❌ Failed to import LSTM predictor: {e}")
+    print(f"[ERROR] Failed to import LSTM predictor: {e}")
     sys.exit(1)
 
 # Create predictor instance
 predictor = StockLSTMPredictor()
-print(f"\n📊 Predictor initialized with {len(predictor.features)} features:")
+print(f"\n[CHART] Predictor initialized with {len(predictor.features)} features:")
 for i, feature in enumerate(predictor.features, 1):
     print(f"   {i}. {feature}")
 
 # Generate synthetic stock data
-print("\n🔧 Generating synthetic stock data (100 days)...")
+print("\n[TOOL] Generating synthetic stock data (100 days)...")
 dates = pd.date_range(end='2026-02-13', periods=100)
 data = pd.DataFrame({
     'Date': dates,
@@ -62,7 +62,7 @@ print(f"[OK] Generated {len(data)} days of OHLCV data")
 print(f"   Columns: {list(data.columns)}")
 
 # Test technical indicator calculation
-print("\n🔬 Testing technical indicator calculation...")
+print("\n[U+1F52C] Testing technical indicator calculation...")
 try:
     data_with_indicators = predictor.calculate_technical_indicators(data)
     print(f"[OK] Technical indicators calculated")
@@ -75,22 +75,22 @@ try:
             missing_features.append(feature)
     
     if missing_features:
-        print(f"❌ Missing features after calculation: {missing_features}")
+        print(f"[ERROR] Missing features after calculation: {missing_features}")
     else:
         print(f"[OK] All {len(predictor.features)} features present!")
         
         # Show sample values
-        print("\n📈 Sample feature values (last 5 rows):")
+        print("\n[UP] Sample feature values (last 5 rows):")
         print(data_with_indicators[predictor.features].tail().to_string())
         
 except Exception as e:
-    print(f"❌ Failed to calculate indicators: {e}")
+    print(f"[ERROR] Failed to calculate indicators: {e}")
     import traceback
     traceback.print_exc()
     sys.exit(1)
 
 # Test prepare_data (which should now auto-calculate indicators)
-print("\n🔧 Testing prepare_data with auto-calculation...")
+print("\n[TOOL] Testing prepare_data with auto-calculation...")
 try:
     X, y = predictor.prepare_data(data)  # Pass raw data without indicators
     print(f"[OK] prepare_data succeeded")
@@ -101,16 +101,16 @@ try:
     if X.shape[2] == 8:
         print("[OK] CORRECT: Using 8 features as trained!")
     else:
-        print(f"❌ INCORRECT: Using {X.shape[2]} features instead of 8")
+        print(f"[ERROR] INCORRECT: Using {X.shape[2]} features instead of 8")
         
 except Exception as e:
-    print(f"❌ prepare_data failed: {e}")
+    print(f"[ERROR] prepare_data failed: {e}")
     import traceback
     traceback.print_exc()
     sys.exit(1)
 
 # Test prediction (will use fallback since no model, but should calculate indicators)
-print("\n🔮 Testing predict method with auto-calculation...")
+print("\n[U+1F52E] Testing predict method with auto-calculation...")
 try:
     result = predictor.predict(data, symbol='TEST')
     print(f"[OK] Prediction succeeded (using fallback)")
@@ -121,10 +121,10 @@ try:
     if result.get('model_type') == 'LSTM':
         print("[OK] Using LSTM model!")
     else:
-        print("⚠️  Using fallback (expected since no trained model)")
+        print("[!]  Using fallback (expected since no trained model)")
         
 except Exception as e:
-    print(f"❌ Prediction failed: {e}")
+    print(f"[ERROR] Prediction failed: {e}")
     import traceback
     traceback.print_exc()
     sys.exit(1)
@@ -136,8 +136,8 @@ print("[OK] LSTM predictor initialized with 8 features")
 print("[OK] Technical indicators calculated correctly")
 print("[OK] prepare_data auto-calculates indicators from raw OHLCV")
 print("[OK] predict method auto-calculates indicators before prediction")
-print("\n🎉 LSTM 8-FEATURE RESTORATION SUCCESSFUL!")
-print("\n📝 Next steps:")
+print("\n[CELEBRATE] LSTM 8-FEATURE RESTORATION SUCCESSFUL!")
+print("\n[NOTE] Next steps:")
 print("   1. Run overnight pipeline to test with real data")
 print("   2. Check LSTM predictions in logs (should not see feature mismatch error)")
 print("   3. Models will now match trained scalers (8 features)")

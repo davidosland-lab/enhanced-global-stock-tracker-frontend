@@ -74,7 +74,7 @@ def main():
         print("[OK] All core packages installed - System ready!")
         return 0
     else:
-        print("✗ Some core packages missing - Run INSTALL.bat")
+        print("[X] Some core packages missing - Run INSTALL.bat")
         return 1
 
 if __name__ == '__main__':

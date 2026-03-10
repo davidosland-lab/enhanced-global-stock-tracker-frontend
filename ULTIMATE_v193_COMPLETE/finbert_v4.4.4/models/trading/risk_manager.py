@@ -72,7 +72,7 @@ class RiskManager:
             
             # Check sufficient funds
             if order_value > account['cash_balance']:
-                errors.append(f'Insufficient funds. Need ${order_value:.2f}, have ${account["cash_balance"]:.2f}')
+                errors.append(f'Insufficient funds. Need USD{order_value:.2f}, have USD{account["cash_balance"]:.2f}')
         
         elif side == 'SELL':
             # Check if position exists

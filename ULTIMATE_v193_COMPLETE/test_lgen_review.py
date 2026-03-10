@@ -49,16 +49,16 @@ print("=" * 80)
 print("LGEN.L TRADING DECISION REVIEW")
 print("=" * 80)
 print()
-print("📊 CURRENT MARKET DATA")
+print("[CHART] CURRENT MARKET DATA")
 print("-" * 80)
 print(f"Symbol:              LGEN.L (Legal & General)")
-print(f"Current Price:       £{current_price:.2f}")
-print(f"20-day MA:           £{ma20:.2f} ({'+' if current_price > ma20 else '-'}{abs(current_price - ma20):.2f})")
-print(f"50-day MA:           £{ma50:.2f} ({'+' if current_price > ma50 else '-'}{abs(current_price - ma50):.2f})")
-print(f"20-day High:         £{recent_high:.2f}")
+print(f"Current Price:       GBP{current_price:.2f}")
+print(f"20-day MA:           GBP{ma20:.2f} ({'+' if current_price > ma20 else '-'}{abs(current_price - ma20):.2f})")
+print(f"50-day MA:           GBP{ma50:.2f} ({'+' if current_price > ma50 else '-'}{abs(current_price - ma50):.2f})")
+print(f"20-day High:         GBP{recent_high:.2f}")
 print(f"Pullback:            {pullback_pct:.2f}% from recent high")
 print(f"RSI (14):            {current_rsi:.2f}")
-print(f"Trend:               {'[OK] Above MA20 & MA50 (Uptrend)' if current_price > ma20 and current_price > ma50 else '⚠️  Mixed signals'}")
+print(f"Trend:               {'[OK] Above MA20 & MA50 (Uptrend)' if current_price > ma20 and current_price > ma50 else '[!]  Mixed signals'}")
 print()
 
 # Test entry timing
@@ -72,7 +72,7 @@ signal = {
     'signal_strength': 75.0
 }
 
-print("🎯 ENTRY TIMING ANALYSIS (v1.3.15.177)")
+print("[TARGET] ENTRY TIMING ANALYSIS (v1.3.15.177)")
 print("-" * 80)
 result = strategy.evaluate_entry_timing('LGEN.L', price_data, signal)
 
@@ -85,34 +85,34 @@ if result['entry_quality'] == 'IMMEDIATE_BUY':
 elif result['entry_quality'] == 'GOOD_ENTRY':
     print("[OK] GOOD_ENTRY - Enter standard position")
 elif result['entry_quality'] == 'WAIT_FOR_DIP':
-    print("⚠️  WAIT_FOR_DIP - Enter 50% position, wait for better entry")
+    print("[!]  WAIT_FOR_DIP - Enter 50% position, wait for better entry")
 else:
-    print("❌ DONT_BUY - Block trade (likely at top)")
+    print("[ERROR] DONT_BUY - Block trade (likely at top)")
 
 print()
-print("📈 SCORING BREAKDOWN")
+print("[UP] SCORING BREAKDOWN")
 print("-" * 80)
 
 tf = result['timing_factors']
 print(f"Pullback Score:      {tf['pullback']['score']:.0f}/30 - {tf['pullback']['quality']}")
-print(f"  ├─ Distance:       {tf['pullback']['pullback_pct']:.2f}% from recent high")
-print(f"  └─ Assessment:     {tf['pullback']['quality']}")
+print(f"  |--- Distance:       {tf['pullback']['pullback_pct']:.2f}% from recent high")
+print(f"  \--- Assessment:     {tf['pullback']['quality']}")
 
 print(f"\nRSI Score:           {tf['rsi']['score']:.0f}/25 - {tf['rsi']['quality']}")
-print(f"  ├─ Current RSI:    {tf['rsi']['rsi']:.2f}")
-print(f"  ├─ Position:       {'Above' if current_price > ma20 else 'Below'} MA20 ({tf['rsi']['position']})")
-print(f"  └─ Assessment:     {tf['rsi']['quality']}")
+print(f"  |--- Current RSI:    {tf['rsi']['rsi']:.2f}")
+print(f"  |--- Position:       {'Above' if current_price > ma20 else 'Below'} MA20 ({tf['rsi']['position']})")
+print(f"  \--- Assessment:     {tf['rsi']['quality']}")
 
 print(f"\nSupport Score:       {tf['support']['score']:.0f}/25 - {tf['support']['quality']}")
-print(f"  └─ Assessment:     {tf['support']['quality']}")
+print(f"  \--- Assessment:     {tf['support']['quality']}")
 
 print(f"\nVolume Score:        {tf['volume']['score']:.0f}/20")
-print(f"  └─ Assessment:     Volume confirmation")
+print(f"  \--- Assessment:     Volume confirmation")
 
 print()
 
 # Test with paper trading coordinator logic
-print("💰 TRADING DECISION FLOW")
+print("[MONEY] TRADING DECISION FLOW")
 print("-" * 80)
 
 # Simulate sentiment check
@@ -131,13 +131,13 @@ print(f"  Entry Score:       {result['entry_score']:.0f}/100")
 print(f"  Entry Quality:     {result['entry_quality']}")
 
 if result['entry_quality'] == 'DONT_BUY':
-    print(f"  Status:            ❌ BLOCKED - {result.get('wait_reason', 'Poor timing')}")
+    print(f"  Status:            [ERROR] BLOCKED - {result.get('wait_reason', 'Poor timing')}")
     print(f"  Position Size:     0% (Trade blocked)")
 elif result['entry_quality'] == 'WAIT_FOR_DIP':
-    print(f"  Status:            ⚠️  CAUTION - {result.get('wait_reason', 'Wait for better entry')}")
+    print(f"  Status:            [!]  CAUTION - {result.get('wait_reason', 'Wait for better entry')}")
     print(f"  Position Size:     50% (Reduced due to timing)")
     if result.get('entry_price_target'):
-        print(f"  Target Price:      £{result['entry_price_target']:.2f}")
+        print(f"  Target Price:      GBP{result['entry_price_target']:.2f}")
 else:
     print(f"  Status:            [OK] APPROVED")
     print(f"  Position Size:     100% (Standard position)")
@@ -169,7 +169,7 @@ print(f"  Sentiment Mult:    {multiplier}x")
 print(f"  Final Position:    {final_position * 100:.0f}%")
 
 if result['entry_quality'] == 'DONT_BUY':
-    print(f"  FINAL DECISION:    ❌ NO TRADE")
+    print(f"  FINAL DECISION:    [ERROR] NO TRADE")
 else:
     print(f"  FINAL DECISION:    [OK] TRADE APPROVED at {final_position * 100:.0f}% position")
 
@@ -185,7 +185,7 @@ scenarios = [
 ]
 
 for name, transform, description in scenarios:
-    print(f"\n📋 {name}")
+    print(f"\n[U+1F4CB] {name}")
     print(f"   {description}")
     test_data = price_data.copy()
     test_data['Close'] = transform(test_data['Close'])
@@ -193,9 +193,9 @@ for name, transform, description in scenarios:
     print(f"   Score: {test_result['entry_score']:.0f}/100")
     print(f"   Quality: {test_result['entry_quality']}")
     if test_result['entry_quality'] == 'DONT_BUY':
-        print(f"   ❌ TRADE BLOCKED")
+        print(f"   [ERROR] TRADE BLOCKED")
     elif test_result['entry_quality'] == 'WAIT_FOR_DIP':
-        print(f"   ⚠️  50% POSITION")
+        print(f"   [!]  50% POSITION")
     else:
         print(f"   [OK] FULL POSITION")
 

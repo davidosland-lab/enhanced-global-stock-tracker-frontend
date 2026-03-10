@@ -474,24 +474,24 @@ def create_entry_timing_report(
     entry_quality = entry_evaluation['entry_quality']
     current_price = entry_evaluation.get('current_price', 0)
     
-    report_lines.append(f"Current Price: ${current_price:.2f}")
+    report_lines.append(f"Current Price: USD{current_price:.2f}")
     report_lines.append(f"Entry Score: {entry_score:.0f}/100")
     report_lines.append(f"Entry Quality: {entry_quality}")
     report_lines.append("")
     
     # Recommendation
     if entry_quality == 'IMMEDIATE_BUY':
-        report_lines.append("🟢 RECOMMENDATION: BUY NOW - Excellent entry timing")
+        report_lines.append("[OK] RECOMMENDATION: BUY NOW - Excellent entry timing")
     elif entry_quality == 'GOOD_ENTRY':
-        report_lines.append("🟢 RECOMMENDATION: BUY - Good entry timing")
+        report_lines.append("[OK] RECOMMENDATION: BUY - Good entry timing")
     elif entry_quality == 'WAIT_FOR_DIP':
         wait_reason = entry_evaluation.get('wait_reason', 'Unknown')
         target = entry_evaluation.get('entry_price_target', 0)
-        report_lines.append(f"🟡 RECOMMENDATION: WAIT FOR BETTER ENTRY")
+        report_lines.append(f"[WARN] RECOMMENDATION: WAIT FOR BETTER ENTRY")
         report_lines.append(f"   Reason: {wait_reason}")
-        report_lines.append(f"   Target Entry: ${target:.2f} ({((target/current_price - 1) * 100):.1f}%)")
+        report_lines.append(f"   Target Entry: USD{target:.2f} ({((target/current_price - 1) * 100):.1f}%)")
     else:
-        report_lines.append("🔴 RECOMMENDATION: DON'T BUY - Poor entry timing (likely at top)")
+        report_lines.append("[ALERT] RECOMMENDATION: DON'T BUY - Poor entry timing (likely at top)")
     
     report_lines.append("")
     report_lines.append("-" * 80)

@@ -5,7 +5,7 @@ This module provides pre-market US market gap predictions using FUTURES and ASIA
 
 Designed to run BEFORE US market open (before 9:30 AM EST) to predict the opening gap.
 
-⚠️ KEY DIFFERENCE FROM UK/AU:
+[!] KEY DIFFERENCE FROM UK/AU:
 - US market opens FIRST among major markets
 - Cannot use US closes to predict (like UK/AU do)
 - Must use FUTURES and ASIAN markets instead
@@ -170,7 +170,7 @@ class RealtimeSPXPredictor:
                                 'timestamp': datetime.now(self.timezone_us)
                             }
                             
-                            logger.debug(f"{symbol}: {change_pct:+.2f}% (${current_price:.2f})")
+                            logger.debug(f"{symbol}: {change_pct:+.2f}% (USD{current_price:.2f})")
                         else:
                             logger.warning(f"No previous close for {symbol}")
                     else:
@@ -227,7 +227,7 @@ class RealtimeSPXPredictor:
                                 'timestamp': symbol_data.index[-1]
                             }
                             
-                            logger.debug(f"{symbol}: {change_pct:+.2f}% (${last_close:.2f})")
+                            logger.debug(f"{symbol}: {change_pct:+.2f}% (USD{last_close:.2f})")
                         else:
                             logger.warning(f"Insufficient data for {symbol} (only {len(symbol_data)} days)")
                     else:
@@ -307,9 +307,9 @@ class RealtimeSPXPredictor:
             }
             
             logger.info(f"US Futures: S&P {sp_change:+.2f}%, NASDAQ {nq_change:+.2f}%, DOW {ym_change:+.2f}%")
-            logger.info(f"→ Weighted Futures Component: {futures_component:+.3f}%")
+            logger.info(f"-> Weighted Futures Component: {futures_component:+.3f}%")
         else:
-            logger.warning("⚠️  No US futures data available")
+            logger.warning("[!]  No US futures data available")
         
         # 2. Fetch Asian Market Closes
         asian_symbols = ['^N225', '^HSI', '000001.SS']
@@ -336,9 +336,9 @@ class RealtimeSPXPredictor:
             }
             
             logger.info(f"Asian Markets: Nikkei {nikkei_change:+.2f}%, HSI {hsi_change:+.2f}%, Shanghai {shanghai_change:+.2f}%")
-            logger.info(f"→ Weighted Asian Component: {asian_component:+.3f}%")
+            logger.info(f"-> Weighted Asian Component: {asian_component:+.3f}%")
         else:
-            logger.warning("⚠️  No Asian market data available")
+            logger.warning("[!]  No Asian market data available")
         
         # 3. Fetch Commodity Data
         commodity_symbols = ['BZ=F', 'GC=F', 'DX=F']
@@ -366,9 +366,9 @@ class RealtimeSPXPredictor:
             }
             
             logger.info(f"Commodities: Oil {oil_change:+.2f}%, Gold {gold_change:+.2f}%, Dollar {dollar_change:+.2f}%")
-            logger.info(f"→ Weighted Commodity Component: {commodity_component:+.3f}%")
+            logger.info(f"-> Weighted Commodity Component: {commodity_component:+.3f}%")
         else:
-            logger.warning("⚠️  No commodity data available")
+            logger.warning("[!]  No commodity data available")
         
         # 4. Fetch European Pre-Market
         europe_symbols = ['FDAX=F', 'FESX=F']
@@ -392,7 +392,7 @@ class RealtimeSPXPredictor:
             }
             
             logger.info(f"Europe Pre-Market: DAX {dax_change:+.2f}%, STOXX {stoxx_change:+.2f}%")
-            logger.info(f"→ Weighted Europe Component: {europe_component:+.3f}%")
+            logger.info(f"-> Weighted Europe Component: {europe_component:+.3f}%")
         
         # 5. Combine all components with weights
         if not has_futures:
@@ -436,7 +436,7 @@ class RealtimeSPXPredictor:
             vix_value = vix_data['VX=F'].get('price', 20.0)
             logger.info(f"VIX Futures: {vix_value:.2f}")
         else:
-            logger.info("⚠️  No VIX futures data, using base confidence")
+            logger.info("[!]  No VIX futures data, using base confidence")
         
         # VIX-based confidence adjustment
         if vix_value < self.vix_thresholds['low']:
@@ -454,7 +454,7 @@ class RealtimeSPXPredictor:
             risk_factor = (world_risk_score - 75) / 100.0  # 0 to 0.25
             confidence *= (1.0 - risk_factor * 0.3)  # Reduce confidence up to 30%
             predicted_gap *= (1.0 - risk_factor * 0.2)  # Dampen gap up to 20%
-            logger.info(f"⚠️  High World Risk ({world_risk_score:.1f}/100) - Reduced confidence and gap")
+            logger.info(f"[!]  High World Risk ({world_risk_score:.1f}/100) - Reduced confidence and gap")
         
         # 8. Determine direction
         if predicted_gap > 0.3:
@@ -499,7 +499,7 @@ class RealtimeSPXPredictor:
     
     def _get_fallback_prediction(self, reason: str) -> Dict:
         """Return a neutral fallback prediction when data is insufficient."""
-        logger.warning(f"⚠️  Fallback prediction: {reason}")
+        logger.warning(f"[!]  Fallback prediction: {reason}")
         
         return {
             'predicted_gap_pct': 0.0,

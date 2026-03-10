@@ -18,7 +18,7 @@ print("QUICK START: Parquet Storage & DuckDB Analytics Integration")
 print("="*80)
 print()
 
-print("📋 STEP 1: Install Dependencies")
+print("[U+1F4CB] STEP 1: Install Dependencies")
 print("-" * 80)
 print("Run this command:")
 print("  pip install pyarrow duckdb")
@@ -27,7 +27,7 @@ print("Or use requirements file:")
 print("  pip install -r requirements_data_storage.txt")
 print()
 
-print("📋 STEP 2: Basic Usage - Logging Predictions")
+print("[U+1F4CB] STEP 2: Basic Usage - Logging Predictions")
 print("-" * 80)
 print("""
 from pipelines.data_storage import PipelineDataLogger
@@ -50,11 +50,11 @@ logger.log_market_data(stocks_df)
 
 # Get analytics report
 report = logger.get_report()
-print(f"Portfolio P&L: ${report['portfolio']['total_pnl']:.2f}")
+print(f"Portfolio P&L: USD{report['portfolio']['total_pnl']:.2f}")
 """)
 
 print()
-print("📋 STEP 3: Integration with run_us_full_pipeline.py")
+print("[U+1F4CB] STEP 3: Integration with run_us_full_pipeline.py")
 print("-" * 80)
 print("""
 Add this code at the end of run_us_full_pipeline.py (around line 500):
@@ -69,7 +69,7 @@ try:
     
     # Log results
     if 'portfolio' in analytics_report:
-        logger.info(f"[ANALYTICS] Portfolio P&L: ${analytics_report['portfolio']['total_pnl']:.2f}")
+        logger.info(f"[ANALYTICS] Portfolio P&L: USD{analytics_report['portfolio']['total_pnl']:.2f}")
         logger.info(f"[ANALYTICS] Win Rate: {analytics_report['portfolio']['win_rate']*100:.1f}%")
     
     # Log top performers
@@ -82,7 +82,7 @@ except Exception as e:
 """)
 
 print()
-print("📋 STEP 4: Querying Analytics")
+print("[U+1F4CB] STEP 4: Querying Analytics")
 print("-" * 80)
 print("""
 from pipelines.data_storage import DuckDBAnalyticsEngine
@@ -101,7 +101,7 @@ print(maker_taker.groupby('role')['avg_return'].mean())
 perf = engine.get_portfolio_performance()
 print(f"Total Trades: {perf['total_trades']:,}")
 print(f"Win Rate: {perf['win_rate']*100:.1f}%")
-print(f"Total P&L: ${perf['total_pnl']:,.2f}")
+print(f"Total P&L: USD{perf['total_pnl']:,.2f}")
 
 # Find top performers
 top = engine.get_top_performers(limit=10)
@@ -115,25 +115,25 @@ print(categories[['category', 'gap']])
 """)
 
 print()
-print("📋 STEP 5: Storage Structure")
+print("[U+1F4CB] STEP 5: Storage Structure")
 print("-" * 80)
 print("""
 After running the pipeline, your data will be stored in:
 
 data/us/
-├── trades/
-│   ├── symbol=AAPL/
-│   │   ├── date=2026-02-12/
-│   │   │   └── trades.parquet (0.10 MB, compressed)
-│   │   └── date=2026-02-13/
-│   │       └── trades.parquet
-│   ├── symbol=MSFT/
-│   └── symbol=GOOGL/
-├── markets/
-│   ├── date=2026-02-12/
-│   │   └── markets.parquet
-│   └── date=2026-02-13/
-└── analytics.duckdb (persistent database)
+|---- trades/
+|   |---- symbol=AAPL/
+|   |   |---- date=2026-02-12/
+|   |   |   \---- trades.parquet (0.10 MB, compressed)
+|   |   \---- date=2026-02-13/
+|   |       \---- trades.parquet
+|   |---- symbol=MSFT/
+|   \---- symbol=GOOGL/
+|---- markets/
+|   |---- date=2026-02-12/
+|   |   \---- markets.parquet
+|   \---- date=2026-02-13/
+\---- analytics.duckdb (persistent database)
 
 Storage benefits:
 - 100x faster than CSV
@@ -143,7 +143,7 @@ Storage benefits:
 """)
 
 print()
-print("📋 STEP 6: Test the Implementation")
+print("[U+1F4CB] STEP 6: Test the Implementation")
 print("-" * 80)
 print("Run the comprehensive test suite:")
 print("  python test_parquet_duckdb.py")
@@ -154,7 +154,7 @@ print("  [OK] DuckDB Analytics: PASS")
 print("  [OK] Pipeline Integration: PASS")
 print()
 
-print("📋 STEP 7: Monitor Performance")
+print("[U+1F4CB] STEP 7: Monitor Performance")
 print("-" * 80)
 print("""
 from pipelines.data_storage import PipelineDataLogger
@@ -167,17 +167,17 @@ print(f"Total Symbols: {stats['trades']['total_symbols']}")
 print(f"Total Files: {stats['trades']['total_files']}")
 print(f"Total Size: {stats['trades']['total_size_mb']:.2f} MB")
 
-# With 212 US stocks × 30 days:
-# Expected: ~6.4 GB uncompressed → ~1.3 GB compressed
+# With 212 US stocks x 30 days:
+# Expected: ~6.4 GB uncompressed -> ~1.3 GB compressed
 # Query time: <100ms for most analytics
 """)
 
 print()
 print("="*80)
-print("🎉 INTEGRATION COMPLETE!")
+print("[CELEBRATE] INTEGRATION COMPLETE!")
 print("="*80)
 print()
-print("📊 Benefits:")
+print("[CHART] Benefits:")
 print("  [OK] 100x faster storage (Parquet vs CSV)")
 print("  [OK] 10-50x faster analytics (DuckDB vs pandas)")
 print("  [OK] 5:1 compression ratio")
@@ -185,10 +185,10 @@ print("  [OK] Automatic pipeline integration")
 print("  [OK] Maker/Taker edge analysis")
 print("  [OK] Market microstructure metrics")
 print()
-print("📚 Documentation:")
+print("[DOCS] Documentation:")
 print("  See: PARQUET_DUCKDB_IMPLEMENTATION.md")
 print()
-print("🔗 Next Steps:")
+print("[U+1F517] Next Steps:")
 print("  1. Run: python test_parquet_duckdb.py")
 print("  2. Integrate with your pipeline")
 print("  3. Run overnight scan with data logging")

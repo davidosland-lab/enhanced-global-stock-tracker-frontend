@@ -26,7 +26,7 @@ def test_au_spi_proxy():
         proxy = SPIProxy()
         result = proxy.compute_spi_proxy()
         
-        print("\n✓ SPI Proxy module loaded successfully")
+        print("\n[OK] SPI Proxy module loaded successfully")
         print(f"\nTimestamp: {result['asof']}")
         print(f"SPI Proxy Move: {result['spi_proxy_pct']}%")
         print(f"Z-Score: {result['spi_proxy_z']}")
@@ -42,14 +42,14 @@ def test_au_spi_proxy():
                 print(f"  {key}: {val}%" if isinstance(val, (int, float)) and key != 'vol_gate' else f"  {key}: {val}")
         
         if result['available']:
-            print("\n✓ TEST 1 PASSED: AU SPI Proxy computed successfully")
+            print("\n[OK] TEST 1 PASSED: AU SPI Proxy computed successfully")
             return True, result
         else:
-            print("\n✗ TEST 1 FAILED: SPI Proxy not available")
+            print("\n[X] TEST 1 FAILED: SPI Proxy not available")
             return False, result
             
     except Exception as e:
-        print(f"\n✗ TEST 1 FAILED: {e}")
+        print(f"\n[X] TEST 1 FAILED: {e}")
         import traceback
         traceback.print_exc()
         return False, None
@@ -67,7 +67,7 @@ def test_uk_ftse_proxy():
         proxy = FTSEProxy()
         result = proxy.compute_ftse_proxy()
         
-        print("\n✓ FTSE Proxy module loaded successfully")
+        print("\n[OK] FTSE Proxy module loaded successfully")
         print(f"\nTimestamp: {result['asof']}")
         print(f"FTSE Proxy Move: {result['ftse_proxy_pct']}%")
         print(f"Z-Score: {result['ftse_proxy_z']}")
@@ -84,18 +84,18 @@ def test_uk_ftse_proxy():
                 print(f"  {key}: {val}%" if isinstance(val, (int, float)) and key != 'vol_gate' else f"  {key}: {val}")
         
         if result['available']:
-            print("\n✓ TEST 2 PASSED: UK FTSE Proxy computed successfully")
+            print("\n[OK] TEST 2 PASSED: UK FTSE Proxy computed successfully")
             if result['meta']['ftse_futures_available']:
-                print("  ✓ Using direct Z=F (FTSE futures) - highest accuracy")
+                print("  [OK] Using direct Z=F (FTSE futures) - highest accuracy")
             else:
-                print("  ⚠ Using blended proxy (Z=F unavailable) - good accuracy")
+                print("  [!] Using blended proxy (Z=F unavailable) - good accuracy")
             return True, result
         else:
-            print("\n✗ TEST 2 FAILED: FTSE Proxy not available")
+            print("\n[X] TEST 2 FAILED: FTSE Proxy not available")
             return False, result
             
     except Exception as e:
-        print(f"\n✗ TEST 2 FAILED: {e}")
+        print(f"\n[X] TEST 2 FAILED: {e}")
         import traceback
         traceback.print_exc()
         return False, None
@@ -113,7 +113,7 @@ def test_us_market_proxy():
         proxy = USProxy()
         result = proxy.compute_us_proxy()
         
-        print("\n✓ US Market Proxy module loaded successfully")
+        print("\n[OK] US Market Proxy module loaded successfully")
         print(f"\nTimestamp: {result['asof']}")
         print(f"US Market Proxy Move: {result['us_proxy_pct']}%")
         print(f"Z-Score: {result['us_proxy_z']}")
@@ -130,20 +130,20 @@ def test_us_market_proxy():
                 print(f"  {key}: {val}%" if isinstance(val, (int, float)) and key != 'vol_gate' else f"  {key}: {val}")
         
         if result['available']:
-            print("\n✓ TEST 3 PASSED: US Market Proxy computed successfully")
+            print("\n[OK] TEST 3 PASSED: US Market Proxy computed successfully")
             if result['meta']['nq_available'] and result['meta']['es_available']:
-                print("  ✓ Using both NQ=F and ES=F (dual primary sources) - highest accuracy")
+                print("  [OK] Using both NQ=F and ES=F (dual primary sources) - highest accuracy")
             elif result['meta']['nq_available'] or result['meta']['es_available']:
-                print("  ⚠ Using single primary source - good accuracy")
+                print("  [!] Using single primary source - good accuracy")
             else:
-                print("  ⚠ Primary sources unavailable - fallback accuracy")
+                print("  [!] Primary sources unavailable - fallback accuracy")
             return True, result
         else:
-            print("\n✗ TEST 3 FAILED: US Market Proxy not available")
+            print("\n[X] TEST 3 FAILED: US Market Proxy not available")
             return False, result
             
     except Exception as e:
-        print(f"\n✗ TEST 3 FAILED: {e}")
+        print(f"\n[X] TEST 3 FAILED: {e}")
         import traceback
         traceback.print_exc()
         return False, None
@@ -171,28 +171,28 @@ def test_market_specificity():
         uk_config = FTSEProxyConfig()
         us_config = USProxyConfig()
         
-        print("\n✓ AU Configuration:")
+        print("\n[OK] AU Configuration:")
         print(f"  Primary: ES=F ({au_config.ticker_es}), NQ=F ({au_config.ticker_nq})")
         print(f"  Currency: AUD/USD ({au_config.ticker_aud})")
         print(f"  Commodity: Iron Ore ({au_config.ticker_iron})")
         
-        print("\n✓ UK Configuration:")
+        print("\n[OK] UK Configuration:")
         print(f"  PRIMARY: FTSE Futures Z=F ({uk_config.ticker_ftse_futures})")
         print(f"  Global: ES=F ({uk_config.ticker_es})")
         print(f"  Volatility: VFTSE ({uk_config.ticker_vftse})")
         print(f"  Currency: GBP/USD ({uk_config.ticker_gbp})")
         print(f"  Commodity: Brent ({uk_config.ticker_brent})")
         
-        print("\n✓ US Configuration:")
+        print("\n[OK] US Configuration:")
         print(f"  PRIMARY: NASDAQ NQ=F ({us_config.ticker_nq}), S&P ES=F ({us_config.ticker_es})")
         print(f"  Dollar: DX-Y.NYB ({us_config.ticker_dollar})")
         print(f"  Commodities: Oil ({us_config.ticker_oil}), Gold ({us_config.ticker_gold})")
         
-        print("\n✓ TEST 4 PASSED: All configurations verified")
+        print("\n[OK] TEST 4 PASSED: All configurations verified")
         return True
         
     except Exception as e:
-        print(f"\n✗ TEST 4 FAILED: {e}")
+        print(f"\n[X] TEST 4 FAILED: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -233,14 +233,14 @@ def main():
     print("="*80)
     
     for test_name, passed in results:
-        status = "✓ PASS" if passed else "✗ FAIL"
+        status = "[OK] PASS" if passed else "[X] FAIL"
         print(f"{status}: {test_name}")
     
     all_passed = all(passed for _, passed in results)
     
     if all_passed:
         print("\n" + "="*80)
-        print("✓ ALL TESTS PASSED - MARKET-SPECIFIC PROXIES READY")
+        print("[OK] ALL TESTS PASSED - MARKET-SPECIFIC PROXIES READY")
         print("="*80)
         print("\nNext Steps:")
         print("1. Deploy updated package to production")
@@ -254,7 +254,7 @@ def main():
         return 0
     else:
         print("\n" + "="*80)
-        print("✗ SOME TESTS FAILED - REVIEW ERRORS ABOVE")
+        print("[X] SOME TESTS FAILED - REVIEW ERRORS ABOVE")
         print("="*80)
         return 1
 

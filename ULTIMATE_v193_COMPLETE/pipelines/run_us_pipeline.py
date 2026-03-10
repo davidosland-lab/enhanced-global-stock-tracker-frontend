@@ -5,7 +5,7 @@ Uses shared FinBERT v4.4.4 virtual environment
 Phases:
 1. Market Sentiment (S&P 500, NASDAQ, VIX)
 2. Market Regime Analysis (HMM-based crash risk)
-3. Stock Scanning (8 sectors × 30 stocks = 240 stocks)
+3. Stock Scanning (8 sectors x 30 stocks = 240 stocks)
 4. Event Risk Assessment (earnings, dividends)
 5. Batch Prediction (FinBERT + LSTM)
 6. Opportunity Scoring (14-factor scoring)
@@ -127,7 +127,7 @@ def main():
     print("US MARKET OVERNIGHT PIPELINE - v1.3.15.87")
     print("="*80)
     print(f"Mode: {args.mode.upper()}")
-    print(f"Initial Capital: ${args.capital:,.2f} USD")
+    print(f"Initial Capital: USD{args.capital:,.2f} USD")
     print(f"Using FinBERT v4.4.4 shared environment")
     print("="*80)
     print()

@@ -25,7 +25,7 @@ def test_eventguard_refresh():
     try:
         from pipelines.models.screening.event_risk_guard import EventRiskGuard
     except ImportError as e:
-        print(f"\n❌ Failed to import EventRiskGuard: {e}")
+        print(f"\n[ERROR] Failed to import EventRiskGuard: {e}")
         return False
     
     # Test for each market
@@ -45,7 +45,7 @@ def test_eventguard_refresh():
             # Check if regime engine is available
             print(f"[2/5] Checking regime engine availability...")
             if not guard.regime_available:
-                print(f"  ⚠️  Regime engine not available for {market} (optional feature)")
+                print(f"  [!]  Regime engine not available for {market} (optional feature)")
                 results[market] = 'SKIPPED'
                 continue
             
@@ -89,14 +89,14 @@ def test_eventguard_refresh():
                     print(f"\n  [OK] {market}: Regime detected successfully")
                     results[market] = 'PASSED'
                 else:
-                    print(f"\n  ❌ {market}: Still showing UNKNOWN regime or 0 crash risk")
+                    print(f"\n  [ERROR] {market}: Still showing UNKNOWN regime or 0 crash risk")
                     results[market] = 'FAILED'
             else:
-                print(f"  ❌ No regime data returned")
+                print(f"  [ERROR] No regime data returned")
                 results[market] = 'FAILED'
                 
         except Exception as e:
-            print(f"\n  ❌ Error testing {market}: {e}")
+            print(f"\n  [ERROR] Error testing {market}: {e}")
             import traceback
             traceback.print_exc()
             results[market] = 'ERROR'
@@ -110,11 +110,11 @@ def test_eventguard_refresh():
         status = results.get(market, 'NOT_RUN')
         symbol = {
             'PASSED': '[OK]',
-            'FAILED': '❌',
-            'SKIPPED': '⚠️ ',
-            'ERROR': '❌',
-            'NOT_RUN': '❓'
-        }.get(status, '❓')
+            'FAILED': '[ERROR]',
+            'SKIPPED': '[!] ',
+            'ERROR': '[ERROR]',
+            'NOT_RUN': '[U+2753]'
+        }.get(status, '[U+2753]')
         
         print(f"  {symbol} {market}: {status}")
     
@@ -131,11 +131,11 @@ def test_eventguard_refresh():
         print("Fresh overnight market data will be fetched at pipeline start.")
         return True
     elif failed > 0:
-        print(f"❌ SOME TESTS FAILED: {failed} failed, {passed} passed, {skipped} skipped")
+        print(f"[ERROR] SOME TESTS FAILED: {failed} failed, {passed} passed, {skipped} skipped")
         print("\nCheck the error messages above for details.")
         return False
     else:
-        print("⚠️  NO TESTS PASSED (all skipped or not run)")
+        print("[!]  NO TESTS PASSED (all skipped or not run)")
         print("\nRegime engine may not be available on this system.")
         return False
 
@@ -164,16 +164,16 @@ def test_basic_functionality():
         return True
         
     except Exception as e:
-        print(f"\n  ❌ Error: {e}")
+        print(f"\n  [ERROR] Error: {e}")
         return False
 
 
 if __name__ == '__main__':
     print("\n")
-    print("█" * 70)
+    print("[U+2588]" * 70)
     print("   EventGuard Market Data Refresh Test Suite")
     print("   v1.3.15.173 - Fix 3 Validation")
-    print("█" * 70)
+    print("[U+2588]" * 70)
     
     # Run tests
     test1_pass = test_eventguard_refresh()
@@ -190,10 +190,10 @@ if __name__ == '__main__':
         print("The pipeline will now fetch fresh overnight market data.")
         sys.exit(0)
     elif test1_pass or test2_pass:
-        print("\n⚠️  PARTIAL SUCCESS")
+        print("\n[!]  PARTIAL SUCCESS")
         print("\nSome tests passed. Check details above.")
         sys.exit(1)
     else:
-        print("\n❌ TESTS FAILED")
+        print("\n[ERROR] TESTS FAILED")
         print("\nCheck error messages above for details.")
         sys.exit(1)

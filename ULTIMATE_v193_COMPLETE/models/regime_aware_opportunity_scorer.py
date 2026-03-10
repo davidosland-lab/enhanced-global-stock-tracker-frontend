@@ -40,8 +40,8 @@ class RegimeAwareOpportunityScorer:
     
     Example:
         US tech rally + commodities weak
-        → Reduce scores for Materials, Energy, Financials
-        → Slight boost for Technology, Healthcare
+        -> Reduce scores for Materials, Energy, Financials
+        -> Slight boost for Technology, Healthcare
     """
     
     def __init__(self, config_path: Optional[str] = None):
@@ -464,11 +464,11 @@ class RegimeAwareOpportunityScorer:
             volume_score = 0.4
         
         # Market cap score
-        if market_cap > 10_000_000_000:  # > $10B
+        if market_cap > 10_000_000_000:  # > USD10B
             cap_score = 1.0
-        elif market_cap > 1_000_000_000:  # > $1B
+        elif market_cap > 1_000_000_000:  # > USD1B
             cap_score = 0.8
-        elif market_cap > 500_000_000:  # > $500M
+        elif market_cap > 500_000_000:  # > USD500M
             cap_score = 0.6
         else:
             cap_score = 0.3

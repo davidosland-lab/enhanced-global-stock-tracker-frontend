@@ -457,7 +457,7 @@ def integrate_with_us_pipeline(predictions: List[Dict], stocks_df: pd.DataFrame)
     # Get analytics
     report = logger.get_report()
     if 'portfolio' in report:
-        logger.info(f"[US PIPELINE] Portfolio PnL: ${report['portfolio'].get('total_pnl', 0):.2f}")
+        logger.info(f"[US PIPELINE] Portfolio PnL: USD{report['portfolio'].get('total_pnl', 0):.2f}")
     
     return report
 

@@ -110,11 +110,11 @@ class PredictionManager:
             if self.market_tz:
                 market_open = self.market_tz.get_market_open_time(symbol)
                 logger.info(f"[OK] Generated prediction for {symbol} ({market_code}): "
-                           f"{prediction['prediction']} @ ${prediction['predicted_price']:.2f}")
+                           f"{prediction['prediction']} @ USD{prediction['predicted_price']:.2f}")
                 logger.info(f"  Will be LOCKED at market open: {market_open.strftime('%Y-%m-%d %H:%M %Z')}")
             else:
                 logger.info(f"[OK] Generated and stored new prediction for {symbol}: "
-                           f"{prediction['prediction']} @ ${prediction['predicted_price']:.2f}")
+                           f"{prediction['prediction']} @ USD{prediction['predicted_price']:.2f}")
             
             return prediction
             
@@ -295,13 +295,13 @@ class PredictionManager:
                 hist_date = index.date()
                 if hist_date == date:
                     close_price = row['Close']
-                    logger.info(f"[OK] Got closing price for {symbol} on {date}: ${close_price:.2f}")
+                    logger.info(f"[OK] Got closing price for {symbol} on {date}: USD{close_price:.2f}")
                     return close_price
             
             # If exact date not found, use closest
             if len(hist) > 0:
                 close_price = hist.iloc[-1]['Close']
-                logger.warning(f"Using approximate closing price for {symbol} on {date}: ${close_price:.2f}")
+                logger.warning(f"Using approximate closing price for {symbol} on {date}: USD{close_price:.2f}")
                 return close_price
             
             return None
@@ -360,8 +360,8 @@ class PredictionManager:
                         if success:
                             validated_count += 1
                             symbols_updated.add(symbol)
-                            logger.info(f"[OK] Validated {symbol}: Predicted=${predicted_price:.2f}, "
-                                       f"Actual=${actual_price:.2f}, Error={error_percent:.2f}%, "
+                            logger.info(f"[OK] Validated {symbol}: Predicted=USD{predicted_price:.2f}, "
+                                       f"Actual=USD{actual_price:.2f}, Error={error_percent:.2f}%, "
                                        f"Correct={is_correct}")
                         else:
                             errors.append(f"Failed to update prediction {pred['prediction_id']}")

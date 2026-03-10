@@ -11,7 +11,7 @@ CRITICAL FIX for v193.9:
   * VIX 59.3 (elevated fear)
   * No FinBERT sentiment data (blind trading)
   
-Result: All 3 positions underwater (-0.56% portfolio, $556 loss)
+Result: All 3 positions underwater (-0.56% portfolio, USD556 loss)
 
 This module implements 4 critical macro risk gates:
 1. World Event Risk gate (block if >80/100)
@@ -153,7 +153,7 @@ class MacroRiskGatekeeper:
         # =================================================================
         if world_risk_score >= self.world_risk_threshold:
             reason = (
-                f"🚫 EXTREME WORLD RISK: {world_risk_score:.0f}/100 >= {self.world_risk_threshold} "
+                f"[U+1F6AB] EXTREME WORLD RISK: {world_risk_score:.0f}/100 >= {self.world_risk_threshold} "
                 f"(nuclear threat or major geopolitical event) - NO NEW POSITIONS"
             )
             logger.warning(f"[GATE 1 BLOCKED] {symbol}: {reason}")
@@ -163,7 +163,7 @@ class MacroRiskGatekeeper:
         if world_risk_score >= 60:
             reduction = 0.50  # 50% reduction
             reason = (
-                f"⚠️ HIGH WORLD RISK: {world_risk_score:.0f}/100 >= 60 "
+                f"[!] HIGH WORLD RISK: {world_risk_score:.0f}/100 >= 60 "
                 f"- REDUCE position to {reduction:.0%}"
             )
             logger.warning(f"[GATE 1 REDUCE] {symbol}: {reason}")
@@ -176,7 +176,7 @@ class MacroRiskGatekeeper:
         # =================================================================
         if us_market_change <= self.us_market_threshold:
             reason = (
-                f"🚫 US MARKET SELLOFF: {us_market_change:+.2f}% <= {self.us_market_threshold}% "
+                f"[U+1F6AB] US MARKET SELLOFF: {us_market_change:+.2f}% <= {self.us_market_threshold}% "
                 f"- Risk-off environment, NO NEW POSITIONS"
             )
             logger.warning(f"[GATE 2 BLOCKED] {symbol}: {reason}")
@@ -197,7 +197,7 @@ class MacroRiskGatekeeper:
         if vix >= self.vix_threshold:
             if confidence < self.vix_confidence_required:
                 reason = (
-                    f"🚫 HIGH VIX + LOW CONFIDENCE: VIX={vix:.1f} >= {self.vix_threshold} "
+                    f"[U+1F6AB] HIGH VIX + LOW CONFIDENCE: VIX={vix:.1f} >= {self.vix_threshold} "
                     f"requires {self.vix_confidence_required:.0%}+ confidence, got {confidence:.0%}"
                 )
                 logger.warning(f"[GATE 3 BLOCKED] {symbol}: {reason}")
@@ -221,7 +221,7 @@ class MacroRiskGatekeeper:
             # Check world risk for financials
             if world_risk_score >= self.financial_world_risk_threshold:
                 reason = (
-                    f"🚫 FINANCIAL + HIGH RISK: {symbol} is financial sector, "
+                    f"[U+1F6AB] FINANCIAL + HIGH RISK: {symbol} is financial sector, "
                     f"World Risk {world_risk_score:.0f}/100 >= {self.financial_world_risk_threshold} "
                     f"- NO FINANCIAL POSITIONS during elevated risk"
                 )
@@ -231,7 +231,7 @@ class MacroRiskGatekeeper:
             # Check US market for financials
             if us_market_change <= self.financial_us_market_threshold:
                 reason = (
-                    f"🚫 FINANCIAL + US DECLINE: {symbol} is financial sector, "
+                    f"[U+1F6AB] FINANCIAL + US DECLINE: {symbol} is financial sector, "
                     f"US market {us_market_change:+.2f}% <= {self.financial_us_market_threshold}% "
                     f"- NO FINANCIAL POSITIONS during market weakness (high beta)"
                 )
@@ -252,14 +252,14 @@ class MacroRiskGatekeeper:
         # =================================================================
         if reduction < 1.0:
             reason = (
-                f"✅ ALLOW with {reduction:.0%} position (World Risk: {world_risk_score:.0f}/100, "
+                f"[OK] ALLOW with {reduction:.0%} position (World Risk: {world_risk_score:.0f}/100, "
                 f"US: {us_market_change:+.2f}%, VIX: {vix:.1f}, Sector: {sector_label})"
             )
             logger.info(f"[ALLOW REDUCED] {symbol}: {reason}")
             return True, reduction, reason
         else:
             reason = (
-                f"✅ ALLOW with full position (World Risk: {world_risk_score:.0f}/100, "
+                f"[OK] ALLOW with full position (World Risk: {world_risk_score:.0f}/100, "
                 f"US: {us_market_change:+.2f}%, VIX: {vix:.1f}, Sector: {sector_label})"
             )
             logger.info(f"[ALLOW FULL] {symbol}: {reason}")

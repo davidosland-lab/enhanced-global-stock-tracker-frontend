@@ -58,7 +58,7 @@ def run_complete_backtest(
     logger.info("=" * 80)
     logger.info(f"STARTING COMPLETE BACKTEST: {symbol}")
     logger.info(f"Period: {start_date} to {end_date}")
-    logger.info(f"Model: {model_type}, Capital: ${initial_capital:,.2f}")
+    logger.info(f"Model: {model_type}, Capital: USD{initial_capital:,.2f}")
     logger.info("=" * 80)
     
     # =========================================================================
@@ -88,7 +88,7 @@ def run_complete_backtest(
     
     logger.info(f"Loaded {len(historical_data)} days of historical data")
     logger.info(f"Date range: {historical_data.index.min()} to {historical_data.index.max()}")
-    logger.info(f"Price range: ${historical_data['Close'].min():.2f} - ${historical_data['Close'].max():.2f}")
+    logger.info(f"Price range: USD{historical_data['Close'].min():.2f} - USD{historical_data['Close'].max():.2f}")
     
     # =========================================================================
     # PHASE 2: Generate Predictions
@@ -176,16 +176,16 @@ def run_complete_backtest(
     logger.info("BACKTEST RESULTS")
     logger.info("=" * 80)
     logger.info(f"\nCapital:")
-    logger.info(f"  Initial: ${performance['initial_capital']:,.2f}")
-    logger.info(f"  Final:   ${performance['final_equity']:,.2f}")
+    logger.info(f"  Initial: USD{performance['initial_capital']:,.2f}")
+    logger.info(f"  Final:   USD{performance['final_equity']:,.2f}")
     logger.info(f"  Return:  {performance['total_return_pct']:.2f}%")
     
     logger.info(f"\nTrades:")
     logger.info(f"  Total:   {performance['total_trades']}")
     logger.info(f"  Winners: {performance['winning_trades']} ({performance['win_rate']*100:.2f}%)")
     logger.info(f"  Losers:  {performance['losing_trades']}")
-    logger.info(f"  Avg Win: ${performance['avg_win']:.2f}")
-    logger.info(f"  Avg Loss: ${performance['avg_loss']:.2f}")
+    logger.info(f"  Avg Win: USD{performance['avg_win']:.2f}")
+    logger.info(f"  Avg Loss: USD{performance['avg_loss']:.2f}")
     logger.info(f"  Profit Factor: {performance['profit_factor']:.2f}")
     
     logger.info(f"\nRisk Metrics:")
@@ -194,7 +194,7 @@ def run_complete_backtest(
     logger.info(f"  Max Drawdown:  {performance['max_drawdown_pct']:.2f}%")
     
     logger.info(f"\nCosts:")
-    logger.info(f"  Total Commission: ${performance['total_commission_paid']:.2f}")
+    logger.info(f"  Total Commission: USD{performance['total_commission_paid']:.2f}")
     logger.info(f"  Avg Hold Time:    {performance['avg_hold_time_days']:.1f} days")
     
     logger.info("\n" + "=" * 80)

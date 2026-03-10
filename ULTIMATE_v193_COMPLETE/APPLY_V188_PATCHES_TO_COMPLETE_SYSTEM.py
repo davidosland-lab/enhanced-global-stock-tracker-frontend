@@ -5,10 +5,10 @@ This script applies ONLY the v188 confidence threshold patches to your COMPLETE 
 It does NOT remove any files - it only modifies 4 specific lines in 4 files.
 
 Files to be patched:
-1. config/config.json - confidence_threshold: 55.0 → 45.0
-2. ml_pipeline/swing_signal_generator.py - confidence_threshold: float = 0.55 → 0.48
-3. core/paper_trading_coordinator.py - min_confidence fallback: 52.0 → 48.0
-4. core/opportunity_monitor.py - confidence_threshold: float = 65.0 → 48.0
+1. config/config.json - confidence_threshold: 55.0 -> 45.0
+2. ml_pipeline/swing_signal_generator.py - confidence_threshold: float = 0.55 -> 0.48
+3. core/paper_trading_coordinator.py - min_confidence fallback: 52.0 -> 48.0
+4. core/opportunity_monitor.py - confidence_threshold: float = 65.0 -> 48.0
 
 NO OTHER FILES WILL BE MODIFIED OR REMOVED!
 """
@@ -24,7 +24,7 @@ def backup_file(file_path):
     """Create a backup of the original file."""
     backup_path = f"{file_path}.v188_backup"
     shutil.copy2(file_path, backup_path)
-    print(f"✓ Backed up: {backup_path}")
+    print(f"[OK] Backed up: {backup_path}")
     return backup_path
 
 def patch_config_json(base_dir):
@@ -32,7 +32,7 @@ def patch_config_json(base_dir):
     config_path = os.path.join(base_dir, "config", "config.json")
     
     if not os.path.exists(config_path):
-        print(f"✗ File not found: {config_path}")
+        print(f"[X] File not found: {config_path}")
         return False
     
     # Backup
@@ -50,7 +50,7 @@ def patch_config_json(base_dir):
     with open(config_path, 'w') as f:
         json.dump(config, f, indent=2)
     
-    print(f"✓ Patched config/config.json: {old_value} → 45.0")
+    print(f"[OK] Patched config/config.json: {old_value} -> 45.0")
     return True
 
 def patch_signal_generator(base_dir):
@@ -58,7 +58,7 @@ def patch_signal_generator(base_dir):
     sg_path = os.path.join(base_dir, "ml_pipeline", "swing_signal_generator.py")
     
     if not os.path.exists(sg_path):
-        print(f"✗ File not found: {sg_path}")
+        print(f"[X] File not found: {sg_path}")
         return False
     
     # Backup
@@ -79,10 +79,10 @@ def patch_signal_generator(base_dir):
         with open(sg_path, 'w', encoding='utf-8') as f:
             f.write(content)
         
-        print(f"✓ Patched ml_pipeline/swing_signal_generator.py: 0.55 → 0.48")
+        print(f"[OK] Patched ml_pipeline/swing_signal_generator.py: 0.55 -> 0.48")
         return True
     else:
-        print(f"✗ Could not find target line in {sg_path}")
+        print(f"[X] Could not find target line in {sg_path}")
         return False
 
 def patch_coordinator(base_dir):
@@ -90,7 +90,7 @@ def patch_coordinator(base_dir):
     coord_path = os.path.join(base_dir, "core", "paper_trading_coordinator.py")
     
     if not os.path.exists(coord_path):
-        print(f"✗ File not found: {coord_path}")
+        print(f"[X] File not found: {coord_path}")
         return False
     
     # Backup
@@ -111,10 +111,10 @@ def patch_coordinator(base_dir):
         with open(coord_path, 'w', encoding='utf-8') as f:
             f.write(content)
         
-        print(f"✓ Patched core/paper_trading_coordinator.py: 52.0 → 48.0")
+        print(f"[OK] Patched core/paper_trading_coordinator.py: 52.0 -> 48.0")
         return True
     else:
-        print(f"✗ Could not find target line in {coord_path}")
+        print(f"[X] Could not find target line in {coord_path}")
         return False
 
 def patch_opportunity_monitor(base_dir):
@@ -122,7 +122,7 @@ def patch_opportunity_monitor(base_dir):
     om_path = os.path.join(base_dir, "core", "opportunity_monitor.py")
     
     if not os.path.exists(om_path):
-        print(f"✗ File not found: {om_path}")
+        print(f"[X] File not found: {om_path}")
         return False
     
     # Backup
@@ -143,10 +143,10 @@ def patch_opportunity_monitor(base_dir):
         with open(om_path, 'w', encoding='utf-8') as f:
             f.write(content)
         
-        print(f"✓ Patched core/opportunity_monitor.py: 65.0 → 48.0")
+        print(f"[OK] Patched core/opportunity_monitor.py: 65.0 -> 48.0")
         return True
     else:
-        print(f"✗ Could not find target line in {om_path}")
+        print(f"[X] Could not find target line in {om_path}")
         return False
 
 def main():
@@ -198,7 +198,7 @@ def main():
     success_count = sum(1 for _, success in results if success)
     
     for name, success in results:
-        status = "✓ SUCCESS" if success else "✗ FAILED"
+        status = "[OK] SUCCESS" if success else "[X] FAILED"
         print(f"{name:25s} {status}")
     
     print()
@@ -207,12 +207,12 @@ def main():
     print()
     
     if success_count == 4:
-        print("✓ All v188 patches applied successfully!")
+        print("[OK] All v188 patches applied successfully!")
         print()
         print("Expected behavior:")
-        print("  - BP.L: 52.1% >= 48.0% - PASS ✓ (was BLOCKED at 65%)")
-        print("  - HSBA.L: 53.0% >= 48.0% - PASS ✓ (was BLOCKED at 65%)")
-        print("  - RIO.AX: 54.4% >= 48.0% - PASS ✓ (was BLOCKED at 52%)")
+        print("  - BP.L: 52.1% >= 48.0% - PASS [OK] (was BLOCKED at 65%)")
+        print("  - HSBA.L: 53.0% >= 48.0% - PASS [OK] (was BLOCKED at 65%)")
+        print("  - RIO.AX: 54.4% >= 48.0% - PASS [OK] (was BLOCKED at 52%)")
         print()
         print("Next steps:")
         print("  1. Stop the current dashboard (Ctrl+C)")
@@ -222,7 +222,7 @@ def main():
         print("  3. Restart dashboard")
         print("  4. Verify trades pass at 48%+")
     else:
-        print("✗ Some patches failed. Review errors above.")
+        print("[X] Some patches failed. Review errors above.")
         print()
         print("To rollback, restore .v188_backup files:")
         for name, success in results:

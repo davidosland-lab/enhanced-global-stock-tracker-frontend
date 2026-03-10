@@ -35,7 +35,7 @@ class TestResults:
     def add_fail(self, test_name, error):
         self.failed += 1
         self.tests.append((test_name, False, error))
-        print(f"✗ FAIL: {test_name}")
+        print(f"[X] FAIL: {test_name}")
         print(f"  Error: {error}")
     
     def summary(self):
@@ -225,7 +225,7 @@ def main():
         print("  - UK stocks (HSBA.L, BP.L, etc.)")
         sys.exit(0)
     else:
-        print("✗ SOME TESTS FAILED")
+        print("[X] SOME TESTS FAILED")
         print("\nPlease review the failed tests above")
         print("Make sure:")
         print("  1. Flask server is running")

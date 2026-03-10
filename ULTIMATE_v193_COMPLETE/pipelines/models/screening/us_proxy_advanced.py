@@ -55,8 +55,8 @@ class USProxyConfig:
         self.proxy_z_risk_off_threshold = -1.0  # Z-score < -1.0 = risk-off
         
         # Caps and limits
-        self.max_proxy_move = 4.0  # Cap proxy move at ±4.0% (US markets more volatile)
-        self.max_z_score = 4.0  # Cap Z-score at ±4.0
+        self.max_proxy_move = 4.0  # Cap proxy move at +/-4.0% (US markets more volatile)
+        self.max_z_score = 4.0  # Cap Z-score at +/-4.0
         
         # Confidence parameters
         self.confidence_base = 0.75  # Higher base (direct futures)
@@ -138,7 +138,7 @@ class USProxy:
         """
         Compute volatility gate multiplier
         
-        High vol → reduce confidence, apply damping
+        High vol -> reduce confidence, apply damping
         """
         if historical_avg == 0:
             return 1.0
@@ -146,13 +146,13 @@ class USProxy:
         vol_ratio = current_vol / historical_avg
         
         if vol_ratio > 2.0:
-            # Extreme volatility → damp by 50%
+            # Extreme volatility -> damp by 50%
             return 0.5
         elif vol_ratio > 1.5:
-            # High volatility → damp by 25%
+            # High volatility -> damp by 25%
             return 0.75
         elif vol_ratio < 0.5:
-            # Low volatility → amplify by 10%
+            # Low volatility -> amplify by 10%
             return 1.1
         else:
             # Normal volatility
@@ -435,7 +435,7 @@ class USProxy:
             'source': 'us_proxy_advanced'
         }
         
-        sources_str = f"NQ={'✓' if nq_available else '✗'}, ES={'✓' if es_available else '✗'}"
+        sources_str = f"NQ={'[OK]' if nq_available else '[X]'}, ES={'[OK]' if es_available else '[X]'}"
         z_str = f"{proxy_z:.2f}" if proxy_z is not None else "N/A"
         logger.info(f"US Market Proxy: {proxy_move_adj:.2f}% (Z={z_str}, "
                    f"Regime={regime}, Confidence={confidence:.0%}, Sources={sources_str})")

@@ -91,7 +91,7 @@ class PortfolioBacktestEngine:
         self.daily_returns = []
         
         logger.info(
-            f"Portfolio engine initialized (capital=${initial_capital:,.2f}, "
+            f"Portfolio engine initialized (capital=USD{initial_capital:,.2f}, "
             f"strategy={allocation_strategy}, rebalance={rebalance_frequency})"
         )
     
@@ -313,8 +313,8 @@ class PortfolioBacktestEngine:
                     self.trades_by_symbol[symbol].append(trade)
                     
                     logger.info(
-                        f"BUY {symbol}: {shares:.2f} shares @ ${execution_price:.2f} "
-                        f"(commission=${commission:.2f})"
+                        f"BUY {symbol}: {shares:.2f} shares @ USD{execution_price:.2f} "
+                        f"(commission=USD{commission:.2f})"
                     )
                     
                     return {
@@ -369,8 +369,8 @@ class PortfolioBacktestEngine:
             del self.positions[symbol]
             
             logger.info(
-                f"SELL {symbol}: {pos.shares:.2f} shares @ ${execution_price:.2f} "
-                f"(P&L=${pnl:.2f}, return={return_pct*100:.1f}%)"
+                f"SELL {symbol}: {pos.shares:.2f} shares @ USD{execution_price:.2f} "
+                f"(P&L=USD{pnl:.2f}, return={return_pct*100:.1f}%)"
             )
             
             return {

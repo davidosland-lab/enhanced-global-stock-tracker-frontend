@@ -114,7 +114,7 @@ class MobileAccessManager:
     def _install_ngrok(self):
         """Provide instructions for installing ngrok"""
         print("\n" + "="*70)
-        print("⚠️  NGROK NOT FOUND")
+        print("[!]  NGROK NOT FOUND")
         print("="*70)
         print("\nNgrok is required for mobile remote access.")
         print("\nInstallation Instructions:")
@@ -207,19 +207,19 @@ class MobileAccessManager:
     def display_connection_info(self):
         """Display connection information for mobile access"""
         if not self.public_url:
-            print("\n❌ No public URL available. Please check ngrok setup.\n")
+            print("\n[ERROR] No public URL available. Please check ngrok setup.\n")
             return
         
         qr_code = self.generate_qr_code(self.public_url)
         
         print("\n" + "="*70)
-        print("📱 MOBILE REMOTE ACCESS ENABLED")
+        print("[U+1F4F1] MOBILE REMOTE ACCESS ENABLED")
         print("="*70)
-        print(f"\n🌐 Public URL: {self.public_url}")
-        print(f"🔒 Username: {self.username}")
-        print(f"🔑 Password: {self.password}")
+        print(f"\n[U+1F310] Public URL: {self.public_url}")
+        print(f"[LOCKED] Username: {self.username}")
+        print(f"[U+1F511] Password: {self.password}")
         print("\n" + "-"*70)
-        print("\n📋 CONNECTION INSTRUCTIONS:")
+        print("\n[U+1F4CB] CONNECTION INSTRUCTIONS:")
         print("\n1. Open your phone's camera or QR code scanner")
         print("2. Scan the QR code (displayed in browser)")
         print(f"3. Or manually enter: {self.public_url}")
@@ -227,7 +227,7 @@ class MobileAccessManager:
         print(f"   Username: {self.username}")
         print(f"   Password: {self.password}")
         print("\n" + "-"*70)
-        print("\n⚠️  SECURITY NOTES:")
+        print("\n[!]  SECURITY NOTES:")
         print("   - Keep your credentials secure")
         print("   - Don't share the URL publicly")
         print("   - Connection is encrypted via HTTPS")

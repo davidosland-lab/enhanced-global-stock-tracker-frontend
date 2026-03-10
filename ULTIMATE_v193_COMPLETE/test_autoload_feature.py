@@ -54,7 +54,7 @@ def test_autoload():
         print(symbols_str)
         print()
     else:
-        print("✗ No symbols loaded")
+        print("[X] No symbols loaded")
         print("  Check metadata:")
         for market, info in metadata.items():
             print(f"  {market}: {info}")
@@ -75,7 +75,7 @@ def test_autoload():
         print(f"[OK] Loaded {len(symbols_au)} AU symbols")
         print(f"  Symbols: {', '.join(symbols_au[:10])}{'...' if len(symbols_au) > 10 else ''}")
     else:
-        print("✗ No AU symbols loaded")
+        print("[X] No AU symbols loaded")
     
     print()
     
@@ -89,7 +89,7 @@ def test_autoload():
             print(f"  [OK] Report found (age: {info.get('report_age_hours', 0):.1f}h)")
             print(f"  Stocks: {info.get('stocks_loaded', 0)}/{info.get('stocks_total', 0)}")
         else:
-            print(f"  ✗ {info.get('error', 'Unknown error')}")
+            print(f"  [X] {info.get('error', 'Unknown error')}")
     
     print()
     print("="*80)

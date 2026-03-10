@@ -670,7 +670,7 @@ def test_batch_predictor():
     
     for stock in results:
         print(f"\n{stock['symbol']} - {stock['name']}")
-        print(f"  Price: ${stock['price']:.2f}")
+        print(f"  Price: USD{stock['price']:.2f}")
         print(f"  Prediction: {stock.get('prediction', 'N/A')}")
         print(f"  Confidence: {stock.get('confidence', 0):.1f}%")
         print(f"  Expected Return: {stock.get('expected_return', 0):+.2f}%")

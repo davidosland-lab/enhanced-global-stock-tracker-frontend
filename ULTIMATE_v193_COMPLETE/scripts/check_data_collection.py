@@ -37,7 +37,7 @@ def check_collection_status():
         print("-" * 40)
         
         if not data_path.exists():
-            print(f"  ⚠️  No data directory found")
+            print(f"  [!]  No data directory found")
             print(f"     Run {region.upper()} pipeline to start collection")
             all_good = False
         else:
@@ -46,7 +46,7 @@ def check_collection_status():
                 stats = store.get_storage_stats()
                 
                 if stats['total_symbols'] == 0:
-                    print(f"  ⚠️  No data collected yet")
+                    print(f"  [!]  No data collected yet")
                     print(f"     Run {region.upper()} pipeline to start collection")
                     all_good = False
                 else:
@@ -70,17 +70,17 @@ def check_collection_status():
                             if days_old == 0:
                                 print(f"     [OK] Latest data: TODAY ({max_date})")
                             elif days_old == 1:
-                                print(f"     ⚠️  Latest data: YESTERDAY ({max_date})")
+                                print(f"     [!]  Latest data: YESTERDAY ({max_date})")
                                 print(f"        Run pipeline to update")
                             else:
-                                print(f"     ⚠️  Latest data: {days_old} days old ({max_date})")
+                                print(f"     [!]  Latest data: {days_old} days old ({max_date})")
                                 print(f"        Run pipeline to update")
                                 all_good = False
                     except:
                         pass
                 
             except Exception as e:
-                print(f"  ❌ Error reading data: {e}")
+                print(f"  [ERROR] Error reading data: {e}")
                 all_good = False
         
         print()
@@ -90,15 +90,15 @@ def check_collection_status():
     if all_good:
         print("[OK] All regions collecting data properly")
     else:
-        print("⚠️  Some regions need attention - see details above")
+        print("[!]  Some regions need attention - see details above")
     
     print("="*80)
     print()
     
-    print("📋 NEXT STEPS:")
+    print("[U+1F4CB] NEXT STEPS:")
     print("  1. Run pipelines to collect/update data:")
-    print("     • US: python scripts/run_us_full_pipeline.py --test-mode")
-    print("     • UK: python scripts/run_uk_full_pipeline.py --test-mode")
+    print("     * US: python scripts/run_us_full_pipeline.py --test-mode")
+    print("     * UK: python scripts/run_uk_full_pipeline.py --test-mode")
     print()
     print("  2. After 3-7 days, generate baseline report:")
     print("     python scripts/generate_baseline_report.py us")
@@ -113,6 +113,6 @@ if __name__ == '__main__':
     except KeyboardInterrupt:
         print("\n\nInterrupted by user")
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\n[ERROR] Error: {e}")
         import traceback
         traceback.print_exc()

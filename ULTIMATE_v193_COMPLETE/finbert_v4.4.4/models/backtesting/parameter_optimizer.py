@@ -405,7 +405,7 @@ QUICK_PARAMETER_GRID = {
     'stop_loss_pct': [0.03],  # Fixed at industry standard
     'take_profit_pct': [0.10]  # Fixed at optimal risk/reward ratio
 }
-# Total combinations: 1 × 2 × 2 × 1 × 1 = 4 (was 240, then 12!)
+# Total combinations: 1 x 2 x 2 x 1 x 1 = 4 (was 240, then 12!)
 # Completes in ~2 minutes even with 13+ months of data
 
 PORTFOLIO_PARAMETER_GRID = {

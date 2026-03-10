@@ -257,7 +257,7 @@ class USMarketMonitor:
         """
         score = 0
         
-        # Day change (±2 points)
+        # Day change (+/-2 points)
         if day_change > 1.0:
             score += 2
         elif day_change > 0:
@@ -267,7 +267,7 @@ class USMarketMonitor:
         else:
             score -= 1
         
-        # Week change (±2 points)
+        # Week change (+/-2 points)
         if week_change > 3.0:
             score += 2
         elif week_change > 0:
@@ -277,7 +277,7 @@ class USMarketMonitor:
         else:
             score -= 1
         
-        # Moving averages (±2 points)
+        # Moving averages (+/-2 points)
         if above_ma20 and above_ma50:
             score += 2
         elif above_ma20:

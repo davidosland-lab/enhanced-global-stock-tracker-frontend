@@ -50,19 +50,19 @@ test_articles = [
 
 risk_result = monitor.get_world_event_risk(test_articles)
 
-print(f"\n✓ World Risk Score: {risk_result['world_risk_score']:.1f}/100")
-print(f"✓ Risk Level: {risk_result['risk_level']}")
-print(f"✓ Fear Index: {risk_result['fear']:.2f}")
-print(f"✓ Anger Index: {risk_result['anger']:.2f}")
-print(f"✓ Negative Sentiment: {risk_result['neg_sent']:.2f}")
-print(f"✓ Top Topics: {', '.join(risk_result['top_topics'][:5])}")
-print(f"✓ Article Count: {risk_result['article_count']}")
+print(f"\n[OK] World Risk Score: {risk_result['world_risk_score']:.1f}/100")
+print(f"[OK] Risk Level: {risk_result['risk_level']}")
+print(f"[OK] Fear Index: {risk_result['fear']:.2f}")
+print(f"[OK] Anger Index: {risk_result['anger']:.2f}")
+print(f"[OK] Negative Sentiment: {risk_result['neg_sent']:.2f}")
+print(f"[OK] Top Topics: {', '.join(risk_result['top_topics'][:5])}")
+print(f"[OK] Article Count: {risk_result['article_count']}")
 
 if risk_result['world_risk_score'] < 70:
-    print(f"\n❌ FAIL: Expected risk score 85-90, got {risk_result['world_risk_score']:.1f}")
+    print(f"\n[ERROR] FAIL: Expected risk score 85-90, got {risk_result['world_risk_score']:.1f}")
     print("   World Event Monitor may not be detecting crisis keywords correctly")
 else:
-    print(f"\n✅ PASS: Crisis correctly detected (score: {risk_result['world_risk_score']:.1f})")
+    print(f"\n[OK] PASS: Crisis correctly detected (score: {risk_result['world_risk_score']:.1f})")
 
 # Test 2: World Event Monitor with NO articles (neutral baseline)
 print("\n[TEST 2] Testing World Event Monitor with NO articles (neutral baseline)...")
@@ -70,14 +70,14 @@ print("-"*80)
 
 risk_neutral = monitor.get_world_event_risk([])
 
-print(f"\n✓ World Risk Score: {risk_neutral['world_risk_score']:.1f}/100")
-print(f"✓ Risk Level: {risk_neutral['risk_level']}")
-print(f"✓ Expected: 50/100 (MODERATE)")
+print(f"\n[OK] World Risk Score: {risk_neutral['world_risk_score']:.1f}/100")
+print(f"[OK] Risk Level: {risk_neutral['risk_level']}")
+print(f"[OK] Expected: 50/100 (MODERATE)")
 
 if risk_neutral['world_risk_score'] != 50.0:
-    print(f"\n❌ FAIL: Expected 50.0, got {risk_neutral['world_risk_score']:.1f}")
+    print(f"\n[ERROR] FAIL: Expected 50.0, got {risk_neutral['world_risk_score']:.1f}")
 else:
-    print(f"\n✅ PASS: Neutral baseline correct")
+    print(f"\n[OK] PASS: Neutral baseline correct")
 
 # Test 3: Macro News Monitor - Check if it's fetching articles
 print("\n[TEST 3] Testing Macro News Monitor article fetching...")
@@ -89,28 +89,28 @@ macro_monitor = MacroNewsMonitor(market='ASX')
 try:
     macro_result = macro_monitor.get_macro_sentiment()
     
-    print(f"\n✓ Articles Fetched: {macro_result['article_count']}")
-    print(f"✓ Sentiment Score: {macro_result['sentiment_score']:.3f}")
-    print(f"✓ Sentiment Label: {macro_result['sentiment_label']}")
+    print(f"\n[OK] Articles Fetched: {macro_result['article_count']}")
+    print(f"[OK] Sentiment Score: {macro_result['sentiment_score']:.3f}")
+    print(f"[OK] Sentiment Label: {macro_result['sentiment_label']}")
     
     if 'articles' in macro_result:
-        print(f"\n✓ Articles available in result: {len(macro_result['articles'])}")
+        print(f"\n[OK] Articles available in result: {len(macro_result['articles'])}")
         
         if len(macro_result['articles']) > 0:
             print("\nFirst 3 article titles:")
             for i, article in enumerate(macro_result['articles'][:3], 1):
                 print(f"  {i}. {article['title'][:80]}")
             
-            print(f"\n✅ PASS: Macro News Monitor is fetching articles")
+            print(f"\n[OK] PASS: Macro News Monitor is fetching articles")
         else:
-            print(f"\n❌ FAIL: Articles list is empty")
+            print(f"\n[ERROR] FAIL: Articles list is empty")
             print("   Macro news scraper may be failing or being blocked")
     else:
-        print(f"\n❌ FAIL: No 'articles' key in result")
+        print(f"\n[ERROR] FAIL: No 'articles' key in result")
         print("   This explains why World Event Risk shows 13/100 (neutral)")
         
 except Exception as e:
-    print(f"\n❌ FAIL: Macro News Monitor error: {e}")
+    print(f"\n[ERROR] FAIL: Macro News Monitor error: {e}")
     print("   This explains why World Event Risk is not working")
 
 # Test 4: Check if articles have the 'articles' key structure
@@ -125,9 +125,9 @@ if 'articles' in macro_result and len(macro_result['articles']) > 0:
             print(f"  {key}: {value[:80]}...")
         else:
             print(f"  {key}: {value}")
-    print(f"\n✅ Article structure looks correct")
+    print(f"\n[OK] Article structure looks correct")
 else:
-    print(f"\n⚠️  Cannot check article structure (no articles fetched)")
+    print(f"\n[!]  Cannot check article structure (no articles fetched)")
 
 # Summary
 print("\n" + "="*80)
@@ -136,27 +136,27 @@ print("="*80)
 
 print("\n1. World Event Monitor Algorithm:")
 if risk_result['world_risk_score'] >= 70:
-    print("   ✅ WORKING - Correctly detects crisis from articles")
+    print("   [OK] WORKING - Correctly detects crisis from articles")
 else:
-    print("   ❌ BROKEN - Not detecting crisis from test articles")
+    print("   [ERROR] BROKEN - Not detecting crisis from test articles")
     
 print("\n2. Neutral Baseline:")
 if risk_neutral['world_risk_score'] == 50.0:
-    print("   ✅ WORKING - Returns 50/100 when no articles")
+    print("   [OK] WORKING - Returns 50/100 when no articles")
 else:
-    print("   ❌ BROKEN - Not returning correct neutral value")
+    print("   [ERROR] BROKEN - Not returning correct neutral value")
 
 print("\n3. Macro News Fetching:")
 if macro_result['article_count'] > 0:
-    print(f"   ✅ WORKING - Fetched {macro_result['article_count']} articles")
+    print(f"   [OK] WORKING - Fetched {macro_result['article_count']} articles")
 else:
-    print("   ❌ BROKEN - Not fetching any articles")
+    print("   [ERROR] BROKEN - Not fetching any articles")
 
 print("\n4. Article Structure:")
 if 'articles' in macro_result:
-    print(f"   ✅ CORRECT - 'articles' key present")
+    print(f"   [OK] CORRECT - 'articles' key present")
 else:
-    print(f"   ❌ MISSING - 'articles' key not in macro_result")
+    print(f"   [ERROR] MISSING - 'articles' key not in macro_result")
 
 print("\n" + "="*80)
 print("LIKELY ROOT CAUSE:")
@@ -173,9 +173,9 @@ Possible reasons:
 4. News scraper rate limiting
 
 This explains why World Risk shows 13/100:
-- No articles fetched → empty list passed to World Event Monitor
+- No articles fetched -> empty list passed to World Event Monitor
 - World Event Monitor returns low baseline (near 50)
-- Small random variation → 13/100 instead of exact 50
+- Small random variation -> 13/100 instead of exact 50
 
 FIX:
 Check your latest overnight pipeline log for:
@@ -196,7 +196,7 @@ This is less likely since the keywords look correct in the code.
 """)
 else:
     print("""
-✅ Both components working correctly in isolation!
+[OK] Both components working correctly in isolation!
 
 The issue must be in the overnight pipeline integration.
 Check if articles are being passed correctly from Phase 1.3 to Phase 1.4.

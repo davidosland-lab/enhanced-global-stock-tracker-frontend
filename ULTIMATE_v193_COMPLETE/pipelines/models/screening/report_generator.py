@@ -489,15 +489,15 @@ class ReportGenerator:
         
         # Determine direction emoji and color
         if predicted_gap > 0.3:
-            gap_emoji = "🟢"
+            gap_emoji = "[OK]"
             gap_text = f"UP {predicted_gap:.2f}%"
             gap_class = "positive"
         elif predicted_gap < -0.3:
-            gap_emoji = "🔴"
+            gap_emoji = "[ALERT]"
             gap_text = f"DOWN {abs(predicted_gap):.2f}%"
             gap_class = "negative"
         else:
-            gap_emoji = "🟡"
+            gap_emoji = "[WARN]"
             gap_text = "FLAT"
             gap_class = "neutral"
         
@@ -669,7 +669,7 @@ class ReportGenerator:
                 
                 <div class="detail-item">
                     <div class="detail-label">Current Price</div>
-                    <div class="detail-value">${price:.2f}</div>
+                    <div class="detail-value">USD{price:.2f}</div>
                 </div>
                 
                 <div class="detail-item">
@@ -679,7 +679,7 @@ class ReportGenerator:
                 
                 <div class="detail-item">
                     <div class="detail-label">Market Cap</div>
-                    <div class="detail-value">${opp.get('market_cap', 0)/1e9:.2f}B</div>
+                    <div class="detail-value">USD{opp.get('market_cap', 0)/1e9:.2f}B</div>
                 </div>
                 
                 <div class="detail-item">
@@ -742,11 +742,11 @@ class ReportGenerator:
             
             # Outlook
             if avg_score >= 75:
-                outlook = '<span class="badge badge-success">🟢 Strong</span>'
+                outlook = '<span class="badge badge-success">[OK] Strong</span>'
             elif avg_score >= 60:
-                outlook = '<span class="badge badge-info">🟡 Moderate</span>'
+                outlook = '<span class="badge badge-info">[WARN] Moderate</span>'
             else:
-                outlook = '<span class="badge badge-warning">🟠 Weak</span>'
+                outlook = '<span class="badge badge-warning">[U+1F7E0] Weak</span>'
             
             rows += f"""
                 <tr>
@@ -808,7 +808,7 @@ class ReportGenerator:
         
         return f"""
     <div class="section">
-        <h2><span class="emoji">👀</span> Watch List (Near Buy Signals)</h2>
+        <h2><span class="emoji">[U+1F440]</span> Watch List (Near Buy Signals)</h2>
         {items}
     </div>
 """
@@ -854,7 +854,7 @@ class ReportGenerator:
         
         return f"""
     <div class="section">
-        <h2><span class="emoji">⚙️</span> System Performance</h2>
+        <h2><span class="emoji">[U+2699][U+FE0F]</span> System Performance</h2>
         <table>
             <tr>
                 <td><strong>Stocks Scanned</strong></td>
@@ -906,12 +906,12 @@ class ReportGenerator:
         
         # Determine regime display name and emoji
         regime_names = {
-            'low_vol': {'name': 'Low Volatility', 'emoji': '🟢', 'color': '#10b981'},
-            'medium_vol': {'name': 'Medium Volatility', 'emoji': '🟡', 'color': '#f59e0b'},
-            'high_vol': {'name': 'High Volatility', 'emoji': '🔴', 'color': '#ef4444'}
+            'low_vol': {'name': 'Low Volatility', 'emoji': '[OK]', 'color': '#10b981'},
+            'medium_vol': {'name': 'Medium Volatility', 'emoji': '[WARN]', 'color': '#f59e0b'},
+            'high_vol': {'name': 'High Volatility', 'emoji': '[ALERT]', 'color': '#ef4444'}
         }
         
-        regime_info = regime_names.get(regime_label, {'name': regime_label.title(), 'emoji': '⚪', 'color': '#6b7280'})
+        regime_info = regime_names.get(regime_label, {'name': regime_label.title(), 'emoji': 'o', 'color': '#6b7280'})
         
         # Determine crash risk level and color
         if crash_risk >= 70:
@@ -1154,14 +1154,14 @@ class ReportGenerator:
                 'risk_rating': spi_sentiment.get('risk_rating', 'Moderate'),
                 'volatility_level': spi_sentiment.get('volatility_level', 'Normal'),
                 'recommendation': spi_sentiment.get('recommendation', 'HOLD'),
-                # 🆕 v193.11.6.10: Add gap prediction if available
+                # [NEW] v193.11.6.10: Add gap prediction if available
                 'gap_prediction': spi_sentiment.get('gap_prediction', {
                     'predicted_gap_pct': 0.0,
                     'confidence': 0.0,
                     'direction': 'NEUTRAL',
                     'method': 'UNAVAILABLE'
                 }),
-                # 🆕 v193: Add world risk score if available
+                # [NEW] v193: Add world risk score if available
                 'world_risk_score': spi_sentiment.get('world_event_risk', {}).get('world_risk_score', 50.0)
             },
             'top_opportunities': opportunities[:10] if opportunities else []

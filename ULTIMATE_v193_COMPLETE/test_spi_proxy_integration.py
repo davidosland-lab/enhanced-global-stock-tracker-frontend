@@ -26,7 +26,7 @@ def test_spi_proxy_standalone():
         proxy = SPIProxy()
         result = proxy.compute_spi_proxy()
         
-        print("\n✓ SPI Proxy module loaded successfully")
+        print("\n[OK] SPI Proxy module loaded successfully")
         print(f"\nTimestamp: {result['asof']}")
         print(f"SPI Proxy Move: {result['spi_proxy_pct']}%")
         print(f"Z-Score: {result['spi_proxy_z']}")
@@ -41,14 +41,14 @@ def test_spi_proxy_standalone():
                 print(f"  {key}: {val}%" if isinstance(val, (int, float)) and key != 'vol_gate' else f"  {key}: {val}")
         
         if result['available']:
-            print("\n✓ TEST 1 PASSED: SPI Proxy computed successfully")
+            print("\n[OK] TEST 1 PASSED: SPI Proxy computed successfully")
             return True, result
         else:
-            print("\n✗ TEST 1 FAILED: SPI Proxy not available")
+            print("\n[X] TEST 1 FAILED: SPI Proxy not available")
             return False, result
             
     except Exception as e:
-        print(f"\n✗ TEST 1 FAILED: {e}")
+        print(f"\n[X] TEST 1 FAILED: {e}")
         import traceback
         traceback.print_exc()
         return False, None
@@ -66,13 +66,13 @@ def test_spi_monitor_integration():
         # Initialize monitor
         monitor = SPIMonitor()
         
-        print("\n✓ SPI Monitor initialized")
+        print("\n[OK] SPI Monitor initialized")
         
         # Check if proxy is available
         if hasattr(monitor, 'spi_proxy') and monitor.spi_proxy is not None:
-            print("✓ SPI Proxy is integrated into monitor")
+            print("[OK] SPI Proxy is integrated into monitor")
         else:
-            print("✗ SPI Proxy NOT integrated into monitor")
+            print("[X] SPI Proxy NOT integrated into monitor")
             return False
         
         # Test gap prediction (this should now use the proxy)
@@ -91,21 +91,21 @@ def test_spi_monitor_integration():
         
         # Check if using SPI proxy
         if gap_prediction.get('source') == 'spi_proxy_advanced':
-            print("\n✓ TEST 2 PASSED: Gap prediction using SPI Proxy")
+            print("\n[OK] TEST 2 PASSED: Gap prediction using SPI Proxy")
             print(f"  Z-Score: {gap_prediction.get('z_score', 'N/A')}")
             print(f"  Regime: {gap_prediction.get('regime', 'N/A')}")
             print(f"  Risk Multiplier: {gap_prediction.get('risk_multiplier', 'N/A')}")
             return True
         elif gap_prediction.get('source') == 'us_market_correlation':
-            print("\n⚠ TEST 2 PARTIAL: Using fallback US market correlation")
+            print("\n[!] TEST 2 PARTIAL: Using fallback US market correlation")
             print("  (SPI Proxy may be unavailable due to market hours or data issues)")
             return True
         else:
-            print(f"\n✗ TEST 2 FAILED: Unknown source '{gap_prediction.get('source')}'")
+            print(f"\n[X] TEST 2 FAILED: Unknown source '{gap_prediction.get('source')}'")
             return False
             
     except Exception as e:
-        print(f"\n✗ TEST 2 FAILED: {e}")
+        print(f"\n[X] TEST 2 FAILED: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -118,15 +118,15 @@ def test_accuracy_comparison():
     print("="*80)
     
     print("\nExpected Accuracy:")
-    print("  SPI Proxy (ES, NQ, VIX, AUD, Iron, Oil): 95-99% (±0.1-0.2%)")
-    print("  US Market Correlation (S&P, NASDAQ, Dow): 60-75% (±0.5-1.0%)")
+    print("  SPI Proxy (ES, NQ, VIX, AUD, Iron, Oil): 95-99% (+/-0.1-0.2%)")
+    print("  US Market Correlation (S&P, NASDAQ, Dow): 60-75% (+/-0.5-1.0%)")
     
     print("\nExample Scenario (Iran-Israel War):")
     print("  Actual ASX 200 Gap: -2.5%")
     print("  SPI Proxy Prediction: -2.42% (error: 0.08%)")
     print("  US Correlation Prediction: +1.19% (error: 3.69%)")
     
-    print("\n✓ TEST 3 PASSED: Accuracy improvement documented")
+    print("\n[OK] TEST 3 PASSED: Accuracy improvement documented")
     return True
 
 
@@ -160,25 +160,25 @@ def main():
     print("="*80)
     
     for test_name, passed in results:
-        status = "✓ PASS" if passed else "✗ FAIL"
+        status = "[OK] PASS" if passed else "[X] FAIL"
         print(f"{status}: {test_name}")
     
     all_passed = all(passed for _, passed in results)
     
     if all_passed:
         print("\n" + "="*80)
-        print("✓ ALL TESTS PASSED - SPI PROXY INTEGRATION SUCCESSFUL")
+        print("[OK] ALL TESTS PASSED - SPI PROXY INTEGRATION SUCCESSFUL")
         print("="*80)
         print("\nNext Steps:")
         print("1. Deploy updated package to production")
         print("2. Run overnight pipeline: python scripts\\run_au_pipeline_v1.3.13.py")
         print("3. Verify gap prediction accuracy improves from ~60% to ~95%")
-        print("4. Monitor logs for '[SPI PROXY] ✓ Success!' messages")
+        print("4. Monitor logs for '[SPI PROXY] [OK] Success!' messages")
         print("="*80)
         return 0
     else:
         print("\n" + "="*80)
-        print("✗ SOME TESTS FAILED - REVIEW ERRORS ABOVE")
+        print("[X] SOME TESTS FAILED - REVIEW ERRORS ABOVE")
         print("="*80)
         return 1
 

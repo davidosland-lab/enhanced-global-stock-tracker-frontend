@@ -114,9 +114,9 @@ def run_opportunity_scan(coordinator) -> list:
                         f"(confidence={opp.confidence:.1f}%, urgency={opp.urgency.value})"
                     )
                     logger.info(f"  Reason: {opp.reason}")
-                    logger.info(f"  Entry: ${opp.entry_price:.2f}")
-                    logger.info(f"  Stop: ${opp.stop_loss:.2f}")
-                    logger.info(f"  Target: ${opp.target_price:.2f} ({opp.expected_move_pct:+.1f}%)")
+                    logger.info(f"  Entry: USD{opp.entry_price:.2f}")
+                    logger.info(f"  Stop: USD{opp.stop_loss:.2f}")
+                    logger.info(f"  Target: USD{opp.target_price:.2f} ({opp.expected_move_pct:+.1f}%)")
         
         # Log scan statistics every 10 scans (show efficiency)
         stats = coordinator.opportunity_monitor.get_scan_statistics()
@@ -237,21 +237,21 @@ def process_opportunity_alerts(coordinator, opportunities: list) -> int:
 To integrate OpportunityMonitor into paper_trading_coordinator.py:
 
 1. Add import at top of file:
-   ```python
+   '''python
    from core.opportunity_monitor import OpportunityMonitor, OpportunityAlert
-   ```
+   '''
 
 2. In __init__ method, add:
-   ```python
+   '''python
    # Initialize opportunity monitor
    self.opportunity_monitor = None
    if self.config.get('opportunity_monitoring', {}).get('enabled', False):
        from patches.opportunity_monitor_integration import integrate_opportunity_monitor
        integrate_opportunity_monitor(self)
-   ```
+   '''
 
 3. In run_trading_cycle method, add after market sentiment update:
-   ```python
+   '''python
    # Run opportunity scan (every 5 minutes)
    if hasattr(self, 'opportunity_monitor') and self.opportunity_monitor:
        from patches.opportunity_monitor_integration import run_opportunity_scan, process_opportunity_alerts
@@ -262,10 +262,10 @@ To integrate OpportunityMonitor into paper_trading_coordinator.py:
            entered = process_opportunity_alerts(self, opportunities)
            if entered > 0:
                logger.info(f"[CYCLE] Entered {entered} positions from opportunity scan")
-   ```
+   '''
 
 4. Add to config.json:
-   ```json
+   '''json
    {
      "opportunity_monitoring": {
        "enabled": true,
@@ -277,7 +277,7 @@ To integrate OpportunityMonitor into paper_trading_coordinator.py:
        "enable_market_hours_filter": true
      }
    }
-   ```
+   '''
 
    **NEW**: enable_market_hours_filter (default: true)
    - When true: Only scans stocks when their market is open
@@ -287,9 +287,9 @@ To integrate OpportunityMonitor into paper_trading_coordinator.py:
    - Example: At 8 AM GMT, UK+US stocks are scanned (AU market closed)
 
 5. Test:
-   ```bash
+   '''bash
    python core/paper_trading_coordinator.py --symbols AAPL,BHP.AX,HSBA.L,STAN.L --capital 100000
-   ```
+   '''
 
 Expected behavior:
 - Monitor scans all symbols every 5 minutes

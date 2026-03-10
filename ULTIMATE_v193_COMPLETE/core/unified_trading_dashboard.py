@@ -202,27 +202,27 @@ def create_market_status_panel():
         # Determine status color and icon
         if info.status == MarketStatus.OPEN:
             status_color = '#4CAF50'
-            status_icon = '🟢'
+            status_icon = '[OK]'
             status_text = 'OPEN'
         elif info.status == MarketStatus.HOLIDAY:
             status_color = '#FF9800'
-            status_icon = '🏖️'
+            status_icon = '[U+1F3D6][U+FE0F]'
             status_text = f'HOLIDAY - {info.holiday_name}'
         elif info.status == MarketStatus.WEEKEND:
             status_color = '#9E9E9E'
-            status_icon = '📅'
+            status_icon = '[U+1F4C5]'
             status_text = 'WEEKEND'
         elif info.status == MarketStatus.PRE_MARKET:
             status_color = '#2196F3'
-            status_icon = '🔵'
+            status_icon = '[U+1F535]'
             status_text = 'PRE-MARKET'
         elif info.status == MarketStatus.POST_MARKET:
             status_color = '#FF9800'
-            status_icon = '🟡'
+            status_icon = '[WARN]'
             status_text = 'POST-MARKET'
         else:
             status_color = '#F44336'
-            status_icon = '🔴'
+            status_icon = '[ALERT]'
             status_text = 'CLOSED'
         
         # Format time information
@@ -255,13 +255,13 @@ def create_market_status_panel():
             # Determine gap color and icon
             if gap_pct > 0.5:
                 gap_color = '#4CAF50'  # Green for bullish
-                gap_icon = '📈'
+                gap_icon = '[UP]'
             elif gap_pct < -0.5:
                 gap_color = '#F44336'  # Red for bearish
-                gap_icon = '📉'
+                gap_icon = '[DOWN]'
             else:
                 gap_color = '#FF9800'  # Orange for neutral
-                gap_icon = '➡️'
+                gap_icon = '[U+27A1][U+FE0F]'
             
             gap_section = [
                 html.Div([
@@ -269,7 +269,7 @@ def create_market_status_panel():
                     html.Span(f"Gap: {gap_pct:+.2f}%", 
                              style={'color': gap_color, 'fontWeight': 'bold', 'fontSize': '13px'})
                 ], style={'marginTop': '8px', 'marginBottom': '3px'}),
-                html.P(f"{direction} • {confidence:.0f}% confidence", 
+                html.P(f"{direction} * {confidence:.0f}% confidence", 
                       style={'color': '#888', 'fontSize': '10px', 'margin': '0'})
             ]
         
@@ -299,7 +299,7 @@ def create_market_status_panel():
     
     return html.Div([
         html.Div([
-            html.H3('🕐 Market Hours & Gap Predictions', 
+            html.H3('[U+1F550] Market Hours & Gap Predictions', 
                    style={'color': '#2196F3', 'margin': '0 0 15px 0', 'fontSize': '18px'}),
             html.Div([
                 format_status_card(asx_info, gap_predictions.get('au')),
@@ -340,7 +340,7 @@ def create_ml_signals_panel(state):
     for comp in ml_components:
         # Get signal value from state (if available)
         signal_value = ml_signals.get(comp['name'].lower().replace(' ', '_'), 0)
-        signal_status = "🟢 BULLISH" if signal_value > 0.5 else "🔴 BEARISH" if signal_value < -0.5 else "⚪ NEUTRAL"
+        signal_status = "[OK] BULLISH" if signal_value > 0.5 else "[ALERT] BEARISH" if signal_value < -0.5 else "o NEUTRAL"
         signal_color = '#4CAF50' if signal_value > 0.5 else '#F44336' if signal_value < -0.5 else '#888'
         
         component_cards.append(
@@ -390,7 +390,7 @@ def create_ml_signals_panel(state):
             timestamp = decision.get('timestamp', '')
             
             action_color = '#4CAF50' if action == 'BUY' else '#F44336' if action == 'SELL' else '#2196F3'
-            action_icon = '[UP]' if action == 'BUY' else '[DN]' if action == 'SELL' else '⏸️'
+            action_icon = '[UP]' if action == 'BUY' else '[DN]' if action == 'SELL' else '[PAUSE]'
             
             decisions_content.append(
                 html.Div([
@@ -413,14 +413,14 @@ def create_ml_signals_panel(state):
     else:
         decisions_content = [
             html.Div([
-                html.P('🤖 Monitoring markets...', style={'color': '#888', 'textAlign': 'center', 'margin': '20px 0'}),
+                html.P('[U+1F916] Monitoring markets...', style={'color': '#888', 'textAlign': 'center', 'margin': '20px 0'}),
                 html.P('Waiting for trading signals', style={'color': '#666', 'textAlign': 'center', 'fontSize': '12px', 'margin': '0'})
             ])
         ]
     
     return html.Div([
         html.Div([
-            html.H3('🤖 ML Analysis & Trading Decisions', 
+            html.H3('[U+1F916] ML Analysis & Trading Decisions', 
                    style={'color': '#4CAF50', 'margin': '0 0 15px 0', 'fontSize': '18px'}),
             
             # ML Components Grid
@@ -962,7 +962,7 @@ app.layout = html.Div([
             
             # Capital input
             html.Div([
-                html.Label('Initial Capital ($):', style={'color': '#ffffff', 'display': 'block', 'marginBottom': '5px'}),
+                html.Label('Initial Capital (USD):', style={'color': '#ffffff', 'display': 'block', 'marginBottom': '5px'}),
                 dcc.Input(
                     id='capital-input',
                     type='number',
@@ -975,7 +975,7 @@ app.layout = html.Div([
             
             # Trading Controls Panel (TRADING_CONTROLS_v86)
             html.Div([
-                html.H4('⚙️ Trading Controls', style={'color': '#FFC107', 'margin': '0 0 15px 0'}),
+                html.H4('[U+2699][U+FE0F] Trading Controls', style={'color': '#FFC107', 'margin': '0 0 15px 0'}),
                 
                 # Confidence Level Slider
                 html.Div([
@@ -1009,6 +1009,28 @@ app.layout = html.Div([
                     ),
                     html.P('Set stop loss percentage (1-20%)', style={'color': '#888', 'fontSize': '11px', 'margin': '3px 0 0 0'})
                 ], style={'marginBottom': '20px'}),
+                
+                # FIX v193.11.6.16: Trade Mode Toggle (HOLD signal handling)
+                html.Div([
+                    html.Label('Trade Mode:', style={'color': '#ffffff', 'display': 'block', 'marginBottom': '5px'}),
+                    dcc.RadioItems(
+                        id='trade-mode-radio',
+                        options=[
+                            {'label': ' Strict (BUY/SELL only)', 'value': 'strict'},
+                            {'label': ' Confidence-Based (Allow high-confidence HOLD)', 'value': 'confidence_based'}
+                        ],
+                        value='strict',
+                        labelStyle={'display': 'block', 'color': '#ffffff', 'marginBottom': '5px'},
+                        inputStyle={'marginRight': '8px'}
+                    ),
+                    html.P([
+                        html.Span('Strict: ', style={'fontWeight': 'bold'}),
+                        html.Span('Only trade explicit BUY/SELL signals (conservative)'),
+                        html.Br(),
+                        html.Span('Confidence-Based: ', style={'fontWeight': 'bold'}),
+                        html.Span('Trade high-quality HOLD signals if score >=60 & confidence >=53%')
+                    ], style={'color': '#888', 'fontSize': '11px', 'margin': '8px 0 0 0', 'lineHeight': '1.5'})
+                ], style={'marginBottom': '20px', 'padding': '12px', 'backgroundColor': '#2a2a2a', 'borderRadius': '5px', 'border': '1px solid #555'}),
                 
                 # Force Trade Section (FIX v1.3.15.162: Add confidence and stop-loss inputs)
                 html.Div([
@@ -1062,11 +1084,11 @@ app.layout = html.Div([
                     
                     # Action buttons
                     html.Div([
-                        html.Button('📈 Force BUY', id='force-buy-btn', n_clicks=0,
+                        html.Button('[UP] Force BUY', id='force-buy-btn', n_clicks=0,
                                    style={'backgroundColor': '#4CAF50', 'color': 'white', 'padding': '10px 25px',
                                           'border': 'none', 'borderRadius': '5px', 'fontSize': '14px',
                                           'marginRight': '10px', 'cursor': 'pointer', 'fontWeight': 'bold'}),
-                        html.Button('📉 Force SELL', id='force-sell-btn', n_clicks=0,
+                        html.Button('[DOWN] Force SELL', id='force-sell-btn', n_clicks=0,
                                    style={'backgroundColor': '#F44336', 'color': 'white', 'padding': '10px 25px',
                                           'border': 'none', 'borderRadius': '5px', 'fontSize': '14px',
                                           'cursor': 'pointer', 'fontWeight': 'bold'})
@@ -1082,11 +1104,11 @@ app.layout = html.Div([
             
             # Control buttons
             html.Div([
-                html.Button('▶️ Start Trading', id='start-btn', n_clicks=0,
+                html.Button('[PLAY] Start Trading', id='start-btn', n_clicks=0,
                            style={'backgroundColor': '#4CAF50', 'color': 'white', 'padding': '12px 30px',
                                   'border': 'none', 'borderRadius': '5px', 'fontSize': '16px',
                                   'marginRight': '10px', 'cursor': 'pointer'}),
-                html.Button('⏸️ Stop Trading', id='stop-btn', n_clicks=0,
+                html.Button('[PAUSE] Stop Trading', id='stop-btn', n_clicks=0,
                            style={'backgroundColor': '#F44336', 'color': 'white', 'padding': '12px 30px',
                                   'border': 'none', 'borderRadius': '5px', 'fontSize': '16px',
                                   'cursor': 'pointer'})
@@ -1301,11 +1323,11 @@ app.layout = html.Div([
             
             # Generate Buttons
             html.Div([
-                html.Button('📄 Generate ATO Report', id='generate-ato-btn', n_clicks=0,
+                html.Button('[U+1F4C4] Generate ATO Report', id='generate-ato-btn', n_clicks=0,
                            style={'backgroundColor': '#2196F3', 'color': 'white', 'padding': '10px 20px',
                                   'border': 'none', 'borderRadius': '5px', 'fontSize': '14px',
                                   'marginRight': '10px', 'cursor': 'pointer'}),
-                html.Button('💾 Export CSV', id='export-csv-btn', n_clicks=0,
+                html.Button('[U+1F4BE] Export CSV', id='export-csv-btn', n_clicks=0,
                            style={'backgroundColor': '#4CAF50', 'color': 'white', 'padding': '10px 20px',
                                   'border': 'none', 'borderRadius': '5px', 'fontSize': '14px',
                                   'cursor': 'pointer'})
@@ -1433,10 +1455,11 @@ def autoload_pipeline_stocks(n_clicks):
     [State('symbols-input', 'value'),
      State('capital-input', 'value'),
      State('confidence-slider', 'value'),
-     State('stop-loss-input', 'value')],
+     State('stop-loss-input', 'value'),
+     State('trade-mode-radio', 'value')],  # FIX v193.11.6.16: Add trade mode
     prevent_initial_call=True
 )
-def control_trading(start_clicks, stop_clicks, symbols_str, capital, min_confidence, stop_loss_pct):
+def control_trading(start_clicks, stop_clicks, symbols_str, capital, min_confidence, stop_loss_pct, trade_mode):
     """Start or stop paper trading"""
     global trading_system, trading_thread, is_trading
     
@@ -1469,6 +1492,26 @@ def control_trading(start_clicks, stop_clicks, symbols_str, capital, min_confide
             if trading_thread and trading_thread.is_alive():
                 trading_thread.join(timeout=2)
         
+        # FIX v193.11.6.16: Update config with trade mode before starting
+        try:
+            import json
+            config_path = Path(__file__).parent.parent / 'config' / 'config.json'
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+            
+            # Update trade mode in config
+            if 'paper_trading' not in config:
+                config['paper_trading'] = {}
+            config['paper_trading']['trade_mode'] = trade_mode if trade_mode else 'strict'
+            config['paper_trading']['min_confidence'] = min_confidence if min_confidence else 53.0
+            
+            with open(config_path, 'w') as f:
+                json.dump(config, f, indent=2)
+            
+            logger.info(f"[CONFIG] Updated trade_mode to '{trade_mode}', min_confidence to {min_confidence}%")
+        except Exception as e:
+            logger.warning(f"[CONFIG] Failed to update config.json: {e}")
+        
         # Create new trading system
         try:
             if not PAPER_TRADING_AVAILABLE:
@@ -1495,7 +1538,7 @@ def control_trading(start_clicks, stop_clicks, symbols_str, capital, min_confide
             return html.Div([
                 html.P("[OK] Trading Started!", style={'color': '#4CAF50', 'fontWeight': 'bold', 'margin': '0 0 5px 0'}),
                 html.P(f"Symbols: {', '.join(symbols)}", style={'color': '#ffffff', 'margin': '0'}),
-                html.P(f"Capital: ${capital:,.2f}", style={'color': '#ffffff', 'margin': '0'})
+                html.P(f"Capital: USD{capital:,.2f}", style={'color': '#ffffff', 'margin': '0'})
             ])
             
         except Exception as e:
@@ -1509,10 +1552,10 @@ def control_trading(start_clicks, stop_clicks, symbols_str, capital, min_confide
             if trading_thread and trading_thread.is_alive():
                 trading_thread.join(timeout=2)
             
-            return html.Div("⏸️ Trading Stopped", 
+            return html.Div("[PAUSE] Trading Stopped", 
                           style={'color': '#FF9800', 'fontWeight': 'bold'})
         else:
-            return html.Div("ℹ️ Trading is not running", 
+            return html.Div("[U+2139][U+FE0F] Trading is not running", 
                           style={'color': '#888'})
     
     return "Ready to start"
@@ -1655,11 +1698,11 @@ def update_dashboard(n):
                     live_position_count += 1
         
         # Top metrics
-        total_capital = f"${state['capital']['total']:,.2f}"
+        total_capital = f"USD{state['capital']['total']:,.2f}"
         total_return = f"Return: {state['capital']['total_return_pct']:+.2f}%"
         
         position_count = str(live_position_count if live_position_count > 0 else state['positions']['count'])
-        unrealized_pnl = f"Unrealized P&L: ${live_unrealized_pnl:+,.2f}"
+        unrealized_pnl = f"Unrealized P&L: USD{live_unrealized_pnl:+,.2f}"
         
         win_rate = f"{state['performance']['win_rate']:.1f}%"
         total_trades = f"{state['performance']['total_trades']} trades"
@@ -1849,7 +1892,7 @@ def update_dashboard(n):
                 fixedrange=True,
                 range=[initial * 0.95, max(current * 1.05, initial * 1.05)],
                 automargin=False,
-                tickformat='$,.0f'
+                tickformat='USD,.0f'
             ),
             margin=dict(l=80, r=30, t=30, b=50, autoexpand=False),
             showlegend=False,
@@ -1907,7 +1950,7 @@ def update_dashboard(n):
                                  entry_price)
                     if live_price and live_price > 0:
                         current_price = live_price
-                        logger.debug(f"[DASHBOARD v193.3] {symbol}: Live price ${current_price:.2f}")
+                        logger.debug(f"[DASHBOARD v193.3] {symbol}: Live price USD{current_price:.2f}")
                 except Exception as e:
                     logger.warning(f"[DASHBOARD v193.3] Failed to fetch live price for {symbol}: {e}")
                     # Use price from state if available, otherwise entry price
@@ -1922,12 +1965,12 @@ def update_dashboard(n):
                     html.Div([
                         html.Div([
                             html.H4(symbol, style={'color': '#ffffff', 'margin': '0'}),
-                            html.P(f"{shares} shares @ ${entry_price:.2f}", 
+                            html.P(f"{shares} shares @ USD{entry_price:.2f}", 
                                   style={'color': '#888', 'margin': '5px 0', 'fontSize': '13px'})
                         ], style={'flex': '1'}),
                         
                         html.Div([
-                            html.H4(f"${current_price:.2f}", 
+                            html.H4(f"USD{current_price:.2f}", 
                                    style={'color': '#ffffff', 'margin': '0', 'textAlign': 'right'}),
                             html.P(f"{unrealized_pnl_pct:+.2f}%", 
                                   style={'color': pnl_color, 'margin': '5px 0', 'fontSize': '13px', 'textAlign': 'right'})
@@ -1976,8 +2019,8 @@ def update_dashboard(n):
             html.Div(),  # market_status
             html.Div(),  # ml_signals
             empty_fig,  # market_perf
-            "$0.00", "Return: 0.00%",  # capital
-            "0", "Unrealized P&L: $0.00",  # positions
+            "USD0.00", "Return: 0.00%",  # capital
+            "0", "Unrealized P&L: USD0.00",  # positions
             "0.0%", "0 trades",  # performance
             "0.0", "NEUTRAL",  # sentiment
             html.Div("Loading...", style={'color': '#888'}),  # finbert_panel
@@ -2029,17 +2072,17 @@ def handle_tax_reports(ato_clicks, csv_clicks, financial_year):
                 html.Div([
                     html.Div([
                         html.P('Net Capital Gain:', style={'color': '#888', 'margin': '5px 0'}),
-                        html.P(f"${summary['net_capital_gain']:,.2f}", 
+                        html.P(f"USD{summary['net_capital_gain']:,.2f}", 
                               style={'color': '#4CAF50', 'fontSize': '18px', 'fontWeight': 'bold'})
                     ], style={'flex': '1'}),
                     html.Div([
                         html.P('CGT Discount:', style={'color': '#888', 'margin': '5px 0'}),
-                        html.P(f"${summary['cgt_discount']:,.2f}", 
+                        html.P(f"USD{summary['cgt_discount']:,.2f}", 
                               style={'color': '#2196F3', 'fontSize': '18px', 'fontWeight': 'bold'})
                     ], style={'flex': '1'}),
                     html.Div([
                         html.P('Net After Discount:', style={'color': '#888', 'margin': '5px 0'}),
-                        html.P(f"${summary['net_after_discount']:,.2f}", 
+                        html.P(f"USD{summary['net_after_discount']:,.2f}", 
                               style={'color': '#FF9800', 'fontSize': '18px', 'fontWeight': 'bold'})
                     ], style={'flex': '1'}),
                     html.Div([
@@ -2111,24 +2154,24 @@ def handle_force_trade(buy_clicks, sell_clicks, symbol, confidence, stop_loss):
     button_id = ctx.triggered[0]['prop_id'].split('.')[0]
     
     if not symbol or symbol.strip() == "":
-        return "⚠️ Please enter a symbol", symbol
+        return "[!] Please enter a symbol", symbol
     
     symbol = symbol.strip().upper()
     
     # FIX v1.3.15.162: Validate confidence and stop-loss inputs
     if not confidence or confidence < 50 or confidence > 95:
-        return "⚠️ Confidence must be between 50% and 95%", symbol
+        return "[!] Confidence must be between 50% and 95%", symbol
     
     if not stop_loss or stop_loss > -1 or stop_loss < -10:
-        return "⚠️ Stop loss must be between -1% and -10% (negative values)", symbol
+        return "[!] Stop loss must be between -1% and -10% (negative values)", symbol
     
     # Determine action
     if button_id == 'force-buy-btn' and buy_clicks > 0:
         action = "BUY"
-        color_code = "🟢"
+        color_code = "[OK]"
     elif button_id == 'force-sell-btn' and sell_clicks > 0:
         action = "SELL"
-        color_code = "🔴"
+        color_code = "[ALERT]"
     else:
         return "", symbol
     
@@ -2150,16 +2193,16 @@ def handle_force_trade(buy_clicks, sell_clicks, symbol, confidence, stop_loss):
             if result:
                 return f"{color_code} {action} order placed for {symbol} at {timestamp}", ""
             else:
-                return f"⚠️ Failed to execute {action} for {symbol}", symbol
+                return f"[!] Failed to execute {action} for {symbol}", symbol
         except Exception as e:
             logger.error(f"Force trade error: {e}")
-            return f"❌ Error: {str(e)}", symbol
+            return f"[ERROR] Error: {str(e)}", symbol
     else:
-        return "⚠️ Trading system not initialized. Start trading first.", symbol
+        return "[!] Trading system not initialized. Start trading first.", symbol
 
 
 def execute_force_buy(system, symbol, confidence, stop_loss):
-    """Execute a forced buy trade"""
+    """Execute a forced buy trade using PaperTradingCoordinator.enter_position() (FIX v193.11.6)"""
     try:
         # Get current price (FIX v1.3.15.161: Better error handling)
         import yfinance as yf
@@ -2173,7 +2216,7 @@ def execute_force_buy(system, symbol, confidence, stop_loss):
         try:
             current_price = ticker.info.get('regularMarketPrice')
             if current_price and current_price > 0:
-                logger.info(f"[OK] {symbol} price from info: ${current_price:.2f}")
+                logger.info(f"[OK] {symbol} price from info: USD{current_price:.2f}")
         except Exception as e:
             error_details.append(f"info failed: {e}")
         
@@ -2183,7 +2226,7 @@ def execute_force_buy(system, symbol, confidence, stop_loss):
                 hist = ticker.history(period='1d')
                 if not hist.empty and 'Close' in hist.columns:
                     current_price = hist['Close'].iloc[-1]
-                    logger.info(f"[OK] {symbol} price from history: ${current_price:.2f}")
+                    logger.info(f"[OK] {symbol} price from history: USD{current_price:.2f}")
                 else:
                     error_details.append("history returned empty or no Close column")
             except Exception as e:
@@ -2195,7 +2238,7 @@ def execute_force_buy(system, symbol, confidence, stop_loss):
                 hist = ticker.history(period='5d')
                 if not hist.empty and 'Close' in hist.columns:
                     current_price = hist['Close'].iloc[-1]
-                    logger.info(f"[OK] {symbol} price from 5d history: ${current_price:.2f}")
+                    logger.info(f"[OK] {symbol} price from 5d history: USD{current_price:.2f}")
                 else:
                     error_details.append("5d history returned empty")
             except Exception as e:
@@ -2206,92 +2249,89 @@ def execute_force_buy(system, symbol, confidence, stop_loss):
             logger.error(error_msg)
             return False
         
-        # Calculate position size (simple: use 5% of available cash)
-        position_size = int((system.cash * 0.05) / current_price)
+        # Calculate position size (use 5% of available capital)
+        position_size_pct = 0.05
+        position_value = system.current_capital * position_size_pct
+        shares = int(position_value / current_price)
         
-        if position_size < 1:
-            logger.warning(f"Insufficient cash for {symbol}")
+        if shares < 1:
+            logger.warning(f"Insufficient capital for {symbol} - need at least USD{current_price:.2f}")
             return False
         
-        # Execute buy
-        cost = position_size * current_price
+        # Calculate stop loss if not provided
+        if stop_loss is None or stop_loss <= 0:
+            stop_loss = current_price * 0.95  # Default 5% stop loss
         
-        if cost > system.cash:
-            logger.warning(f"Insufficient cash: need ${cost:.2f}, have ${system.cash:.2f}")
-            return False
-        
-        # Create position
-        system.cash -= cost
-        system.invested += cost
-        
-        position = {
-            'symbol': symbol,
-            'entry_price': current_price,
-            'quantity': position_size,
-            'entry_time': datetime.now().isoformat(),
+        # Create signal dictionary for enter_position()
+        signal = {
+            'type': 'MANUAL',
+            'prediction': 'BUY',
+            'confidence': confidence if confidence else 55.0,
             'stop_loss': stop_loss,
-            'confidence': confidence,
-            'force_trade': True
+            'take_profit': None,  # No profit target for manual trades
+            'shares': shares,
+            'entry_price': current_price,
+            'timestamp': datetime.now().isoformat()
         }
         
-        system.positions[symbol] = position
+        # Use the proper enter_position method from PaperTradingCoordinator
+        success = system.enter_position(symbol, signal)
         
-        logger.info(f"[OK] FORCE BUY: {position_size} shares of {symbol} @ ${current_price:.2f}")
-        logger.info(f"   Cost: ${cost:.2f}, Remaining cash: ${system.cash:.2f}")
-        
-        # Save state
-        system.save_state()
-        
-        return True
+        if success:
+            logger.info(f"[OK] FORCE BUY SUCCESS: {shares} shares of {symbol} @ USD{current_price:.2f}")
+            logger.info(f"   Cost: USD{shares * current_price:.2f}, Remaining capital: USD{system.current_capital:.2f}")
+            return True
+        else:
+            logger.warning(f"[WARN] Force buy failed for {symbol} - enter_position returned False")
+            return False
         
     except Exception as e:
-        logger.error(f"Force buy failed: {e}")
+        logger.error(f"Force buy failed: {e}", exc_info=True)
         return False
 
 
 def execute_force_sell(system, symbol):
-    """Execute a forced sell trade"""
+    """Execute a forced sell trade using PaperTradingCoordinator.close_position() (FIX v193.11.6)"""
     try:
         if symbol not in system.positions:
             logger.warning(f"No position for {symbol} to sell")
             return False
         
-        position = system.positions[symbol]
-        
         # Get current price
         import yfinance as yf
         ticker = yf.Ticker(symbol)
-        current_price = ticker.info.get('regularMarketPrice', ticker.history(period='1d')['Close'].iloc[-1])
+        
+        current_price = None
+        try:
+            current_price = ticker.info.get('regularMarketPrice')
+        except:
+            pass
         
         if not current_price:
-            logger.error(f"Could not get price for {symbol}")
+            try:
+                hist = ticker.history(period='1d')
+                if not hist.empty:
+                    current_price = hist['Close'].iloc[-1]
+            except:
+                pass
+        
+        if not current_price or current_price <= 0:
+            logger.error(f"Could not get valid price for {symbol}")
             return False
         
-        # Calculate sale
-        quantity = position['quantity']
-        entry_price = position['entry_price']
-        sale_value = quantity * current_price
-        cost_basis = quantity * entry_price
-        pnl = sale_value - cost_basis
-        pnl_pct = (pnl / cost_basis) * 100
+        # Use the proper close_position method from PaperTradingCoordinator
+        success = system.close_position(symbol, current_price, 'MANUAL_SELL')
         
-        # Update capital
-        system.cash += sale_value
-        system.invested -= cost_basis
-        
-        # Remove position
-        del system.positions[symbol]
-        
-        logger.info(f"[OK] FORCE SELL: {quantity} shares of {symbol} @ ${current_price:.2f}")
-        logger.info(f"   P&L: ${pnl:+.2f} ({pnl_pct:+.1f}%), Cash: ${system.cash:.2f}")
-        
-        # Save state
-        system.save_state()
-        
-        return True
+        if success:
+            logger.info(f"[OK] FORCE SELL SUCCESS: {symbol} @ USD{current_price:.2f}")
+            logger.info(f"   Remaining capital: USD{system.current_capital:.2f}")
+            return True
+        else:
+            logger.warning(f"[WARN] Force sell failed for {symbol} - close_position returned False")
+            return False
         
     except Exception as e:
-        logger.error(f"Force sell failed: {e}")
+        logger.error(f"Force sell failed: {e}", exc_info=True)
         return False
 
 

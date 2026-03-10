@@ -233,7 +233,7 @@ class EmailNotifier:
             return False
         
         report_date = datetime.now(self.timezone).strftime('%Y-%m-%d')
-        subject = f"🚨 HIGH CONFIDENCE OPPORTUNITIES - {report_date}"
+        subject = f"[ALERT] HIGH CONFIDENCE OPPORTUNITIES - {report_date}"
         
         body = self._create_alert_body(high_conf_opportunities)
         html_body = self._create_alert_html(high_conf_opportunities)
@@ -305,7 +305,7 @@ class EmailNotifier:
             html_body = None
         
         elif notification_type == 'alert':
-            subject = f"🚨 Trading Alert - {report_date}"
+            subject = f"[ALERT] Trading Alert - {report_date}"
             body = "High-confidence trading opportunities detected."
             html_body = None
         
@@ -315,7 +315,7 @@ class EmailNotifier:
             html_body = None
         
         else:
-            subject = f"📧 Notification - {report_date}"
+            subject = f"[U+1F4E7] Notification - {report_date}"
             body = "Overnight screening system notification."
             html_body = None
         
@@ -410,7 +410,7 @@ class EmailNotifier:
                 <p><span class="signal {signal_class}">{signal}</span></p>
                 <p><strong>Confidence:</strong> {opp.get('confidence', 0):.1f}%</p>
                 <p><strong>Sector:</strong> {opp.get('sector', 'N/A')}</p>
-                <p><strong>Price:</strong> ${opp.get('current_price', 0):.2f}</p>
+                <p><strong>Price:</strong> USD{opp.get('current_price', 0):.2f}</p>
             </div>
             """
         
@@ -427,7 +427,7 @@ class EmailNotifier:
     def _create_alert_body(self, opportunities: List[Dict]) -> str:
         """Create plain text body for alert email"""
         lines = []
-        lines.append("🚨 HIGH CONFIDENCE OPPORTUNITIES DETECTED 🚨")
+        lines.append("[ALERT] HIGH CONFIDENCE OPPORTUNITIES DETECTED [ALERT]")
         lines.append("=" * 80)
         lines.append("")
         
@@ -435,7 +435,7 @@ class EmailNotifier:
             lines.append(f"{i}. {opp.get('symbol', 'N/A')} - Score: {opp.get('opportunity_score', 0):.1f}/100")
             lines.append(f"   Signal: {opp.get('signal', 'N/A')}")
             lines.append(f"   Confidence: {opp.get('confidence', 0):.1f}%")
-            lines.append(f"   Price: ${opp.get('current_price', 0):.2f}")
+            lines.append(f"   Price: USD{opp.get('current_price', 0):.2f}")
             lines.append("")
         
         lines.append("=" * 80)
@@ -457,7 +457,7 @@ class EmailNotifier:
         </head>
         <body>
             <div class="header">
-                <h1>🚨 HIGH CONFIDENCE OPPORTUNITIES</h1>
+                <h1>[ALERT] HIGH CONFIDENCE OPPORTUNITIES</h1>
                 <p>Immediate attention recommended</p>
             </div>
         """
@@ -469,7 +469,7 @@ class EmailNotifier:
                 <p class="score">{opp.get('opportunity_score', 0):.1f}/100</p>
                 <p><strong>Signal:</strong> {opp.get('signal', 'N/A')}</p>
                 <p><strong>Confidence:</strong> {opp.get('confidence', 0):.1f}%</p>
-                <p><strong>Price:</strong> ${opp.get('current_price', 0):.2f}</p>
+                <p><strong>Price:</strong> USD{opp.get('current_price', 0):.2f}</p>
             </div>
             """
         

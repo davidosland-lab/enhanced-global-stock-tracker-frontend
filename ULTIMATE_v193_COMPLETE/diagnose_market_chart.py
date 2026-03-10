@@ -48,7 +48,7 @@ def diagnose_market_chart():
         minutes_since_open = (current_time_gmt - uk_open).seconds // 60
         print(f"[OK] UK Market is OPEN (opened {minutes_since_open} minutes ago)")
     else:
-        print(f"✗ UK Market is CLOSED")
+        print(f"[X] UK Market is CLOSED")
     print()
     
     # Test yfinance fetch for FTSE
@@ -61,7 +61,7 @@ def diagnose_market_chart():
         hist = ticker.history(period='5d', interval='15m')
         
         if hist.empty:
-            print("❌ PROBLEM: No data returned from yfinance!")
+            print("[ERROR] PROBLEM: No data returned from yfinance!")
             print("   Possible causes:")
             print("   - yfinance API issue")
             print("   - Yahoo Finance data delay")
@@ -87,12 +87,12 @@ def diagnose_market_chart():
         print()
         
         if minutes_ago > 30:
-            print(f"⚠️  WARNING: Latest data is {minutes_ago} minutes old!")
+            print(f"[!]  WARNING: Latest data is {minutes_ago} minutes old!")
             print(f"   Expected: Data within last 15-20 minutes for active market")
             print()
         
     except Exception as e:
-        print(f"❌ ERROR fetching data: {e}")
+        print(f"[ERROR] ERROR fetching data: {e}")
         print()
         return
     
@@ -112,7 +112,7 @@ def diagnose_market_chart():
     print()
     
     if len(hist_24h) == 0:
-        print("❌ PROBLEM: No data in last 24 hours!")
+        print("[ERROR] PROBLEM: No data in last 24 hours!")
         print("   This would cause empty graph")
         print()
         return
@@ -136,7 +136,7 @@ def diagnose_market_chart():
     print()
     
     if len(market_hours_data) == 0:
-        print("❌ PROBLEM: No data during market hours!")
+        print("[ERROR] PROBLEM: No data during market hours!")
         print("   Possible causes:")
         print("   - Market hasn't started yet today")
         print("   - Market closed (holiday)")
@@ -197,7 +197,7 @@ def diagnose_market_chart():
         print()
         
     except Exception as e:
-        print(f"❌ ERROR calculating percentages: {e}")
+        print(f"[ERROR] ERROR calculating percentages: {e}")
         print()
         return
     
@@ -220,7 +220,7 @@ def diagnose_market_chart():
         print("  3. Try hard refresh (Ctrl+F5)")
         print("  4. Check if trading system is started")
     else:
-        print("❌ No data available for chart")
+        print("[ERROR] No data available for chart")
         print()
         print("Most likely cause: Market data not yet available in yfinance")
         print("  - yfinance may have 15-20 minute delay")

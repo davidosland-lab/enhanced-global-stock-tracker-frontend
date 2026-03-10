@@ -62,7 +62,7 @@ try:
 except ImportError:
     EventRiskGuard = None
 
-# 🆕 Dual Regime Analyzer (Multi-Factor + HMM)
+# [NEW] Dual Regime Analyzer (Multi-Factor + HMM)
 try:
     from .dual_regime_analyzer import DualRegimeAnalyzer
 except ImportError:
@@ -164,7 +164,7 @@ class UKOvernightPipeline:
                 self.trainer = None
                 logger.info("  LSTM training disabled (lstm_trainer module not found)")
             
-            # 🆕 v1.3.15.176: Dual Regime Analyzer (Multi-Factor + HMM)
+            # [NEW] v1.3.15.176: Dual Regime Analyzer (Multi-Factor + HMM)
             if DualRegimeAnalyzer is not None:
                 self.regime_analyzer = DualRegimeAnalyzer(market='UK')
                 logger.info("[OK] Dual Regime Analyzer enabled (Multi-Factor + HMM for UK market)")
@@ -196,7 +196,7 @@ class UKOvernightPipeline:
                 self.macro_monitor = None
                 logger.info("  Macro News Monitor disabled")
             
-            # 🆕 v193: Optional: World Event Risk Monitor
+            # [NEW] v193: Optional: World Event Risk Monitor
             try:
                 from .world_event_monitor import WorldEventMonitor
                 self.world_event_monitor = WorldEventMonitor()
@@ -384,7 +384,7 @@ class UKOvernightPipeline:
             # Calculate sentiment score (0-100)
             sentiment_score = 50.0  # Start neutral
             
-            # FTSE 100 change: ±30 points
+            # FTSE 100 change: +/-30 points
             sentiment_score += ftse_change * 10  # +1% = +10 points
             
             # VFTSE impact: High volatility = negative
@@ -506,14 +506,14 @@ class UKOvernightPipeline:
                         sentiment['gap_prediction'] = gap_prediction
                         sentiment['predicted_gap_pct'] = realtime_result['predicted_gap_pct']
                         
-                        # 🆕 v193.11.6.12: ADJUST SENTIMENT SCORE based on gap prediction
+                        # [NEW] v193.11.6.12: ADJUST SENTIMENT SCORE based on gap prediction
                         # The gap prediction includes US (-1.33%), Asian markets (Nikkei -6.49%, AORD -2.9%), commodities
                         # We should incorporate this broader market context into the sentiment score
                         original_sentiment_score = sentiment_score
                         
                         # Gap prediction impact: -0.25% gap should reduce sentiment
-                        # Scale: ±1% gap = ±10 points sentiment adjustment
-                        gap_impact = realtime_result['predicted_gap_pct'] * 10  # -0.25% → -2.5 points
+                        # Scale: +/-1% gap = +/-10 points sentiment adjustment
+                        gap_impact = realtime_result['predicted_gap_pct'] * 10  # -0.25% -> -2.5 points
                         
                         # Apply gap-based adjustment with 60% weight (gap includes US/Asian/commodities)
                         sentiment_score += gap_impact * 0.60
@@ -530,7 +530,7 @@ class UKOvernightPipeline:
                         
                         logger.info(f"[OK] Sentiment Adjusted for Gap Prediction (includes US/Asian/Commodities):")
                         logger.info(f"    Original Sentiment: {original_sentiment_score:.1f}/100")
-                        logger.info(f"    Gap Impact: {gap_impact * 0.60:+.1f} points (gap {realtime_result['predicted_gap_pct']:+.2f}% × 60% weight)")
+                        logger.info(f"    Gap Impact: {gap_impact * 0.60:+.1f} points (gap {realtime_result['predicted_gap_pct']:+.2f}% x 60% weight)")
                         logger.info(f"    Adjusted Sentiment: {sentiment_score:.1f}/100")
                         
                         # Also incorporate source breakdown logging
@@ -617,7 +617,7 @@ class UKOvernightPipeline:
                         original_score = sentiment['overall']['score']
                         
                         # Scale macro sentiment from [-1, 1] to impact points [-15, +15]
-                        # Increased from ±10 to ±15 to better capture global uncertainty
+                        # Increased from +/-10 to +/-15 to better capture global uncertainty
                         macro_impact = macro_news['sentiment_score'] * 15
                         
                         # Apply weighted adjustment (macro news = 35% of overall sentiment)
@@ -660,7 +660,7 @@ class UKOvernightPipeline:
                     }
                     sentiment['macro_news'] = macro_news
             
-            # 🆕 v193 Phase 1.4: World Event Risk Monitoring
+            # [NEW] v193 Phase 1.4: World Event Risk Monitoring
             if hasattr(self, 'world_event_monitor') and self.world_event_monitor is not None:
                 try:
                     logger.info("")
@@ -804,7 +804,7 @@ class UKOvernightPipeline:
                         logger.info(f"  Regime: {regime_label} (Sentiment Factor: {sentiment_factor:.2f})")
                         logger.info(f"  Original Gap: {original_gap:+.2f}%")
                         logger.info(f"  Sentiment Score: {final_sentiment:.1f}/100 (deviation: {sentiment_deviation:+.2f})")
-                        logger.info(f"  Sentiment & Gap: {'AGREE' if signals_agree else 'DISAGREE'} → {'AMPLIFY' if signals_agree else 'DAMPEN'}")
+                        logger.info(f"  Sentiment & Gap: {'AGREE' if signals_agree else 'DISAGREE'} -> {'AMPLIFY' if signals_agree else 'DAMPEN'}")
                         logger.info(f"  World Risk: {world_risk_score:.1f}/100")
                         if risk_multiplier != 1.0:
                             logger.info(f"  Risk Multiplier: {risk_multiplier:.2f}x")
@@ -890,7 +890,7 @@ class UKOvernightPipeline:
         return all_stocks
     
     def _assess_event_risks(self, stocks: List[Dict]) -> Dict:
-        """🆕 v1.3.15.176: Assess event risks + Dual Regime Analysis (Multi-Factor + HMM)"""
+        """[NEW] v1.3.15.176: Assess event risks + Dual Regime Analysis (Multi-Factor + HMM)"""
         if self.event_guard is None:
             return {}
         
@@ -910,7 +910,7 @@ class UKOvernightPipeline:
             logger.info(f"  Upcoming Events: {total_events}")
             logger.info(f"  Sit-Out Recommendations: {sit_outs}")
             
-            # 🆕 v1.3.15.176: Dual Regime Analysis (Multi-Factor + HMM)
+            # [NEW] v1.3.15.176: Dual Regime Analysis (Multi-Factor + HMM)
             if hasattr(self, 'regime_analyzer') and self.regime_analyzer:
                 logger.info(f"\n[DUAL] Running comprehensive regime analysis (Multi-Factor + HMM)...")
                 dual_regime = self.regime_analyzer.analyze()
@@ -1181,7 +1181,7 @@ Full traceback:
             except Exception as e:
                 logger.warning(f"CSV export failed: {e}")
         
-        # 🆕 INTEGRATION FIX: Save in format expected by trading platform
+        # [NEW] INTEGRATION FIX: Save in format expected by trading platform
         # Signal adapter looks for: reports/screening/uk_morning_report.json
         try:
             trading_report_dir = BASE_PATH / 'reports' / 'screening'

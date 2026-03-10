@@ -217,9 +217,9 @@ def test_duckdb_analytics():
     if perf:
         logger.info(f"\nPortfolio Metrics:")
         logger.info(f"  Total Trades: {perf.get('total_trades', 0):,.0f}")
-        logger.info(f"  Total P&L: ${perf.get('total_pnl', 0):,.2f}")
+        logger.info(f"  Total P&L: USD{perf.get('total_pnl', 0):,.2f}")
         logger.info(f"  Win Rate: {perf.get('win_rate', 0)*100:.1f}%")
-        logger.info(f"  Avg P&L per Trade: ${perf.get('avg_pnl_per_trade', 0):,.2f}")
+        logger.info(f"  Avg P&L per Trade: USD{perf.get('avg_pnl_per_trade', 0):,.2f}")
     
     # Test 4: Top performers
     logger.info("\nFinding top 5 performers...")
@@ -315,7 +315,7 @@ def test_pipeline_integration():
     
     if 'portfolio' in report:
         logger.info(f"  Portfolio Trades: {report['portfolio'].get('total_trades', 0)}")
-        logger.info(f"  Portfolio P&L: ${report['portfolio'].get('total_pnl', 0):.2f}")
+        logger.info(f"  Portfolio P&L: USD{report['portfolio'].get('total_pnl', 0):.2f}")
     
     logger.info("\n[OK] Pipeline integration test PASSED")
     return True

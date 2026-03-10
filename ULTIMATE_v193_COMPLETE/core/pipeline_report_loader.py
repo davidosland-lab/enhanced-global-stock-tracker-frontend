@@ -308,7 +308,7 @@ def test_pipeline_report_loader():
             print(f"{market:3s}: [OK] Available (age: {info['age_hours']:.1f}h)")
             print(f"     {info['path']}")
         else:
-            print(f"{market:3s}: ✗ Not available - {info.get('error', 'Unknown')}")
+            print(f"{market:3s}: [X] Not available - {info.get('error', 'Unknown')}")
     print()
     
     # Load top 50 stocks

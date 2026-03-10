@@ -19,7 +19,7 @@ def fix_batch_size():
     file_path = os.path.join('finbert_v4.4.4', 'models', 'train_lstm.py')
     
     if not os.path.exists(file_path):
-        print(f"❌ ERROR: File not found: {file_path}")
+        print(f"[ERROR] ERROR: File not found: {file_path}")
         print("   Make sure you're running this from: unified_trading_dashboard_v1.3.15.87_ULTIMATE/")
         return False
     
@@ -33,7 +33,7 @@ def fix_batch_size():
         shutil.copy2(file_path, backup_path)
         print(f"[OK] Backup created: {backup_path}")
     except Exception as e:
-        print(f"❌ Failed to create backup: {e}")
+        print(f"[ERROR] Failed to create backup: {e}")
         return False
     
     # Read file
@@ -41,7 +41,7 @@ def fix_batch_size():
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
     except Exception as e:
-        print(f"❌ Failed to read file: {e}")
+        print(f"[ERROR] Failed to read file: {e}")
         return False
     
     # Check current batch size
@@ -52,7 +52,7 @@ def fix_batch_size():
         print("[OK] Already fixed: batch_size=8")
         return True
     elif 'batch_size=32' not in content:
-        print("⚠ WARNING: batch_size=32 not found in file")
+        print("[!] WARNING: batch_size=32 not found in file")
         print("   File may have been modified or have different format")
         return False
     
@@ -64,10 +64,10 @@ def fix_batch_size():
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(content)
         print(f"[OK] Fixed: {file_path}")
-        print(f"  Changed: batch_size=32 → batch_size=16")
+        print(f"  Changed: batch_size=32 -> batch_size=16")
         return True
     except Exception as e:
-        print(f"❌ Failed to write file: {e}")
+        print(f"[ERROR] Failed to write file: {e}")
         # Restore backup
         shutil.copy2(backup_path, file_path)
         print(f"[OK] Restored from backup")
@@ -78,13 +78,13 @@ def main():
     
     print("This fix reduces batch size from 32 to 16")
     print("This helps prevent:")
-    print("  • Memory exhaustion")
-    print("  • Training hangs at later epochs")
-    print("  • System freezing\n")
+    print("  * Memory exhaustion")
+    print("  * Training hangs at later epochs")
+    print("  * System freezing\n")
     
     # Check current directory
     if not os.path.exists('finbert_v4.4.4'):
-        print("❌ ERROR: finbert_v4.4.4 directory not found")
+        print("[ERROR] ERROR: finbert_v4.4.4 directory not found")
         print("   Please run this script from: unified_trading_dashboard_v1.3.15.87_ULTIMATE/")
         sys.exit(1)
     
@@ -108,7 +108,7 @@ def main():
         print("  3. Watch Flask console for progress")
         print("  4. Training should complete without hanging")
         print()
-        print("💡 TIP: Start with 20 epochs to test, then try 50 epochs")
+        print("[IDEA] TIP: Start with 20 epochs to test, then try 50 epochs")
     else:
         print_header("FIX FAILED")
         print("Please check the error messages above")
@@ -123,10 +123,10 @@ if __name__ == '__main__':
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n⚠ Fix interrupted by user")
+        print("\n\n[!] Fix interrupted by user")
         sys.exit(1)
     except Exception as e:
-        print(f"\n\n❌ Unexpected error: {e}")
+        print(f"\n\n[ERROR] Unexpected error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

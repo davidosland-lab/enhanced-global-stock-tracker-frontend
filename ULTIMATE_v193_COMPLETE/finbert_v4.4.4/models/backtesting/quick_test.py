@@ -45,12 +45,12 @@ def quick_test():
         data = loader.load_price_data()
         
         if data.empty:
-            print("❌ FAILED: No data loaded")
+            print("[ERROR] FAILED: No data loaded")
             return False
         
         print(f"[OK] SUCCESS: Loaded {len(data)} days of data")
         print(f"   Date range: {data.index.min().date()} to {data.index.max().date()}")
-        print(f"   Price range: ${data['Close'].min():.2f} - ${data['Close'].max():.2f}")
+        print(f"   Price range: USD{data['Close'].min():.2f} - USD{data['Close'].max():.2f}")
         
         # Phase 2: Test Predictions
         print("\n[PHASE 2] Testing Prediction Engine...")
@@ -67,7 +67,7 @@ def quick_test():
         )
         
         if predictions.empty:
-            print("❌ FAILED: No predictions generated")
+            print("[ERROR] FAILED: No predictions generated")
             return False
         
         print(f"[OK] SUCCESS: Generated {len(predictions)} predictions")
@@ -100,12 +100,12 @@ def quick_test():
         metrics = simulator.calculate_performance_metrics()
         
         if 'error' in metrics:
-            print(f"⚠️  WARNING: {metrics['error']}")
+            print(f"[!]  WARNING: {metrics['error']}")
             print("   (This is normal if no trades were executed)")
         else:
             print(f"[OK] SUCCESS: Simulation complete")
             print(f"   Total trades: {metrics['total_trades']}")
-            print(f"   Final equity: ${metrics['final_equity']:,.2f}")
+            print(f"   Final equity: USD{metrics['final_equity']:,.2f}")
             print(f"   Return: {metrics['total_return_pct']:.2f}%")
         
         # Overall success
@@ -121,14 +121,14 @@ def quick_test():
         return True
         
     except ImportError as e:
-        print(f"\n❌ IMPORT ERROR: {e}")
+        print(f"\n[ERROR] IMPORT ERROR: {e}")
         print("\nPossible solutions:")
         print("1. Install missing packages: pip install yfinance pandas numpy")
         print("2. Verify you're in the correct directory")
         return False
         
     except Exception as e:
-        print(f"\n❌ ERROR: {e}")
+        print(f"\n[ERROR] ERROR: {e}")
         import traceback
         traceback.print_exc()
         return False

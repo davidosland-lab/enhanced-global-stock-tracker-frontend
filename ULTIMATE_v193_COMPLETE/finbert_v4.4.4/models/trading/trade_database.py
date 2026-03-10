@@ -181,7 +181,7 @@ class TradingDatabase:
         
         conn.commit()
         conn.close()
-        logger.info(f"Account reset with ${initial_capital} capital")
+        logger.info(f"Account reset with USD{initial_capital} capital")
     
     # ========== TRADE OPERATIONS ==========
     
@@ -203,7 +203,7 @@ class TradingDatabase:
         conn.commit()
         conn.close()
         
-        logger.info(f"Created trade #{trade_id}: {side} {quantity} {symbol} @ ${entry_price}")
+        logger.info(f"Created trade #{trade_id}: {side} {quantity} {symbol} @ USD{entry_price}")
         return trade_id
     
     def close_trade(self, trade_id: int, exit_price: float, commission: float = 0,
@@ -243,7 +243,7 @@ class TradingDatabase:
             conn.commit()
             conn.close()
             
-            logger.info(f"Closed trade #{trade_id}: P&L ${pnl:.2f} ({pnl_percent:.2f}%)")
+            logger.info(f"Closed trade #{trade_id}: P&L USD{pnl:.2f} ({pnl_percent:.2f}%)")
             return pnl, pnl_percent
         
         conn.close()
@@ -331,7 +331,7 @@ class TradingDatabase:
         
         conn.commit()
         conn.close()
-        logger.info(f"Updated position: {symbol} - {quantity} shares @ ${avg_cost}")
+        logger.info(f"Updated position: {symbol} - {quantity} shares @ USD{avg_cost}")
     
     def update_position_prices(self, symbol: str, current_price: float):
         """Update current price and P&L for position"""

@@ -603,7 +603,7 @@ def test_opportunity_scorer():
     print("-"*80)
     print(f"Total Analyzed: {summary['total']}")
     print(f"Average Score: {summary['avg_score']:.1f}")
-    print(f"High Opportunities (≥80): {summary['high_opportunity_count']}")
+    print(f"High Opportunities (>=80): {summary['high_opportunity_count']}")
     print(f"Medium Opportunities (65-80): {summary['medium_opportunity_count']}")
     print(f"Low Opportunities (<65): {summary['low_opportunity_count']}")
 

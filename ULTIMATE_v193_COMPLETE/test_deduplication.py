@@ -242,10 +242,10 @@ def main():
             if test():
                 passed += 1
         except AssertionError as e:
-            print(f"❌ Test FAILED: {e}\n")
+            print(f"[ERROR] Test FAILED: {e}\n")
             failed += 1
         except Exception as e:
-            print(f"❌ Test ERROR: {e}\n")
+            print(f"[ERROR] Test ERROR: {e}\n")
             failed += 1
     
     print("=" * 60)
@@ -261,7 +261,7 @@ def main():
         print("  4. Return a clean list with unique stocks only")
         return 0
     else:
-        print("\n❌ SOME TESTS FAILED - Check implementation")
+        print("\n[ERROR] SOME TESTS FAILED - Check implementation")
         return 1
 
 

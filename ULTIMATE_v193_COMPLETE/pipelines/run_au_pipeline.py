@@ -4,7 +4,7 @@ Uses shared FinBERT v4.4.4 virtual environment
 
 Phases:
 1. Market Sentiment (SPI futures, US overnight)
-2. Stock Scanning (8 sectors × 30 stocks = 240 stocks)
+2. Stock Scanning (8 sectors x 30 stocks = 240 stocks)
 3. Event Risk Assessment (Basel III, earnings, dividends)
 4. Batch Prediction (FinBERT + LSTM)
 5. Opportunity Scoring (14-factor scoring)
@@ -124,7 +124,7 @@ def main():
     print("AUSTRALIAN MARKET OVERNIGHT PIPELINE - v1.3.15.87")
     print("="*80)
     print(f"Mode: {args.mode.upper()}")
-    print(f"Initial Capital: ${args.capital:,.2f} AUD")
+    print(f"Initial Capital: USD{args.capital:,.2f} AUD")
     print(f"Using FinBERT v4.4.4 shared environment")
     print("="*80)
     print()

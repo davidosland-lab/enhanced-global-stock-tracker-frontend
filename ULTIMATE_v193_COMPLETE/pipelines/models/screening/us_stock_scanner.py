@@ -175,12 +175,12 @@ class USStockScanner:
                 current_price = hist['Close'].iloc[-1]
                 avg_volume = hist['Volume'].mean()
                 
-                # Price check (US market: $5-$1000 typical range)
+                # Price check (US market: USD5-USD1000 typical range)
                 min_price = self.criteria.get('min_price', 5.0)
                 max_price = self.criteria.get('max_price', 1000.0)
                 if not (min_price <= current_price <= max_price):
                     if verbose:
-                        logger.info(f"  -> Price ${current_price:.2f} outside range ${min_price}-${max_price}")
+                        logger.info(f"  -> Price USD{current_price:.2f} outside range USD{min_price}-USD{max_price}")
                     return False
                 
                 # Tiered volume check (US market: typically higher volume)
@@ -200,7 +200,7 @@ class USStockScanner:
                 if avg_volume < effective_volume_threshold:
                     if verbose:
                         logger.info(f"  -> Volume {int(avg_volume):,} below threshold {int(effective_volume_threshold):,} "
-                                  f"(stock price: ${current_price:.2f})")
+                                  f"(stock price: USD{current_price:.2f})")
                     return False
                 
                 return True
@@ -491,7 +491,7 @@ if __name__ == "__main__":
     result = scanner.analyze_stock("AAPL", sector_weight=1.4)
     if result:
         print(f"[OK] AAPL Analysis:")
-        print(f"  Price: ${result['price']:.2f}")
+        print(f"  Price: USD{result['price']:.2f}")
         print(f"  RSI: {result['rsi']:.1f}")
         print(f"  Score: {result['score']:.1f}")
     
@@ -500,4 +500,4 @@ if __name__ == "__main__":
     tech_results = scanner.scan_sector("Technology", max_stocks=5)
     print(f"[OK] Scanned {len(tech_results)} Technology stocks")
     for stock in tech_results[:3]:
-        print(f"  {stock['symbol']}: ${stock['price']:.2f} - Score: {stock['score']:.1f}")
+        print(f"  {stock['symbol']}: USD{stock['price']:.2f} - Score: {stock['score']:.1f}")

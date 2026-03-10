@@ -78,7 +78,7 @@ except ImportError:
     except ImportError:
         LSTMTrainer = None
 
-# 🆕 Event Risk Guard (optional)
+# [NEW] Event Risk Guard (optional)
 try:
     from .event_risk_guard import EventRiskGuard
 except ImportError:
@@ -87,7 +87,7 @@ except ImportError:
     except ImportError:
         EventRiskGuard = None
 
-# 🆕 Dual Regime Analyzer (Multi-Factor + HMM)
+# [NEW] Dual Regime Analyzer (Multi-Factor + HMM)
 try:
     from .dual_regime_analyzer import DualRegimeAnalyzer
 except ImportError:
@@ -96,7 +96,7 @@ except ImportError:
     except ImportError:
         DualRegimeAnalyzer = None
 
-# 🔧 FIX v1.3.15.171: Market Data Fetcher for regime detection
+# [TOOL] FIX v1.3.15.171: Market Data Fetcher for regime detection
 try:
     import sys
     from pathlib import Path
@@ -111,7 +111,7 @@ except ImportError as e:
     MarketDataFetcher = None
     MARKET_DATA_AVAILABLE = False
 
-# 🆕 CSV Exporter (optional)
+# [NEW] CSV Exporter (optional)
 try:
     from .csv_exporter import CSVExporter
 except ImportError:
@@ -120,7 +120,7 @@ except ImportError:
     except ImportError:
         CSVExporter = None
 
-# 🆕 Macro News Monitor (optional)
+# [NEW] Macro News Monitor (optional)
 try:
     from .macro_news_monitor import MacroNewsMonitor
 except ImportError:
@@ -229,7 +229,7 @@ class OvernightPipeline:
                 self.trainer = None
                 logger.info("  LSTM training disabled (lstm_trainer module not found)")
             
-            # 🆕 v1.3.15.176: Dual Regime Analyzer (Multi-Factor + HMM)
+            # [NEW] v1.3.15.176: Dual Regime Analyzer (Multi-Factor + HMM)
             if DualRegimeAnalyzer is not None:
                 self.regime_analyzer = DualRegimeAnalyzer(market='AU')
                 logger.info("[OK] Dual Regime Analyzer enabled (Multi-Factor + HMM for AU market)")
@@ -245,7 +245,7 @@ class OvernightPipeline:
                 self.regime_analyzer = None
                 logger.info("  Event Risk Guard disabled (event_risk_guard module not found)")
             
-            # 🆕 Optional: CSV Exporter
+            # [NEW] Optional: CSV Exporter
             if CSVExporter is not None:
                 self.csv_exporter = CSVExporter()
                 logger.info("[OK] CSV Exporter enabled (enhanced event risk export)")
@@ -253,7 +253,7 @@ class OvernightPipeline:
                 self.csv_exporter = None
                 logger.info("  CSV Exporter disabled (csv_exporter module not found)")
             
-            # 🆕 Optional: Macro News Monitor (ASX/RBA)
+            # [NEW] Optional: Macro News Monitor (ASX/RBA)
             if MacroNewsMonitor is not None:
                 self.macro_monitor = MacroNewsMonitor(market='ASX')
                 logger.info("[OK] Macro News Monitor enabled (ASX market - RBA + Global)")
@@ -261,7 +261,7 @@ class OvernightPipeline:
                 self.macro_monitor = None
                 logger.info("  Macro News Monitor disabled (macro_news_monitor module not found)")
             
-            # 🆕 v193: Optional: World Event Risk Monitor
+            # [NEW] v193: Optional: World Event Risk Monitor
             try:
                 from pipelines.models.screening.world_event_monitor import WorldEventMonitor
                 self.world_event_monitor = WorldEventMonitor()
@@ -319,7 +319,7 @@ class OvernightPipeline:
             if not scanned_stocks:
                 raise Exception("No valid stocks found during scanning")
             
-            # 🆕 Phase 2.5: Event Risk Assessment
+            # [NEW] Phase 2.5: Event Risk Assessment
             logger.info("\n" + "="*80)
             logger.info("PHASE 2.5: EVENT RISK ASSESSMENT")
             logger.info("="*80)
@@ -551,7 +551,7 @@ class OvernightPipeline:
                 'summary': 'Macro news not available'
             }
             
-            # 🆕 Phase 1.3: Macro News Monitoring (RBA/Global)
+            # [NEW] Phase 1.3: Macro News Monitoring (RBA/Global)
             if self.macro_monitor is not None:
                 try:
                     logger.info("")
@@ -624,7 +624,7 @@ class OvernightPipeline:
                     }
                     sentiment['macro_news'] = macro_news
             
-            # 🆕 v193 Phase 1.4: World Event Risk Monitoring
+            # [NEW] v193 Phase 1.4: World Event Risk Monitoring
             if self.world_event_monitor is not None:
                 try:
                     logger.info("")
@@ -745,12 +745,12 @@ class OvernightPipeline:
                 signals_agree = (gap_is_negative and sentiment_is_bearish) or (not gap_is_negative and not sentiment_is_bearish)
                 
                 if signals_agree:
-                    # Sentiment confirms gap direction → AMPLIFY
+                    # Sentiment confirms gap direction -> AMPLIFY
                     # More extreme sentiment = stronger amplification
                     adjustment_magnitude = abs(sentiment_deviation) * sentiment_factor
                     adjusted_gap = original_gap * (1 + adjustment_magnitude)
                 else:
-                    # Sentiment contradicts gap direction → DAMPEN
+                    # Sentiment contradicts gap direction -> DAMPEN
                     # Use negative adjustment to reduce gap magnitude
                     adjustment_magnitude = abs(sentiment_deviation) * sentiment_factor * 0.5  # Dampen less aggressively
                     adjusted_gap = original_gap * (1 - adjustment_magnitude)
@@ -765,10 +765,10 @@ class OvernightPipeline:
                     risk_intensity = (world_risk_score - 85) / 15  # 0.0 at 85, 1.0 at 100
                     
                     if signals_agree:
-                        # Sentiment and gap agree → AMPLIFY even more
+                        # Sentiment and gap agree -> AMPLIFY even more
                         risk_multiplier = 1.0 + (risk_intensity * 0.5)  # Up to 1.5x at risk=100
                     else:
-                        # Sentiment and gap disagree → DAMPEN heavily
+                        # Sentiment and gap disagree -> DAMPEN heavily
                         risk_multiplier = 1.0 - (risk_intensity * 0.4)  # Down to 0.6x at risk=100
                     
                     risk_multiplier = max(0.5, min(risk_multiplier, 1.8))  # Cap between 0.5x and 1.8x
@@ -790,7 +790,7 @@ class OvernightPipeline:
                 logger.info(f"  Regime: {regime_label} (Sentiment Factor: {sentiment_factor:.2f})")
                 logger.info(f"  Original Gap: {original_gap:+.2f}%")
                 logger.info(f"  Sentiment Score: {final_sentiment:.1f}/100 (deviation: {sentiment_deviation:+.2f})")
-                logger.info(f"  Sentiment & Gap: {'AGREE' if signals_agree else 'DISAGREE'} → {'AMPLIFY' if signals_agree else 'DAMPEN'}")
+                logger.info(f"  Sentiment & Gap: {'AGREE' if signals_agree else 'DISAGREE'} -> {'AMPLIFY' if signals_agree else 'DAMPEN'}")
                 logger.info(f"  World Risk: {world_risk_score:.1f}/100")
                 if risk_multiplier != 1.0:
                     logger.info(f"  Risk Multiplier: {risk_multiplier:.2f}x")
@@ -864,7 +864,7 @@ class OvernightPipeline:
     
     def _assess_event_risks(self, stocks: List[Dict]) -> Dict:
         """
-        🆕 v1.3.15.176: Assess event risks + Dual Regime Analysis (Multi-Factor + HMM)
+        [NEW] v1.3.15.176: Assess event risks + Dual Regime Analysis (Multi-Factor + HMM)
         
         Args:
             stocks: List of scanned stock dictionaries
@@ -901,7 +901,7 @@ class OvernightPipeline:
             logger.info(f"  [!]  Sit-Out Recommendations: {sit_outs}")
             logger.info(f"  [!] High Risk Stocks (>=0.7): {high_risk}")
             
-            # 🆕 v1.3.15.176: Dual Regime Analysis (Multi-Factor + HMM)
+            # [NEW] v1.3.15.176: Dual Regime Analysis (Multi-Factor + HMM)
             if self.regime_analyzer:
                 logger.info(f"\n[DUAL] Running comprehensive regime analysis (Multi-Factor + HMM)...")
                 dual_regime = self.regime_analyzer.analyze()
@@ -982,7 +982,7 @@ class OvernightPipeline:
         try:
             predicted_stocks = self.predictor.predict_batch(stocks, spi_sentiment)
             
-            # 🆕 Apply event risk adjustments if available
+            # [NEW] Apply event risk adjustments if available
             if event_risk_data:
                 logger.info(f"\nApplying event risk adjustments...")
                 adjusted_count = 0
@@ -1334,7 +1334,7 @@ class OvernightPipeline:
             for opp in top_opportunities
         ]
         
-        # 🆕 Export CSV with event risk data
+        # [NEW] Export CSV with event risk data
         csv_paths = {}
         if self.csv_exporter is not None:
             try:
@@ -1389,7 +1389,7 @@ class OvernightPipeline:
         # Save pipeline state
         self._save_pipeline_state(results)
         
-        # 🆕 INTEGRATION FIX: Save in format expected by trading platform
+        # [NEW] INTEGRATION FIX: Save in format expected by trading platform
         # Signal adapter looks for: reports/screening/au_morning_report.json
         try:
             trading_report_dir = BASE_PATH / 'reports' / 'screening'

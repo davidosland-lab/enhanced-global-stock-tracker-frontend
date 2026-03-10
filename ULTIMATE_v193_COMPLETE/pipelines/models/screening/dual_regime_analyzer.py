@@ -172,7 +172,7 @@ class DualRegimeAnalyzer:
                 combined['trading_guidance'].append("[OK] Both methods agree - high confidence signals")
             else:
                 combined['confidence'] = 'MEDIUM'
-                combined['warnings'].append("⚠️ Methods show divergence - proceed with caution")
+                combined['warnings'].append("[!] Methods show divergence - proceed with caution")
         
         elif multi_factor:
             combined['regime_summary'] = f"{mf_regime} (Multi-Factor only)"
@@ -195,16 +195,16 @@ class DualRegimeAnalyzer:
             probs = hmm.get('state_probabilities', {})
             high_vol_prob = probs.get('high_vol', 0.0)
             if high_vol_prob > 0.15:
-                combined['warnings'].append(f"⚠️ HMM: {high_vol_prob:.0%} probability of high volatility state")
+                combined['warnings'].append(f"[!] HMM: {high_vol_prob:.0%} probability of high volatility state")
         
         # Trading guidance based on combined risk
         risk = combined['crash_risk_combined']
         if risk < 0.10:
             combined['trading_guidance'].append("[OK] Low risk environment - normal position sizing")
         elif risk < 0.25:
-            combined['trading_guidance'].append("⚠️ Moderate risk - consider reducing leverage")
+            combined['trading_guidance'].append("[!] Moderate risk - consider reducing leverage")
         else:
-            combined['trading_guidance'].append("🔴 High risk - reduce exposure, raise cash")
+            combined['trading_guidance'].append("[ALERT] High risk - reduce exposure, raise cash")
         
         return combined
     
@@ -307,7 +307,7 @@ class DualRegimeAnalyzer:
         high_vol = probs.get('high_vol', 0.0)
         
         if high_vol > 0.25:
-            return f"⚠️ Transition warning: {high_vol:.0%} high-vol probability - expect volatility"
+            return f"[!] Transition warning: {high_vol:.0%} high-vol probability - expect volatility"
         elif medium_vol > 0.40 and high_vol > 0.15:
             return f"Caution: Regime may be shifting (medium {medium_vol:.0%}, high {high_vol:.0%})"
         else:

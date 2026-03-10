@@ -94,7 +94,7 @@ def test_model_loading():
     if not success:
         print("[PASS] [OK] MSFT model not loaded (not in registry, expected)")
     else:
-        print("[UNEXPECTED] ✗ MSFT loaded but shouldn't be in registry")
+        print("[UNEXPECTED] [X] MSFT loaded but shouldn't be in registry")
     
     print("\n" + "="*80)
 
@@ -119,7 +119,7 @@ def test_registry_structure():
             print(f"  - Total models: {registry['metadata'].get('total_models')}")
             print(f"  - Version: {registry['metadata'].get('lstm_trainer_version')}")
         else:
-            print("  ✗ Metadata missing")
+            print("  [X] Metadata missing")
         
         # Check models
         print("\nModels:")
@@ -133,9 +133,9 @@ def test_registry_structure():
                 print(f"    - Accuracy: {info.get('validation_accuracy', 0):.2f}")
                 print(f"    - Samples: {info.get('samples', 0)}")
         else:
-            print("  ✗ Models section missing")
+            print("  [X] Models section missing")
     else:
-        print(f"  ✗ Registry not found at {registry_path}")
+        print(f"  [X] Registry not found at {registry_path}")
     
     print("\n" + "="*80)
 
@@ -169,7 +169,7 @@ def test_analyze_lstm_flow():
             print(f"[INFO] Model not cached (expected in fast mode or if training failed)")
             
     except Exception as e:
-        print(f"[FAIL] ✗ Error analyzing: {e}")
+        print(f"[FAIL] [X] Error analyzing: {e}")
     
     print("\n" + "="*80)
 
@@ -186,7 +186,7 @@ def test_format_error_fixes():
         conf = float(signal.get('confidence', 0))
         print(f"[PASS] [OK] Converted string to float: {conf:.2f}")
     except Exception as e:
-        print(f"[FAIL] ✗ Error: {e}")
+        print(f"[FAIL] [X] Error: {e}")
     
     # Test confidence as list
     signal = {'confidence': [0.75, 0.80]}
@@ -199,7 +199,7 @@ def test_format_error_fixes():
             conf = float(conf)
         print(f"[PASS] [OK] Converted list to float: {conf:.2f}")
     except Exception as e:
-        print(f"[FAIL] ✗ Error: {e}")
+        print(f"[FAIL] [X] Error: {e}")
     
     # Test confidence as numpy array
     signal = {'confidence': np.array([0.75])}
@@ -212,7 +212,7 @@ def test_format_error_fixes():
             conf = float(conf)
         print(f"[PASS] [OK] Converted array to float: {conf:.2f}")
     except Exception as e:
-        print(f"[FAIL] ✗ Error: {e}")
+        print(f"[FAIL] [X] Error: {e}")
     
     print("\n" + "="*80)
 

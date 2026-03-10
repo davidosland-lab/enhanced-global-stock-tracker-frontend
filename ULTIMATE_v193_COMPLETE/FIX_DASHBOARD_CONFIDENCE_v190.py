@@ -6,11 +6,11 @@ Fix Dashboard Confidence Slider - v1.3.15.190
 ROOT CAUSE IDENTIFIED:
 The confidence slider in the dashboard was defaulting to 65% and overriding
 all config file settings. Even though we fixed:
-- config/config.json → 45%
-- config/live_trading_config.json → 48%
-- swing_signal_generator.py → 0.48
-- opportunity_monitor.py → 48%
-- paper_trading_coordinator.py → 48% (hardcoded fallback)
+- config/config.json -> 45%
+- config/live_trading_config.json -> 48%
+- swing_signal_generator.py -> 0.48
+- opportunity_monitor.py -> 48%
+- paper_trading_coordinator.py -> 48% (hardcoded fallback)
 
 The dashboard UI slider (line 891) was still set to value=65, which gets
 passed to PaperTradingCoordinator.__init__(min_confidence=65), overriding
@@ -18,9 +18,9 @@ everything else.
 
 FIX APPLIED:
 1. Changed dashboard confidence slider:
-   - min: 50 → 45
-   - value: 65 → 48
-   - marks: range(50,100,10) → range(45,100,10)
+   - min: 50 -> 45
+   - value: 65 -> 48
+   - marks: range(50,100,10) -> range(45,100,10)
 
 2. Now the UI default matches the config file settings
 
@@ -79,9 +79,9 @@ def verify_dashboard_fix():
     all_good = True
     for check_str, description in checks:
         if check_str in content:
-            print_success(f"✓ {description}")
+            print_success(f"[OK] {description}")
         else:
-            print_error(f"✗ {description} - NOT FOUND")
+            print_error(f"[X] {description} - NOT FOUND")
             all_good = False
     
     return all_good
@@ -113,9 +113,9 @@ def verify_config_files():
                 threshold = data['confidence_threshold']
             
             if threshold == expected_threshold:
-                print_success(f"✓ {config_path}: {threshold}%")
+                print_success(f"[OK] {config_path}: {threshold}%")
             else:
-                print_warning(f"⚠ {config_path}: {threshold}% (expected {expected_threshold}%)")
+                print_warning(f"[!] {config_path}: {threshold}% (expected {expected_threshold}%)")
         except Exception as e:
             print_error(f"Error reading {config_path}: {e}")
             all_good = False
@@ -147,9 +147,9 @@ def verify_source_code():
                 break
         
         if found:
-            print_success(f"✓ {file_path}: Contains threshold {checks[-1]}%")
+            print_success(f"[OK] {file_path}: Contains threshold {checks[-1]}%")
         else:
-            print_error(f"✗ {file_path}: Threshold {checks[-1]}% NOT FOUND")
+            print_error(f"[X] {file_path}: Threshold {checks[-1]}% NOT FOUND")
             all_good = False
     
     return all_good
@@ -167,10 +167,10 @@ def main():
     
     print("\n" + "="*70)
     if dashboard_ok and config_ok and source_ok:
-        print_success("✓ ALL VERIFICATIONS PASSED")
-        print_success("✓ Dashboard slider now defaults to 48%")
-        print_success("✓ All config files use correct thresholds")
-        print_success("✓ Source code uses correct thresholds")
+        print_success("[OK] ALL VERIFICATIONS PASSED")
+        print_success("[OK] Dashboard slider now defaults to 48%")
+        print_success("[OK] All config files use correct thresholds")
+        print_success("[OK] Source code uses correct thresholds")
         print("\n" + GREEN + "NEXT STEPS:" + RESET)
         print("1. Stop the current dashboard (Ctrl+C)")
         print("2. Delete __pycache__ directories:")
@@ -179,10 +179,10 @@ def main():
         print("   python start.py")
         print("4. Open http://localhost:8050")
         print("5. Verify the confidence slider shows 48% by default")
-        print("6. Start trading and observe trades execute at ≥48% confidence")
+        print("6. Start trading and observe trades execute at >=48% confidence")
         return 0
     else:
-        print_error("✗ SOME VERIFICATIONS FAILED")
+        print_error("[X] SOME VERIFICATIONS FAILED")
         print("\nPlease review the errors above and re-run this script.")
         return 1
 

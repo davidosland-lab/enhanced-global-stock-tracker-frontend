@@ -72,104 +72,104 @@ class AIMarketImpactAnalyzer:
         'major_war': {
             'score': -0.85,
             'keywords': ['war', 'declares war', 'invasion', 'invades', 'military offensive', 'full-scale war'],
-            'explanation': 'Major military conflict → extreme risk-off → flight to safe havens (USD, gold)'
+            'explanation': 'Major military conflict -> extreme risk-off -> flight to safe havens (USD, gold)'
         },
         'military_strikes': {
             'score': -0.70,
             'keywords': ['airstrike', 'missile strike', 'bombing', 'attack', 'strikes targets', 'military action'],
-            'explanation': 'Military strikes → escalation risk → supply chain disruption → bearish commodities & equities'
+            'explanation': 'Military strikes -> escalation risk -> supply chain disruption -> bearish commodities & equities'
         },
         'nuclear_threat': {
             'score': -0.90,
             'keywords': ['nuclear', 'atomic', 'warhead', 'nuclear threat', 'nuclear test', 'enrichment'],
-            'explanation': 'Nuclear escalation → systemic risk → extreme volatility → deep flight to safety'
+            'explanation': 'Nuclear escalation -> systemic risk -> extreme volatility -> deep flight to safety'
         },
         
         # Regional Conflicts (HIGH BEARISH)
         'regional_conflict': {
             'score': -0.60,
             'keywords': ['gaza', 'ukraine', 'syria', 'yemen', 'taiwan strait', 'south china sea'],
-            'explanation': 'Regional instability → supply disruption → energy/commodity volatility → risk-off sentiment'
+            'explanation': 'Regional instability -> supply disruption -> energy/commodity volatility -> risk-off sentiment'
         },
         'terrorism': {
             'score': -0.55,
             'keywords': ['terror attack', 'terrorist', 'isis', 'al qaeda', 'bombing', 'suicide'],
-            'explanation': 'Terror attack → uncertainty spike → short-term selloff → defensive positioning'
+            'explanation': 'Terror attack -> uncertainty spike -> short-term selloff -> defensive positioning'
         },
         
         # US Political/Policy Shocks (MEDIUM-HIGH BEARISH/BULLISH)
         'us_tariffs': {
             'score': -0.65,
             'keywords': ['tariff', 'import duty', 'trade war', 'protectionism', 'retaliatory tariff'],
-            'explanation': 'Trade war escalation → supply chain costs up → corporate earnings down → bearish equities'
+            'explanation': 'Trade war escalation -> supply chain costs up -> corporate earnings down -> bearish equities'
         },
         'us_sanctions': {
             'score': -0.50,
             'keywords': ['sanctions', 'embargo', 'trade restrictions', 'economic penalties'],
-            'explanation': 'Sanctions → trade disruption → geopolitical tension → selective sector impact'
+            'explanation': 'Sanctions -> trade disruption -> geopolitical tension -> selective sector impact'
         },
         'government_shutdown': {
             'score': -0.40,
             'keywords': ['government shutdown', 'debt ceiling', 'default risk', 'budget crisis'],
-            'explanation': 'Political gridlock → fiscal uncertainty → short-term volatility → risk-off bias'
+            'explanation': 'Political gridlock -> fiscal uncertainty -> short-term volatility -> risk-off bias'
         },
         
         # Economic Crises (HIGH BEARISH)
         'banking_crisis': {
             'score': -0.80,
             'keywords': ['bank failure', 'bank run', 'banking crisis', 'credit crisis', 'systemic risk'],
-            'explanation': 'Financial contagion → liquidity crisis → systemic risk → deep equity selloff'
+            'explanation': 'Financial contagion -> liquidity crisis -> systemic risk -> deep equity selloff'
         },
         'sovereign_default': {
             'score': -0.75,
             'keywords': ['debt default', 'sovereign default', 'debt restructuring', 'bailout'],
-            'explanation': 'Sovereign default → contagion risk → bond market turmoil → risk-off flows'
+            'explanation': 'Sovereign default -> contagion risk -> bond market turmoil -> risk-off flows'
         },
         'recession': {
             'score': -0.60,
             'keywords': ['recession', 'economic contraction', 'gdp decline', 'downturn'],
-            'explanation': 'Recession confirmed → earnings downgrades → defensive rotation → bearish equities'
+            'explanation': 'Recession confirmed -> earnings downgrades -> defensive rotation -> bearish equities'
         },
         
         # Commodity/Energy Shocks (MEDIUM-HIGH BEARISH)
         'oil_shock': {
             'score': -0.65,
             'keywords': ['oil crisis', 'energy crisis', 'opec cuts production', 'oil embargo'],
-            'explanation': 'Energy shock → inflation spike → consumer spending down → stagflation risk'
+            'explanation': 'Energy shock -> inflation spike -> consumer spending down -> stagflation risk'
         },
         'commodity_spike': {
             'score': -0.50,
             'keywords': ['commodity surge', 'food prices spike', 'wheat shortage', 'supply shock'],
-            'explanation': 'Commodity inflation → input costs rise → margin compression → bearish cyclicals'
+            'explanation': 'Commodity inflation -> input costs rise -> margin compression -> bearish cyclicals'
         },
         
         # Natural Disasters (MEDIUM BEARISH)
         'natural_disaster': {
             'score': -0.45,
             'keywords': ['earthquake', 'tsunami', 'hurricane', 'typhoon', 'flood', 'wildfire'],
-            'explanation': 'Natural disaster → supply disruption → infrastructure damage → regional bearish impact'
+            'explanation': 'Natural disaster -> supply disruption -> infrastructure damage -> regional bearish impact'
         },
         
         # Positive Events (BULLISH)
         'peace_agreement': {
             'score': +0.60,
             'keywords': ['peace deal', 'ceasefire', 'peace treaty', 'diplomatic breakthrough'],
-            'explanation': 'Peace agreement → risk-on sentiment → reduced uncertainty → bullish for risk assets'
+            'explanation': 'Peace agreement -> risk-on sentiment -> reduced uncertainty -> bullish for risk assets'
         },
         'rate_cut': {
             'score': +0.55,
             'keywords': ['rate cut', 'lowers interest rate', 'monetary easing', 'dovish policy'],
-            'explanation': 'Rate cut → cheaper capital → earnings boost → bullish for equities'
+            'explanation': 'Rate cut -> cheaper capital -> earnings boost -> bullish for equities'
         },
         'stimulus': {
             'score': +0.50,
             'keywords': ['stimulus', 'fiscal package', 'infrastructure spending', 'economic support'],
-            'explanation': 'Fiscal stimulus → demand boost → growth acceleration → bullish for cyclicals'
+            'explanation': 'Fiscal stimulus -> demand boost -> growth acceleration -> bullish for cyclicals'
         },
         'trade_deal': {
             'score': +0.45,
             'keywords': ['trade agreement', 'free trade deal', 'bilateral trade', 'trade pact'],
-            'explanation': 'Trade deal → tariff reduction → supply chain efficiency → bullish for exporters'
+            'explanation': 'Trade deal -> tariff reduction -> supply chain efficiency -> bullish for exporters'
         },
     }
     
@@ -249,13 +249,13 @@ Today's Headlines:
 Task: Analyze these headlines and provide a comprehensive market impact assessment.
 
 Consider:
-1. Geopolitical events (wars, conflicts, political instability) → typically bearish
-2. Economic data (inflation, GDP, employment) → context-dependent
-3. Central bank policy (rate hikes/cuts, QE/QT) → mixed impact
-4. Trade policy (tariffs, sanctions) → typically bearish
-5. Financial crises (banking, sovereign debt) → very bearish
-6. Natural disasters → regionally bearish
-7. Peace agreements, stimulus → bullish
+1. Geopolitical events (wars, conflicts, political instability) -> typically bearish
+2. Economic data (inflation, GDP, employment) -> context-dependent
+3. Central bank policy (rate hikes/cuts, QE/QT) -> mixed impact
+4. Trade policy (tariffs, sanctions) -> typically bearish
+5. Financial crises (banking, sovereign debt) -> very bearish
+6. Natural disasters -> regionally bearish
+7. Peace agreements, stimulus -> bullish
 8. Market psychology: how will traders react? Risk-on or risk-off?
 
 Provide your analysis in JSON format:

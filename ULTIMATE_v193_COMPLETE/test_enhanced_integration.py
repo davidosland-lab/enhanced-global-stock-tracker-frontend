@@ -49,7 +49,7 @@ def test_overnight_reports():
         print(f"\n[OK] Loaded {len(reports)} market reports")
         
         for market, report in reports.items():
-            print(f"\n📊 {market.upper()} Market:")
+            print(f"\n[CHART] {market.upper()} Market:")
             print(f"   Overall Sentiment: {report.get('overall_sentiment', 0):.1f}")
             print(f"   Recommendation: {report.get('recommendation', 'N/A')}")
             print(f"   Risk Rating: {report.get('risk_rating', 'N/A')}")
@@ -64,7 +64,7 @@ def test_overnight_reports():
         
         return True
     else:
-        print("\n❌ No overnight reports loaded")
+        print("\n[ERROR] No overnight reports loaded")
         return False
 
 def test_trading_opportunities():
@@ -88,7 +88,7 @@ def test_trading_opportunities():
     print(f"\n[OK] Found {len(opportunities)} opportunities (score >= 60)")
     
     if opportunities:
-        print("\n🎯 Top 10 Opportunities:")
+        print("\n[TARGET] Top 10 Opportunities:")
         print(f"{'Rank':<5} {'Symbol':<12} {'Score':<8} {'Market':<8} {'Signals'}")
         print("-" * 80)
         
@@ -101,7 +101,7 @@ def test_trading_opportunities():
         
         return True
     else:
-        print("\n⚠️  No opportunities found (reports may be empty or old)")
+        print("\n[!]  No opportunities found (reports may be empty or old)")
         return False
 
 def test_overnight_sentiment():
@@ -128,7 +128,7 @@ def test_overnight_sentiment():
         ('RIO.AX', 'AU Mining')
     ]
     
-    print("\n📊 Overnight Sentiment Lookup:")
+    print("\n[CHART] Overnight Sentiment Lookup:")
     print(f"{'Symbol':<12} {'Market':<15} {'Sentiment':<12} {'Status'}")
     print("-" * 80)
     
@@ -141,21 +141,21 @@ def test_overnight_sentiment():
             results.append(True)
         else:
             sentiment = 0.0
-            status = "❌ Not found"
+            status = "[ERROR] Not found"
             results.append(False)
         
         print(f"{symbol:<12} {description:<15} {sentiment:<12.1f} {status}")
     
     success_rate = sum(results) / len(results) * 100
-    print(f"\n📈 Success Rate: {success_rate:.0f}% ({sum(results)}/{len(results)} symbols found)")
+    print(f"\n[UP] Success Rate: {success_rate:.0f}% ({sum(results)}/{len(results)} symbols found)")
     
     return success_rate > 0
 
 def main():
     """Run all tests"""
-    print("\n" + "🔬" * 40)
+    print("\n" + "[U+1F52C]" * 40)
     print("ENHANCED PIPELINE SIGNAL ADAPTER - INTEGRATION TEST")
-    print("🔬" * 40)
+    print("[U+1F52C]" * 40)
     
     results = {
         'overnight_reports': False,
@@ -166,21 +166,21 @@ def main():
     try:
         results['overnight_reports'] = test_overnight_reports()
     except Exception as e:
-        print(f"\n❌ TEST 1 FAILED: {e}")
+        print(f"\n[ERROR] TEST 1 FAILED: {e}")
         import traceback
         traceback.print_exc()
     
     try:
         results['trading_opportunities'] = test_trading_opportunities()
     except Exception as e:
-        print(f"\n❌ TEST 2 FAILED: {e}")
+        print(f"\n[ERROR] TEST 2 FAILED: {e}")
         import traceback
         traceback.print_exc()
     
     try:
         results['overnight_sentiment'] = test_overnight_sentiment()
     except Exception as e:
-        print(f"\n❌ TEST 3 FAILED: {e}")
+        print(f"\n[ERROR] TEST 3 FAILED: {e}")
         import traceback
         traceback.print_exc()
     
@@ -190,21 +190,21 @@ def main():
     print("=" * 80)
     
     for test_name, passed in results.items():
-        status = "[OK] PASS" if passed else "❌ FAIL"
+        status = "[OK] PASS" if passed else "[ERROR] FAIL"
         print(f"{status} - {test_name.replace('_', ' ').title()}")
     
     total = len(results)
     passed = sum(results.values())
-    print(f"\n📊 Overall: {passed}/{total} tests passed ({passed/total*100:.0f}%)")
+    print(f"\n[CHART] Overall: {passed}/{total} tests passed ({passed/total*100:.0f}%)")
     
     if all(results.values()):
-        print("\n🎉 ALL TESTS PASSED - Integration working correctly!")
+        print("\n[CELEBRATE] ALL TESTS PASSED - Integration working correctly!")
         return 0
     elif any(results.values()):
-        print("\n⚠️  PARTIAL SUCCESS - Some features working")
+        print("\n[!]  PARTIAL SUCCESS - Some features working")
         return 1
     else:
-        print("\n❌ ALL TESTS FAILED - Check configuration and report files")
+        print("\n[ERROR] ALL TESTS FAILED - Check configuration and report files")
         return 2
 
 if __name__ == '__main__':

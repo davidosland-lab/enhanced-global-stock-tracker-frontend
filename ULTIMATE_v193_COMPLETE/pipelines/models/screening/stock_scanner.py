@@ -184,7 +184,7 @@ class StockScanner:
                 max_price = self.criteria.get('max_price', 500.0)
                 if not (min_price <= current_price <= max_price):
                     if verbose:
-                        logger.info(f"  -> Price ${current_price:.2f} outside range ${min_price}-${max_price}")
+                        logger.info(f"  -> Price USD{current_price:.2f} outside range USD{min_price}-USD{max_price}")
                     return False
                 
                 # Volume check - use tiered thresholds
@@ -204,7 +204,7 @@ class StockScanner:
                 if avg_volume < effective_volume_threshold:
                     if verbose:
                         logger.info(f"  -> Volume {int(avg_volume):,} below threshold {int(effective_volume_threshold):,} "
-                                  f"(stock price: ${current_price:.2f})")
+                                  f"(stock price: USD{current_price:.2f})")
                     return False
                 
                 return True
@@ -521,7 +521,7 @@ def run_financial_sector_test():
             logger.info(
                 f"{i:<6} "
                 f"{stock['symbol']:<10} "
-                f"${stock['price']:<9.2f} "
+                f"USD{stock['price']:<9.2f} "
                 f"{stock['score']:<8.0f}"
             )
     

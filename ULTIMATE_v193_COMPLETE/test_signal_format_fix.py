@@ -78,7 +78,7 @@ def test_signal_formats():
             print(f"[OK] PASS - is_buy_signal={is_buy_signal} (expected {expected})")
             passed += 1
         else:
-            print(f"✗ FAIL - is_buy_signal={is_buy_signal} (expected {expected})")
+            print(f"[X] FAIL - is_buy_signal={is_buy_signal} (expected {expected})")
             failed += 1
         
         print(f"  Signal: {signal}")
@@ -93,7 +93,7 @@ def test_signal_formats():
     if failed == 0:
         print("[OK] All tests passed! Signal format fix is working correctly.\n")
     else:
-        print(f"✗ {failed} test(s) failed! Fix may need adjustment.\n")
+        print(f"[X] {failed} test(s) failed! Fix may need adjustment.\n")
     
     return failed == 0
 

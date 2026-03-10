@@ -27,17 +27,17 @@ print("-"*80)
 
 risk = monitor.get_world_event_risk(test_articles)
 
-print(f"\n✓ World Risk Score: {risk['world_risk_score']:.1f}/100")
-print(f"✓ Risk Level: {risk['risk_level']}")
-print(f"✓ Fear: {risk['fear']:.2f}, Anger: {risk['anger']:.2f}")
-print(f"✓ Topics: {', '.join(risk['top_topics'][:5])}")
+print(f"\n[OK] World Risk Score: {risk['world_risk_score']:.1f}/100")
+print(f"[OK] Risk Level: {risk['risk_level']}")
+print(f"[OK] Fear: {risk['fear']:.2f}, Anger: {risk['anger']:.2f}")
+print(f"[OK] Topics: {', '.join(risk['top_topics'][:5])}")
 
 print("\n" + "="*80)
 if risk['world_risk_score'] >= 75:
-    print(f"✅ SUCCESS: Crisis detected! Score: {risk['world_risk_score']:.1f}/100")
+    print(f"[OK] SUCCESS: Crisis detected! Score: {risk['world_risk_score']:.1f}/100")
     print("   v193.4 fix is WORKING correctly")
 else:
-    print(f"❌ FAIL: Score too low: {risk['world_risk_score']:.1f}/100")
+    print(f"[ERROR] FAIL: Score too low: {risk['world_risk_score']:.1f}/100")
     print("   Expected: 85-90, Need further investigation")
 
 print("="*80)

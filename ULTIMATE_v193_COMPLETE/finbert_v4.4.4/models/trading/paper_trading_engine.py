@@ -50,7 +50,7 @@ class PaperTradingEngine:
             
             if not data.empty:
                 current_price = float(data['Close'].iloc[-1])
-                logger.info(f"Fetched {symbol} price: ${current_price:.2f}")
+                logger.info(f"Fetched {symbol} price: USD{current_price:.2f}")
                 return current_price
             else:
                 logger.warning(f"No price data for {symbol}")
@@ -124,7 +124,7 @@ class PaperTradingEngine:
                 if total_cost > account['cash_balance']:
                     return {
                         'success': False,
-                        'error': f'Insufficient funds. Need ${total_cost:.2f}, have ${account["cash_balance"]:.2f}'
+                        'error': f'Insufficient funds. Need USD{total_cost:.2f}, have USD{account["cash_balance"]:.2f}'
                     }
             
             # Check if position exists for SELL
@@ -159,7 +159,7 @@ class PaperTradingEngine:
                 new_cash = account['cash_balance'] - total_cost
                 self.db.update_account(cash_balance=new_cash)
                 
-                logger.info(f"[OK] BUY ORDER FILLED: {quantity} {symbol} @ ${current_price:.2f}")
+                logger.info(f"[OK] BUY ORDER FILLED: {quantity} {symbol} @ USD{current_price:.2f}")
                 
                 return {
                     'success': True,
@@ -202,7 +202,7 @@ class PaperTradingEngine:
                 new_cash = account['cash_balance'] + total_cost
                 self.db.update_account(cash_balance=new_cash)
                 
-                logger.info(f"[OK] SELL ORDER FILLED: {quantity} {symbol} @ ${current_price:.2f}")
+                logger.info(f"[OK] SELL ORDER FILLED: {quantity} {symbol} @ USD{current_price:.2f}")
                 
                 return {
                     'success': True,
@@ -280,7 +280,7 @@ class PaperTradingEngine:
             total_pnl_percent=total_pnl_percent
         )
         
-        logger.info(f"Updated {updated} positions (Portfolio value: ${total_portfolio_value:.2f})")
+        logger.info(f"Updated {updated} positions (Portfolio value: USD{total_portfolio_value:.2f})")
         
         return {
             'success': True,
@@ -329,10 +329,10 @@ class PaperTradingEngine:
             Confirmation dictionary
         """
         self.db.reset_account(initial_capital)
-        logger.info(f"Account reset with ${initial_capital} capital")
+        logger.info(f"Account reset with USD{initial_capital} capital")
         
         return {
             'success': True,
-            'message': f'Account reset with ${initial_capital} capital',
+            'message': f'Account reset with USD{initial_capital} capital',
             'initial_capital': initial_capital
         }

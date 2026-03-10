@@ -165,7 +165,7 @@ class AUPipelineRunner:
             logger.info(f"Mode: PRESET/CUSTOM")
             logger.info(f"Symbols: {', '.join(symbols)}")
         
-        logger.info(f"Initial Capital: ${capital:,.2f} AUD")
+        logger.info(f"Initial Capital: USD{capital:,.2f} AUD")
         
         # Regime intelligence status
         if use_regime_intelligence and REGIME_INTELLIGENCE_AVAILABLE:

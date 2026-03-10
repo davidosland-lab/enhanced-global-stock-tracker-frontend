@@ -12,7 +12,7 @@ print()
 file_path = os.path.join('finbert_v4.4.4', 'models', 'finbert_sentiment.py')
 
 if not os.path.exists(file_path):
-    print(f"❌ ERROR: File not found: {file_path}")
+    print(f"[ERROR] ERROR: File not found: {file_path}")
     print("   Make sure you're in the correct directory")
     input("\nPress Enter to exit...")
     exit(1)
@@ -36,7 +36,7 @@ for i, line in enumerate(lines, 1):
             print(f"[OK] FIX IS APPLIED on line {i}")
             print(f"   {line.strip()}")
         else:
-            print(f"✗ FIX NOT APPLIED on line {i}")
+            print(f"[X] FIX NOT APPLIED on line {i}")
             print(f"   Current: {line.strip()}")
             print()
             print(f"   Should be: {line.strip().replace('.cpu().numpy()', '.detach().cpu().numpy()')}")
@@ -56,7 +56,7 @@ if fix_applied:
     print("  3. Verify you're editing the correct file")
 else:
     print("="*80)
-    print("  STATUS: FIX NOT APPLIED ✗")
+    print("  STATUS: FIX NOT APPLIED [X]")
     print("="*80)
     print()
     print(f"ACTION REQUIRED:")

@@ -23,7 +23,7 @@ Features:
 Workflow:
 1. Fetch overnight market data (US markets, commodities, FX, UK gilts)
 2. Detect market regime (14 types)
-3. Scan all sectors (240 stocks: 8 sectors × 30 stocks)
+3. Scan all sectors (240 stocks: 8 sectors x 30 stocks)
 4. Generate batch predictions (ML ensemble + LSTM)
 5. Apply FinBERT sentiment analysis
 6. Assess event risks (Basel III, FCA reporting, earnings, dividends)

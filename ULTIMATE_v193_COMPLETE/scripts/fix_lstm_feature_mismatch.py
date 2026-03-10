@@ -52,11 +52,11 @@ if not model_files_found:
 
 print(f"Found {len(model_files_found)} model files:")
 for f in model_files_found:
-    print(f"  • {f}")
+    print(f"  * {f}")
 print()
 
 # Ask for confirmation
-print("⚠️  These files have a feature mismatch (expect 8 features, have 5)")
+print("[!]  These files have a feature mismatch (expect 8 features, have 5)")
 print()
 print("Options:")
 print("  1. Backup and remove (recommended) - Allows fresh training")
@@ -90,7 +90,7 @@ for f in model_files_found:
         f.unlink()
         print(f"  [OK] Removed: {f}")
     except Exception as e:
-        print(f"  ✗ Failed to remove {f}: {e}")
+        print(f"  [X] Failed to remove {f}: {e}")
 
 print()
 print("="*80)

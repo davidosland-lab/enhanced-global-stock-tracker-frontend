@@ -47,7 +47,7 @@ if report_path.exists():
                 print(f"    {i}. {symbol}: Score={score:.1f}, Confidence={conf:.1f}%, "
                       f"Prediction={pred}, Sentiment={sent_score:.2f}")
         else:
-            print("  ⚠ No opportunities in report")
+            print("  [!] No opportunities in report")
     
     if 'market_sentiment' in report:
         sent = report['market_sentiment']
@@ -56,7 +56,7 @@ if report_path.exists():
         print(f"    Sentiment Index: {sent.get('sentiment_index', 0):.1f}")
         print(f"    Recommendation: {sent.get('recommendation', 'N/A')}")
 else:
-    print(f"✗ Report not found: {report_path}")
+    print(f"[X] Report not found: {report_path}")
 
 print()
 
@@ -78,17 +78,17 @@ try:
         print(f"  Change: {change_pct:+.2f}%")
         
         if change_pct < -0.5:
-            print(f"  Status: 🔴 DECLINING (>{change_pct:.2f}%)")
+            print(f"  Status: [ALERT] DECLINING (>{change_pct:.2f}%)")
         elif change_pct < 0:
-            print(f"  Status: 🟡 SLIGHTLY DOWN ({change_pct:.2f}%)")
+            print(f"  Status: [WARN] SLIGHTLY DOWN ({change_pct:.2f}%)")
         elif change_pct < 0.5:
-            print(f"  Status: 🟢 SLIGHTLY UP (+{change_pct:.2f}%)")
+            print(f"  Status: [OK] SLIGHTLY UP (+{change_pct:.2f}%)")
         else:
-            print(f"  Status: 🟢 RISING (+{change_pct:.2f}%)")
+            print(f"  Status: [OK] RISING (+{change_pct:.2f}%)")
     else:
-        print("✗ No FTSE data available")
+        print("[X] No FTSE data available")
 except Exception as e:
-    print(f"✗ Error fetching FTSE: {e}")
+    print(f"[X] Error fetching FTSE: {e}")
 
 print()
 
@@ -126,7 +126,7 @@ if config_path.exists():
     print(f"  Score 0-39:   DONT_BUY (blocked)")
     
 else:
-    print("✗ Config not found")
+    print("[X] Config not found")
 
 print()
 
@@ -148,10 +148,10 @@ try:
         dist_ma50 = ((current - ma50) / ma50) * 100
         
         print(f"LLOY.L Technical Analysis:")
-        print(f"  Current Price: £{current:.3f}")
-        print(f"  20-day MA: £{ma20:.3f} (price is {dist_ma20:+.1f}% from MA20)")
-        print(f"  50-day MA: £{ma50:.3f} (price is {dist_ma50:+.1f}% from MA50)")
-        print(f"  20-day High: £{high_20:.3f}")
+        print(f"  Current Price: GBP{current:.3f}")
+        print(f"  20-day MA: GBP{ma20:.3f} (price is {dist_ma20:+.1f}% from MA20)")
+        print(f"  50-day MA: GBP{ma50:.3f} (price is {dist_ma50:+.1f}% from MA50)")
+        print(f"  20-day High: GBP{high_20:.3f}")
         print(f"  Pullback: {pullback_pct:.1f}% from 20-day high")
         
         # Entry timing assessment
@@ -159,16 +159,16 @@ try:
         if pullback_pct > 2.0 and dist_ma20 < 0:
             print(f"    [OK] Good pullback ({pullback_pct:.1f}%)")
             print(f"    [OK] Below MA20 (potential support)")
-            print(f"    → Entry Score: ~60-70 (GOOD_ENTRY or WAIT_FOR_DIP)")
+            print(f"    -> Entry Score: ~60-70 (GOOD_ENTRY or WAIT_FOR_DIP)")
         elif pullback_pct < 1.0 and dist_ma20 > 2.0:
-            print(f"    ⚠ Small pullback ({pullback_pct:.1f}%)")
-            print(f"    ⚠ Extended above MA20 (+{dist_ma20:.1f}%)")
-            print(f"    → Entry Score: ~40-50 (WAIT_FOR_DIP)")
+            print(f"    [!] Small pullback ({pullback_pct:.1f}%)")
+            print(f"    [!] Extended above MA20 (+{dist_ma20:.1f}%)")
+            print(f"    -> Entry Score: ~40-50 (WAIT_FOR_DIP)")
         else:
-            print(f"    → Entry Score: ~50-60 (NEUTRAL)")
+            print(f"    -> Entry Score: ~50-60 (NEUTRAL)")
         
 except Exception as e:
-    print(f"✗ Error analyzing LLOY.L: {e}")
+    print(f"[X] Error analyzing LLOY.L: {e}")
 
 print()
 
@@ -186,21 +186,21 @@ if state_path.exists():
     
     print(f"[OK] Trading state exists")
     print(f"  Symbols loaded: {len(symbols)} ({', '.join(symbols[:5])}...)")
-    print(f"  Total capital: ${capital.get('total', 0):,.2f}")
+    print(f"  Total capital: USD{capital.get('total', 0):,.2f}")
     print(f"  Open positions: {len(positions)}")
     
     if len(symbols) == 0:
-        print(f"\n  ⚠ NO SYMBOLS LOADED - Trading cannot start")
-        print(f"    → Use 'Auto-Load Top 50' button or manually enter symbols")
+        print(f"\n  [!] NO SYMBOLS LOADED - Trading cannot start")
+        print(f"    -> Use 'Auto-Load Top 50' button or manually enter symbols")
     elif capital.get('total', 0) == 0:
-        print(f"\n  ⚠ NO CAPITAL SET - Trading cannot start")
-        print(f"    → Set initial capital in dashboard")
+        print(f"\n  [!] NO CAPITAL SET - Trading cannot start")
+        print(f"    -> Set initial capital in dashboard")
     else:
         print(f"\n  [OK] System ready to trade")
 else:
-    print(f"✗ Trading state not found")
-    print(f"  → Trading system not started")
-    print(f"  → Start dashboard and click 'Start Trading'")
+    print(f"[X] Trading state not found")
+    print(f"  -> Trading system not started")
+    print(f"  -> Start dashboard and click 'Start Trading'")
 
 print()
 
@@ -211,10 +211,10 @@ print("="*80)
 
 print("\nPossible reasons for no UK trades:")
 print("  1. Trading system not started (no symbols/capital loaded)")
-print("  2. FTSE market declining → waiting for reversal/pullback")
+print("  2. FTSE market declining -> waiting for reversal/pullback")
 print("  3. UK stocks above entry timing threshold (waiting for dip)")
-print("  4. Low market sentiment (< 30) → blocking all trades")
-print("  5. Low individual stock confidence (< 52%) → blocking trades")
+print("  4. Low market sentiment (< 30) -> blocking all trades")
+print("  5. Low individual stock confidence (< 52%) -> blocking trades")
 print("  6. Signal format mismatch (fixed in v1.3.15.165)")
 
 print("\nRecommended actions:")

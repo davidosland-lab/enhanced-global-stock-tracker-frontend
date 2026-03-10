@@ -60,7 +60,7 @@ class TaxAuditTrail:
         if timestamp is None:
             timestamp = datetime.now()
         
-        logger.debug(f"[TAX] {transaction_type} {quantity} {symbol} @ ${price:.2f}")
+        logger.debug(f"[TAX] {transaction_type} {quantity} {symbol} @ USD{price:.2f}")
     
     def log_trade(self, trade_data: Dict):
         """

@@ -5,16 +5,16 @@ VERSION: v1.3.15.193.10 - Macro Risk Gates Integration (Mar 4, 2026)
 
 CHANGELOG v193.10:
 - NEW: Macro Risk Gatekeeper fully integrated into trading decisions
-  * World Risk ≥80 blocks trades, ≥60 reduces position 50%
-  * US market ≤-1.5% blocks, ≤-0.75% reduces 25%
-  * VIX ≥30 requires 70%+ confidence and reduces 25%
-  * Financial sector stricter: Block if World Risk ≥60 or US ≤-1.0%
+  * World Risk >=80 blocks trades, >=60 reduces position 50%
+  * US market <=-1.5% blocks, <=-0.75% reduces 25%
+  * VIX >=30 requires 70%+ confidence and reduces 25%
+  * Financial sector stricter: Block if World Risk >=60 or US <=-1.0%
 - NEW: FinBERT sentiment fallback to macro sentiment when neutral
 - NEW: Confidence penalty system for missing data
   * LSTM missing: -20% confidence penalty
   * Sentiment missing: -15% confidence penalty
   * Volume missing: -10% confidence penalty
-- FIXED: March 4, 2026 incident ($556 loss) - macro gates now active
+- FIXED: March 4, 2026 incident (USD556 loss) - macro gates now active
   * Would have blocked BP.L, BOQ.AX, NAB.AX on high risk day
   * World Risk 100/100, US -2.5%, VIX 59.3 -> All blocked
 - Position multipliers now combine macro risk AND sentiment
@@ -307,6 +307,15 @@ class PaperTradingCoordinator:
         self.last_market_sentiment = 50.0  # Neutral
         self.multi_market_breakdown = {}  # Store AU/US/UK sentiment breakdown
         
+        # v193.11.6.21: Gap reality checker for prediction validation
+        try:
+            from core.gap_reality_checker import GapRealityChecker
+            self.gap_reality_checker = GapRealityChecker(state_dir="state")
+            logger.info("[OK] Gap reality checker initialized")
+        except Exception as e:
+            logger.warning(f"[WARN] Gap reality checker unavailable: {e}")
+            self.gap_reality_checker = None
+        
         # Performance tracking
         self.metrics = {
             'total_trades': 0,
@@ -375,7 +384,7 @@ class PaperTradingCoordinator:
         logger.info("=" * 80)
         logger.info("PAPER TRADING COORDINATOR - INTEGRATED VERSION")
         logger.info("=" * 80)
-        logger.info(f"  Initial Capital: ${initial_capital:,.2f}")
+        logger.info(f"  Initial Capital: USD{initial_capital:,.2f}")
         logger.info(f"  Symbols: {', '.join(symbols)}")
         logger.info(f"  Real Swing Signals: {self.use_real_swing_signals}")
         if self.use_enhanced_adapter:
@@ -598,6 +607,12 @@ class PaperTradingCoordinator:
         """
         Evaluate if a pipeline recommendation meets trading signal parameters
         
+        FIX v193.11.6.16: Added hybrid trade_mode to allow confidence-based HOLD signal overrides
+        
+        Two modes:
+        - 'strict': Only trade explicit BUY/SELL signals (default, conservative)
+        - 'confidence_based': Allow high-confidence HOLD signals with strong scores to trade
+        
         Args:
             recommendation: Recommendation dict from _get_pipeline_recommendations
             
@@ -609,40 +624,91 @@ class PaperTradingCoordinator:
         score = recommendation['opportunity_score']
         sentiment = recommendation['sentiment']
         
-        # BUY signals
-        if signal in ['BUY', 'STRONG_BUY']:
-            # Check minimum score threshold
-            if score < 60.0:
-                return False, 0, f"Score too low: {score:.1f} < 60.0"
-            
-            # Check sentiment
-            if sentiment < 45.0:
-                return False, 0, f"Sentiment too bearish: {sentiment:.1f} < 45.0"
-            
-            # Check report age (don't trade on stale recommendations)
-            if recommendation['report_age_hours'] > 12:
-                return False, 0, f"Report too old: {recommendation['report_age_hours']:.1f}h > 12h"
-            
-            # Calculate confidence based on score and sentiment
-            confidence = (score * 0.7 + sentiment * 0.3)
-            
-            return True, confidence, f"Pipeline BUY: score={score:.1f}, sentiment={sentiment:.1f}"
+        # FIX v193.11.6.16: Get trade mode from config (default to 'strict' for safety)
+        trade_mode = self.config.get('paper_trading', {}).get('trade_mode', 'strict')
         
-        # SELL signals
-        elif signal in ['SELL', 'STRONG_SELL']:
-            # Check if we have an open position to sell
-            if symbol not in self.positions:
-                return False, 0, "No open position to sell"
-            
-            # Check minimum score threshold (for sell signals, lower score = stronger sell)
-            if score > 40.0:
-                return False, 0, f"Score too high for sell: {score:.1f} > 40.0"
-            
-            confidence = (100 - score) * 0.7 + (100 - sentiment) * 0.3
-            
-            return True, confidence, f"Pipeline SELL: score={score:.1f}, sentiment={sentiment:.1f}"
+        # Calculate confidence (used in both modes)
+        confidence = (score * 0.7 + sentiment * 0.3)
         
-        return False, 0, f"Signal {signal} not actionable"
+        # Common checks for report age
+        if recommendation['report_age_hours'] > 12:
+            return False, 0, f"Report too old: {recommendation['report_age_hours']:.1f}h > 12h"
+        
+        # ===== MODE 1: STRICT (Original Behavior) =====
+        if trade_mode == 'strict':
+            # BUY signals
+            if signal in ['BUY', 'STRONG_BUY']:
+                if score < 60.0:
+                    return False, 0, f"Score too low: {score:.1f} < 60.0"
+                if sentiment < 45.0:
+                    return False, 0, f"Sentiment too bearish: {sentiment:.1f} < 45.0"
+                
+                return True, confidence, f"Pipeline BUY: score={score:.1f}, sentiment={sentiment:.1f}"
+            
+            # SELL signals
+            elif signal in ['SELL', 'STRONG_SELL']:
+                if symbol not in self.positions:
+                    return False, 0, "No open position to sell"
+                if score > 40.0:
+                    return False, 0, f"Score too high for sell: {score:.1f} > 40.0"
+                
+                return True, confidence, f"Pipeline SELL: score={score:.1f}, sentiment={sentiment:.1f}"
+            
+            # HOLD or other signals - blocked in strict mode
+            return False, 0, f"Signal {signal} not actionable (strict mode)"
+        
+        # ===== MODE 2: CONFIDENCE_BASED (New Behavior) =====
+        elif trade_mode == 'confidence_based':
+            # Get configurable thresholds
+            min_confidence = self.config.get('paper_trading', {}).get('min_confidence', 53.0)
+            hold_buy_threshold = self.config.get('paper_trading', {}).get('hold_override_min_score', 60.0)
+            hold_sell_threshold = self.config.get('paper_trading', {}).get('hold_override_max_score', 40.0)
+            
+            # Check minimum confidence first (applies to all signals)
+            if confidence < min_confidence:
+                return False, 0, f"Confidence {confidence:.1f}% < {min_confidence}% (confidence_based mode)"
+            
+            # Explicit BUY signals
+            if signal in ['BUY', 'STRONG_BUY']:
+                if score < 60.0:
+                    return False, 0, f"Score too low: {score:.1f} < 60.0"
+                if sentiment < 45.0:
+                    return False, 0, f"Sentiment too bearish: {sentiment:.1f} < 45.0"
+                
+                return True, confidence, f"Pipeline BUY: score={score:.1f}, conf={confidence:.1f}%"
+            
+            # Explicit SELL signals
+            elif signal in ['SELL', 'STRONG_SELL']:
+                if symbol not in self.positions:
+                    return False, 0, "No open position to sell"
+                if score > 40.0:
+                    return False, 0, f"Score too high for sell: {score:.1f} > 40.0"
+                
+                return True, confidence, f"Pipeline SELL: score={score:.1f}, conf={confidence:.1f}%"
+            
+            # HOLD signals - use score-based directional bias
+            elif signal == 'HOLD':
+                # High-quality HOLD (score >= 60) -> Treat as BUY if confidence met
+                if score >= hold_buy_threshold and sentiment >= 45.0:
+                    logger.info(f"[HOLD->BUY] {symbol}: Overriding HOLD signal - score={score:.1f}, conf={confidence:.1f}%")
+                    return True, confidence, f"Pipeline BUY (HOLD override): score={score:.1f}, conf={confidence:.1f}%"
+                
+                # Low-quality HOLD (score <= 40) + open position -> Treat as SELL
+                elif score <= hold_sell_threshold and symbol in self.positions:
+                    logger.info(f"[HOLD->SELL] {symbol}: Overriding HOLD signal - score={score:.1f}, conf={confidence:.1f}%")
+                    return True, confidence, f"Pipeline SELL (HOLD override): score={score:.1f}, conf={confidence:.1f}%"
+                
+                # Truly neutral HOLD (40 < score < 60) - don't trade
+                else:
+                    return False, 0, f"Signal HOLD with neutral score {score:.1f} (no strong bias, confidence_based mode)"
+            
+            # Unknown signal types
+            return False, 0, f"Signal {signal} not recognized (confidence_based mode)"
+        
+        # Invalid trade_mode
+        else:
+            logger.error(f"Invalid trade_mode '{trade_mode}' - defaulting to strict")
+            return False, 0, f"Invalid trade_mode '{trade_mode}'"
     
     def _process_pipeline_recommendations(self):
         """
@@ -693,7 +759,7 @@ class PaperTradingCoordinator:
                     current_price = price_data['Close'].iloc[-1]
                     
                     # Enter position
-                    logger.info(f"[PIPELINE] Executing BUY for {symbol} at ${current_price:.2f}")
+                    logger.info(f"[PIPELINE] Executing BUY for {symbol} at USD{current_price:.2f}")
                     self.enter_position(
                         symbol=symbol,
                         entry_price=current_price,
@@ -810,7 +876,75 @@ class PaperTradingCoordinator:
             f"(min_score={min_score:.1f})"
         )
         
+        # v193.11.6.21: Apply gap reality adjustment if available
+        if self.gap_reality_checker and len(opportunities) > 0:
+            # Group opportunities by market
+            market_groups = {}
+            for opp in opportunities:
+                market = opp.get('market', '').upper()
+                if market not in market_groups:
+                    market_groups[market] = []
+                market_groups[market].append(opp)
+            
+            # Apply gap adjustment to each market
+            for market, stocks in market_groups.items():
+                adjusted_stocks = self.gap_reality_checker.apply_multiplier_to_stocks(stocks, market)
+                # Note: stocks are modified in place, no need to reassign
+            
+            # Re-sort after adjustment
+            opportunities.sort(key=lambda x: x['opportunity_score'], reverse=True)
+            
+            logger.info(
+                f"[GAP ADJUST] Applied gap reality adjustments to {len(opportunities)} opportunities"
+            )
+        
         return opportunities
+    
+    def validate_gap_predictions(self) -> Dict:
+        """
+        Validate gap predictions against actual market opens (v193.11.6.21)
+        
+        Call this method 10-15 minutes after market open to:
+        1. Check actual market gap vs prediction
+        2. Log prediction accuracy
+        3. Enable score adjustments for future opportunities
+        
+        Returns:
+            Dict with validation results for each market
+        """
+        if not self.gap_reality_checker:
+            logger.warning("[GAP VALIDATE] Gap reality checker not available")
+            return {}
+        
+        logger.info("\n" + "="*80)
+        logger.info("[GAP VALIDATE] CHECKING PREDICTION ACCURACY")
+        logger.info("="*80)
+        
+        results = {}
+        
+        # Check each market
+        for market in ['AU', 'UK', 'US']:
+            validation = self.gap_reality_checker.check_actual_gap(market, minutes_after_open=15)
+            
+            if validation:
+                results[market] = validation
+                
+                # Log summary
+                summary = self.gap_reality_checker.get_validation_summary(market)
+                if summary:
+                    logger.info(f"\n{summary}")
+                
+                # Log if large miss
+                error_pct = abs(validation.get('error_pct', 0))
+                if error_pct > 0.5:
+                    logger.warning(
+                        f"[GAP VALIDATE] {market}: Large prediction miss "
+                        f"(error: {validation.get('error_pct'):+.2f}%)"
+                    )
+            else:
+                logger.debug(f"[GAP VALIDATE] {market}: No validation available yet")
+        
+        return results
     
     def analyze_pre_market_gaps(self, execute_trades: bool = False) -> Dict:
         """
@@ -878,6 +1012,15 @@ class PaperTradingCoordinator:
             logger.info(f"  World Risk: {world_risk_score:.1f}/100")
             logger.info(f"  Top Stocks: {len(top_stocks)}")
             
+            # v193.11.6.21: Store gap prediction for later validation
+            if self.gap_reality_checker:
+                self.gap_reality_checker.store_prediction(
+                    market=market.upper(),
+                    predicted_gap_pct=gap_prediction.get('predicted_gap_pct', 0),
+                    confidence=gap_prediction.get('confidence', 0),
+                    direction=gap_prediction.get('direction', 'NEUTRAL')
+                )
+            
             # Analyze gap opportunity
             decision = self.pre_market_strategy.analyze_gap_opportunity(
                 market=market,
@@ -939,8 +1082,8 @@ class PaperTradingCoordinator:
                     
                     # Enter position
                     logger.info(
-                        f"  [ENTER] {symbol} @ ${current_price:.2f} "
-                        f"x{shares} shares = ${shares * current_price:.2f} "
+                        f"  [ENTER] {symbol} @ USD{current_price:.2f} "
+                        f"x{shares} shares = USD{shares * current_price:.2f} "
                         f"({adjusted_size*100:.1f}% of capital)"
                     )
                     
@@ -1044,19 +1187,19 @@ class PaperTradingCoordinator:
                     # Try post-market price (after-hours trading)
                     price = stock_data.get('postMarketPrice')
                     if price and price > 0:
-                        logger.debug(f"{symbol}: Using post-market price ${price:.2f}")
+                        logger.debug(f"{symbol}: Using post-market price USD{price:.2f}")
                         return float(price)
                     
                     # Try pre-market price (before market opens)
                     price = stock_data.get('preMarketPrice')
                     if price and price > 0:
-                        logger.debug(f"{symbol}: Using pre-market price ${price:.2f}")
+                        logger.debug(f"{symbol}: Using pre-market price USD{price:.2f}")
                         return float(price)
                     
                     # Fallback to previous close (market closed)
                     price = stock_data.get('regularMarketPreviousClose')
                     if price and price > 0:
-                        logger.debug(f"{symbol}: Using previous close ${price:.2f} (market closed)")
+                        logger.debug(f"{symbol}: Using previous close USD{price:.2f} (market closed)")
                         return float(price)
             
             # Fallback to yfinance
@@ -1066,7 +1209,7 @@ class PaperTradingCoordinator:
                 
                 if not hist.empty:
                     price = float(hist['Close'].iloc[-1])
-                    logger.debug(f"{symbol}: Using yfinance close ${price:.2f}")
+                    logger.debug(f"{symbol}: Using yfinance close USD{price:.2f}")
                     return price
             
             logger.warning(f"Could not fetch current price for {symbol}")
@@ -1201,13 +1344,13 @@ class PaperTradingCoordinator:
             # Calculate sentiment score
             sentiment = 50  # Neutral baseline
             
-            # Daily momentum (±10 points)
+            # Daily momentum (+/-10 points)
             sentiment += daily_change * 3.33
             
-            # 5-day trend (±15 points)
+            # 5-day trend (+/-15 points)
             sentiment += five_day_change * 3
             
-            # MA position (±10 points)
+            # MA position (+/-10 points)
             sentiment += ma_position * 5
             
             # Clamp to 0-100
@@ -1332,7 +1475,9 @@ class PaperTradingCoordinator:
         is_buy_signal = (prediction == 1) or (action in ['BUY', 'STRONG_BUY'])
         
         if not is_buy_signal:
-            return True, 1.0, "Signal not a buy"
+            reason = f"Signal not actionable: {action if action else 'HOLD'} (only BUY/STRONG_BUY allowed)"
+            logger.info(f"[BLOCK] {symbol}: {reason}")
+            return False, 0.0, reason
         
         # Check confidence (FIX v1.3.15.160: Use UI value if provided)
         min_confidence = self.ui_min_confidence if self.ui_min_confidence is not None else 48.0  # v188: Lowered from 52.0
@@ -1379,7 +1524,7 @@ class PaperTradingCoordinator:
                     elif entry_quality == 'WAIT_FOR_DIP':
                         target = entry_eval.get('entry_price_target', 0)
                         current = entry_eval.get('current_price', 0)
-                        reason = f"Entry timing caution (score {entry_score:.0f}/100): Wait for ${target:.2f} vs current ${current:.2f}"
+                        reason = f"Entry timing caution (score {entry_score:.0f}/100): Wait for USD{target:.2f} vs current USD{current:.2f}"
                         logger.warning(f"[REDUCE] {symbol}: {reason}")
                         # Apply 50% position reduction for poor timing, combine with macro multiplier
                         sentiment_multiplier = self._get_sentiment_multiplier(sentiment_score)
@@ -1926,7 +2071,7 @@ class PaperTradingCoordinator:
                 # Use manual stop loss and take profit if provided
                 stop_loss = signal.get('stop_loss', current_price * 0.95)
                 profit_target = signal.get('take_profit')
-                logger.info(f"{symbol}: Using manual stop_loss=${stop_loss:.2f}, take_profit=${profit_target:.2f if profit_target else 'None'}")
+                logger.info(f"{symbol}: Using manual stop_loss=USD{stop_loss:.2f}, take_profit=USD{profit_target:.2f if profit_target else 'None'}")
             else:
                 # Calculate automatically (FIX v1.3.15.160: Use UI value if provided)
                 stop_loss_pct = abs(self.ui_default_stop_loss) if self.ui_default_stop_loss is not None else self.config['swing_trading']['stop_loss_percent']
@@ -1987,13 +2132,13 @@ class PaperTradingCoordinator:
                     logger.error(f"[TAX] Failed to record BUY: {e}")
             
             logger.info(f"[OK] POSITION OPENED: {symbol}")
-            logger.info(f"  Shares: {shares} @ ${current_price:.2f}")
-            logger.info(f"  Position Size: {position_size:.1%} (${cost:,.2f})")
-            logger.info(f"  Stop Loss: ${stop_loss:.2f} (-{stop_loss_pct}%)")
-            logger.info(f"  Profit Target: ${profit_target:.2f} (+8%)" if profit_target else "  No Profit Target")
+            logger.info(f"  Shares: {shares} @ USD{current_price:.2f}")
+            logger.info(f"  Position Size: {position_size:.1%} (USD{cost:,.2f})")
+            logger.info(f"  Stop Loss: USD{stop_loss:.2f} (-{stop_loss_pct}%)")
+            logger.info(f"  Profit Target: USD{profit_target:.2f} (+8%)" if profit_target else "  No Profit Target")
             logger.info(f"  Target Exit: {holding_days} days")
             logger.info(f"  Regime: {regime}")
-            logger.info(f"  Capital Remaining: ${self.current_capital:,.2f}")
+            logger.info(f"  Capital Remaining: USD{self.current_capital:,.2f}")
             
             # Log decision for dashboard
             self._log_trading_decision(
@@ -2068,13 +2213,13 @@ class PaperTradingCoordinator:
                 
                 # Log price update
                 if abs(current_price - old_price) > 0.01:  # Only log if price changed
-                    logger.info(f"[UPDATE] {symbol}: ${old_price:.2f} -> ${current_price:.2f} ({position.unrealized_pnl_pct:+.2f}%)")
+                    logger.info(f"[UPDATE] {symbol}: USD{old_price:.2f} -> USD{current_price:.2f} ({position.unrealized_pnl_pct:+.2f}%)")
                 
                 # Update trailing stop
                 if self.config['swing_trading']['use_trailing_stop']:
                     self._update_trailing_stop(position, current_price)
             else:
-                logger.warning(f"[UPDATE] {symbol}: Could not fetch current price - position unchanged at ${position.current_price:.2f}")
+                logger.warning(f"[UPDATE] {symbol}: Could not fetch current price - position unchanged at USD{position.current_price:.2f}")
     
     def _update_trailing_stop(self, position: Position, current_price: float):
         """Update trailing stop"""
@@ -2085,7 +2230,7 @@ class PaperTradingCoordinator:
             new_trailing = current_price * (1 - stop_loss_pct / 100)
             
             if new_trailing > position.trailing_stop:
-                logger.info(f"{position.symbol}: Trailing stop ${position.trailing_stop:.2f} -> ${new_trailing:.2f}")
+                logger.info(f"{position.symbol}: Trailing stop USD{position.trailing_stop:.2f} -> USD{new_trailing:.2f}")
                 position.trailing_stop = new_trailing
     
     def _get_ml_exit_signal(self, symbol: str, position: Position) -> Optional[Dict]:
@@ -2183,9 +2328,27 @@ class PaperTradingCoordinator:
                 logger.warning(f"{symbol}: ML exit check failed: {e}, using mechanical rules")
         
         # SECONDARY CHECKS - Mechanical safety exits (always enforced)
-        # Stop loss (always enforced)
-        if price <= position.stop_loss:
-            return "STOP_LOSS"
+        # FIX v193.11.6.21: Dynamic stop-loss respects current UI setting
+        # Calculate stop-loss based on CURRENT UI setting, not just entry-time static value
+        stop_loss_pct = abs(self.ui_default_stop_loss) if self.ui_default_stop_loss is not None else self.config['swing_trading']['stop_loss_percent']
+        dynamic_stop_loss = position.entry_price * (1 - stop_loss_pct / 100)
+        
+        # Use the TIGHTER of: entry stop_loss OR current UI setting
+        # This ensures: tightening stop-loss after entry works, loosening doesn't override (safer)
+        effective_stop_loss = max(position.stop_loss, dynamic_stop_loss)
+        
+        if price <= effective_stop_loss:
+            # Calculate actual loss percentage
+            loss_pct = ((price - position.entry_price) / position.entry_price) * 100
+            
+            # Log which stop triggered for diagnostics
+            if effective_stop_loss == dynamic_stop_loss:
+                logger.info(f"[STOP-LOSS] {symbol}: Dynamic stop triggered at USD{price:.2f} (loss: {abs(loss_pct):.2f}%, UI setting: {stop_loss_pct}%)")
+                return f"STOP_LOSS_DYNAMIC_{abs(int(loss_pct))}%"
+            else:
+                entry_stop_pct = (1 - position.stop_loss/position.entry_price)*100
+                logger.info(f"[STOP-LOSS] {symbol}: Entry stop triggered at USD{price:.2f} (loss: {abs(loss_pct):.2f}%, entry setting: {entry_stop_pct:.1f}%)")
+                return f"STOP_LOSS_STATIC_{abs(int(loss_pct))}%"
         
         # v1.3.15.183: Relax trailing stop for profitable trending positions
         disable_time_exit = self.config['swing_trading'].get('disable_time_exit_for_winners', True)
@@ -2309,9 +2472,9 @@ class PaperTradingCoordinator:
             logger.info(f"[OK] POSITION CLOSED: {symbol}")
             logger.info(f"  Reason: {exit_reason}")
             logger.info(f"  Holding: {holding_days} days")
-            logger.info(f"  Entry: ${position.entry_price:.2f} -> Exit: ${exit_price:.2f}")
-            logger.info(f"  P&L: ${pnl:+,.2f} ({pnl_pct:+.2f}%)")
-            logger.info(f"  Capital: ${self.current_capital:,.2f}")
+            logger.info(f"  Entry: USD{position.entry_price:.2f} -> Exit: USD{exit_price:.2f}")
+            logger.info(f"  P&L: USD{pnl:+,.2f} ({pnl_pct:+.2f}%)")
+            logger.info(f"  Capital: USD{self.current_capital:,.2f}")
             
             # Log decision for dashboard
             self._log_trading_decision(
@@ -2514,20 +2677,20 @@ class PaperTradingCoordinator:
         logger.info(f"\n{'='*80}")
         logger.info(f"PORTFOLIO STATUS")
         logger.info(f"{'='*80}")
-        logger.info(f"Total Capital: ${total_capital:,.2f} ({total_return:+.2f}%)")
-        logger.info(f"  Cash: ${self.current_capital:,.2f}")
-        logger.info(f"  Invested: ${total_value:,.2f}")
-        logger.info(f"  Unrealized P&L: ${total_unrealized_pnl:+,.2f}")
+        logger.info(f"Total Capital: USD{total_capital:,.2f} ({total_return:+.2f}%)")
+        logger.info(f"  Cash: USD{self.current_capital:,.2f}")
+        logger.info(f"  Invested: USD{total_value:,.2f}")
+        logger.info(f"  Unrealized P&L: USD{total_unrealized_pnl:+,.2f}")
         logger.info(f"")
         logger.info(f"Open Positions: {len(self.positions)}")
         for symbol, pos in self.positions.items():
-            logger.info(f"  {symbol}: {pos.shares} shares @ ${pos.entry_price:.2f} | "
-                       f"Current: ${pos.current_price:.2f} | P&L: {pos.unrealized_pnl_pct:+.2f}%")
+            logger.info(f"  {symbol}: {pos.shares} shares @ USD{pos.entry_price:.2f} | "
+                       f"Current: USD{pos.current_price:.2f} | P&L: {pos.unrealized_pnl_pct:+.2f}%")
         logger.info(f"")
         logger.info(f"Performance:")
         logger.info(f"  Total Trades: {self.metrics['total_trades']}")
         logger.info(f"  Win Rate: {win_rate:.1f}%")
-        logger.info(f"  Realized P&L: ${self.metrics['total_pnl']:+,.2f}")
+        logger.info(f"  Realized P&L: USD{self.metrics['total_pnl']:+,.2f}")
         logger.info(f"  Max Drawdown: {self.metrics['max_drawdown']*100:.2f}%")
         logger.info(f"")
         logger.info(f"Market Sentiment: {self.last_market_sentiment:.1f}/100")
@@ -2705,7 +2868,7 @@ class PaperTradingCoordinator:
         logger.info(f"PAPER TRADING SYSTEM STARTED")
         logger.info(f"{'='*80}")
         logger.info(f"Symbols: {', '.join(self.symbols)}")
-        logger.info(f"Initial Capital: ${self.initial_capital:,.2f}")
+        logger.info(f"Initial Capital: USD{self.initial_capital:,.2f}")
         logger.info(f"Cycle Interval: {interval}s")
         logger.info(f"{'='*80}\n")
         

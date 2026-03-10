@@ -93,8 +93,8 @@ class SPIProxyConfig:
         self.vix_risk_on_threshold = 15.0   # VIX < 15 = risk-on
         
         # Caps and limits
-        self.max_proxy_move = 3.5  # Cap proxy move at ±3.5%
-        self.max_z_score = 4.0  # Cap Z-score at ±4.0
+        self.max_proxy_move = 3.5  # Cap proxy move at +/-3.5%
+        self.max_z_score = 4.0  # Cap Z-score at +/-4.0
         
         # Confidence parameters
         self.confidence_base = 0.70
@@ -177,7 +177,7 @@ class SPIProxy:
         """
         Compute volatility gate multiplier
         
-        High vol → reduce confidence, apply damping
+        High vol -> reduce confidence, apply damping
         """
         if historical_avg == 0:
             return 1.0
@@ -185,13 +185,13 @@ class SPIProxy:
         vol_ratio = current_vol / historical_avg
         
         if vol_ratio > 2.0:
-            # Extreme volatility → damp by 50%
+            # Extreme volatility -> damp by 50%
             return 0.5
         elif vol_ratio > 1.5:
-            # High volatility → damp by 25%
+            # High volatility -> damp by 25%
             return 0.75
         elif vol_ratio < 0.5:
-            # Low volatility → amplify by 10%
+            # Low volatility -> amplify by 10%
             return 1.1
         else:
             # Normal volatility

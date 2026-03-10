@@ -17,11 +17,11 @@ def fix_pytorch_tensorflow_conflict():
     app_file = "finbert_v4.4.4/app_finbert_v4_dev.py"
     
     if not os.path.exists(app_file):
-        print(f"❌ ERROR: {app_file} not found")
+        print(f"[ERROR] ERROR: {app_file} not found")
         print(f"   Current directory: {os.getcwd()}")
         return False
     
-    print(f"🔧 Fixing PyTorch/TensorFlow conflict in {app_file}...")
+    print(f"[TOOL] Fixing PyTorch/TensorFlow conflict in {app_file}...")
     
     # Read the file
     with open(app_file, 'r', encoding='utf-8') as f:
@@ -37,7 +37,7 @@ def fix_pytorch_tensorflow_conflict():
     if "_load_finbert_if_needed" in content:
         # Check for syntax error (orphaned try block)
         if re.search(r'_finbert_loaded = True.*?\n\ntry:\s*\n\s*logger\.info.*?FinBERT.*?loaded', content, re.DOTALL):
-            print("⚠️  Found orphaned try block from previous fix - cleaning up...")
+            print("[!]  Found orphaned try block from previous fix - cleaning up...")
             
             # Remove the orphaned try block
             content = re.sub(
@@ -64,7 +64,7 @@ def fix_pytorch_tensorflow_conflict():
     pattern = r'# Import FinBERT sentiment analyzer.*?FINBERT_AVAILABLE = False.*?finbert_analyzer = None.*?real_sentiment_module = None.*?try:.*?from models\.finbert_sentiment.*?from models\.news_sentiment_real.*?FINBERT_AVAILABLE = True.*?real_sentiment_module = True.*?logger\.info\("[OK] REAL FinBERT.*?"\).*?except.*?print\(f"Note: FinBERT.*?"\)'
     
     if not re.search(pattern, content, re.DOTALL):
-        print("❌ ERROR: Could not find expected import pattern")
+        print("[ERROR] ERROR: Could not find expected import pattern")
         print("   The file may have been modified")
         return False
     
@@ -117,9 +117,9 @@ def _load_finbert_if_needed():
     print("="*70)
     print()
     print("WHAT WAS FIXED:")
-    print("  • Changed FinBERT import from eager to lazy-loading")
-    print("  • PyTorch now loads only when sentiment analysis is needed")
-    print("  • LSTM training no longer conflicts with PyTorch")
+    print("  * Changed FinBERT import from eager to lazy-loading")
+    print("  * PyTorch now loads only when sentiment analysis is needed")
+    print("  * LSTM training no longer conflicts with PyTorch")
     print()
     
     return True
@@ -129,7 +129,7 @@ def add_lazy_load_calls(content, app_file):
     Add _load_finbert_if_needed() calls to sentiment routes
     """
     
-    print("🔧 Adding lazy-load calls to sentiment routes...")
+    print("[TOOL] Adding lazy-load calls to sentiment routes...")
     
     modified = False
     
@@ -158,7 +158,7 @@ def add_lazy_load_calls(content, app_file):
             f.write(content)
         print("[OK] Lazy-load calls added")
     else:
-        print("  → Already added or routes not found")
+        print("  -> Already added or routes not found")
 
 if __name__ == "__main__":
     print()

@@ -174,12 +174,12 @@ class EnhancedSPIProxy:
             
             direction = 'BULLISH' if predicted_gap > 0.3 else 'BEARISH' if predicted_gap < -0.3 else 'NEUTRAL'
             
-            logger.info(f"[ENHANCED] ═══════════════════════════════════════")
+            logger.info(f"[ENHANCED] [U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550]")
             logger.info(f"[ENHANCED] PREDICTED ASX OPENING GAP: {predicted_gap:+.2f}%")
             logger.info(f"[ENHANCED] CONFIDENCE: {confidence:.0%}")
             logger.info(f"[ENHANCED] DIRECTION: {direction}")
             logger.info(f"[ENHANCED] VIX LEVEL: {vix_level:.1f}")
-            logger.info(f"[ENHANCED] ═══════════════════════════════════════")
+            logger.info(f"[ENHANCED] [U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550][U+2550]")
             
             return {
                 'predicted_gap_pct': predicted_gap,

@@ -7,14 +7,14 @@ This script systematically replaces all Unicode special characters in logger cal
 with ASCII equivalents to prevent UnicodeEncodeError on Windows (cp1252).
 
 Replacements:
-  ✓ → [OK]
-  ✗ → [X]
-  → → ->
-  ⚠ → [!]
-  🚨 → [ALERT]
-  ❌ → [ERROR]
-  🔒 → [LOCKED]
-  📦 → [CACHE]
+  [OK] -> [OK]
+  [X] -> [X]
+  -> -> ->
+  [!] -> [!]
+  [ALERT] -> [ALERT]
+  [ERROR] -> [ERROR]
+  [LOCKED] -> [LOCKED]
+  [CACHE] -> [CACHE]
 
 Author: Claude (AI Assistant)
 Date: 2026-03-07
@@ -27,37 +27,37 @@ from pathlib import Path
 
 # Unicode to ASCII mapping
 REPLACEMENTS = {
-    '✓': '[OK]',
-    '✗': '[X]',
-    '→': '->',
-    '⚠': '[!]',
-    '🚨': '[ALERT]',
-    '❌': '[ERROR]',
-    '🔒': '[LOCKED]',
-    '📦': '[CACHE]',
-    '⚙': '[*]',       # Gear symbol
-    '🇺🇸': '[US]',     # US flag
-    '🇦🇺': '[AU]',     # AU flag
-    '🇬🇧': '[UK]',     # UK flag
-    '📊': '[CHART]',   # Chart symbol
-    '💰': '[$]',       # Money bag
-    '📈': '[UP]',      # Chart increasing
-    '📉': '[DOWN]',    # Chart decreasing
-    '🛑': '[STOP]',    # Stop sign
-    '🎯': '[TARGET]',  # Target
-    '🚀': '[BOOST]',   # Rocket
-    '📋': '[LIST]',    # Clipboard
-    '🔧': '[TOOL]',    # Wrench
-    '✅': '[OK]',      # Check mark button
-    '️': '',          # Variation selector (invisible)
-    '≥': '>=',        # Greater than or equal
-    '≤': '<=',        # Less than or equal
-    '×': 'x',         # Multiplication
-    '£': 'GBP',       # Pound sterling
-    '🧠': '[AI]',     # Brain
-    '📄': '[DOC]',    # Document
-    '🎉': '[PASS]',   # Party popper
-    '⚠️': '[!]',      # Warning with variation selector
+    '[OK]': '[OK]',
+    '[X]': '[X]',
+    '->': '->',
+    '[!]': '[!]',
+    '[ALERT]': '[ALERT]',
+    '[ERROR]': '[ERROR]',
+    '[LOCKED]': '[LOCKED]',
+    '[CACHE]': '[CACHE]',
+    '[U+2699]': '[*]',       # Gear symbol
+    '[US]': '[US]',     # US flag
+    '[AU]': '[AU]',     # AU flag
+    '[GB]': '[UK]',     # UK flag
+    '[CHART]': '[CHART]',   # Chart symbol
+    '[MONEY]': '[USD]',       # Money bag
+    '[UP]': '[UP]',      # Chart increasing
+    '[DOWN]': '[DOWN]',    # Chart decreasing
+    '[U+1F6D1]': '[STOP]',    # Stop sign
+    '[TARGET]': '[TARGET]',  # Target
+    '[ROCKET]': '[BOOST]',   # Rocket
+    '[U+1F4CB]': '[LIST]',    # Clipboard
+    '[TOOL]': '[TOOL]',    # Wrench
+    '[OK]': '[OK]',      # Check mark button
+    '[U+FE0F]': '',          # Variation selector (invisible)
+    '>=': '>=',        # Greater than or equal
+    '<=': '<=',        # Less than or equal
+    'x': 'x',         # Multiplication
+    'GBP': 'GBP',       # Pound sterling
+    '[U+1F9E0]': '[AI]',     # Brain
+    '[U+1F4C4]': '[DOC]',    # Document
+    '[CELEBRATE]': '[PASS]',   # Party popper
+    '[!]': '[!]',      # Warning with variation selector
 }
 
 def fix_file(file_path: Path) -> tuple[int, list[str]]:

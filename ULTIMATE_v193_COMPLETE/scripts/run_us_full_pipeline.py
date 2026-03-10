@@ -23,7 +23,7 @@ Features:
 Workflow:
 1. Fetch overnight market data (US futures, commodities, FX, rates)
 2. Detect market regime (14 types)
-3. Scan all sectors (240 stocks: 8 sectors × 30 stocks)
+3. Scan all sectors (240 stocks: 8 sectors x 30 stocks)
 4. Generate batch predictions (ML ensemble + LSTM)
 5. Apply FinBERT sentiment analysis
 6. Assess event risks (Basel III, earnings, dividends)
@@ -227,7 +227,7 @@ class USFullPipelineRunner:
             logger.info(f"Mode: PRESET/CUSTOM")
             logger.info(f"Symbols: {', '.join(symbols) if len(symbols) <= 10 else f'{len(symbols)} symbols'}")
         
-        logger.info(f"Initial Capital: ${capital:,.2f} USD")
+        logger.info(f"Initial Capital: USD{capital:,.2f} USD")
         
         # Feature status
         features_enabled = []

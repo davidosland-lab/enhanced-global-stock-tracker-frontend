@@ -152,7 +152,7 @@ class RealtimeFTSEPredictor:
                                 'timestamp': symbol_data.index[-1]
                             }
                             
-                            logger.debug(f"{symbol}: {change_pct:+.2f}% (${last_close:.2f})")
+                            logger.debug(f"{symbol}: {change_pct:+.2f}% (USD{last_close:.2f})")
                         else:
                             logger.warning(f"Insufficient data for {symbol} (only {len(symbol_data)} days)")
                     else:
@@ -224,7 +224,7 @@ class RealtimeFTSEPredictor:
             us_valid = True
             
             logger.info(f"[US MARKETS] S&P: {sp500_change:+.2f}%, NASDAQ: {nasdaq_change:+.2f}%, DOW: {dow_change:+.2f}%")
-            logger.info(f"[US MARKETS] Weighted: {us_weighted_change:+.2f}% → FTSE Impact: {us_component:+.2f}%")
+            logger.info(f"[US MARKETS] Weighted: {us_weighted_change:+.2f}% -> FTSE Impact: {us_component:+.2f}%")
         else:
             logger.warning("[US MARKETS] Insufficient US market data")
             if not us_data:
@@ -255,7 +255,7 @@ class RealtimeFTSEPredictor:
         if eu_valid_count > 0:
             # Normalize by number of valid markets
             eu_component *= (self.component_weights['Europe'] / eu_valid_count * 3)
-            logger.info(f"[EUROPE] {eu_valid_count} markets → FTSE Impact: {eu_component:+.2f}%")
+            logger.info(f"[EUROPE] {eu_valid_count} markets -> FTSE Impact: {eu_component:+.2f}%")
         else:
             logger.warning("[EUROPE] No European market data available")
         
@@ -266,7 +266,7 @@ class RealtimeFTSEPredictor:
             ftse_index_change = futures_data['^FTSE']['change_pct']
             futures_component = ftse_index_change * self.component_weights['Futures']
             
-            logger.info(f"[FUTURES] FTSE Index (^FTSE): {ftse_index_change:+.2f}% → Impact: {futures_component:+.2f}%")
+            logger.info(f"[FUTURES] FTSE Index (^FTSE): {ftse_index_change:+.2f}% -> Impact: {futures_component:+.2f}%")
         else:
             logger.warning("[FUTURES] No FTSE index data available")
         
@@ -342,7 +342,7 @@ class RealtimeFTSEPredictor:
                 # Reduce gap prediction in high volatility
                 predicted_gap *= 0.80
             
-            logger.info(f"[VFTSE] Level: {vftse_level:.2f} → Confidence: {confidence:.0%} ({conf_reason})")
+            logger.info(f"[VFTSE] Level: {vftse_level:.2f} -> Confidence: {confidence:.0%} ({conf_reason})")
         else:
             confidence = base_confidence
             logger.warning("[VFTSE] No VFTSE data - using base confidence")

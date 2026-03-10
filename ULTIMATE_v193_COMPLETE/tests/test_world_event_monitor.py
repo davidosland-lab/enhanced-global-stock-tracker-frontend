@@ -27,11 +27,11 @@ def test_world_event_monitor():
     print("TEST 1: CRITICAL GEOPOLITICAL CRISIS")
     print("="*80)
     result = monitor.get_world_event_risk()
-    print(f"✅ World Risk Score: {result['world_risk_score']:.1f}/100")
-    print(f"✅ Risk Level: {result['risk_level']}")
-    print(f"✅ Fear Index: {result['fear']:.2f}")
-    print(f"✅ Anger Index: {result['anger']:.2f}")
-    print(f"✅ Top Topics: {', '.join(result['top_topics'][:3])}")
+    print(f"[OK] World Risk Score: {result['world_risk_score']:.1f}/100")
+    print(f"[OK] Risk Level: {result['risk_level']}")
+    print(f"[OK] Fear Index: {result['fear']:.2f}")
+    print(f"[OK] Anger Index: {result['anger']:.2f}")
+    print(f"[OK] Top Topics: {', '.join(result['top_topics'][:3])}")
     
     # Validate
     assert 0 <= result['world_risk_score'] <= 100, "Risk score out of range"
@@ -39,7 +39,7 @@ def test_world_event_monitor():
     assert 0 <= result['fear'] <= 1, "Fear index out of range"
     assert 0 <= result['anger'] <= 1, "Anger index out of range"
     
-    print("\n✅ ALL TESTS PASSED")
+    print("\n[OK] ALL TESTS PASSED")
     print(f"\nMonitor Status: OPERATIONAL")
     print(f"Keyword Detection: {len(monitor.crisis_keywords)} crisis patterns")
     print(f"Severity Levels: 4 (Major War, Military Strikes, Geopolitical Tensions, Economic Sanctions)")
@@ -54,7 +54,7 @@ if __name__ == '__main__':
         print("="*80)
         sys.exit(0)
     except Exception as e:
-        print(f"\n❌ TEST FAILED: {e}")
+        print(f"\n[ERROR] TEST FAILED: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)

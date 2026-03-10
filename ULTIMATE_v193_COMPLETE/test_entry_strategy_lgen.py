@@ -5,7 +5,7 @@ This script tests the new entry timing logic that addresses:
 "But if you buy at the top and then it falls that is not a good strategy"
 
 For LGEN.L current situation:
-- Price: £273.40 (down -0.68% today)
+- Price: GBP273.40 (down -0.68% today)
 - RSI: 61.92 (neutral)
 - Price above MA20 and MA50 (uptrend)
 - Signal: BUY with 87/100 opportunity score
@@ -83,21 +83,21 @@ def test_lgen_entry():
     print("=" * 80)
     
     if entry_quality == 'IMMEDIATE_BUY':
-        print(f"🟢 BUY NOW at £{current_price:.2f}")
+        print(f"[OK] BUY NOW at GBP{current_price:.2f}")
         print(f"   Entry Score: {entry_score:.0f}/100 - Excellent timing")
     elif entry_quality == 'GOOD_ENTRY':
-        print(f"🟢 BUY at £{current_price:.2f}")
+        print(f"[OK] BUY at GBP{current_price:.2f}")
         print(f"   Entry Score: {entry_score:.0f}/100 - Good timing")
     elif entry_quality == 'WAIT_FOR_DIP':
-        print(f"🟡 WAIT for better entry")
-        print(f"   Current: £{current_price:.2f}")
-        print(f"   Target:  £{target_price:.2f} ({((target_price/current_price - 1) * 100):.1f}%)")
+        print(f"[WARN] WAIT for better entry")
+        print(f"   Current: GBP{current_price:.2f}")
+        print(f"   Target:  GBP{target_price:.2f} ({((target_price/current_price - 1) * 100):.1f}%)")
         print(f"   Entry Score: {entry_score:.0f}/100")
         print(f"   Reason: {entry_eval.get('wait_reason')}")
     else:
-        print(f"🔴 DON'T BUY - Likely at top")
+        print(f"[ALERT] DON'T BUY - Likely at top")
         print(f"   Entry Score: {entry_score:.0f}/100")
-        print(f"   Wait for: £{target_price:.2f} ({((target_price/current_price - 1) * 100):.1f}%)")
+        print(f"   Wait for: GBP{target_price:.2f} ({((target_price/current_price - 1) * 100):.1f}%)")
     
     print("=" * 80)
     print()

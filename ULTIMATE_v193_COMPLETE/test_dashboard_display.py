@@ -16,13 +16,13 @@ for scenario_name, scores in scenarios:
     print("-" * 40)
     
     if scores is None:
-        print("  ❌ No finbert_sentiment field → Shows 'FinBERT data loading...'")
+        print("  [ERROR] No finbert_sentiment field -> Shows 'FinBERT data loading...'")
         continue
     
     total = scores.get('negative', 0) + scores.get('neutral', 0) + scores.get('positive', 0)
     
     if total == 0:
-        print(f"  ❌ Total: {total} → All bars at 0% width")
+        print(f"  [ERROR] Total: {total} -> All bars at 0% width")
         print("  Result: No visible bars!")
         continue
     
@@ -36,7 +36,7 @@ for scenario_name, scores in scenarios:
     print(f"  Total: {sum(scores_norm.values())*100:.1f}%")
     
     if total < 0.5:
-        print(f"  ⚠️  WARNING: Raw total < 0.5, bars will be small!")
+        print(f"  [!]  WARNING: Raw total < 0.5, bars will be small!")
 
 print("\n" + "="*80)
 print("DIAGNOSIS:")

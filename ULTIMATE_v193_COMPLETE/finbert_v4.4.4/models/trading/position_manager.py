@@ -155,7 +155,7 @@ class PositionManager:
         if final_stop_price >= current_price:
             return {
                 'success': False,
-                'error': f'Stop-loss price (${final_stop_price:.2f}) must be below current price (${current_price:.2f})'
+                'error': f'Stop-loss price (USD{final_stop_price:.2f}) must be below current price (USD{current_price:.2f})'
             }
         
         # Update position with stop-loss
@@ -168,7 +168,7 @@ class PositionManager:
         conn.commit()
         conn.close()
         
-        logger.info(f"Stop-loss set for {symbol}: ${final_stop_price:.2f} ({((current_price - final_stop_price)/current_price)*100:.1f}% below current)")
+        logger.info(f"Stop-loss set for {symbol}: USD{final_stop_price:.2f} ({((current_price - final_stop_price)/current_price)*100:.1f}% below current)")
         
         return {
             'success': True,
@@ -212,7 +212,7 @@ class PositionManager:
         if final_tp_price <= current_price:
             return {
                 'success': False,
-                'error': f'Take-profit price (${final_tp_price:.2f}) must be above current price (${current_price:.2f})'
+                'error': f'Take-profit price (USD{final_tp_price:.2f}) must be above current price (USD{current_price:.2f})'
             }
         
         # Update position with take-profit
@@ -225,7 +225,7 @@ class PositionManager:
         conn.commit()
         conn.close()
         
-        logger.info(f"Take-profit set for {symbol}: ${final_tp_price:.2f} ({((final_tp_price - current_price)/current_price)*100:.1f}% above current)")
+        logger.info(f"Take-profit set for {symbol}: USD{final_tp_price:.2f} ({((final_tp_price - current_price)/current_price)*100:.1f}% above current)")
         
         return {
             'success': True,
@@ -263,7 +263,7 @@ class PositionManager:
                         'exit_price': current_price,
                         'result': result
                     })
-                    logger.warning(f"[STOP] STOP-LOSS TRIGGERED: {symbol} @ ${current_price:.2f}")
+                    logger.warning(f"[STOP] STOP-LOSS TRIGGERED: {symbol} @ USD{current_price:.2f}")
             
             # Check take-profit
             elif position['take_profit_price'] and current_price >= position['take_profit_price']:
@@ -276,7 +276,7 @@ class PositionManager:
                         'exit_price': current_price,
                         'result': result
                     })
-                    logger.info(f"[TARGET] TAKE-PROFIT HIT: {symbol} @ ${current_price:.2f}")
+                    logger.info(f"[TARGET] TAKE-PROFIT HIT: {symbol} @ USD{current_price:.2f}")
         
         return {
             'success': True,

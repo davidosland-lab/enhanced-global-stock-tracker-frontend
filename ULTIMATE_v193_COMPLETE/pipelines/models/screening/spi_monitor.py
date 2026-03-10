@@ -164,7 +164,7 @@ class SPIMonitor:
                             'source_data': realtime_result.get('source_data', {})
                         }
                         method_used = 'REALTIME'
-                        logger.info(f"[REALTIME] ✅ Success! Gap: {realtime_result['predicted_gap_pct']:+.2f}%, "
+                        logger.info(f"[REALTIME] [OK] Success! Gap: {realtime_result['predicted_gap_pct']:+.2f}%, "
                                   f"Confidence: {realtime_result['confidence']:.0%}, "
                                   f"Direction: {realtime_result['direction']}")
                         

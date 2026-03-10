@@ -73,11 +73,13 @@ class RealtimeSPIPredictor:
         }
         
         # Overall component weights
+        # v193.11.6.21: Reduced commodity weight 0.10 -> 0.05, increased US weight 0.65 -> 0.70
+        # Reason: Gap prediction +0.38% vs actual +1.3% (242% error) - commodities too volatile/unreliable
         self.component_weights = {
-            'US': 0.65,         # US markets primary driver
+            'US': 0.70,         # US markets primary driver (increased from 0.65)
             'Futures': 0.15,    # Overnight futures (ES, NQ)
             'UK': 0.10,         # UK market
-            'Commodities': 0.10 # Commodities basket
+            'Commodities': 0.05 # Commodities basket (reduced from 0.10)
         }
         
         # VIX thresholds for confidence adjustment
@@ -131,7 +133,7 @@ class RealtimeSPIPredictor:
                                 'timestamp': symbol_data.index[-1]
                             }
                             
-                            logger.debug(f"{symbol}: {change_pct:+.2f}% (${last_close:.2f})")
+                            logger.debug(f"{symbol}: {change_pct:+.2f}% (USD{last_close:.2f})")
                         else:
                             logger.warning(f"Insufficient data for {symbol} (only {len(symbol_data)} days)")
                     else:
@@ -196,7 +198,7 @@ class RealtimeSPIPredictor:
             us_valid = True
             
             logger.info(f"[US MARKETS] S&P: {sp500_change:+.2f}%, NASDAQ: {nasdaq_change:+.2f}%, DOW: {dow_change:+.2f}%")
-            logger.info(f"[US MARKETS] Weighted: {us_weighted_change:+.2f}% → ASX Impact: {us_component:+.2f}%")
+            logger.info(f"[US MARKETS] Weighted: {us_weighted_change:+.2f}% -> ASX Impact: {us_component:+.2f}%")
         else:
             logger.warning("[US MARKETS] Insufficient US market data - cannot compute US component")
             return self._get_fallback_prediction("Insufficient US market data")
@@ -212,7 +214,7 @@ class RealtimeSPIPredictor:
             futures_weighted = es_change * 0.60 + nq_change * 0.40
             futures_component = futures_weighted * self.component_weights['Futures']
             
-            logger.info(f"[FUTURES] ES: {es_change:+.2f}%, NQ: {nq_change:+.2f}% → Impact: {futures_component:+.2f}%")
+            logger.info(f"[FUTURES] ES: {es_change:+.2f}%, NQ: {nq_change:+.2f}% -> Impact: {futures_component:+.2f}%")
         else:
             logger.warning("[FUTURES] Limited futures data available")
         
@@ -223,7 +225,7 @@ class RealtimeSPIPredictor:
             ftse_change = uk_data['^FTSE']['change_pct']
             uk_component = ftse_change * self.uk_correlation * self.component_weights['UK']
             
-            logger.info(f"[UK] FTSE: {ftse_change:+.2f}% → ASX Impact: {uk_component:+.2f}%")
+            logger.info(f"[UK] FTSE: {ftse_change:+.2f}% -> ASX Impact: {uk_component:+.2f}%")
         else:
             logger.warning("[UK] No FTSE data available")
         
@@ -277,7 +279,7 @@ class RealtimeSPIPredictor:
                 # Reduce gap prediction in high volatility
                 predicted_gap *= 0.80
             
-            logger.info(f"[VIX] Level: {vix_level:.2f} → Confidence: {confidence:.0%} ({conf_reason})")
+            logger.info(f"[VIX] Level: {vix_level:.2f} -> Confidence: {confidence:.0%} ({conf_reason})")
         else:
             confidence = base_confidence
             logger.warning("[VIX] No VIX data - using base confidence")

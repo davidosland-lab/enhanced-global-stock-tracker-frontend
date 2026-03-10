@@ -23,10 +23,10 @@ class MakerTakerClassifier:
     Classify trades into maker (passive) vs taker (aggressive) categories
     
     Classification Rules:
-    1. Market orders → TAKER
-    2. Limit orders that cross the spread → TAKER
-    3. Limit orders that rest on the book → MAKER
-    4. Midpoint fills → Ambiguous (rare, default to MAKER)
+    1. Market orders -> TAKER
+    2. Limit orders that cross the spread -> TAKER
+    3. Limit orders that rest on the book -> MAKER
+    4. Midpoint fills -> Ambiguous (rare, default to MAKER)
     
     Research findings (Kalshi):
     - Makers win 80 of 99 price levels
@@ -74,7 +74,7 @@ class MakerTakerClassifier:
         
         # Classify limit orders by price position
         if order_type.lower() == 'limit':
-            # Crossed the spread (aggressive) → TAKER
+            # Crossed the spread (aggressive) -> TAKER
             if price >= ask:  # Bought at or above ask
                 self.classification_count['taker'] += 1
                 return 'taker'
@@ -82,7 +82,7 @@ class MakerTakerClassifier:
                 self.classification_count['taker'] += 1
                 return 'taker'
             
-            # Between bid and ask (provided liquidity) → MAKER
+            # Between bid and ask (provided liquidity) -> MAKER
             elif bid < price < ask:
                 self.classification_count['maker'] += 1
                 return 'maker'
@@ -122,19 +122,19 @@ class MakerTakerClassifier:
         # Vectorized classification for speed
         trades_df['role'] = 'unknown'
         
-        # Market orders → taker
+        # Market orders -> taker
         market_mask = trades_df[order_type_col].str.lower() == 'market'
         trades_df.loc[market_mask, 'role'] = 'taker'
         
         # Limit orders
         limit_mask = trades_df[order_type_col].str.lower() == 'limit'
         
-        # Crossed spread → taker
+        # Crossed spread -> taker
         crossed_buy = (trades_df[price_col] >= trades_df[ask_col]) & limit_mask
         crossed_sell = (trades_df[price_col] <= trades_df[bid_col]) & limit_mask
         trades_df.loc[crossed_buy | crossed_sell, 'role'] = 'taker'
         
-        # Between bid/ask → maker
+        # Between bid/ask -> maker
         inside_spread = (
             (trades_df[price_col] > trades_df[bid_col]) &
             (trades_df[price_col] < trades_df[ask_col]) &
@@ -142,7 +142,7 @@ class MakerTakerClassifier:
         )
         trades_df.loc[inside_spread, 'role'] = 'maker'
         
-        # At bid or ask → maker (default)
+        # At bid or ask -> maker (default)
         at_quote = (
             ((trades_df[price_col] == trades_df[bid_col]) |
              (trades_df[price_col] == trades_df[ask_col])) &

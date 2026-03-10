@@ -150,7 +150,7 @@ class CompleteWorkflow:
         logger.info("RUNNING ALL OVERNIGHT PIPELINES")
         logger.info("="*80)
         logger.info(f"Markets: {', '.join(markets)}")
-        logger.info(f"Capital per market: ${capital:,.2f}")
+        logger.info(f"Capital per market: USD{capital:,.2f}")
         
         results = {}
         
@@ -192,7 +192,7 @@ class CompleteWorkflow:
         logger.info("EXECUTING MORNING TRADES")
         logger.info("="*80)
         logger.info(f"Markets: {', '.join(markets)}")
-        logger.info(f"Total capital: ${capital:,.2f}")
+        logger.info(f"Total capital: USD{capital:,.2f}")
         
         # Check if we have the enhanced trading script
         trading_script = self.base_path / 'run_pipeline_enhanced_trading.py'
@@ -288,7 +288,7 @@ class CompleteWorkflow:
         logger.info(f"Markets: {', '.join(markets)}")
         logger.info(f"Run Pipelines: {run_pipelines}")
         logger.info(f"Execute Trades: {execute_trades}")
-        logger.info(f"Total Capital: ${capital:,.2f}")
+        logger.info(f"Total Capital: USD{capital:,.2f}")
         
         results = {
             'pipelines': {},

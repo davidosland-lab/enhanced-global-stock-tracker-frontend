@@ -78,8 +78,8 @@ class PipelineToDashboardDiagnostic:
             'PASS': '[OK]',
             'FAIL': '[ERROR]',
             'WARN': '[!]',
-            'INFO': 'ℹ'
-        }.get(status, '•')
+            'INFO': '[U+2139]'
+        }.get(status, '*')
         
         logger.info(f"{icon} {test_name}: {details}")
     
@@ -447,7 +447,7 @@ class PipelineToDashboardDiagnostic:
                 self.log_test(
                     f"Dashboard Ready: {signal['symbol']}",
                     "PASS",
-                    f"All required fields present - {signal['action']} @ ${signal.get('entry_price', 0):.2f}"
+                    f"All required fields present - {signal['action']} @ USD{signal.get('entry_price', 0):.2f}"
                 )
         
         success = valid_count > 0

@@ -259,7 +259,7 @@ def live_gap_analysis(execute: bool = False, market: str = None):
         logger.info("-"*80)
         if coordinator.positions:
             for symbol, pos in coordinator.positions.items():
-                logger.info(f"  {symbol}: {pos.shares} shares @ ${pos.entry_price:.2f}")
+                logger.info(f"  {symbol}: {pos.shares} shares @ USD{pos.entry_price:.2f}")
         else:
             logger.info("  None")
     

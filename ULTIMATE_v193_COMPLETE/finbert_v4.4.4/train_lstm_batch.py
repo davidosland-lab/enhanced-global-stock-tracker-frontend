@@ -45,7 +45,7 @@ def train_lstm_for_stock(symbol):
     
     try:
         # Download 2 years of data for better training
-        print(f"📊 Downloading {symbol} data (2 years)...")
+        print(f"[CHART] Downloading {symbol} data (2 years)...")
         ticker = yf.Ticker(symbol)
         data = ticker.history(period='2y')
         
@@ -55,10 +55,10 @@ def train_lstm_for_stock(symbol):
             return False
         
         print(f"[OK] Downloaded {len(data)} days of data")
-        print(f"   Using last close price: ${data['Close'].iloc[-1]:.2f}")
+        print(f"   Using last close price: USD{data['Close'].iloc[-1]:.2f}")
         
         # Train LSTM using the train_model_for_symbol function
-        print(f"🧠 Training LSTM (this may take 5-15 minutes)...")
+        print(f"[U+1F9E0] Training LSTM (this may take 5-15 minutes)...")
         print(f"   Epochs: 50, Sequence Length: 60")
         
         # Train the model (this includes data preparation and model saving)
@@ -109,11 +109,11 @@ def main():
     """
     
     print("="*70)
-    print("  🚀 BATCH LSTM TRAINING FOR TOP STOCKS")
+    print("  [ROCKET] BATCH LSTM TRAINING FOR TOP STOCKS")
     print("="*70)
     print(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print()
-    print("ℹ️  Training pre-defined top 10 stocks")
+    print("[U+2139][U+FE0F]  Training pre-defined top 10 stocks")
     print("   For custom stock selection, use: train_lstm_custom.py")
     print()
     
@@ -136,13 +136,13 @@ def main():
     
     all_stocks = us_stocks + australian_stocks
     
-    print(f"📋 Will train LSTM for {len(all_stocks)} stocks:")
+    print(f"[U+1F4CB] Will train LSTM for {len(all_stocks)} stocks:")
     print()
     for i, (symbol, name) in enumerate(all_stocks, 1):
         print(f"  {i:2d}. {symbol:8s} - {name}")
     print()
     
-    print(f"⏱️  Estimated time: {len(all_stocks) * 10} minutes ({len(all_stocks) * 10 / 60:.1f} hours)")
+    print(f"[TIMER]  Estimated time: {len(all_stocks) * 10} minutes ({len(all_stocks) * 10 / 60:.1f} hours)")
     print()
     
     input("Press ENTER to start training (or Ctrl+C to cancel)...")
@@ -172,7 +172,7 @@ def main():
     total_duration = (datetime.now() - start_time).total_seconds()
     
     print("\n" + "="*70)
-    print("  📊 TRAINING SUMMARY")
+    print("  [CHART] TRAINING SUMMARY")
     print("="*70)
     
     successful = [s for s, success in results.items() if success]
@@ -187,9 +187,9 @@ def main():
         print(f"\n[ERROR] Failed: {len(failed)}/{len(all_stocks)}")
         for symbol in failed:
             name = next((n for s, n in all_stocks if s == symbol), "")
-            print(f"  ✗ {symbol:8s} - {name}")
+            print(f"  [X] {symbol:8s} - {name}")
     
-    print(f"\n⏱️  Total time: {total_duration/60:.1f} minutes ({total_duration/3600:.1f} hours)")
+    print(f"\n[TIMER]  Total time: {total_duration/60:.1f} minutes ({total_duration/3600:.1f} hours)")
     print(f"   Average per stock: {total_duration/len(all_stocks):.1f} seconds")
     
     print(f"\nCompleted at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
@@ -197,18 +197,18 @@ def main():
     
     # Success rate
     success_rate = len(successful) / len(all_stocks) * 100
-    print(f"\n🎯 Success Rate: {success_rate:.1f}%")
+    print(f"\n[TARGET] Success Rate: {success_rate:.1f}%")
     
     if success_rate == 100:
-        print("🎉 Perfect! All models trained successfully!")
+        print("[CELEBRATE] Perfect! All models trained successfully!")
     elif success_rate >= 80:
-        print("👍 Great! Most models trained successfully!")
+        print("[U+1F44D] Great! Most models trained successfully!")
     elif success_rate >= 50:
-        print("⚠️  Some models failed. Check errors above.")
+        print("[!]  Some models failed. Check errors above.")
     else:
         print("[ERROR] Many models failed. Review errors and try again.")
     
-    print("\n💡 Next Steps:")
+    print("\n[IDEA] Next Steps:")
     print("   1. Restart the FinBERT server to load trained models")
     print("   2. Test predictions on trained stocks (should be more accurate)")
     print("   3. Monitor accuracy improvements over time")

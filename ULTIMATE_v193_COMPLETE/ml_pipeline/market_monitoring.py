@@ -224,11 +224,11 @@ class MarketSentimentMonitor:
             current_vix = vix_data['Close'].iloc[-1]
             
             # VIX interpretation:
-            # <15 = Very bullish (low fear) → 90-100
-            # 15-20 = Bullish → 70-90
-            # 20-30 = Neutral → 40-70
-            # 30-40 = Bearish → 20-40
-            # >40 = Very bearish (high fear) → 0-20
+            # <15 = Very bullish (low fear) -> 90-100
+            # 15-20 = Bullish -> 70-90
+            # 20-30 = Neutral -> 40-70
+            # 30-40 = Bearish -> 20-40
+            # >40 = Very bearish (high fear) -> 0-20
             
             if current_vix < 15:
                 score = 90 + (15 - current_vix) * 2
@@ -618,8 +618,8 @@ if __name__ == "__main__":
     print("=" * 70)
     print("\nComponents:")
     print("  [CHART] MarketSentimentMonitor - Track SPY, VIX, market breadth")
-    print("  🔍 IntradayScanner - 15-minute breakout detection")
-    print("  🔗 CrossTimeframeCoordinator - Enhance swing signals")
+    print("  [SEARCH] IntradayScanner - 15-minute breakout detection")
+    print("  [U+1F517] CrossTimeframeCoordinator - Enhance swing signals")
     print("\nUsage:")
     print("  from ml_pipeline.market_monitoring import create_monitoring_system")
     print("  sentiment, scanner, coordinator = create_monitoring_system()")

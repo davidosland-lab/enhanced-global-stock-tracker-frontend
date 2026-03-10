@@ -515,9 +515,9 @@ def test_stock_scanner():
             if stock_data:
                 results.append(stock_data)
                 print(f"  Score: {stock_data['score']:.1f}")
-                print(f"  Price: ${stock_data['price']:.2f}")
+                print(f"  Price: USD{stock_data['price']:.2f}")
                 print(f"  RSI: {stock_data['technical']['rsi']:.1f}")
-                print(f"  Market Cap: ${stock_data['market_cap']/1e9:.2f}B")
+                print(f"  Market Cap: USD{stock_data['market_cap']/1e9:.2f}B")
         print()
     
     # Display results
@@ -529,7 +529,7 @@ def test_stock_scanner():
         
         for i, stock in enumerate(results, 1):
             print(f"{i}. {stock['symbol']:8s} | Score: {stock['score']:5.1f} | "
-                  f"Price: ${stock['price']:7.2f} | RSI: {stock['technical']['rsi']:5.1f}")
+                  f"Price: USD{stock['price']:7.2f} | RSI: {stock['technical']['rsi']:5.1f}")
         
         # Sector summary
         summary = scanner.get_sector_summary(results)
@@ -538,7 +538,7 @@ def test_stock_scanner():
         print(f"  Average Score: {summary['avg_score']:.1f}")
         print(f"  Top Stock: {summary['top_stock']}")
     else:
-        print("⚠ No valid stocks found")
+        print("[!] No valid stocks found")
 
 
 if __name__ == "__main__":

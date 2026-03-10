@@ -190,7 +190,7 @@ class DashAuth:
         return html.Div([
             html.Div([
                 html.Div([
-                    html.H1('🔐 Unified Trading Dashboard', 
+                    html.H1('[U+1F510] Unified Trading Dashboard', 
                            style={'color': '#2196F3', 'marginBottom': '10px'}),
                     html.P('Secure Login Required', 
                           style={'color': '#888', 'marginBottom': '30px'}),
@@ -256,7 +256,7 @@ class DashAuth:
                     html.Div(id='login-error', style={'color': '#F44336', 'marginTop': '10px'}),
                     
                     html.Div([
-                        html.P('📱 For mobile access, scan the QR code provided during setup', 
+                        html.P('[U+1F4F1] For mobile access, scan the QR code provided during setup', 
                               style={'color': '#888', 'fontSize': '12px', 'marginTop': '20px'})
                     ])
                     

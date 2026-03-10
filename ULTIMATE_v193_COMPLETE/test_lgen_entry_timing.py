@@ -70,7 +70,7 @@ print("=== Testing Entry Timing (prediction=1 format) ===")
 result = strategy.evaluate_entry_timing('LGEN.L', price_data, signal_prediction)
 print(f"Entry Quality: {result['entry_quality']}")
 print(f"Entry Score: {result['entry_score']:.0f}/100")
-print(f"Current Price: ${result['current_price']:.2f}")
+print(f"Current Price: USD{result['current_price']:.2f}")
 print(f"Wait Reason: {result.get('wait_reason', 'N/A')}")
 print(f"RSI Score: {result['rsi_score']:.0f} ({result['rsi_quality']})")
 print(f"Pullback Score: {result['pullback_score']:.0f} ({result['pullback_quality']})")
@@ -102,21 +102,21 @@ print("\nScenario 1: RSI 65, Pullback 0.5%")
 test_data = price_data.copy()
 test_data['Close'].iloc[-5:] *= 1.005  # Small move up
 result1 = strategy.evaluate_entry_timing('LGEN.L', test_data, signal_prediction)
-print(f"  Score: {result1['entry_score']:.0f}/100 → {result1['entry_quality']}")
+print(f"  Score: {result1['entry_score']:.0f}/100 -> {result1['entry_quality']}")
 
 # Scenario 2: Ideal pullback
 print("\nScenario 2: RSI 45, Pullback 2.5%")
 test_data2 = price_data.copy()
 test_data2['Close'].iloc[-3:] *= 0.975  # 2.5% pullback
 result2 = strategy.evaluate_entry_timing('LGEN.L', test_data2, signal_prediction)
-print(f"  Score: {result2['entry_score']:.0f}/100 → {result2['entry_quality']}")
+print(f"  Score: {result2['entry_score']:.0f}/100 -> {result2['entry_quality']}")
 
 # Scenario 3: Obvious top
 print("\nScenario 3: RSI 78, Pullback 0.2%")
 test_data3 = price_data.copy()
 test_data3['Close'].iloc[-10:] *= 1.1  # Strong rally
 result3 = strategy.evaluate_entry_timing('LGEN.L', test_data3, signal_prediction)
-print(f"  Score: {result3['entry_score']:.0f}/100 → {result3['entry_quality']}")
+print(f"  Score: {result3['entry_score']:.0f}/100 -> {result3['entry_quality']}")
 
 print("\n=== Summary ===")
 print("v1.3.15.177 fixes allow:")

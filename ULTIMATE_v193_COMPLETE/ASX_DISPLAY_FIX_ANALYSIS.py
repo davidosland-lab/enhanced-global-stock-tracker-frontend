@@ -8,13 +8,13 @@
 # - Market closes: 05:00 GMT (current day) = 16:00 AEDT
 #
 # Current filtering logic (lines 426-436):
-# ```python
+# '''python
 # if spans_midnight:
 #     mask = (
 #         ((hist.index.date == previous_date) & (hist.index.hour >= market_open_hour)) |
 #         ((hist.index.date == latest_date) & (hist.index.hour < market_close_hour + 1))
 #     )
-# ```
+# '''
 #
 # Potential Issues:
 # 1. Date comparison might not work correctly with pandas Timestamp

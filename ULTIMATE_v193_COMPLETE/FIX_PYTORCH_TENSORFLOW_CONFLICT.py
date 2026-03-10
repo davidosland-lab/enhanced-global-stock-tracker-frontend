@@ -27,11 +27,11 @@ def fix_pytorch_tensorflow_conflict():
     app_file = "finbert_v4.4.4/app_finbert_v4_dev.py"
     
     if not os.path.exists(app_file):
-        print(f"❌ ERROR: {app_file} not found")
+        print(f"[ERROR] ERROR: {app_file} not found")
         print(f"   Current directory: {os.getcwd()}")
         return False
     
-    print(f"🔧 Fixing PyTorch/TensorFlow conflict in {app_file}...")
+    print(f"[TOOL] Fixing PyTorch/TensorFlow conflict in {app_file}...")
     
     # Read the file
     with open(app_file, 'r', encoding='utf-8') as f:
@@ -105,7 +105,7 @@ def fix_pytorch_tensorflow_conflict():
         new_lines.append(line)
     
     if not replaced:
-        print("❌ ERROR: Could not find FinBERT import section to replace")
+        print("[ERROR] ERROR: Could not find FinBERT import section to replace")
         return False
     
     # Write the fixed file
@@ -119,18 +119,18 @@ def fix_pytorch_tensorflow_conflict():
     print("="*70)
     print()
     print("WHAT WAS FIXED:")
-    print("  • Changed FinBERT import from eager to lazy-loading")
-    print("  • PyTorch now loads only when sentiment analysis is needed")
-    print("  • LSTM training no longer conflicts with PyTorch")
+    print("  * Changed FinBERT import from eager to lazy-loading")
+    print("  * PyTorch now loads only when sentiment analysis is needed")
+    print("  * LSTM training no longer conflicts with PyTorch")
     print()
     print("NEXT STEPS:")
     print("  1. Now you need to add _load_finbert_if_needed() calls")
     print("  2. Add it to sentiment endpoints before using finbert_analyzer")
     print()
     print("  Example locations to add:")
-    print("    • /api/sentiment/<symbol> route")
-    print("    • /api/stock/<symbol> route (if it uses sentiment)")
-    print("    • Any route that calls finbert_analyzer methods")
+    print("    * /api/sentiment/<symbol> route")
+    print("    * /api/stock/<symbol> route (if it uses sentiment)")
+    print("    * Any route that calls finbert_analyzer methods")
     print()
     print("  Add this line at the start of each sentiment route:")
     print("    _load_finbert_if_needed()")
@@ -145,7 +145,7 @@ def add_lazy_load_calls():
     
     app_file = "finbert_v4.4.4/app_finbert_v4_dev.py"
     
-    print("🔧 Adding lazy-load calls to sentiment routes...")
+    print("[TOOL] Adding lazy-load calls to sentiment routes...")
     
     with open(app_file, 'r', encoding='utf-8') as f:
         content = f.read()
@@ -176,7 +176,7 @@ def add_lazy_load_calls():
             f.write(content)
         print("[OK] Lazy-load calls added")
     else:
-        print("  → No changes needed (already added or routes not found)")
+        print("  -> No changes needed (already added or routes not found)")
     
     return True
 

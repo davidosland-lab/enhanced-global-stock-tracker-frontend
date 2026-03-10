@@ -62,7 +62,7 @@ class OrderManager:
                 result['price']
             )
             result['order_id'] = order_id
-            logger.info(f"Market order #{order_id} filled: {side} {quantity} {symbol} @ ${result['price']:.2f}")
+            logger.info(f"Market order #{order_id} filled: {side} {quantity} {symbol} @ USD{result['price']:.2f}")
         else:
             # Mark as rejected
             self.db.update_order_status(order_id, 'REJECTED')
@@ -95,7 +95,7 @@ class OrderManager:
             limit_price=limit_price
         )
         
-        logger.info(f"Limit order #{order_id} placed: {side} {quantity} {symbol} @ ${limit_price:.2f}")
+        logger.info(f"Limit order #{order_id} placed: {side} {quantity} {symbol} @ USD{limit_price:.2f}")
         
         # Start monitoring if not already running
         if not self.monitoring:
@@ -137,7 +137,7 @@ class OrderManager:
             stop_price=stop_price
         )
         
-        logger.info(f"Stop order #{order_id} placed: {side} {quantity} {symbol} @ ${stop_price:.2f}")
+        logger.info(f"Stop order #{order_id} placed: {side} {quantity} {symbol} @ USD{stop_price:.2f}")
         
         # Start monitoring if not already running
         if not self.monitoring:
@@ -235,7 +235,7 @@ class OrderManager:
                                 quantity,
                                 result['price']
                             )
-                            logger.info(f"[OK] {order_type} order #{order_id} executed: {side} {quantity} {symbol} @ ${result['price']:.2f}")
+                            logger.info(f"[OK] {order_type} order #{order_id} executed: {side} {quantity} {symbol} @ USD{result['price']:.2f}")
                         else:
                             self.db.update_order_status(order_id, 'REJECTED')
                             logger.warning(f"[ERROR] {order_type} order #{order_id} rejected: {result.get('error')}")

@@ -52,13 +52,13 @@ def print_success(msg):
     print(f"{Colors.OKGREEN}[OK] {msg}{Colors.ENDC}")
 
 def print_error(msg):
-    print(f"{Colors.FAIL}✗ {msg}{Colors.ENDC}")
+    print(f"{Colors.FAIL}[X] {msg}{Colors.ENDC}")
 
 def print_warning(msg):
-    print(f"{Colors.WARNING}⚠ {msg}{Colors.ENDC}")
+    print(f"{Colors.WARNING}[!] {msg}{Colors.ENDC}")
 
 def print_info(msg):
-    print(f"{Colors.OKCYAN}ℹ {msg}{Colors.ENDC}")
+    print(f"{Colors.OKCYAN}[U+2139] {msg}{Colors.ENDC}")
 
 def create_backup(file_path):
     """Create a timestamped backup of a file"""

@@ -90,10 +90,10 @@ def test_uk_stock(symbol):
         if not hist.empty:
             print(f"\n   Last row:")
             last_row = hist.iloc[-1]
-            print(f"      Open:   ${last_row['Open']:.2f}")
-            print(f"      High:   ${last_row['High']:.2f}")
-            print(f"      Low:    ${last_row['Low']:.2f}")
-            print(f"      Close:  ${last_row['Close']:.2f}")
+            print(f"      Open:   USD{last_row['Open']:.2f}")
+            print(f"      High:   USD{last_row['High']:.2f}")
+            print(f"      Low:    USD{last_row['Low']:.2f}")
+            print(f"      Close:  USD{last_row['Close']:.2f}")
             print(f"      Volume: {last_row['Volume']:,}")
         
         # Get 5-day history
@@ -106,7 +106,7 @@ def test_uk_stock(symbol):
             for i in range(min(3, len(hist_5d))):
                 row = hist_5d.iloc[-(i+1)]
                 date = row.name.strftime('%Y-%m-%d')
-                print(f"      {date}: ${row['Close']:.2f}")
+                print(f"      {date}: USD{row['Close']:.2f}")
                 
     except Exception as e:
         print(f"   ERROR: {e}")
@@ -131,16 +131,16 @@ def main():
     print(f"{'#'*70}")
     print("""
 Expected findings:
-- If regularMarketPrice is None → Market closed, need fallback
-- If regularMarketPreviousClose exists → Should use that
-- If yfinance history has data → Should use that
-- If ALL methods fail → API issue or symbol format problem
+- If regularMarketPrice is None -> Market closed, need fallback
+- If regularMarketPreviousClose exists -> Should use that
+- If yfinance history has data -> Should use that
+- If ALL methods fail -> API issue or symbol format problem
 
 Next steps based on findings:
-1. If regularMarketPreviousClose is available → Fix is correct
-2. If all fields are None → Symbol format issue
-3. If API returns error → Yahoo Finance API problem
-4. If data exists but not used → Logic bug in update_positions()
+1. If regularMarketPreviousClose is available -> Fix is correct
+2. If all fields are None -> Symbol format issue
+3. If API returns error -> Yahoo Finance API problem
+4. If data exists but not used -> Logic bug in update_positions()
     """)
 
 if __name__ == "__main__":

@@ -144,7 +144,7 @@ class CSVExporter:
             'momentum_score',
             'value_score',
             
-            # Event Risk Assessment (🆕 Enhanced)
+            # Event Risk Assessment ([NEW] Enhanced)
             'event_risk_score',              # 0-1 scale (1=highest risk)
             'event_type',                    # 'basel_iii', 'earnings', 'dividend', 'regulatory'
             'has_upcoming_event',            # True/False
@@ -226,7 +226,7 @@ class CSVExporter:
             'momentum_score': self._format_float(breakdown.get('momentum_score', 0), 1),
             'value_score': self._format_float(breakdown.get('value_score', 0), 1),
             
-            # Event Risk Assessment (🆕 Enhanced)
+            # Event Risk Assessment ([NEW] Enhanced)
             'event_risk_score': self._format_float(opp.get('event_risk_score', 0), 3),
             'event_type': opp.get('event_type', ''),
             'has_upcoming_event': self._format_bool(opp.get('event_type', '') != ''),

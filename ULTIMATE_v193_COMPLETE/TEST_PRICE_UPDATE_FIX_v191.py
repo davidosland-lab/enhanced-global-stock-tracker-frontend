@@ -19,14 +19,14 @@ try:
     YAHOOQUERY_AVAILABLE = True
 except ImportError:
     YAHOOQUERY_AVAILABLE = False
-    print("⚠️  yahooquery not available")
+    print("[!]  yahooquery not available")
 
 try:
     import yfinance as yf
     YFINANCE_AVAILABLE = True
 except ImportError:
     YFINANCE_AVAILABLE = False
-    print("⚠️  yfinance not available")
+    print("[!]  yfinance not available")
 
 # Colors for terminal output
 GREEN = '\033[92m'
@@ -41,7 +41,7 @@ def fetch_current_price_enhanced(symbol: str):
     
     try:
         if YAHOOQUERY_AVAILABLE:
-            print(f"  {YELLOW}→{RESET} Trying yahooquery...")
+            print(f"  {YELLOW}->{RESET} Trying yahooquery...")
             ticker = Ticker(symbol)
             quote = ticker.price
             
@@ -51,53 +51,53 @@ def fetch_current_price_enhanced(symbol: str):
                 # Try regular market price
                 price = stock_data.get('regularMarketPrice')
                 if price and price > 0:
-                    print(f"  {GREEN}✓{RESET} regularMarketPrice: ${price:.2f}")
+                    print(f"  {GREEN}[OK]{RESET} regularMarketPrice: USD{price:.2f}")
                     return float(price), "regularMarketPrice"
                 else:
-                    print(f"  {RED}✗{RESET} regularMarketPrice: None or 0")
+                    print(f"  {RED}[X]{RESET} regularMarketPrice: None or 0")
                 
                 # Try post-market price
                 price = stock_data.get('postMarketPrice')
                 if price and price > 0:
-                    print(f"  {GREEN}✓{RESET} postMarketPrice: ${price:.2f}")
+                    print(f"  {GREEN}[OK]{RESET} postMarketPrice: USD{price:.2f}")
                     return float(price), "postMarketPrice"
                 else:
-                    print(f"  {RED}✗{RESET} postMarketPrice: None or 0")
+                    print(f"  {RED}[X]{RESET} postMarketPrice: None or 0")
                 
                 # Try pre-market price
                 price = stock_data.get('preMarketPrice')
                 if price and price > 0:
-                    print(f"  {GREEN}✓{RESET} preMarketPrice: ${price:.2f}")
+                    print(f"  {GREEN}[OK]{RESET} preMarketPrice: USD{price:.2f}")
                     return float(price), "preMarketPrice"
                 else:
-                    print(f"  {RED}✗{RESET} preMarketPrice: None or 0")
+                    print(f"  {RED}[X]{RESET} preMarketPrice: None or 0")
                 
                 # Fallback to previous close
                 price = stock_data.get('regularMarketPreviousClose')
                 if price and price > 0:
-                    print(f"  {GREEN}✓{RESET} regularMarketPreviousClose: ${price:.2f}")
+                    print(f"  {GREEN}[OK]{RESET} regularMarketPreviousClose: USD{price:.2f}")
                     return float(price), "regularMarketPreviousClose"
                 else:
-                    print(f"  {RED}✗{RESET} regularMarketPreviousClose: None or 0")
+                    print(f"  {RED}[X]{RESET} regularMarketPreviousClose: None or 0")
         
         # Fallback to yfinance
         if YFINANCE_AVAILABLE:
-            print(f"  {YELLOW}→{RESET} Trying yfinance...")
+            print(f"  {YELLOW}->{RESET} Trying yfinance...")
             ticker = yf.Ticker(symbol)
             hist = ticker.history(period="1d")
             
             if not hist.empty:
                 price = float(hist['Close'].iloc[-1])
-                print(f"  {GREEN}✓{RESET} yfinance close: ${price:.2f}")
+                print(f"  {GREEN}[OK]{RESET} yfinance close: USD{price:.2f}")
                 return price, "yfinance"
             else:
-                print(f"  {RED}✗{RESET} yfinance: No data")
+                print(f"  {RED}[X]{RESET} yfinance: No data")
         
-        print(f"  {RED}✗{RESET} All methods failed")
+        print(f"  {RED}[X]{RESET} All methods failed")
         return None, "failed"
         
     except Exception as e:
-        print(f"  {RED}✗{RESET} Error: {e}")
+        print(f"  {RED}[X]{RESET} Error: {e}")
         return None, "error"
 
 def test_symbols():
@@ -124,13 +124,13 @@ def test_symbols():
         price, source = fetch_current_price_enhanced(symbol)
         
         if price:
-            result = f"{GREEN}✓ SUCCESS{RESET}"
+            result = f"{GREEN}[OK] SUCCESS{RESET}"
             results.append((symbol, price, source, True))
         else:
-            result = f"{RED}✗ FAILED{RESET}"
+            result = f"{RED}[X] FAILED{RESET}"
             results.append((symbol, None, source, False))
         
-        print(f"\n  {result}: {symbol} = ${price:.2f if price else 0} (source: {source})")
+        print(f"\n  {result}: {symbol} = USD{price:.2f if price else 0} (source: {source})")
     
     # Summary
     print(f"\n{'='*70}")
@@ -138,8 +138,8 @@ def test_symbols():
     print(f"{'='*70}\n")
     
     for symbol, price, source, success in results:
-        status = f"{GREEN}✓{RESET}" if success else f"{RED}✗{RESET}"
-        price_str = f"${price:.2f}" if price else "N/A"
+        status = f"{GREEN}[OK]{RESET}" if success else f"{RED}[X]{RESET}"
+        price_str = f"USD{price:.2f}" if price else "N/A"
         print(f"  {status} {symbol:10} {price_str:12} (via {source})")
     
     success_count = sum(1 for _, _, _, success in results if success)
@@ -148,16 +148,16 @@ def test_symbols():
     print(f"\n{BLUE}Results:{RESET} {success_count}/{total_count} symbols fetched successfully")
     
     if success_count == total_count:
-        print(f"\n{GREEN}✓ ALL TESTS PASSED{RESET}")
+        print(f"\n{GREEN}[OK] ALL TESTS PASSED{RESET}")
         print(f"\n{GREEN}The fix is working correctly!{RESET}")
         print(f"BP.L should now update properly in the dashboard.")
         return 0
     else:
-        print(f"\n{YELLOW}⚠ SOME TESTS FAILED{RESET}")
+        print(f"\n{YELLOW}[!] SOME TESTS FAILED{RESET}")
         print(f"\nThis might be due to:")
-        print(f"  • Internet connectivity issues")
-        print(f"  • Yahoo Finance API temporary issues")
-        print(f"  • Symbol format problems")
+        print(f"  * Internet connectivity issues")
+        print(f"  * Yahoo Finance API temporary issues")
+        print(f"  * Symbol format problems")
         return 1
 
 if __name__ == "__main__":

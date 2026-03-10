@@ -25,7 +25,7 @@ def fix_train_lstm():
     file_path = os.path.join('finbert_v4.4.4', 'models', 'train_lstm.py')
     
     if not os.path.exists(file_path):
-        print(f"❌ ERROR: File not found: {file_path}")
+        print(f"[ERROR] ERROR: File not found: {file_path}")
         print("   Make sure you're running this from the unified_trading_dashboard_v1.3.15.87_ULTIMATE directory")
         return False
     
@@ -37,7 +37,7 @@ def fix_train_lstm():
         shutil.copy2(file_path, backup_path)
         print(f"[OK] Backup created: {backup_path}")
     except Exception as e:
-        print(f"❌ Failed to create backup: {e}")
+        print(f"[ERROR] Failed to create backup: {e}")
         return False
     
     # Read file
@@ -45,7 +45,7 @@ def fix_train_lstm():
         with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
     except Exception as e:
-        print(f"❌ Failed to read file: {e}")
+        print(f"[ERROR] Failed to read file: {e}")
         return False
     
     # Check if already fixed
@@ -58,7 +58,7 @@ def fix_train_lstm():
     new_code = "df = df.ffill().fillna(0)"
     
     if old_code not in content:
-        print("⚠ WARNING: Expected code pattern not found")
+        print("[!] WARNING: Expected code pattern not found")
         print("   The file may have been modified or already fixed differently")
         return False
     
@@ -69,10 +69,10 @@ def fix_train_lstm():
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(content)
         print(f"[OK] Fixed: {file_path}")
-        print(f"  Changed: fillna(method='ffill') → ffill()")
+        print(f"  Changed: fillna(method='ffill') -> ffill()")
         return True
     except Exception as e:
-        print(f"❌ Failed to write file: {e}")
+        print(f"[ERROR] Failed to write file: {e}")
         # Restore backup
         shutil.copy2(backup_path, file_path)
         print(f"[OK] Restored from backup")
@@ -86,7 +86,7 @@ def main():
     
     # Check current directory
     if not os.path.exists('finbert_v4.4.4'):
-        print("❌ ERROR: finbert_v4.4.4 directory not found")
+        print("[ERROR] ERROR: finbert_v4.4.4 directory not found")
         print("   Please run this script from: unified_trading_dashboard_v1.3.15.87_ULTIMATE/")
         sys.exit(1)
     
@@ -115,10 +115,10 @@ if __name__ == '__main__':
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n⚠ Fix interrupted by user")
+        print("\n\n[!] Fix interrupted by user")
         sys.exit(1)
     except Exception as e:
-        print(f"\n\n❌ Unexpected error: {e}")
+        print(f"\n\n[ERROR] Unexpected error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
