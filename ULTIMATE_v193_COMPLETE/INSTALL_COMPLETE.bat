@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================================
-REM UNIFIED TRADING SYSTEM v1.3.15.90 - COMPLETE INSTALLATION
+REM UNIFIED TRADING SYSTEM v193.11.7 - COMPLETE INSTALLATION
 REM ============================================================================
 REM Single installation script for:
 REM   - FinBERT v4.4.4 (sentiment analysis + LSTM training)
@@ -28,7 +28,7 @@ if not exist "requirements.txt" (
 
 echo.
 echo ============================================================================
-echo  UNIFIED TRADING SYSTEM v1.3.15.90 - COMPLETE INSTALLATION
+echo  UNIFIED TRADING SYSTEM v193.11.7 - COMPLETE INSTALLATION
 echo ============================================================================
 echo.
 echo Current directory: %CD%
