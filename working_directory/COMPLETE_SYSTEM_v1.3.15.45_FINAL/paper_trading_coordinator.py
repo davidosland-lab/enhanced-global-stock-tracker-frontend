@@ -994,6 +994,21 @@ class PaperTradingCoordinator:
             True if position entered successfully
         """
         try:
+            # CRITICAL FIX v193.11.7.3: Check if position already exists
+            # Prevents position overwrite bug that causes:
+            # - Positions disappearing without proper exit
+            # - Total Trades not incrementing
+            # - Capital accounting errors
+            # - Duplicate positions with different share counts
+            if symbol in self.positions:
+                existing = self.positions[symbol]
+                logger.warning(f"{symbol}: TRADE BLOCKED - Position already exists")
+                logger.warning(f"  Existing: {existing.shares} shares @ USD{existing.entry_price:.2f} (entry: {existing.entry_date})")
+                logger.warning(f"  Current P&L: {existing.unrealized_pnl_pct:+.2f}%")
+                logger.warning(f"  Attempted: New entry would OVERWRITE existing position!")
+                logger.warning(f"  → Use exit_position() first to close current position")
+                return False
+            
             # MARKET HOURS CHECK - Don't trade on closed markets (unless manual override)
             if not signal.get('type') == 'MANUAL' and MARKET_CALENDAR_AVAILABLE and market_calendar:
                 can_trade, reason = market_calendar.can_trade_symbol(symbol)
