@@ -1,0 +1,170 @@
+================================================================================
+POSITION OVERWRITE BUG FIX - v193.11.7.3
+Release Date: March 11, 2026
+================================================================================
+
+CRITICAL BUG FIXED
+==================
+Issue: Positions randomly changed quantities or disappeared without proper trade 
+records, causing:
+- Inconsistent position counts (e.g., NAB.AX 277 shares → disappeared)
+- Share quantities changing (JUP.L 85→98, CNA.L 65→75)
+- Total trades stuck at 0
+- Capital accounting mismatches
+- State file corruption
+
+ROOT CAUSE ANALYSIS
+===================
+Location: paper_trading_coordinator.py, line ~2130
+Problem: enter_position() overwrites existing positions without proper exit
+
+Code Flow:
+1. Pipeline recommendations call enter_position() for symbol X
+2. Regular scan also calls enter_position() for same symbol X
+3. Line 2130: self.positions[symbol] = position  ← OVERWRITES!
+4. Old position object is lost (no exit_position() called)
+5. No trade record created, capital not updated
+6. State file saves incomplete data
+
+Example from logs:
+Time 16:16:08: NAB.AX 277 shares @ $47.35 (position created)
+Time 16:16:44: NAB.AX missing (overwritten by new entry attempt)
+Time 16:17:22: Different positions appear (continuous overwrites)
+
+THE FIX
+=======
+Added duplicate entry guard in enter_position():
+
+```python
+def enter_position(self, symbol: str, signal: Dict) -> bool:
+    """Enter a new swing position (paper trade)"""
+    
+    # v193.11.7.3: Prevent position overwrite bug
+    if symbol in self.positions:
+        logger.warning(
+            f"[BLOCKED] {symbol}: Cannot enter - position already exists. "
+            f"Current: {self.positions[symbol].quantity} shares @ "
+            f"${self.positions[symbol].entry_price:.2f}"
+        )
+        return False
+    
+    # ... rest of entry logic
+```
+
+This ensures:
+✓ Only one position per symbol at a time
+✓ Must call exit_position() before re-entering
+✓ Proper trade records and capital accounting
+✓ No state file corruption
+
+BEHAVIOR CHANGES
+================
+
+BEFORE FIX:
+-----------
+[16:16:08] NAB.AX: 277 shares @ $47.35
+[16:16:44] JUP.L: 98 shares (was 85)  ← WRONG!
+[16:16:44] NAB.AX: Missing            ← WRONG!
+[16:17:22] Positions keep changing    ← WRONG!
+Total Trades: 0                        ← WRONG!
+
+AFTER FIX:
+----------
+[16:16:08] NAB.AX: 277 shares @ $47.35
+[16:16:44] [BLOCKED] NAB.AX: Cannot enter - position already exists
+[16:16:44] JUP.L: 85 shares (unchanged)
+[16:17:22] Positions stable
+Total Trades: Increments only on proper exits ✓
+
+VERIFICATION STEPS
+==================
+1. Check logs for "[BLOCKED]" warnings:
+   grep "BLOCKED.*Cannot enter" logs/paper_trading.log
+
+2. Verify total trades increments properly:
+   - Should only increment when "[OK] POSITION CLOSED" appears
+   - Should match number of exit_position() calls
+
+3. Verify position stability:
+   - Share counts should NOT change unless exit + re-entry
+   - Positions should NOT disappear without "[OK] POSITION CLOSED"
+
+4. Check state file consistency:
+   - File size should only change on real opens/closes
+   - Position count should match dashboard display
+
+5. Verify capital accounting:
+   Cash + Invested = Total Capital (always!)
+
+MODIFIED FILES
+==============
+1. ULTIMATE_v193_COMPLETE/core/paper_trading_coordinator.py
+   - Line ~2010: Added duplicate entry guard
+   
+2. working_directory/COMPLETE_SYSTEM_v1.3.15.45_FINAL/paper_trading_coordinator.py
+   - Line ~985: Added duplicate entry guard
+
+3. POSITION_LIFECYCLE_BUG_ANALYSIS.txt
+   - Detailed technical analysis
+
+RELATED FIXES IN THIS SERIES
+============================
+v193.11.7   (Mar 11 2026) - Trading loop crash prevention
+v193.11.7.1 (Mar 11 2026) - Signal generation NoneType error fix
+v193.11.7.2 (Mar 11 2026) - Market hours enforcement
+v193.11.7.3 (Mar 11 2026) - Position overwrite prevention (THIS FIX)
+
+GIT DETAILS
+===========
+Branch: market-timing-critical-fix
+Commit: 7b5e276
+PR: https://github.com/davidosland-lab/enhanced-global-stock-tracker-frontend/pull/11
+
+DEPLOYMENT
+==========
+This fix is included in:
+- unified_trading_system_v193.11.7.3_COMPLETE_FIX.zip
+
+To deploy:
+1. Stop current trading system
+2. Extract zip over existing installation
+3. Run INSTALL_COMPLETE.bat (if dependencies changed)
+4. Run START.bat → Option 1
+5. Monitor logs for "[BLOCKED]" warnings (normal behavior)
+6. Verify positions remain stable
+
+EXPECTED RESULTS
+================
+After deploying this fix:
+✓ Positions appear only once per entry
+✓ Share quantities remain stable
+✓ Positions disappear only on proper exit
+✓ Total trades increments correctly
+✓ "[OK] POSITION CLOSED" appears in logs
+✓ Capital accounting stays consistent
+✓ State file changes only on real trades
+✓ Dashboard shows stable positions
+
+Known "[BLOCKED]" scenarios (all correct behavior):
+- Pipeline + scan both try to enter same symbol
+- Intraday scanner detects entry while position held
+- Manual buy attempted on existing position
+
+These are GOOD - the system is protecting against overwrites!
+
+TECHNICAL NOTES
+===============
+The guard check happens at the START of enter_position(), before:
+- Capital is deducted
+- Position object is created
+- State file is modified
+- Tax records are logged
+
+This ensures clean rejection with no side effects.
+
+Future enhancement: Consider position size adjustment logic
+if re-entry is desired (would need explicit exit first).
+
+================================================================================
+END OF POSITION OVERWRITE FIX DOCUMENTATION
+================================================================================

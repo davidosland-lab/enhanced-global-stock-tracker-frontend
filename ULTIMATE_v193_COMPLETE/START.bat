@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================================
-REM UNIFIED TRADING SYSTEM v193.11.7.2 - MAIN MENU (Market Hours Fix)
+REM UNIFIED TRADING SYSTEM v193.11.7.3 - MAIN MENU (Position Overwrite Fix)
 REM ============================================================================
 
 REM Change to script directory
