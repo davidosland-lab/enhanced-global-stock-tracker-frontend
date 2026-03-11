@@ -1,0 +1,221 @@
+================================================================================
+MARKET HOURS ENFORCEMENT FIX - v193.11.7.2 (March 11, 2026)
+================================================================================
+
+CRITICAL BUG FIXED: After-Hours Trading Prevention
+---------------------------------------------------
+
+SYMPTOMS REPORTED BY USER:
+--------------------------
+• NAB.AX (Australian bank) trading AFTER market close
+• System logs: "NAB.AX (After-hours)" but still executes trades
+• Positions showing losses on closed markets
+• Dashboard showing NAB.AX traded, then showing it hasn't traded (1 minute apart)
+• Logs show: "Total Trades: 0" but positions exist with P&L
+
+EXAMPLE FROM USER'S LOGS:
+--------------------------
+2026-03-11 16:16:31,799 - [CALENDAR] Some markets are closed:
+2026-03-11 16:16:31,799 -    NAB.AX (After-hours)
+2026-03-11 16:16:31,799 -    BHP.AX (After-hours)
+2026-03-11 16:16:31,799 -    JUP.L (Pre-market hours)
+2026-03-11 16:16:31,799 -    BAC (Market closed)
+...
+2026-03-11 16:16:08,345 - Open Positions: 3
+2026-03-11 16:16:08,345 -   NAB.AX: 277 shares @ USD47.35 | P&L: -0.04%
+                                    ↑
+                            SHOULD NOT HAVE BEEN TRADED!
+
+ROOT CAUSE:
+-----------
+The code checked market hours and logged warnings, but DID NOT actually prevent
+trading on closed markets:
+
+  BAD CODE (paper_trading_coordinator.py line ~2573):
+  ----------------------------------------------------
+  # Check market hours for all symbols
+  if MARKET_CALENDAR_AVAILABLE and market_calendar:
+      closed_symbols = []
+      for symbol in self.symbols:
+          can_trade, reason = market_calendar.can_trade_symbol(symbol)
+          if not can_trade:
+              closed_symbols.append(f"{symbol} ({reason})")
+      
+      if closed_symbols:
+          logger.warning(f"[CALENDAR] Some markets are closed:")
+          for msg in closed_symbols:
+              logger.warning(f"   {msg}")
+          # Continue with open markets only  ← COMMENT, NO ACTUAL CODE!
+  
+  # Later in same function (line ~2646)...
+  for symbol in self.symbols:  ← STILL CHECKS ALL SYMBOLS!
+      if symbol in self.positions:
+          continue
+      should_enter, confidence, signal = self.evaluate_entry(symbol)
+      if should_enter:
+          logger.info(f"[OK] Entry signal for {symbol}")
+          self.enter_position(symbol, signal)  ← NO MARKET CHECK HERE EITHER!
+
+RESULT: System logged "NAB.AX (After-hours)" but still evaluated it for entry
+and executed trades on closed markets.
+
+THE FIX:
+--------
+Three-layer protection against after-hours trading:
+
+1. FILTER SYMBOLS BY MARKET STATUS (line ~2573):
+   ---------------------------------------------
+   open_symbols = []
+   closed_symbols = []
+   
+   if MARKET_CALENDAR_AVAILABLE and market_calendar:
+       for symbol in self.symbols:
+           can_trade, reason = market_calendar.can_trade_symbol(symbol)
+           if can_trade:
+               open_symbols.append(symbol)  # Only tradeable markets
+           else:
+               closed_symbols.append(f"{symbol} ({reason})")
+       
+       logger.info(f"[CALENDAR] Trading only on open markets: {len(open_symbols)} of {len(self.symbols)} symbols")
+   else:
+       open_symbols = self.symbols.copy()
+
+2. SCAN ONLY OPEN MARKETS (line ~2646):
+   -------------------------------------
+   for symbol in open_symbols:  # ← Changed from self.symbols!
+       if symbol in self.positions:
+           continue
+       should_enter, confidence, signal = self.evaluate_entry(symbol)
+       if should_enter:
+           self.enter_position(symbol, signal)
+
+3. SAFETY CHECK IN enter_position() (line ~2010):
+   -----------------------------------------------
+   def enter_position(self, symbol: str, signal: Dict) -> bool:
+       try:
+           # MARKET HOURS CHECK (NEW!)
+           if not signal.get('type') == 'MANUAL' and MARKET_CALENDAR_AVAILABLE and market_calendar:
+               can_trade, reason = market_calendar.can_trade_symbol(symbol)
+               if not can_trade:
+                   logger.warning(f"{symbol}: TRADE BLOCKED - Market closed ({reason})")
+                   return False
+           
+           # ... rest of function
+
+FILES MODIFIED:
+---------------
+1. ULTIMATE_v193_COMPLETE/core/paper_trading_coordinator.py
+   - run_trading_cycle(): Added open_symbols filtering (line ~2573)
+   - run_trading_cycle(): Changed loop to use open_symbols (line ~2646)
+   - enter_position(): Added market hours safety check (line ~2010)
+
+2. working_directory/COMPLETE_SYSTEM_v1.3.15.45_FINAL/paper_trading_coordinator.py
+   - Same fixes applied for consistency
+
+3. ULTIMATE_v193_COMPLETE/START.bat
+   - Version updated to v193.11.7.2
+
+4. ULTIMATE_v193_COMPLETE/INSTALL_COMPLETE.bat
+   - Version updated to v193.11.7.2
+
+EXPECTED BEHAVIOR AFTER FIX:
+-----------------------------
+BEFORE (BROKEN):
+  16:16:31 - [CALENDAR] Some markets are closed:
+  16:16:31 -    NAB.AX (After-hours)
+  16:16:31 -    JUP.L (Pre-market hours)
+  16:16:44 - [SCAN] Scanning for new entry opportunities...
+  16:16:45 - [OK] Entry signal for NAB.AX - confidence 0.65
+  16:16:45 - [TRADE] Bought 277 shares of NAB.AX @ $47.35  ← WRONG!
+
+AFTER (FIXED):
+  16:16:31 - [CALENDAR] Some markets are closed:
+  16:16:31 -    NAB.AX (After-hours)
+  16:16:31 -    JUP.L (Pre-market hours)
+  16:16:31 - [CALENDAR] Trading only on open markets: 10 of 30 symbols
+  16:16:44 - [SCAN] Scanning for new entry opportunities...
+              (NAB.AX is NOT checked - correctly skipped)
+  16:16:45 - [OK] Entry signal for XYZ - confidence 0.70
+  16:16:45 - [TRADE] Bought 100 shares of XYZ @ $50.00  ← Only open markets!
+  
+  OR if somehow reached enter_position:
+  16:16:45 - NAB.AX: TRADE BLOCKED - Market closed (After-hours)
+
+VERIFICATION STEPS:
+-------------------
+1. Install v193.11.7.2
+2. Wait for Australian market to close (after ~6:00 PM AEDT)
+3. Check logs for:
+   • "[CALENDAR] Trading only on open markets: X of Y symbols"
+   • NAB.AX, BHP.AX, etc. should NOT appear in [SCAN] results
+   • No "[TRADE] Bought/Sold" messages for closed market symbols
+4. Verify Portfolio Status shows NO positions in closed markets
+5. Confirm "Total Trades: 0" if no trades on open markets
+
+WHAT ABOUT MANUAL TRADES?
+--------------------------
+Manual trades (triggered via dashboard UI) can OVERRIDE the market hours check.
+This is intentional for testing and special cases:
+
+  signal = {'type': 'MANUAL', 'shares': 100, ...}
+  enter_position('NAB.AX', signal)  ← Will execute even if market closed
+
+Automatic trades (from ML signals) are always blocked on closed markets.
+
+RELATED ISSUE (NOT FIXED):
+---------------------------
+User also reported: "Positions appearing and disappearing in dashboard"
+- NAB.AX: 277 shares → disappeared → 225 shares (different quantity!)
+- Total Trades: 0 (positions not recorded as completed trades)
+- Suggests separate bug with position state persistence or lifecycle
+- Requires further investigation (not addressed in this fix)
+
+DEPLOYMENT PACKAGE:
+-------------------
+📦 unified_trading_system_v193.11.7.2_MARKET_HOURS_FIX.zip
+📊 Size: ~740 KB, 225+ files
+🚀 Installation: INSTALL_COMPLETE.bat (~20-25 min first-time)
+💻 Requirements: Windows 10/11, Python 3.12+, 5 GB disk, 4-8 GB RAM
+🌐 URLs: http://localhost:8050 (Dashboard), http://localhost:5001 (FinBERT)
+
+INSTALLATION INSTRUCTIONS:
+--------------------------
+1. Stop the trading system if running
+2. Extract unified_trading_system_v193.11.7.2_MARKET_HOURS_FIX.zip
+3. Run INSTALL_COMPLETE.bat (if first-time install)
+4. Run START.bat → Option 1 (Complete System)
+5. Monitor logs for "[CALENDAR] Trading only on open markets: X of Y"
+6. Verify no trades execute on closed markets
+
+VERSION HISTORY:
+----------------
+v193.11.7.2 (Mar 11, 2026) ← THIS RELEASE - Market hours enforcement fix
+v193.11.7.1 (Mar 11, 2026) - Signal generation NoneType fix
+v193.11.7   (Mar 11, 2026) - Trading loop crash fix
+v193.11.6.21 (Mar 1, 2026) - Last stable 8-month proven version
+
+GIT COMMIT:
+-----------
+Commit: df24d45
+Branch: market-timing-critical-fix
+Message: "fix(critical): Prevent trading on closed markets - Market Hours Enforcement"
+
+TECHNICAL NOTES:
+----------------
+- No changes to trading logic or signal generation
+- Only affects WHEN trades can be executed (market hours enforcement)
+- Manual trades retain override capability
+- Works across all markets: AU, US, UK
+- Compatible with all existing configurations
+- Three-layer protection ensures no after-hours trades slip through
+
+SUPPORT:
+--------
+If after-hours trading still occurs:
+1. Check logs for "TRADE BLOCKED - Market closed" messages
+2. Verify MARKET_CALENDAR_AVAILABLE is True
+3. Confirm market_calendar object is initialized
+4. Check symbol suffixes are correct (.AX for Australia, .L for London)
+5. Review state/paper_trading_state.json for unexpected positions
+
+================================================================================
