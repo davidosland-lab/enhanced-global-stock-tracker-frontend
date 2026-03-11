@@ -681,12 +681,18 @@ class PaperTradingCoordinator:
                 else:
                     enhanced_signal = base_signal
                 
+                # Extract components safely (handle None values)
+                components = enhanced_signal.get('components', {})
+                sentiment_val = components.get('sentiment', 0) if components.get('sentiment') is not None else 0
+                lstm_val = components.get('lstm', 0) if components.get('lstm') is not None else 0
+                technical_val = components.get('technical', 0) if components.get('technical') is not None else 0
+                
                 logger.info(
                     f"[OK] {symbol} Signal: {enhanced_signal['prediction']} "
                     f"(conf={enhanced_signal['confidence']:.2f}) | "
-                    f"Components: Sentiment={enhanced_signal.get('components', {}).get('sentiment', 0):.3f}, "
-                    f"LSTM={enhanced_signal.get('components', {}).get('lstm', 0):.3f}, "
-                    f"Technical={enhanced_signal.get('components', {}).get('technical', 0):.3f}"
+                    f"Components: Sentiment={sentiment_val:.3f}, "
+                    f"LSTM={lstm_val:.3f}, "
+                    f"Technical={technical_val:.3f}"
                 )
                 
                 # Convert to format expected by rest of code
@@ -1406,90 +1412,97 @@ class PaperTradingCoordinator:
     
     def run_trading_cycle(self):
         """Run one complete trading cycle - INTEGRATED VERSION"""
-        logger.info(f"\n{'='*80}")
-        logger.info(f"Trading Cycle: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        logger.info(f"{'='*80}")
-        
-        # Check market hours for all symbols
-        if MARKET_CALENDAR_AVAILABLE and market_calendar:
-            closed_symbols = []
-            for symbol in self.symbols:
-                can_trade, reason = market_calendar.can_trade_symbol(symbol)
-                if not can_trade:
-                    closed_symbols.append(f"{symbol} ({reason})")
+        try:
+            logger.info(f"\n{'='*80}")
+            logger.info(f"Trading Cycle: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            logger.info(f"{'='*80}")
             
-            if closed_symbols:
-                logger.warning(f"[CALENDAR] Some markets are closed:")
-                for msg in closed_symbols:
-                    logger.warning(f"   {msg}")
-                # Continue with open markets only
-        
-        # 1. Update market sentiment
-        if self.sentiment_monitor:
-            logger.info("[CHART] Updating market sentiment...")
-            sentiment_reading = self.sentiment_monitor.get_current_sentiment()
-            self.last_market_sentiment = sentiment_reading.sentiment_score
-            logger.info(f"   Market Sentiment: {sentiment_reading.sentiment_score:.1f} ({sentiment_reading.sentiment_class.value})")
-        else:
-            self.get_market_sentiment()
-        
-        # 2. Run intraday scan (every 15 minutes)
-        if self._should_run_intraday_scan():
-            if self.intraday_scanner:
-                logger.info("🔍 Running intraday scan...")
-                alerts = self.intraday_scanner.scan_for_opportunities(
-                    symbols=self.symbols,
-                    price_data_provider=self.fetch_market_data
-                )
-                self.last_intraday_scan = datetime.now()
+                # Check market hours for all symbols
+            if MARKET_CALENDAR_AVAILABLE and market_calendar:
+                closed_symbols = []
+                for symbol in self.symbols:
+                    can_trade, reason = market_calendar.can_trade_symbol(symbol)
+                    if not can_trade:
+                        closed_symbols.append(f"{symbol} ({reason})")
                 
-                if alerts:
-                    logger.info(f"   Found {len(alerts)} intraday alerts")
-                    for alert in alerts:
-                        logger.info(f"   🚨 {alert.symbol}: {alert.alert_type} (strength={alert.signal_strength:.1f})")
+                if closed_symbols:
+                    logger.warning(f"[CALENDAR] Some markets are closed:")
+                    for msg in closed_symbols:
+                        logger.warning(f"   {msg}")
+                    # Continue with open markets only
+            
+                # 1. Update market sentiment
+            if self.sentiment_monitor:
+                logger.info("[CHART] Updating market sentiment...")
+                sentiment_reading = self.sentiment_monitor.get_current_sentiment()
+                self.last_market_sentiment = sentiment_reading.sentiment_score
+                logger.info(f"   Market Sentiment: {sentiment_reading.sentiment_score:.1f} ({sentiment_reading.sentiment_class.value})")
             else:
-                self.run_intraday_scan()
-        
-        # 3. Update existing positions
-        self.update_positions()
-        
-        # 4. Check for early exits (intraday breakdowns)
-        if self.positions and self.cross_timeframe_coordinator:
-            logger.info("[WARN]  Checking for early exits...")
-            for symbol in list(self.positions.keys()):
-                position = self.positions[symbol]
-                
-                # Check for intraday breakdown
-                exit_reason = self.cross_timeframe_coordinator.check_early_exit(symbol, position.to_dict())
-                
-                if exit_reason:
-                    logger.warning(f"   Early exit triggered for {symbol}: {exit_reason}")
-                    current_price = self.fetch_current_price(symbol)
-                    if current_price:
-                        position.current_price = current_price
-                        self.exit_position(symbol, exit_reason)
-        
-        # 5. Check regular exits
-        exits = self.check_exits()
-        for symbol, reason in exits:
-            self.exit_position(symbol, reason)
-        
-        # 6. Look for new entries
-        if len(self.positions) < self.config['risk_management']['max_total_positions']:
-            logger.info("🔎 Scanning for new entry opportunities...")
+                self.get_market_sentiment()
             
-            for symbol in self.symbols:
-                if symbol in self.positions:
-                    continue
+                # 2. Run intraday scan (every 15 minutes)
+            if self._should_run_intraday_scan():
+                if self.intraday_scanner:
+                    logger.info("🔍 Running intraday scan...")
+                    alerts = self.intraday_scanner.scan_for_opportunities(
+                        symbols=self.symbols,
+                        price_data_provider=self.fetch_market_data
+                    )
+                    self.last_intraday_scan = datetime.now()
+                    
+                    if alerts:
+                        logger.info(f"   Found {len(alerts)} intraday alerts")
+                        for alert in alerts:
+                            logger.info(f"   🚨 {alert.symbol}: {alert.alert_type} (strength={alert.signal_strength:.1f})")
+                else:
+                    self.run_intraday_scan()
+            
+                # 3. Update existing positions
+            self.update_positions()
+            
+                # 4. Check for early exits (intraday breakdowns)
+            if self.positions and self.cross_timeframe_coordinator:
+                logger.info("[WARN]  Checking for early exits...")
+                for symbol in list(self.positions.keys()):
+                    position = self.positions[symbol]
+                    
+                    # Check for intraday breakdown
+                    exit_reason = self.cross_timeframe_coordinator.check_early_exit(symbol, position.to_dict())
+                    
+                    if exit_reason:
+                        logger.warning(f"   Early exit triggered for {symbol}: {exit_reason}")
+                        current_price = self.fetch_current_price(symbol)
+                        if current_price:
+                            position.current_price = current_price
+                            self.exit_position(symbol, exit_reason)
+            
+                # 5. Check regular exits
+            exits = self.check_exits()
+            for symbol, reason in exits:
+                self.exit_position(symbol, reason)
+            
+                # 6. Look for new entries
+            if len(self.positions) < self.config['risk_management']['max_total_positions']:
+                logger.info("🔎 Scanning for new entry opportunities...")
                 
-                should_enter, confidence, signal = self.evaluate_entry(symbol)
-                
-                if should_enter:
-                    logger.info(f"[OK] Entry signal for {symbol} - confidence {confidence:.2f}")
-                    self.enter_position(symbol, signal)
-        
-        # 7. Print status
-        self.print_status()
+                for symbol in self.symbols:
+                    if symbol in self.positions:
+                        continue
+                    
+                    should_enter, confidence, signal = self.evaluate_entry(symbol)
+                    
+                    if should_enter:
+                        logger.info(f"[OK] Entry signal for {symbol} - confidence {confidence:.2f}")
+                        self.enter_position(symbol, signal)
+            
+            # 7. Print status
+            self.print_status()
+            
+        except Exception as e:
+            logger.error(f"[ERROR] Exception in trading cycle: {e}")
+            logger.error(f"[ERROR] Traceback: ", exc_info=True)
+            logger.warning(f"[WARN] Trading cycle failed but loop will continue")
+            # Don't re-raise - let the loop continue
     
     def run_single_cycle(self):
         """Alias for run_trading_cycle() for compatibility"""

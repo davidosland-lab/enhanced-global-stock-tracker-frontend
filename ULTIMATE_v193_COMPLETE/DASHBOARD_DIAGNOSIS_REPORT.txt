@@ -1,0 +1,194 @@
+================================================================================
+CRITICAL ISSUE DIAGNOSIS - Dashboard vs Reality Mismatch
+================================================================================
+Date: 2026-03-10
+Investigation: Capital tracking showing incorrect values
+
+================================================================================
+FINDINGS
+================================================================================
+
+1. MULTIPLE SYSTEM INSTALLATIONS DETECTED:
+   ----------------------------------------
+   Running Dashboard PID: 55845
+   Dashboard Directory: /home/user/webapp/working_directory/COMPLETE_SYSTEM_v1.3.15.45_FINAL
+   Started: Feb 24, 2026 (14 days ago!)
+   Command: python unified_trading_dashboard.py --symbols BHP.AX,CBA.AX,RIO.AX --capital 100000
+
+   But the dashboard shows positions in UK stocks (CNA.L, SSE.L, HAJ)
+   NOT the AU stocks it was started with!
+
+2. STATE FILE IS OUTDATED:
+   ------------------------
+   Location: /home/user/webapp/working_directory/COMPLETE_SYSTEM_v1.3.15.45_FINAL/state/paper_trading_state.json
+   Last Update: Feb 3, 2026 (5 weeks ago!)
+   Content:
+     - Total Capital: $100,000
+     - Positions: 0 (EMPTY!)
+     - Trades: 0
+     - Version: v1.3.15.85 (old)
+
+3. NO TRADING ACTIVITY IN LOGS:
+   -----------------------------
+   Last log entry: Feb 16, 2026
+   No "POSITION OPENED" messages
+   No "State saved" messages
+   Only HTTP GET requests (dashboard page views)
+
+4. DASHBOARD MEMORY VS DISK STATE MISMATCH:
+   -----------------------------------------
+   Dashboard UI shows: 3 open positions (CNA.L, SSE.L, HAJ)
+   State file shows: 0 positions
+   
+   This means:
+   - Positions exist in dashboard's RAM/memory
+   - Positions NOT being saved to disk
+   - save_state() either not called or failing silently
+
+================================================================================
+ROOT CAUSE HYPOTHESIS
+================================================================================
+
+The dashboard is displaying STALE/CACHED data from:
+
+POSSIBILITY 1: Dashboard Reading Wrong Data Source
+   - Dashboard may be loading positions from pipeline reports
+   - UK morning report had CNA.L, SSE.L, HAJ recommendations
+   - Dashboard displays them as "opportunities" not actual positions
+   - No actual trades were executed
+
+POSSIBILITY 2: In-Memory Positions Never Persisted  
+   - Trading loop started positions in RAM
+   - save_state() is NOT being called after trades
+   - Dashboard restart would lose all positions
+   - State file remains at Feb 3 baseline
+
+POSSIBILITY 3: Different Dashboard Process
+   - Multiple dashboard instances running
+   - Browser connected to wrong instance
+   - Real positions in different directory
+
+================================================================================
+DIAGNOSTIC STEPS NEEDED
+================================================================================
+
+1. VERIFY WHAT DASHBOARD IS ACTUALLY SHOWING:
+   -------------------------------------------
+   Question: Are those "Open Positions" actual trades or just
+   pipeline recommendations/opportunities?
+   
+   Check:
+   - Do they show "entry_price" and "shares" or just "score"?
+   - Is there an "Opportunities" vs "Positions" section?
+   - Screenshot the full dashboard
+
+2. CHECK IF TRADING LOOP IS RUNNING:
+   ----------------------------------
+   The dashboard should be calling run_trading_loop() every 60 seconds
+   
+   Action:
+   tail -f /home/user/webapp/working_directory/COMPLETE_SYSTEM_v1.3.15.45_FINAL/logs/unified_trading.log
+   
+   Should see:
+   [CYCLE] Trading cycle 1
+   [CYCLE] Trading cycle 2
+   ...
+   
+   If NOT appearing = trading loop never started!
+
+3. CHECK BROWSER CONSOLE:
+   ------------------------
+   Open browser DevTools (F12)
+   Check Console tab for errors
+   Check Network tab for API calls
+   
+   Look for:
+   - Failed API calls
+   - JavaScript errors
+   - State loading failures
+
+4. RESTART DASHBOARD WITH CORRECT DIRECTORY:
+   -------------------------------------------
+   Kill old process:
+   kill 55845
+   
+   Start from ULTIMATE_v193_COMPLETE:
+   cd /home/user/webapp/ULTIMATE_v193_COMPLETE/core
+   python unified_trading_dashboard.py --symbols CNA.L,SSE.L,HAJ --capital 100000
+   
+   (Use actual symbols you want to trade)
+
+5. VERIFY STATE FILE CREATION:
+   ----------------------------
+   After starting new dashboard and trading begins:
+   
+   ls -lth /home/user/webapp/ULTIMATE_v193_COMPLETE/state/paper_trading_state.json
+   
+   Should show recent modification time and size > 0
+
+================================================================================
+IMMEDIATE ACTIONS
+================================================================================
+
+USER NEEDS TO ANSWER:
+
+1. What does the dashboard "Open Positions" section actually show?
+   - Entry price and shares? (= real positions)
+   - Just stock symbol and score? (= pipeline recommendations)
+
+2. Is there a separate "Opportunities" or "Signals" section showing
+   pipeline recommendations?
+
+3. When you click on a position, what details appear?
+   - Entry date/time?
+   - Number of shares?
+   - Stop loss level?
+   - P&L percentage?
+
+4. Does the dashboard have a "Start Trading" button that you clicked?
+   Or did it start automatically?
+
+5. Are you sure the browser is connected to localhost:8050 and not
+   a different port or remote server?
+
+================================================================================
+NEXT STEPS BASED ON ANSWERS
+================================================================================
+
+If positions are REAL (have entry price/shares):
+   → Dashboard has positions in memory but save_state() not working
+   → Fix: Check why save_state() not called in trading loop
+   → Check unified_trading_dashboard.py run_trading_loop() function
+
+If positions are just RECOMMENDATIONS:
+   → Dashboard is showing pipeline opportunities, not actual trades
+   → No bug! Just UI confusion
+   → Actual trading may not have started yet
+
+If trading loop is NOT running:
+   → Dashboard started but trading never initialized
+   → User may need to click "Start Trading" button
+   → Or trading_thread failed to start
+
+================================================================================
+CONCLUSION
+================================================================================
+
+Cannot determine root cause without knowing:
+1. What the dashboard is actually displaying (real positions vs opportunities)
+2. Whether the trading loop is running
+3. Whether save_state() is being called
+
+The fact that:
+- State file is 5 weeks old
+- No trading logs since Feb 16
+- Dashboard running since Feb 24 with no state updates
+- Dashboard shows different stocks than command-line arguments
+
+Strongly suggests either:
+A) Trading loop never started, OR
+B) Dashboard is showing pipeline recommendations, not actual positions
+
+Need user to clarify what they're seeing in the dashboard UI.
+
+================================================================================

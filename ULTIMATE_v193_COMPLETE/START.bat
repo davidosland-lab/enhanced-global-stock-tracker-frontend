@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================================
-REM UNIFIED TRADING SYSTEM v193.11.7 - MAIN MENU
+REM UNIFIED TRADING SYSTEM v193.11.7.1 - MAIN MENU (Signal Generation Fix)
 REM ============================================================================
 
 REM Change to script directory

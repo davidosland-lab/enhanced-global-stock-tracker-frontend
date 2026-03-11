@@ -1685,12 +1685,18 @@ class PaperTradingCoordinator:
                 else:
                     enhanced_signal = base_signal
                 
+                # Extract components safely (handle None values)
+                components = enhanced_signal.get('components', {})
+                sentiment_val = components.get('sentiment', 0) if components.get('sentiment') is not None else 0
+                lstm_val = components.get('lstm', 0) if components.get('lstm') is not None else 0
+                technical_val = components.get('technical', 0) if components.get('technical') is not None else 0
+                
                 logger.info(
                     f"[OK] {symbol} Signal: {enhanced_signal['prediction']} "
                     f"(conf={enhanced_signal['confidence']:.2f}) | "
-                    f"Components: Sentiment={enhanced_signal.get('components', {}).get('sentiment', 0):.3f}, "
-                    f"LSTM={enhanced_signal.get('components', {}).get('lstm', 0):.3f}, "
-                    f"Technical={enhanced_signal.get('components', {}).get('technical', 0):.3f}"
+                    f"Components: Sentiment={sentiment_val:.3f}, "
+                    f"LSTM={lstm_val:.3f}, "
+                    f"Technical={technical_val:.3f}"
                 )
                 
                 # Convert to format expected by rest of code

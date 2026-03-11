@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================================
-REM UNIFIED TRADING SYSTEM v193.11.7 - COMPLETE INSTALLATION
+REM UNIFIED TRADING SYSTEM v193.11.7.1 - COMPLETE INSTALLATION (Signal Fix)
 REM ============================================================================
 REM Single installation script for:
 REM   - FinBERT v4.4.4 (sentiment analysis + LSTM training)
