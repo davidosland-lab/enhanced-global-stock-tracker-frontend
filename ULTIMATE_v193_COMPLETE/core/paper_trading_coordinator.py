@@ -2019,6 +2019,13 @@ class PaperTradingCoordinator:
             True if position entered successfully
         """
         try:
+            # MARKET HOURS CHECK - Don't trade on closed markets (unless manual override)
+            if not signal.get('type') == 'MANUAL' and MARKET_CALENDAR_AVAILABLE and market_calendar:
+                can_trade, reason = market_calendar.can_trade_symbol(symbol)
+                if not can_trade:
+                    logger.warning(f"{symbol}: TRADE BLOCKED - Market closed ({reason})")
+                    return False
+            
             # SENTIMENT GATE CHECK - Block trades based on FinBERT sentiment
             if not signal.get('type') == 'MANUAL':  # Don't block manual trades
                 # FIX v193.11.3: Pass price_data to avoid redundant yfinance call
@@ -2570,19 +2577,26 @@ class PaperTradingCoordinator:
             logger.info(f"Trading Cycle: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             logger.info(f"{'='*80}")
             
-                # Check market hours for all symbols
+                # Check market hours for all symbols and filter to only open markets
+            open_symbols = []
+            closed_symbols = []
+            
             if MARKET_CALENDAR_AVAILABLE and market_calendar:
-                closed_symbols = []
                 for symbol in self.symbols:
                     can_trade, reason = market_calendar.can_trade_symbol(symbol)
-                    if not can_trade:
+                    if can_trade:
+                        open_symbols.append(symbol)
+                    else:
                         closed_symbols.append(f"{symbol} ({reason})")
                 
                 if closed_symbols:
                     logger.warning(f"[CALENDAR] Some markets are closed:")
                     for msg in closed_symbols:
                         logger.warning(f"   {msg}")
-                    # Continue with open markets only
+                    logger.info(f"[CALENDAR] Trading only on open markets: {len(open_symbols)} of {len(self.symbols)} symbols")
+            else:
+                # If calendar not available, allow all symbols
+                open_symbols = self.symbols.copy()
             
                 # 1. Update market sentiment
             if self.sentiment_monitor:
@@ -2639,11 +2653,11 @@ class PaperTradingCoordinator:
                 logger.info("[PIPELINE] Processing fresh pipeline recommendations...")
                 self._process_pipeline_recommendations()
             
-                # 7. Look for new entries
+                # 7. Look for new entries (only on open markets)
             if len(self.positions) < self.config['risk_management']['max_total_positions']:
                 logger.info("[SCAN] Scanning for new entry opportunities...")
                 
-                for symbol in self.symbols:
+                for symbol in open_symbols:  # Only check symbols where market is open
                     if symbol in self.positions:
                         continue
                     
