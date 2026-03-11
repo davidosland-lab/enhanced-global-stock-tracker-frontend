@@ -1,0 +1,255 @@
+================================================================================
+UK GAP PREDICTION FIX - v193.11.7.4
+Critical Issue: Wrong FTSE Futures Data Source
+Date: March 11, 2026
+================================================================================
+
+ISSUE REPORT
+============
+Predicted: +0.38% (gap up)
+Actual:    -0.68% (gap down)
+Error:     -1.06% (WRONG DIRECTION!)
+
+This is a CRITICAL accuracy issue - wrong direction leads to wrong trades.
+
+ROOT CAUSE IDENTIFIED
+======================
+Location: pipelines/models/screening/ftse_proxy_realtime.py
+Lines: 190-194
+
+PROBLEMATIC CODE:
+```python
+# 3. Fetch FTSE Futures
+# NOTE: FTSE 100 futures not available on Yahoo Finance (Z=F doesn't work)
+# Using FTSE 100 Index (^FTSE) as proxy - index tracks futures closely
+futures_symbols = ['^FTSE']  # FTSE 100 Index (futures proxy)
+futures_data = self.get_market_close_data(futures_symbols)
+```
+
+PROBLEM:
+The code uses ^FTSE (FTSE 100 INDEX) as a "proxy" for futures.
+This is WRONG because:
+1. ^FTSE only updates during LSE trading hours (08:00-16:30 GMT)
+2. When overnight pipeline runs (before 08:00), it gets YESTERDAY'S close
+3. Yesterday's close is STALE - doesn't reflect overnight movements
+4. Real futures trade 24/5 and reflect current sentiment
+
+CORRECT FTSE FUTURES SYMBOLS
+=============================
+The correct FTSE 100 futures ticker symbols are:
+
+1. CME FTSE 100 E-mini (Recommended):
+   - Symbol: 6B=F (but may need API key)
+   - Alternative check: LIFFE FTSE futures
+
+2. ICE FTSE 100 Futures:
+   - Symbol: Not directly available on yfinance
+   - Need: ICE Futures Europe data feed
+
+3. ALTERNATIVE SOLUTION (if futures unavailable):
+   - Use European indices (DAX, CAC) which trade until 22:00 CET
+   - Use FTSE 250 (^FTMC) as proxy (also imperfect)
+   - Increase weight of US markets + Asian markets
+   - REDUCE or ELIMINATE the "futures" component (15% weight)
+
+RECOMMENDED FIX
+===============
+Since real FTSE futures are not easily available on Yahoo Finance,
+we should:
+
+1. REMOVE the "Futures" component (15% weight) entirely
+2. REDISTRIBUTE that 15% weight to other components:
+   - US markets: 35% → 40% (+5%)
+   - European markets: 30% → 35% (+5%)
+   - FX: 10% → 12.5% (+2.5%)
+   - Commodities: 10% → 12.5% (+2.5%)
+
+3. ADD Asian markets component (NEW):
+   - Nikkei (^N225): 35%
+   - Hang Seng (^HSI): 35%
+   - ASX 200 (^AXJO): 30%
+   - Weight: 10% overall
+   - Reduce US from 40% → 35%
+
+ALTERNATIVE FIX (if we can get futures data)
+=============================================
+Find a data source that provides ACTUAL FTSE futures:
+- Bloomberg API
+- Reuters API
+- Interactive Brokers API
+- CME data feed
+- ICE Futures Europe data
+
+Then replace:
+```python
+futures_symbols = ['^FTSE']  # WRONG - uses index
+```
+
+With:
+```python
+futures_symbols = ['FTSE_FUTURES_SYMBOL']  # Correct futures ticker
+```
+
+CODE FIX - OPTION 1 (Remove Futures Component)
+===============================================
+
+File: pipelines/models/screening/ftse_proxy_realtime.py
+Lines: 96-102
+
+BEFORE:
+```python
+# Overall component weights
+self.component_weights = {
+    'US': 0.35,         # US markets (overnight close)
+    'Europe': 0.30,     # European markets (same day close)
+    'Futures': 0.15,    # FTSE index (^FTSE) as futures proxy ← WRONG!
+    'FX': 0.10,         # Currency movements
+    'Commodities': 0.10 # Commodity basket
+}
+```
+
+AFTER:
+```python
+# Overall component weights (v193.11.7.4: Removed invalid futures component)
+self.component_weights = {
+    'US': 0.40,         # US markets (overnight close) +5%
+    'Europe': 0.35,     # European markets (same day close) +5%
+    'Asia': 0.10,       # Asian markets (overnight close) NEW!
+    'FX': 0.075,        # Currency movements +2.5%
+    'Commodities': 0.075 # Commodity basket +2.5%
+}
+```
+
+Also need to ADD Asian market data fetching in compute_prediction():
+
+```python
+# NEW: Fetch Asian Market Closes (between Europe close and UK open)
+asian_symbols = ['^N225', '^HSI', '^AXJO']  # Nikkei, Hang Seng, ASX
+asian_data = self.get_market_close_data(asian_symbols)
+```
+
+And ADD Asian weights:
+```python
+# Asian Market Weights
+self.asian_weights = {
+    'Nikkei': 0.35,   # Japan
+    'HangSeng': 0.35, # Hong Kong
+    'ASX': 0.30       # Australia
+}
+```
+
+TESTING PLAN
+============
+1. Modify ftse_proxy_realtime.py with above changes
+2. Run UK overnight pipeline before market open
+3. Log the prediction components:
+   - US component contribution
+   - European component contribution
+   - Asian component contribution
+   - FX component contribution
+   - Commodity component contribution
+4. Compare predicted gap with actual FTSE open
+5. Calculate accuracy over 5-10 trading days
+6. Target: > 70% directional accuracy, < 0.5% average error
+
+TEMPORARY MITIGATION (IMMEDIATE)
+=================================
+Until fixed, in paper_trading_coordinator.py:
+
+1. DISABLE UK gap trading:
+```python
+if market == 'UK' and is_gap_trade:
+    logger.warning(f"[BLOCKED] {symbol}: UK gap trading disabled (prediction accuracy issues)")
+    return False
+```
+
+2. Or REDUCE confidence by 50%:
+```python
+if market == 'UK' and is_gap_trade:
+    confidence *= 0.5  # 50% confidence reduction for UK gap trades
+    logger.warning(f"[UK GAP] Reduced confidence to {confidence:.0%} due to known accuracy issues")
+```
+
+3. Add logging to track prediction vs actual:
+```python
+# In gap_reality_checker.py, after validation
+if market == 'UK':
+    logger.warning(f"[UK GAP ACCURACY] Predicted: {predicted:+.2f}%, Actual: {actual:+.2f}%, Error: {error:+.2f}%")
+    if abs(error) > 0.5:
+        logger.error(f"[UK GAP] Large prediction error detected! Review futures data source.")
+```
+
+FILES TO MODIFY
+===============
+1. pipelines/models/screening/ftse_proxy_realtime.py
+   - Remove futures component
+   - Add Asian markets component
+   - Adjust weights
+   - Add Asian data fetching
+
+2. paper_trading_coordinator.py (temporary mitigation)
+   - Add UK gap trading filter
+   - Log prediction accuracy
+
+3. core/gap_reality_checker.py
+   - Add detailed logging for UK predictions
+   - Track accuracy metrics
+
+VERIFICATION STEPS
+==================
+After applying fix:
+
+1. Run overnight pipeline manually:
+   ```bash
+   cd pipelines
+   python run_uk_pipeline.py
+   ```
+
+2. Check logs for:
+   ✓ "Fetching US market data" - shows US S&P, Nasdaq, Dow changes
+   ✓ "Fetching European market data" - shows DAX, CAC, STOXX changes
+   ✓ "Fetching Asian market data" - shows Nikkei, HSI, ASX changes
+   ✓ "Computing FTSE gap prediction" - shows final prediction
+   ✓ NO mention of "^FTSE futures proxy"
+
+3. Next morning, check actual FTSE open:
+   ✓ Compare predicted vs actual
+   ✓ Calculate error
+   ✓ Verify direction is correct
+
+4. After 5-10 days:
+   ✓ Calculate average absolute error
+   ✓ Calculate directional accuracy %
+   ✓ Target: > 70% direction accuracy, < 0.5% avg error
+
+SUCCESS METRICS
+===============
+BEFORE FIX:
+- Using ^FTSE (stale index data)
+- Example: Predicted +0.38%, Actual -0.68% (wrong direction!)
+- Directional accuracy: Unknown (likely < 60%)
+
+AFTER FIX:
+- Using US + EU + Asian markets (no stale data)
+- Target: > 70% directional accuracy
+- Target: < 0.5% average absolute error
+- Target: No direction misses > 1%
+
+PRIORITY: CRITICAL
+Timeline: Fix within 24 hours before next UK market open
+Risk: Wrong predictions → wrong trades → losses
+
+DEPLOYMENT
+==========
+Include in next release: v193.11.7.4
+PR: Add to existing PR #11
+Branch: market-timing-critical-fix
+
+RELATED ISSUES
+==============
+- GAP_PREDICTION_ACCURACY_ISSUE.txt (this incident)
+- Similar issue may affect AU (ASX) gap predictions - check SPI futures source
+
+================================================================================
+END OF UK GAP PREDICTION FIX DOCUMENTATION
+================================================================================

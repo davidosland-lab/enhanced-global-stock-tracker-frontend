@@ -1,0 +1,236 @@
+================================================================================
+GAP PREDICTION ACCURACY ISSUE - UK Market (FTSE)
+Date: March 11, 2026
+================================================================================
+
+REPORTED DISCREPANCY
+====================
+Predicted: +0.38% (positive gap up)
+Actual:    -0.68% (negative gap down)
+Error:     -1.06% (wrong direction!)
+
+Market: UK (FTSE)
+Impact: HIGH - Wrong direction means wrong trading decisions
+
+ANALYSIS NEEDED
+===============
+This is a CRITICAL accuracy issue. The gap prediction model predicted:
+- Direction: UP (+)
+- Magnitude: +0.38%
+
+But the market actually opened:
+- Direction: DOWN (-)
+- Magnitude: -0.68%
+
+This is not just a magnitude error - it's a DIRECTION error, which is much worse.
+
+POTENTIAL ROOT CAUSES
+=====================
+
+1. Stale Futures Data
+   - UK futures data may not be updating in real-time
+   - Check: When was the last futures price update?
+   - Fix: Verify yfinance ticker for UK futures is correct
+
+2. Wrong Futures Contract
+   - May be using wrong futures symbol
+   - FTSE futures: Check if using correct symbol
+   - Common symbols: ^FTSE, FTSE, Z (CME), or LSE futures
+
+3. Timezone Issues
+   - Futures from wrong timezone (US instead of UK)
+   - Asian markets may not reflect UK sentiment accurately
+   - Check: Are we using UK futures or US futures on FTSE?
+
+4. Calculation Error
+   - Formula may be incorrect
+   - Check gap_reality_checker.py calculation logic
+   - Verify: (futures_close - previous_index_close) / previous_index_close
+
+5. Cache/Stale Data
+   - Overnight report may be using cached/old data
+   - Check: Report generation timestamp vs market open time
+   - Verify: Data freshness before market open
+
+6. Wrong Market Precedence
+   - Giving too much weight to Asian markets
+   - UK should primarily use UK futures + European sentiment
+   - Asian markets may not correlate well with UK open
+
+INVESTIGATION STEPS
+===================
+
+Step 1: Check Futures Data Source
+---------------------------------
+Location: core/gap_reality_checker.py or core/pre_market_strategy.py
+
+Look for:
+- UK futures ticker symbol
+- Last update timestamp
+- Data source (yfinance, other?)
+
+Expected:
+- Fresh data from last 5-10 minutes before UK open
+- Correct FTSE futures contract
+- Real-time or near-real-time data
+
+Step 2: Review Overnight Report
+-------------------------------
+Location: Check the overnight report HTML file
+
+Verify:
+- Report generation time (should be close to market open)
+- Futures data timestamp
+- Previous close value used
+- Calculation formula shown
+
+Step 3: Check Calculation Logic
+-------------------------------
+Formula should be:
+gap_prediction = ((futures_price - previous_close) / previous_close) * 100
+
+Verify:
+- Using correct previous close (yesterday's FTSE close)
+- Using current futures price (not stale)
+- Calculation not reversed (sign error)
+
+Step 4: Verify Data Pipeline
+----------------------------
+Check logs for:
+- "Fetching UK futures data"
+- "FTSE futures: [price]"
+- "Previous close: [price]"
+- "Calculated gap: [%]"
+
+Look for errors or stale timestamps
+
+FILES TO INVESTIGATE
+====================
+
+1. core/gap_reality_checker.py
+   - Check _calculate_uk_gap() method
+   - Verify futures symbol for UK
+   - Check data freshness validation
+
+2. core/pre_market_strategy.py
+   - UK market gap prediction logic
+   - Futures data fetching
+   - Calculation implementation
+
+3. pipeline_au/run_pipeline.py (or UK equivalent)
+   - Overnight report generation
+   - Gap prediction calculation
+   - Data source configuration
+
+4. Overnight report HTML
+   - Check timestamp
+   - Review raw data shown
+   - Verify calculation steps
+
+IMMEDIATE ACTIONS
+=================
+
+1. Disable UK Gap Trading (URGENT)
+   - Until accuracy improves, don't trade on gap predictions
+   - Add confidence threshold check
+   - Require manual confirmation for gap trades
+
+2. Log Detailed Gap Data
+   - Add logging for:
+     * Futures symbol used
+     * Futures price and timestamp
+     * Previous close and timestamp
+     * Calculation steps
+     * Data source
+
+3. Verify Futures Symbol
+   - Confirm correct FTSE futures ticker
+   - Test data freshness in pre-market hours
+   - Compare with actual FTSE open
+
+4. Add Sanity Checks
+   - Flag predictions > ±2% as suspicious
+   - Alert on direction mismatches
+   - Compare with European indices (DAX, CAC)
+
+EXPECTED CONFIGURATION
+======================
+
+For UK (FTSE) gap prediction, should use:
+- Primary: UK FTSE futures (real-time)
+- Secondary: European indices (DAX, CAC40)
+- Tertiary: Asian markets (HSI, Nikkei) - low weight
+- Currency: GBP/USD movement
+- Oil/Commodities: For FTSE 100 (resource heavy)
+
+Weight distribution (example):
+- UK futures: 60%
+- European indices: 25%
+- Asian markets: 10%
+- Other factors: 5%
+
+VERIFICATION CHECKLIST
+======================
+□ Check gap_reality_checker.py for UK calculation
+□ Verify FTSE futures ticker symbol
+□ Confirm data timestamp is fresh (< 10 min old)
+□ Review overnight report generation time
+□ Check calculation formula (not reversed)
+□ Verify previous close is from yesterday
+□ Test futures data fetch in pre-market hours
+□ Compare prediction with actual at market open
+□ Review error logs for UK market
+□ Check if using UK futures or US futures
+
+TEMPORARY MITIGATION
+====================
+Until fixed, add these safety measures:
+
+1. In paper_trading_coordinator.py:
+   - Reduce confidence for gap trades by 30%
+   - Require gap prediction accuracy > 80% for entry
+   - Skip gap trades if prediction > ±1.5%
+
+2. In gap_reality_checker.py:
+   - Add data freshness check (reject if > 15 min old)
+   - Add sanity check (flag if > ±2%)
+   - Log all gap predictions vs actual opens
+
+3. In pre_market_strategy.py:
+   - Disable UK gap trading temporarily
+   - Or reduce position size to 25% for gap trades
+   - Add manual approval requirement
+
+CODE LOCATIONS TO CHECK
+========================
+
+1. gap_reality_checker.py - line ~150-250 (UK gap calculation)
+2. pre_market_strategy.py - line ~300-400 (gap strategy)
+3. paper_trading_coordinator.py - line ~950-1100 (gap trading logic)
+4. market_entry_strategy.py - gap prediction integration
+
+EXPECTED LOG OUTPUT (AFTER FIX)
+================================
+2026-03-11 07:55:00 - [GAP] Fetching FTSE futures data
+2026-03-11 07:55:01 - [GAP] FTSE futures: 7850.50 (timestamp: 2026-03-11 07:54:32)
+2026-03-11 07:55:01 - [GAP] Previous FTSE close: 7820.00 (2026-03-10 16:30:00)
+2026-03-11 07:55:01 - [GAP] Calculated gap: +0.39% (7850.50 - 7820.00 / 7820.00)
+2026-03-11 07:55:01 - [GAP] Data freshness: 29 seconds ✓
+2026-03-11 08:00:15 - [VERIFY] FTSE actual open: 7854.20 (+0.44%)
+2026-03-11 08:00:15 - [VERIFY] Gap prediction accuracy: 95.1% ✓
+
+NEXT STEPS
+==========
+1. Locate and read gap_reality_checker.py
+2. Check UK gap calculation method
+3. Verify futures data source and freshness
+4. Test with current market data
+5. Fix any identified issues
+6. Add comprehensive logging
+7. Re-test before re-enabling UK gap trading
+
+PRIORITY: HIGH
+Risk: Trading on wrong predictions leads to immediate losses
+Timeline: Fix within 24 hours before next UK market open
+
+================================================================================
