@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================================
-REM UNIFIED TRADING SYSTEM v193.11.7.5 - MAIN MENU (Datetime Comparison Fix)
+REM UNIFIED TRADING SYSTEM v193.11.7.6 - EODHD API Integration - MAIN MENU (Datetime Comparison Fix)
 REM ============================================================================
 
 REM Change to script directory

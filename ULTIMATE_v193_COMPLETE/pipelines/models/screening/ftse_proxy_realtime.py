@@ -63,6 +63,17 @@ import numpy as np
 from yahooquery import Ticker
 import pytz
 
+# FIX v1.3.15.193.11.7.6: Import EODHD Integration for direct FTSE 100 futures data
+try:
+    import sys
+    from pathlib import Path
+    utils_path = Path(__file__).parent.parent.parent / 'utils'
+    sys.path.insert(0, str(utils_path))
+    from eodhd_integration import EODHDClient
+    EODHD_AVAILABLE = True
+except ImportError:
+    EODHD_AVAILABLE = False
+
 logger = logging.getLogger(__name__)
 
 
@@ -132,6 +143,18 @@ class RealtimeFTSEPredictor:
             'medium': 18,   # 12-18 = normal volatility
             'high': 25      # > 25 = high fear, lower confidence
         }
+        
+        # FIX v1.3.15.193.11.7.6: Initialize EODHD Client for direct FTSE 100 futures data
+        if EODHD_AVAILABLE:
+            try:
+                self.eodhd_client = EODHDClient()
+                logger.info("[OK] EODHD Client initialized for FTSE predictions")
+            except Exception as e:
+                logger.warning(f"[!] EODHD initialization failed: {e}")
+                self.eodhd_client = None
+        else:
+            self.eodhd_client = None
+            logger.warning("[!] EODHD unavailable - using fallback methods")
     
     def get_market_close_data(self, symbols: list, days_back: int = 1) -> Dict:
         """
