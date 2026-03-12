@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================================
-REM UNIFIED TRADING SYSTEM v193.11.7.4 - MAIN MENU (UK Gap Prediction Fix)
+REM UNIFIED TRADING SYSTEM v193.11.7.5 - MAIN MENU (Datetime Comparison Fix)
 REM ============================================================================
 
 REM Change to script directory
@@ -10,7 +10,7 @@ cd /d "%~dp0"
 cls
 echo.
 echo ============================================================================
-echo  UNIFIED TRADING SYSTEM v193.11.7.4
+echo  UNIFIED TRADING SYSTEM v193.11.7.5
 echo ============================================================================
 echo.
 echo  Choose an option:
@@ -433,6 +433,6 @@ goto MENU
 
 :EXIT
 echo.
-echo Thank you for using Unified Trading System v193.11.7.4
+echo Thank you for using Unified Trading System v193.11.7.5
 echo.
 exit /b 0

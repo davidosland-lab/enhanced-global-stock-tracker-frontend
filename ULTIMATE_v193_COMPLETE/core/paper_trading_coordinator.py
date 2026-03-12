@@ -529,7 +529,7 @@ class PaperTradingCoordinator:
         for market in ['au', 'us', 'uk']:
             report_path = report_base / f'{market}_morning_report.json'
             if report_path.exists():
-                # Check file modification time
+                # Check file modification time (convert to naive datetime)
                 file_mtime = datetime.fromtimestamp(report_path.stat().st_mtime)
                 
                 # If report exists in cache, check if file is newer
@@ -537,6 +537,9 @@ class PaperTradingCoordinator:
                     cached_report = self._overnight_reports_cache[market]
                     if 'timestamp' in cached_report:
                         cached_time = datetime.fromisoformat(cached_report['timestamp'])
+                        # Remove timezone info from both for comparison
+                        if cached_time.tzinfo is not None:
+                            cached_time = cached_time.replace(tzinfo=None)
                         if file_mtime > cached_time:
                             logger.info(f"[PIPELINE] Detected updated {market.upper()} morning report")
                             updated = True
