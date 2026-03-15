@@ -1,0 +1,83 @@
+================================================================================
+  FinBERT v4.4.4 - TRADE BUY/SELL MARKERS ADDED TO EQUITY CURVE
+================================================================================
+
+GREAT NEWS - EQUITY CURVE IS NOW SHOWING!
+------------------------------------------
+From your console output:
+✅ Chart rendered successfully
+✅ Data received: 253 data points
+✅ Date range: Nov 6, 24 to Nov 5, 25
+✅ Value range: $9,999.17 to $10,186.78
+
+WHAT I'VE ADDED NOW:
+--------------------
+✅ BUY/SELL markers overlaid on the equity curve showing:
+   - ▲ Green up arrow = BUY (when trade opened)
+   - ▼ Red/Green down arrow = SELL (when trade closed)
+     - Green if profit
+     - Red if loss
+   - Amount shown above each marker
+
+✅ Markers extracted from performance.charts.trade_distribution
+✅ Each marker shows:
+   - Entry date and entry price (BUY)
+   - Exit date, exit price, and P&L amount (SELL)
+
+HOW IT WORKS:
+-------------
+1. After equity curve renders, code checks for trade_distribution data
+2. Extracts all trades from distribution buckets:
+   - large_win_details, medium_win_details, small_win_details
+   - small_loss_details, medium_loss_details, large_loss_details
+3. For each trade, creates markers:
+   - BUY marker at entry_date showing investment amount
+   - SELL marker at exit_date showing profit/loss
+4. Overlays markers on equity curve using ECharts markPoint
+
+CONSOLE OUTPUT TO EXPECT:
+--------------------------
+✅ "Trade distribution data: {...}"
+✅ "Extracted X trades from distribution"
+✅ "Adding X trade markers to chart"
+✅ "Buy markers: X Sell markers: X"
+
+VISUAL RESULT:
+--------------
+You should see:
+📈 Green equity line showing portfolio value growth
+▲ Green up arrows at points where stocks were bought
+▼ Arrows at points where stocks were sold:
+  - Green down arrow if trade was profitable
+  - Red down arrow if trade lost money
+💰 Dollar amounts shown above sell markers
+
+INSTALL AND TEST:
+-----------------
+1. Extract: FinBERT_v4.4.4_WITH_TRADE_MARKERS_20251106_074100.zip
+2. Run: INSTALL.bat
+3. Run: START_FINBERT.bat
+4. Press F12 → Console (watch for marker messages)
+5. Run backtest on CBA.AX (or any stock)
+6. Check chart for buy/sell arrows
+
+NOTE ABOUT YOUR CURRENT DATA:
+------------------------------
+From your console output, I noticed:
+- positions_value: 0 throughout
+- This suggests NO TRADES were executed in that backtest
+- Might be because:
+  1. Model confidence was too low (didn't generate buy signals)
+  2. Date range didn't trigger any trades
+  3. Symbol had insufficient data
+
+If you see NO markers, check console for:
+"No trades to mark on chart" or "Extracted 0 trades"
+
+This means the backtest completed but the model didn't generate
+any buy/sell signals. Try:
+- Different stock symbol
+- Longer date range
+- Lower confidence threshold in backtest settings
+
+================================================================================

@@ -1,0 +1,220 @@
+================================================================================
+    🎯 GAP PREDICTION ACCURACY IMPROVEMENT PLAN
+================================================================================
+                           Date: 2026-03-08
+                    Current Gap: -1.77% (ACTUAL SPI)
+                  Predicted Gap: +0.11% (SYSTEM)
+                          Error: 1.88 percentage points
+================================================================================
+
+📊 CURRENT SITUATION ANALYSIS
+================================================================================
+
+From Your Logs:
+  US Markets: S&P -1.33%, NASDAQ -1.59%
+  System Prediction: +0.11% (WRONG!)
+  Actual SPI: -1.77%
+  
+Problem:
+  System predicted POSITIVE gap when US markets were DOWN
+  AND there's a war going on (World Risk 95/100)
+  
+This suggests:
+  1. Correlation coefficient too weak (0.55 for S&P)
+  2. Not enough weight on VIX impact
+  3. Sentiment adjustment not aggressive enough
+
+================================================================================
+🔧 PROPOSED SOLUTIONS
+================================================================================
+
+**OPTION 1: Increase US Market Correlation (Quick Fix)**
+────────────────────────────────────────────────────────────────────────────
+Current Weights:
+  w_es = 0.55    (E-mini S&P 500)
+  w_nq = 0.20    (NASDAQ)
+  w_vix = -0.20  (VIX inverse)
+  
+Proposed Weights (More Aggressive):
+  w_es = 0.75    (increase from 0.55) ← Main fix
+  w_nq = 0.25    (increase from 0.20)
+  w_vix = -0.30  (increase from -0.20)
+  w_aud = -0.05  (decrease from -0.10)
+  w_iron = 0.10  (decrease from 0.20)
+  w_brent = 0.05 (keep same)
+  
+Test Calculation:
+  S&P: -1.33% * 0.75 = -1.00%
+  NASDAQ: -1.59% * 0.25 = -0.40%
+  Total: -1.40% (much closer to actual -1.77%!)
+
+
+**OPTION 2: Add Direct SPI Futures Data (Best Long-term)**
+────────────────────────────────────────────────────────────────────────────
+Instead of synthetic proxy, fetch REAL SPI 200 futures:
+  
+Yahoo Finance Symbol: ^AXJO (ASX 200 Index)
+SPI Futures Symbol: Not directly available on Yahoo
+  
+Alternative: Use ASX Official SPI data
+  Source: https://www.asx.com.au/markets/trade-our-derivatives-market
+  
+Implementation:
+  1. Scrape SPI futures from ASX website
+  2. Calculate overnight move directly
+  3. Use as primary source (95%+ accuracy)
+  4. Fall back to proxy only if unavailable
+
+
+**OPTION 3: Machine Learning Calibration (Advanced)**
+────────────────────────────────────────────────────────────────────────────
+Collect historical data:
+  - US overnight moves (S&P, NASDAQ, VIX)
+  - AUD/USD movement
+  - Commodities (Iron, Oil)
+  - Actual ASX opening gaps
+  
+Train model to find optimal weights:
+  - Linear regression for weights
+  - Or neural network for non-linear relationships
+  - Update weights weekly based on recent accuracy
+
+
+**OPTION 4: Regime-Based Weights (Practical)**
+────────────────────────────────────────────────────────────────────────────
+Different weights for different market conditions:
+
+RISK-OFF Regime (VIX > 25, World Risk > 75):
+  w_es = 0.85      (S&P dominates in risk-off)
+  w_nq = 0.15      
+  w_vix = -0.40    (VIX impact stronger)
+  w_sentiment = 0.60  (sentiment more important)
+  
+NORMAL Regime:
+  w_es = 0.65
+  w_nq = 0.25
+  w_vix = -0.20
+  w_sentiment = 0.35
+  
+RISK-ON Regime (VIX < 15, World Risk < 40):
+  w_es = 0.55
+  w_nq = 0.30      (Tech matters more)
+  w_vix = -0.10
+  w_sentiment = 0.20
+
+================================================================================
+🚀 RECOMMENDED IMMEDIATE FIX
+================================================================================
+
+**Step 1: Update SPI Proxy Weights** (5 minutes)
+
+Edit: pipelines/models/screening/spi_proxy_advanced.py
+Lines 46-51
+
+Change FROM:
+```python
+self.w_es = 0.55
+self.w_nq = 0.20
+self.w_aud = -0.10
+self.w_vix = -0.20
+self.w_iron = 0.20
+self.w_brent = 0.05
+```
+
+Change TO:
+```python
+self.w_es = 0.75     # Increased: S&P is primary driver
+self.w_nq = 0.25     # Increased: NASDAQ matters
+self.w_aud = -0.05   # Decreased: Less AUD impact
+self.w_vix = -0.30   # Increased: VIX more important in risk-off
+self.w_iron = 0.10   # Decreased: Iron less important overnight
+self.w_brent = 0.05  # Kept same
+```
+
+**Step 2: Increase Sentiment Impact on Gap** (Already done!)
+
+Current formula:
+  adjusted_gap = original_gap * (1 + sentiment_deviation * 0.5)
+  
+Make more aggressive:
+  adjusted_gap = original_gap * (1 + sentiment_deviation * 0.75)
+  
+With your scenario:
+  Original: +0.11%
+  Sentiment: 26.1/100 (deviation -0.478)
+  Adjusted: +0.11% * (1 + (-0.478 * 0.75))
+          = +0.11% * (1 - 0.359)
+          = +0.11% * 0.641
+          = +0.07%
+  
+Still not enough for -1.77% actual, but closer!
+
+**Step 3: Add Regime-Specific Multipliers**
+
+When World Risk > 85 (CRITICAL):
+  - Apply additional -1.5% base adjustment
+  - OR multiply gap by risk multiplier
+  
+Example:
+  Original gap: +0.11%
+  Risk multiplier: -2.0 (for extreme risk)
+  Adjusted gap: +0.11% * -2.0 = -0.22%
+  
+This would flip the prediction to negative!
+
+================================================================================
+📊 EXPECTED RESULTS AFTER FIXES
+================================================================================
+
+**Current System:**
+  US: S&P -1.33%, NASDAQ -1.59%
+  Raw Gap: +0.11%
+  After Sentiment: +0.06%
+  Actual: -1.77%
+  ERROR: 1.83 pp
+
+**After Weight Update:**
+  US: S&P -1.33%, NASDAQ -1.59%
+  Raw Gap: -1.40% (from better weights)
+  After Sentiment (26.1): -1.40% * 0.641 = -0.90%
+  Actual: -1.77%
+  ERROR: 0.87 pp (52% improvement!)
+
+**After Adding Risk Multiplier:**
+  Raw Gap: -1.40%
+  Sentiment adjustment: * 0.641 = -0.90%
+  Risk multiplier (World 95): * 1.5 = -1.35%
+  Actual: -1.77%
+  ERROR: 0.42 pp (77% improvement!)
+
+================================================================================
+🎯 WHICH OPTION SHOULD WE IMPLEMENT?
+================================================================================
+
+**Quick Wins (Do Today):**
+1. ✅ Update SPI proxy weights (0.55 → 0.75 for S&P)
+2. ✅ Increase sentiment adjustment factor (0.5 → 0.75)
+3. ✅ Add critical risk multiplier (when World Risk > 85)
+
+**Medium Term (This Week):**
+4. Add regime-based weight switching
+5. Collect historical gap vs prediction data
+6. Fine-tune weights based on accuracy
+
+**Long Term (This Month):**
+7. Implement direct SPI futures scraping from ASX
+8. Build ML model for weight optimization
+9. Add prediction confidence intervals
+
+================================================================================
+                    WHICH FIXES DO YOU WANT ME TO IMPLEMENT?
+================================================================================
+
+Options:
+A) Quick Fix: Update weights + increase sentiment impact
+B) Full Fix: A + add critical risk multiplier
+C) All: B + regime-based weights
+D) Just show me the code changes, I'll decide
+
+Reply with A, B, C, or D
+================================================================================

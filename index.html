@@ -3,780 +3,414 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Tracker Dashboard - Enhanced Edition v5.0</title>
+    <title>v187 Hotfix Download - Trading System</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            max-width: 1000px;
+            margin: 50px auto;
             padding: 20px;
-            overflow-x: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         }
-        
         .container {
-            max-width: 1400px;
-            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
         }
-        
-        .header {
-            text-align: center;
-            color: white;
-            margin-bottom: 40px;
-            animation: fadeInDown 0.8s ease;
+        h1 {
+            color: #2c3e50;
+            border-bottom: 4px solid #667eea;
+            padding-bottom: 15px;
+            margin-top: 0;
         }
-        
-        .header h1 {
-            font-size: 48px;
-            font-weight: 700;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
-        }
-        
-        .header p {
-            font-size: 18px;
-            opacity: 0.95;
-        }
-        
         .version-badge {
             display: inline-block;
-            background: rgba(255,255,255,0.2);
-            padding: 5px 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 8px 20px;
             border-radius: 20px;
-            margin-top: 10px;
-            font-size: 14px;
-            font-weight: 600;
-        }
-        
-        .status-bar {
-            background: white;
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-            animation: fadeIn 1s ease;
-        }
-        
-        .status-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-        }
-        
-        .status-item {
-            text-align: center;
-        }
-        
-        .status-label {
-            font-size: 12px;
-            color: #6c757d;
-            text-transform: uppercase;
-            margin-bottom: 5px;
-        }
-        
-        .status-value {
-            font-size: 24px;
-            font-weight: 700;
-            color: #333;
-        }
-        
-        .status-value.active {
-            color: #22c55e;
-        }
-        
-        .status-dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #dc3545;
-            margin-right: 8px;
-        }
-        
-        .status-dot.active {
-            background: #22c55e;
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.5; }
-            100% { opacity: 1; }
-        }
-        
-        .modules-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 25px;
-            margin-bottom: 30px;
-        }
-        
-        .module-card {
-            background: white;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-            transition: all 0.3s ease;
-            animation: fadeInUp 0.8s ease;
-            animation-fill-mode: both;
-        }
-        
-        .module-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 50px rgba(0,0,0,0.15);
-        }
-        
-        .module-card:nth-child(1) { animation-delay: 0.1s; }
-        .module-card:nth-child(2) { animation-delay: 0.2s; }
-        .module-card:nth-child(3) { animation-delay: 0.3s; }
-        .module-card:nth-child(4) { animation-delay: 0.4s; }
-        .module-card:nth-child(5) { animation-delay: 0.5s; }
-        .module-card:nth-child(6) { animation-delay: 0.6s; }
-        
-        .module-header {
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        
-        .module-title {
-            font-size: 22px;
-            font-weight: 600;
-            margin-bottom: 5px;
-        }
-        
-        .module-badge {
-            display: inline-block;
-            background: rgba(255,255,255,0.2);
-            padding: 3px 10px;
-            border-radius: 10px;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-        
-        .module-body {
-            padding: 20px;
-        }
-        
-        .module-description {
-            color: #6c757d;
-            font-size: 14px;
-            line-height: 1.6;
-            margin-bottom: 15px;
-        }
-        
-        .feature-list {
-            list-style: none;
-            margin-bottom: 20px;
-        }
-        
-        .feature-list li {
-            padding: 5px 0;
-            font-size: 13px;
-            color: #495057;
-            position: relative;
-            padding-left: 20px;
-        }
-        
-        .feature-list li:before {
-            content: "✓";
-            position: absolute;
-            left: 0;
-            color: #22c55e;
             font-weight: bold;
-        }
-        
-        .module-actions {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .btn {
-            flex: 1;
-            padding: 12px 20px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            text-align: center;
-            display: inline-block;
-        }
-        
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: linear-gradient(135deg, #5a67d8 0%, #6b4299 100%);
-            transform: translateY(-2px);
-        }
-        
-        .btn-secondary {
-            background: #f0f0f0;
-            color: #333;
-        }
-        
-        .btn-secondary:hover {
-            background: #e0e0e0;
-        }
-        
-        .quick-actions {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-        }
-        
-        .quick-actions h2 {
-            font-size: 24px;
-            color: #333;
+            font-size: 18px;
             margin-bottom: 20px;
         }
-        
-        .action-buttons {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
+        .download-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 10px;
+            margin: 30px 0;
+            border-left: 5px solid #667eea;
         }
-        
-        .action-btn {
-            padding: 15px 25px;
+        .download-box {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            border: none;
+            padding: 25px;
             border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .download-box h3 {
+            margin-top: 0;
+            font-size: 24px;
+        }
+        .download-button {
+            display: inline-block;
+            color: white;
+            text-decoration: none;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 15px 40px;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid white;
+            border-radius: 8px;
+            margin: 10px;
             transition: all 0.3s ease;
         }
-        
-        .action-btn:hover {
+        .download-button:hover {
+            background: rgba(255,255,255,0.3);
             transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
-        
-        .footer {
-            text-align: center;
-            color: white;
-            margin-top: 50px;
-            padding: 20px;
-            opacity: 0.9;
-        }
-        
-        .footer a {
-            color: white;
-            text-decoration: underline;
-        }
-        
-        @keyframes fadeInDown {
-            from {
-                opacity: 0;
-                transform: translateY(-30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(30px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-            }
-            to {
-                opacity: 1;
-            }
-        }
-        
-        .pulse {
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0% {
-                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
-            }
-            70% {
-                box-shadow: 0 0 0 10px rgba(34, 197, 94, 0);
-            }
-            100% {
-                box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
-            }
-        }
-        
-        .status-dot {
+        .format-badge {
             display: inline-block;
-            width: 10px;
-            height: 10px;
+            padding: 5px 15px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .zip-badge {
+            background: #3498db;
+            color: white;
+        }
+        .targz-badge {
+            background: #e74c3c;
+            color: white;
+        }
+        .checksum-box {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        .info-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border-top: 4px solid #667eea;
+        }
+        .info-card h3 {
+            margin-top: 0;
+            color: #667eea;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background: #667eea;
+            color: white;
+        }
+        tr:hover {
+            background: #f8f9fa;
+        }
+        .step {
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .step-number {
+            display: inline-block;
+            background: rgba(255,255,255,0.3);
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
-            margin-right: 5px;
+            text-align: center;
+            line-height: 40px;
+            margin-right: 15px;
+            font-weight: bold;
+            font-size: 20px;
         }
-        
-        .status-dot.active {
-            background: #22c55e;
-            animation: pulse 2s infinite;
+        .comparison-table {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
         }
-        
-        .status-dot.inactive {
-            background: #ef4444;
+        .success-check {
+            color: #27ae60;
+            font-weight: bold;
+            font-size: 18px;
         }
-        
-        @media (max-width: 768px) {
-            .header h1 {
-                font-size: 32px;
-            }
-            
-            .modules-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .action-buttons {
-                flex-direction: column;
-            }
-            
-            .action-btn {
-                width: 100%;
-            }
+        .fail-cross {
+            color: #e74c3c;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        .highlight-box {
+            background: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>📈 Stock Tracker Dashboard</h1>
-            <p>Real-Time Market Analysis & ML Predictions Platform</p>
-            <div class="version-badge">Version 5.0 - Windows 11 Fixed Edition</div>
-        </div>
+        <h1>🚀 Trading System v187 Hotfix Package</h1>
         
-        <div class="status-bar">
-            <div class="status-grid">
-                <div class="status-item">
-                    <div class="status-label">Backend Status</div>
-                    <div class="status-value" id="backendStatus"><span class="status-dot"></span>Checking...</div>
-                </div>
-                <div class="status-item">
-                    <div class="status-label">Data Source</div>
-                    <div class="status-value">Yahoo Finance</div>
-                </div>
-                <div class="status-item">
-                    <div class="status-label">Last Updated</div>
-                    <div class="status-value" id="lastUpdated">--:--</div>
-                </div>
-                <div class="status-item">
-                    <div class="status-label">ML Backend</div>
-                    <div class="status-value" id="mlStatus"><span class="status-dot"></span>Checking...</div>
-                </div>
+        <span class="version-badge">v1.3.15.187</span>
+        <span class="version-badge" style="background: #27ae60;">Release: 2026-02-25</span>
+
+        <div class="highlight-box">
+            <h3>🎯 Critical Fix: Confidence Threshold Bug</h3>
+            <p><strong>Issue:</strong> Your trading system is blocking ALL signals (threshold incorrectly set to 65%)</p>
+            <p><strong>Solution:</strong> This v187 package lowers threshold to 48% + optional UI enhancement</p>
+            <p><strong>Result:</strong> Trades execute normally + precise decimal control</p>
+        </div>
+
+        <div class="download-section">
+            <h2>📥 Choose Your Download Format</h2>
+            
+            <div class="download-box">
+                <h3>🪟 Windows / General Use</h3>
+                <a href="trading_system_v187_hotfix.zip" download class="download-button">
+                    ⬇️ Download ZIP <span class="format-badge zip-badge">29 KB</span>
+                </a>
+                <p style="margin-top: 15px; font-size: 14px;">Recommended for Windows users</p>
             </div>
-        </div>
-        
-        <div class="quick-actions">
-            <h2>🚀 Quick Actions</h2>
-            <div class="action-buttons">
-                <button class="action-btn" onclick="testBackend()">Test Backend Connection</button>
-                <button class="action-btn" onclick="window.open('diagnostic_tool.html', '_blank')">Run Diagnostics</button>
-                <button class="action-btn" onclick="window.open('https://github.com/davidosland-lab/enhanced-global-stock-tracker-frontend', '_blank')">View on GitHub</button>
-                <button class="action-btn" onclick="refreshStatus()">Refresh Status</button>
+
+            <div class="download-box">
+                <h3>🐧 Linux / Mac</h3>
+                <a href="trading_system_v187_hotfix.tar.gz" download class="download-button">
+                    ⬇️ Download TAR.GZ <span class="format-badge targz-badge">19 KB</span>
+                </a>
+                <p style="margin-top: 15px; font-size: 14px;">Recommended for Linux/Mac users</p>
             </div>
         </div>
+
+        <h2>🔐 Package Verification</h2>
         
-        <div class="modules-grid">
-            <!-- ML Training Centre Module -->
-            <div class="module-card">
-                <div class="module-header">
-                    <div class="module-title">🤖 ML Training Centre</div>
-                    <span class="module-badge">AI POWERED</span>
-                </div>
-                <div class="module-body">
-                    <p class="module-description">
-                        Advanced machine learning model training with centralized backtesting engine and real-time predictions.
-                    </p>
-                    <ul class="feature-list">
-                        <li>Random Forest, Gradient Boost, LSTM</li>
-                        <li>Unified backtesting system</li>
-                        <li>Model comparison & metrics</li>
-                        <li>Auto-backtest after training</li>
-                        <li>SQLite result storage</li>
-                    </ul>
-                    <div class="module-actions">
-                        <a href="ml_training_centre.html" class="btn btn-primary" target="_blank">Open ML Centre</a>
-                    </div>
-                </div>
+        <h3>ZIP Archive</h3>
+        <p><strong>MD5:</strong></p>
+        <div class="checksum-box">6ffcd434dab9279c242b4958fbc5f64d</div>
+        <p><strong>SHA256:</strong></p>
+        <div class="checksum-box">e204ca2b56c052bd56319b185d65b2fdee40606b5f66ccf83d256c59b61b4ced</div>
+
+        <h3>TAR.GZ Archive</h3>
+        <p><strong>MD5:</strong></p>
+        <div class="checksum-box">3796560773a93405e35bf38edc10c146</div>
+        <p><strong>SHA256:</strong></p>
+        <div class="checksum-box">3ae3944f94cf09135f809d1bbd798a784a560d8652c454b136890748fa1cc221</div>
+
+        <div class="info-grid">
+            <div class="info-card">
+                <h3>⏱️ Installation Time</h3>
+                <p><strong>Core Fix:</strong> 30 seconds</p>
+                <p><strong>UI Enhancement:</strong> 10 seconds</p>
+                <p><strong>Total:</strong> 40 seconds</p>
             </div>
             
-            <!-- Technical Analysis Module -->
-            <div class="module-card">
-                <div class="module-header">
-                    <div class="module-title">📊 Technical Analysis Enhanced</div>
-                    <span class="module-badge">Production Ready</span>
-                </div>
-                <div class="module-body">
-                    <p class="module-description">
-                        Comprehensive technical analysis with mplfinance-inspired candlestick charts and 150+ indicators.
-                    </p>
-                    <ul class="feature-list">
-                        <li>Real Yahoo Finance data</li>
-                        <li>150+ technical indicators</li>
-                        <li>ML predictions integration</li>
-                        <li>6 interactive analysis tabs</li>
-                        <li>Pattern recognition</li>
-                    </ul>
-                    <div class="module-actions">
-                        <a href="modules/technical_analysis_enhanced_v5.3.html" class="btn btn-primary" target="_blank">Open Module</a>
-                    </div>
-                </div>
+            <div class="info-card">
+                <h3>🎯 What's Fixed</h3>
+                <p>✅ Threshold: 65% → 48%</p>
+                <p>✅ Trades no longer blocked</p>
+                <p>✅ Slider → Text input (optional)</p>
             </div>
             
-            <!-- Prediction Centre Module -->
-            <div class="module-card">
-                <div class="module-header">
-                    <div class="module-title">🤖 Prediction Centre Advanced</div>
-                    <span class="module-badge">NEW</span>
-                </div>
-                <div class="module-body">
-                    <p class="module-description">
-                        Advanced ML predictions with comprehensive backtesting and learning metrics tracking.
-                    </p>
-                    <ul class="feature-list">
-                        <li>6 ML models (LSTM, ARIMA, etc.)</li>
-                        <li>Comprehensive backtesting</li>
-                        <li>Learning metrics tracking</li>
-                        <li>Performance improvement graphs</li>
-                        <li>Prediction history storage</li>
-                    </ul>
-                    <div class="module-actions">
-                        <a href="modules/predictions/prediction_centre_real_ml.html" class="btn btn-primary" target="_blank">Open Module (Real ML)</a>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Desktop Technical Analysis -->
-            <div class="module-card">
-                <div class="module-header">
-                    <div class="module-title">💻 Technical Analysis Desktop</div>
-                    <span class="module-badge">Desktop Only</span>
-                </div>
-                <div class="module-body">
-                    <p class="module-description">
-                        Desktop-optimized version with 4 professional chart libraries for full candlestick support.
-                    </p>
-                    <ul class="feature-list">
-                        <li>TradingView Lightweight Charts</li>
-                        <li>ApexCharts integration</li>
-                        <li>Chart.js with plugins</li>
-                        <li>Plotly financial charts</li>
-                        <li>Dark theme optimized</li>
-                    </ul>
-                    <div class="module-actions">
-                        <a href="modules/technical_analysis_desktop_fixed.html" class="btn btn-primary" target="_blank">Open Module</a>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Stock Analysis Module -->
-            <div class="module-card">
-                <div class="module-header">
-                    <div class="module-title">📈 Stock Analysis</div>
-                    <span class="module-badge">REAL-TIME</span>
-                </div>
-                <div class="module-body">
-                    <p class="module-description">
-                        Real-time stock data analysis with live Yahoo Finance integration. Shows actual CBA.AX price (~$167).
-                    </p>
-                    <ul class="feature-list">
-                        <li>Real-time price updates</li>
-                        <li>Historical charts</li>
-                        <li>Volume analysis</li>
-                        <li>Key metrics display</li>
-                        <li>Yahoo Finance powered</li>
-                    </ul>
-                    <div class="module-actions">
-                        <a href="stock_analysis.html" class="btn btn-primary" target="_blank">Open Analysis</a>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Document Analyzer Module -->
-            <div class="module-card">
-                <div class="module-header">
-                    <div class="module-title">📄 Document Analyzer</div>
-                    <span class="module-badge">FinBERT AI</span>
-                </div>
-                <div class="module-body">
-                    <p class="module-description">
-                        AI-powered financial document sentiment analysis using FinBERT with stock impact prediction.
-                    </p>
-                    <ul class="feature-list">
-                        <li>FinBERT sentiment analysis</li>
-                        <li>PDF, DOC, TXT support</li>
-                        <li>100MB file limit</li>
-                        <li>Stock correlation</li>
-                        <li>Impact prediction</li>
-                    </ul>
-                    <div class="module-actions">
-                        <a href="document_analyzer.html" class="btn btn-primary" target="_blank">Open Module</a>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Historical Data Analysis Module -->
-            <div class="module-card">
-                <div class="module-header">
-                    <div class="module-title">📊 Historical Analysis</div>
-                    <span class="module-badge">Advanced</span>
-                </div>
-                <div class="module-body">
-                    <p class="module-description">
-                        Deep dive into historical market data with advanced analytics and pattern recognition.
-                    </p>
-                    <ul class="feature-list">
-                        <li>Multi-year analysis</li>
-                        <li>Pattern detection</li>
-                        <li>Correlation matrix</li>
-                        <li>Seasonality analysis</li>
-                        <li>CSV export</li>
-                    </ul>
-                    <div class="module-actions">
-                        <a href="historical_data_analysis.html" class="btn btn-primary" target="_blank">Open Module</a>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Market Movers Module -->
-            <div class="module-card">
-                <div class="module-header">
-                    <div class="module-title">🚀 Market Movers</div>
-                    <span class="module-badge">Real-Time</span>
-                </div>
-                <div class="module-body">
-                    <p class="module-description">
-                        Track top gainers, losers, most active and volatile stocks across global markets.
-                    </p>
-                    <ul class="feature-list">
-                        <li>Top gainers/losers</li>
-                        <li>Most active stocks</li>
-                        <li>Volatility tracking</li>
-                        <li>Sector heatmap</li>
-                        <li>Multi-market support</li>
-                    </ul>
-                    <div class="module-actions">
-                        <a href="market_movers.html" class="btn btn-primary" target="_blank">Open Module</a>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Market Tracker Module -->
-            <div class="module-card">
-                <div class="module-header">
-                    <div class="module-title">🌍 Market Tracker Final</div>
-                    <span class="module-badge">24/48 Hour</span>
-                </div>
-                <div class="module-body">
-                    <p class="module-description">
-                        Real-time tracking of global markets with intraday data focused on 24-48 hour movements.
-                    </p>
-                    <ul class="feature-list">
-                        <li>ASX, FTSE, S&P 500 tracking</li>
-                        <li>24 & 48 hour timeframes</li>
-                        <li>Overlapping market zones</li>
-                        <li>AEST timezone aligned</li>
-                        <li>Auto-refresh every 30s</li>
-                    </ul>
-                    <div class="module-actions">
-                        <a href="modules/market-tracking/market_tracker_final_correct.html" class="btn btn-primary" target="_blank">Open Module</a>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- CBA Analysis Module -->
-            <div class="module-card">
-                <div class="module-header">
-                    <div class="module-title">🏦 CBA Analysis Enhanced</div>
-                    <span class="module-badge">Specialized</span>
-                </div>
-                <div class="module-body">
-                    <p class="module-description">
-                        Specialized analysis module for Commonwealth Bank of Australia (CBA.AX) with custom indicators.
-                    </p>
-                    <ul class="feature-list">
-                        <li>CBA-specific analysis</li>
-                        <li>Banking sector indicators</li>
-                        <li>Dividend tracking</li>
-                        <li>ASX comparison</li>
-                        <li>Historical patterns</li>
-                    </ul>
-                    <div class="module-actions">
-                        <a href="modules/analysis/cba_analysis_enhanced_fixed.html" class="btn btn-primary" target="_blank">Open Module</a>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Diagnostic Tool -->
-            <div class="module-card">
-                <div class="module-header">
-                    <div class="module-title">🔧 Diagnostic Tool</div>
-                    <span class="module-badge">Utility</span>
-                </div>
-                <div class="module-body">
-                    <p class="module-description">
-                        Test and verify all connections, particularly useful for Windows 11 localhost troubleshooting.
-                    </p>
-                    <ul class="feature-list">
-                        <li>Connection testing</li>
-                        <li>Backend API validation</li>
-                        <li>System information</li>
-                        <li>Auto-diagnostic on load</li>
-                        <li>Windows 11 optimized</li>
-                    </ul>
-                    <div class="module-actions">
-                        <a href="diagnostic_tool.html" class="btn btn-primary" target="_blank">Run Diagnostics</a>
-                    </div>
-                </div>
+            <div class="info-card">
+                <h3>🛡️ Safety</h3>
+                <p>✅ Automatic backups</p>
+                <p>✅ Easy rollback</p>
+                <p>✅ Non-destructive</p>
             </div>
         </div>
+
+        <h2>⚡ Quick Installation</h2>
         
-        <div class="footer">
-            <p>Stock Tracker Enhanced Edition v5.0 | Real Yahoo Finance Data Only</p>
-            <p>Repository: <a href="https://github.com/davidosland-lab/enhanced-global-stock-tracker-frontend" target="_blank">GitHub</a> | 
-               Download: <a href="https://github.com/davidosland-lab/enhanced-global-stock-tracker-frontend/raw/main/working_directory/stock_tracker_windows11_deployment_v5.0.zip">Windows 11 Package</a></p>
-            <p>© 2025 - All modules using hardcoded localhost for Windows 11 compatibility</p>
+        <div class="step">
+            <span class="step-number">1</span>
+            <strong>Extract Package</strong>
+            <pre style="margin: 10px 0 0 55px; background: rgba(255,255,255,0.2); padding: 10px; border-radius: 5px;">
+# Windows PowerShell
+Expand-Archive -Path "trading_system_v187_hotfix.zip" -DestinationPath "C:\Temp\v187"
+
+# Linux/Mac
+tar -xzf trading_system_v187_hotfix.tar.gz -C /tmp/v187</pre>
+        </div>
+
+        <div class="step">
+            <span class="step-number">2</span>
+            <strong>Navigate to Trading System</strong>
+            <pre style="margin: 10px 0 0 55px; background: rgba(255,255,255,0.2); padding: 10px; border-radius: 5px;">cd "C:\Users\david\Regime_trading\complete_backend_clean_install_v1.3.15"</pre>
+        </div>
+
+        <div class="step">
+            <span class="step-number">3</span>
+            <strong>Apply Core Fix (Required)</strong>
+            <pre style="margin: 10px 0 0 55px; background: rgba(255,255,255,0.2); padding: 10px; border-radius: 5px;">Copy-Item "C:\Temp\v187\v187_confidence_threshold_fix_ui_enhancement\APPLY_V187_THRESHOLD_FIX.py" -Destination "."
+python APPLY_V187_THRESHOLD_FIX.py</pre>
+        </div>
+
+        <div class="step">
+            <span class="step-number">4</span>
+            <strong>Apply UI Enhancement (Optional)</strong>
+            <pre style="margin: 10px 0 0 55px; background: rgba(255,255,255,0.2); padding: 10px; border-radius: 5px;">Copy-Item "C:\Temp\v187\v187_confidence_threshold_fix_ui_enhancement\APPLY_V187_UI_ENHANCEMENT.py" -Destination "."
+python APPLY_V187_UI_ENHANCEMENT.py</pre>
+        </div>
+
+        <div class="step">
+            <span class="step-number">5</span>
+            <strong>Restart Dashboard</strong>
+            <pre style="margin: 10px 0 0 55px; background: rgba(255,255,255,0.2); padding: 10px; border-radius: 5px;">python unified_trading_dashboard.py</pre>
+        </div>
+
+        <h2>📊 Expected Results</h2>
+        
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th>Before v187</th>
+                    <th>After v187</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Confidence Threshold</strong></td>
+                    <td>65% (broken)</td>
+                    <td>48% (fixed)</td>
+                </tr>
+                <tr>
+                    <td><strong>RIO.AX Signal (54%)</strong></td>
+                    <td><span class="fail-cross">❌ BLOCKED</span></td>
+                    <td><span class="success-check">✅ PASSED</span></td>
+                </tr>
+                <tr>
+                    <td><strong>GSK.L Signal (53%)</strong></td>
+                    <td><span class="fail-cross">❌ BLOCKED</span></td>
+                    <td><span class="success-check">✅ PASSED</span></td>
+                </tr>
+                <tr>
+                    <td><strong>Trades Executed</strong></td>
+                    <td>0</td>
+                    <td>Normal</td>
+                </tr>
+                <tr>
+                    <td><strong>UI Control</strong></td>
+                    <td>Integer slider</td>
+                    <td>Decimal text input</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>📁 Package Contents</h2>
+        
+        <table>
+            <tr>
+                <th>File</th>
+                <th>Description</th>
+            </tr>
+            <tr style="background: #fff3cd;">
+                <td><strong>README_v187.md</strong></td>
+                <td>⭐ Package overview - START HERE</td>
+            </tr>
+            <tr>
+                <td><strong>DEPLOYMENT_INSTRUCTIONS.md</strong></td>
+                <td>Complete deployment guide</td>
+            </tr>
+            <tr>
+                <td><strong>QUICK_REFERENCE.md</strong></td>
+                <td>30-second quickstart</td>
+            </tr>
+            <tr style="background: #e8f5e9;">
+                <td><strong>APPLY_V187_THRESHOLD_FIX.py</strong></td>
+                <td>🤖 Automated core fix script</td>
+            </tr>
+            <tr style="background: #e8f5e9;">
+                <td><strong>APPLY_V187_UI_ENHANCEMENT.py</strong></td>
+                <td>🎨 Automated UI conversion script</td>
+            </tr>
+            <tr>
+                <td><strong>MANUAL_PATCH_GUIDE.md</strong></td>
+                <td>Manual patching instructions</td>
+            </tr>
+            <tr>
+                <td><strong>SLIDER_TO_TEXT_INPUT_GUIDE.md</strong></td>
+                <td>Manual UI conversion guide</td>
+            </tr>
+            <tr>
+                <td><strong>UI_ENHANCEMENT_README.md</strong></td>
+                <td>UI enhancement documentation</td>
+            </tr>
+            <tr>
+                <td><strong>CHANGELOG.md</strong></td>
+                <td>Version history</td>
+            </tr>
+            <tr>
+                <td><strong>config/live_trading_config.json</strong></td>
+                <td>Reference configuration</td>
+            </tr>
+        </table>
+
+        <h2>🎨 UI Enhancement Preview</h2>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0;">
+            <div style="text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px;">
+                <h3>Before (Slider)</h3>
+                <pre style="background: white; padding: 15px; border-radius: 5px;">
+Confidence: [====●=======] 48%
+            ↑ Drag to adjust
+            (Integer values only)</pre>
+            </div>
+            <div style="text-align: center; padding: 20px; background: #e8f5e9; border-radius: 8px;">
+                <h3>After (Text Input)</h3>
+                <pre style="background: white; padding: 15px; border-radius: 5px;">
+Confidence (%): [  48.5  ] %
+                 ↑ Type exact value
+                 (Decimal precision)</pre>
+            </div>
+        </div>
+
+        <h2>📞 Support & Documentation</h2>
+        
+        <p>After downloading, the package includes complete documentation:</p>
+        <ul>
+            <li><strong>README_v187.md</strong> - Package overview (start here)</li>
+            <li><strong>DEPLOYMENT_INSTRUCTIONS.md</strong> - Step-by-step deployment</li>
+            <li><strong>QUICK_REFERENCE.md</strong> - Quick commands</li>
+            <li><strong>Manual guides</strong> - Alternative installation methods</li>
+        </ul>
+
+        <hr style="margin: 40px 0;">
+        
+        <div style="text-align: center; color: #7f8c8d;">
+            <p><strong>Trading System v187 Hotfix Package</strong></p>
+            <p>Version 1.3.15.187 | Release Date: 2026-02-25</p>
+            <p><strong>Unique Package Name:</strong> v187_confidence_threshold_fix_ui_enhancement</p>
+            <p>ZIP: 29 KB | TAR.GZ: 19 KB</p>
+            <p style="margin-top: 20px;">
+                <strong>Deploy in 40 seconds and restore normal trading!</strong>
+            </p>
         </div>
     </div>
-    
-    <script>
-        // Update last updated time
-        function updateTime() {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString('en-AU', { 
-                hour: '2-digit', 
-                minute: '2-digit',
-                hour12: false 
-            });
-            document.getElementById('lastUpdated').textContent = timeString;
-        }
-        
-        // Test backend connection
-        async function testBackend() {
-            const BACKEND_URL = 'http://localhost:8002';
-            try {
-                const response = await fetch(`${BACKEND_URL}/api/stock/AAPL`);
-                if (response.ok) {
-                    alert('✅ Backend is online and responding!\n\nConnection successful to: ' + BACKEND_URL);
-                } else {
-                    alert('⚠️ Backend responded but with an error.\n\nStatus: ' + response.status);
-                }
-            } catch (error) {
-                alert('❌ Cannot connect to backend.\n\nPlease ensure:\n1. Backend is running (python backend_fixed_v2.py)\n2. Port 8002 is available\n3. No firewall blocking\n\nError: ' + error.message);
-            }
-        }
-        
-        // Refresh status
-        function refreshStatus() {
-            updateTime();
-            // Could add more status checks here
-            console.log('Status refreshed');
-        }
-        
-        // Check backend status
-        async function checkBackendStatus() {
-            // Check main backend
-            try {
-                const response = await fetch('http://localhost:8002/api/health');
-                const backendDiv = document.getElementById('backendStatus');
-                if (response.ok) {
-                    backendDiv.innerHTML = '<span class="status-dot active"></span>Connected';
-                    backendDiv.className = 'status-value active';
-                } else {
-                    backendDiv.innerHTML = '<span class="status-dot"></span>Disconnected';
-                    backendDiv.className = 'status-value';
-                }
-            } catch (error) {
-                const backendDiv = document.getElementById('backendStatus');
-                backendDiv.innerHTML = '<span class="status-dot"></span>Disconnected';
-                backendDiv.className = 'status-value';
-            }
-            
-            // Check ML backend
-            try {
-                const response = await fetch('http://localhost:8003/api/health');
-                const mlDiv = document.getElementById('mlStatus');
-                if (response.ok) {
-                    mlDiv.innerHTML = '<span class="status-dot active"></span>Connected';
-                    mlDiv.className = 'status-value active';
-                } else {
-                    mlDiv.innerHTML = '<span class="status-dot"></span>Disconnected';
-                    mlDiv.className = 'status-value';
-                }
-            } catch (error) {
-                const mlDiv = document.getElementById('mlStatus');
-                mlDiv.innerHTML = '<span class="status-dot"></span>Disconnected';
-                mlDiv.className = 'status-value';
-            }
-        }
-        
-        // Initialize
-        updateTime();
-        checkBackendStatus();
-        setInterval(updateTime, 60000); // Update every minute
-        setInterval(checkBackendStatus, 5000); // Check backend every 5 seconds
-        
-        // Check if we're in sandbox or local environment
-        if (window.location.hostname.includes('.e2b.dev')) {
-            console.log('Running in E2B sandbox environment');
-            // Update backend URL display if needed
-        } else {
-            console.log('Running in local environment');
-        }
-        
-        // Add keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            if (e.ctrlKey || e.metaKey) {
-                switch(e.key) {
-                    case '1':
-                        window.open('modules/technical_analysis_enhanced.html', '_blank');
-                        break;
-                    case '2':
-                        window.open('modules/predictions/prediction_centre_advanced.html', '_blank');
-                        break;
-                    case '3':
-                        window.open('modules/technical_analysis_desktop.html', '_blank');
-                        break;
-                    case 'd':
-                        window.open('diagnostic_tool.html', '_blank');
-                        break;
-                    case 'r':
-                        refreshStatus();
-                        break;
-                }
-            }
-        });
-        
-        // Log version info
-        console.log('%c📈 Stock Tracker v5.0 - Windows 11 Fixed Edition', 'font-size: 20px; color: #667eea; font-weight: bold;');
-        console.log('%cAll modules using hardcoded localhost:8002 for Windows compatibility', 'color: #22c55e;');
-        console.log('%cKeyboard shortcuts: Ctrl+1/2/3 for modules, Ctrl+D for diagnostics, Ctrl+R to refresh', 'color: #6c757d;');
-    </script>
 </body>
 </html>

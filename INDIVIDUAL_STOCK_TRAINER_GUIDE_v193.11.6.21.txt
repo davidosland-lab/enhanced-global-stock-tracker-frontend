@@ -1,0 +1,608 @@
+================================================================================
+INDIVIDUAL STOCK LSTM TRAINER - USER GUIDE
+================================================================================
+Version: v193.11.6.21
+Date: 2026-03-10
+Feature: Interactive tool to train LSTM models for specific stocks
+
+================================================================================
+OVERVIEW
+================================================================================
+
+**PURPOSE:**
+Train LSTM models for specific stocks not included in the overnight pipeline's
+top 20 automatic training.
+
+**USE CASES:**
+1. Large-cap stocks consistently missing from top 20 (e.g., CBA.AX, NAB.AX)
+2. Stocks you want to trade that show "LSTM failed - not enough data"
+3. Quick model training without running full overnight pipeline
+4. Custom stock portfolio requiring LSTM models
+
+**BENEFITS:**
+✓ No more -20% confidence penalty for missing LSTM models
+✓ Full 5-component signal generation (Sentiment + LSTM + Technical + Momentum + Volume)
+✓ Models saved alongside overnight pipeline models (same location)
+✓ Interactive and easy to use
+✓ Models persist across dashboard restarts
+
+================================================================================
+HOW TO USE
+================================================================================
+
+METHOD 1: FROM START.BAT MENU (RECOMMENDED)
+-------------------------------------------
+1. Double-click START.bat in your ULTIMATE_v193_COMPLETE folder
+
+2. Select option 8: "Train Individual Stocks"
+
+3. Enter stock symbols when prompted (one per line):
+   ```
+   Stock #1 (or Enter to finish): CBA.AX
+     ✓ Added: CBA.AX
+   Stock #2 (or Enter to finish): NAB.AX
+     ✓ Added: NAB.AX
+   Stock #3 (or Enter to finish): WBC.AX
+     ✓ Added: WBC.AX
+   Stock #4 (or Enter to finish): [Press Enter]
+   ```
+
+4. Confirm training:
+   ```
+   READY TO TRAIN 3 STOCK(S):
+   ----------------------------------------
+     1. CBA.AX
+     2. NAB.AX
+     3. WBC.AX
+   
+   Estimated time: 9 minutes
+   
+   Proceed with training? (yes/no): yes
+   ```
+
+5. Training runs automatically (3 minutes per stock)
+
+6. Review results:
+   ```
+   TRAINING COMPLETE
+   ========================================
+   Duration: 8.5 minutes
+   Trained: 3 / 3 stocks
+   
+   ✓ Successfully trained:
+     - CBA.AX
+     - NAB.AX
+     - WBC.AX
+   
+   Models saved to:
+     finbert_v4.4.4/models/saved_models/
+   ```
+
+7. Restart dashboard to use new models
+
+
+METHOD 2: RUN BATCH FILE DIRECTLY
+----------------------------------
+1. Double-click TRAIN_INDIVIDUAL_STOCKS.bat in your ULTIMATE_v193_COMPLETE folder
+
+2. Follow the same interactive prompts as Method 1
+
+
+METHOD 3: RUN PYTHON SCRIPT DIRECTLY
+------------------------------------
+1. Open Command Prompt
+
+2. Navigate to your project root:
+   ```
+   cd C:\Users\david\Regime trading V5
+   ```
+
+3. Activate virtual environment (if needed):
+   ```
+   call ULTIMATE_v193_COMPLETE\finbert_v4.4.4\venv\Scripts\activate.bat
+   ```
+
+4. Run the trainer:
+   ```
+   python train_individual_stocks.py
+   ```
+
+5. Follow interactive prompts
+
+================================================================================
+STOCK SYMBOL FORMATS
+================================================================================
+
+AUSTRALIAN STOCKS (ASX):
+-----------------------
+Format: SYMBOL.AX
+Examples:
+  - CBA.AX  (Commonwealth Bank)
+  - BHP.AX  (BHP Group)
+  - NAB.AX  (National Australia Bank)
+  - WBC.AX  (Westpac Banking Corporation)
+  - ANZ.AX  (ANZ Banking Group)
+  - WOW.AX  (Woolworths Group)
+  - WES.AX  (Wesfarmers)
+  - CSL.AX  (CSL Limited)
+  - RIO.AX  (Rio Tinto)
+  - FMG.AX  (Fortescue Metals Group)
+
+
+US STOCKS (NYSE/NASDAQ):
+------------------------
+Format: SYMBOL (no suffix)
+Examples:
+  - AAPL    (Apple)
+  - GOOGL   (Alphabet/Google)
+  - MSFT    (Microsoft)
+  - TSLA    (Tesla)
+  - NVDA    (NVIDIA)
+  - AMZN    (Amazon)
+  - META    (Meta/Facebook)
+  - JPM     (JPMorgan Chase)
+  - V       (Visa)
+  - XOM     (Exxon Mobil)
+
+
+UK STOCKS (LSE):
+---------------
+Format: SYMBOL.L
+Examples:
+  - BP.L    (BP plc)
+  - HSBA.L  (HSBC Holdings)
+  - VOD.L   (Vodafone Group)
+  - BARC.L  (Barclays)
+  - LLOY.L  (Lloyds Banking Group)
+  - SHEL.L  (Shell plc)
+  - AZN.L   (AstraZeneca)
+  - ULVR.L  (Unilever)
+  - GSK.L   (GSK plc)
+  - RIO.L   (Rio Tinto plc)
+
+
+VALIDATION:
+----------
+The system validates symbols automatically:
+✓ CBA.AX   - Valid AU format
+✓ AAPL     - Valid US format
+✓ BP.L     - Valid UK format
+✗ CBA      - Invalid (AU stocks need .AX suffix)
+✗ AAPL.US  - Invalid (US stocks have no suffix)
+
+================================================================================
+TRAINING PROCESS DETAILS
+================================================================================
+
+REQUIREMENTS:
+------------
+- 2 years of historical price data (502+ trading days)
+- Internet connection (to fetch data from Yahoo Finance)
+- ~500 MB disk space per model
+- Python environment with TensorFlow/Keras
+
+
+TRAINING STEPS (PER STOCK):
+---------------------------
+1. Fetch 2 years historical data (OHLCV)
+   - Source: Yahoo Finance API
+   - Period: 2y (approx 502 trading days)
+   - Validation: Ensures 200+ days available
+
+2. Feature engineering
+   - Normalize prices (MinMaxScaler)
+   - Create 60-day sequences
+   - Calculate returns for prediction target
+   - Split: 80% train, 20% validation
+
+3. Build LSTM model
+   - Architecture: 2 LSTM layers (50 units each) + Dense layers
+   - Dropout: 20% (prevent overfitting)
+   - Optimizer: Adam
+   - Loss: Binary crossentropy
+   - Epochs: 50 (with early stopping)
+
+4. Train model
+   - Batch size: 32
+   - Training time: 2-4 minutes per stock
+   - Validation accuracy target: 60-80%
+
+5. Save model files
+   - Model: {SYMBOL}_lstm_model.h5 (~500 KB)
+   - Scaler: {SYMBOL}_lstm_scaler.pkl (~1 KB)
+   - Registry: Update lstm_models_registry.json
+
+6. Metadata
+   - Training date
+   - Validation accuracy
+   - Number of samples
+   - Model parameters
+
+
+WHAT GETS SAVED:
+---------------
+Location: finbert_v4.4.4/models/saved_models/
+
+For CBA.AX:
+  ├── CBA.AX_lstm_model.h5        (Trained neural network, ~500 KB)
+  ├── CBA.AX_lstm_scaler.pkl      (Data scaler, ~1 KB)
+  └── lstm_models_registry.json   (Index of all models, updated)
+
+Registry Entry Example:
+```json
+{
+  "models": {
+    "CBA.AX": {
+      "model_path": "CBA.AX_lstm_model.h5",
+      "scaler_path": "CBA.AX_lstm_scaler.pkl",
+      "trained_date": "2026-03-10",
+      "validation_accuracy": 0.78,
+      "training_samples": 442
+    }
+  }
+}
+```
+
+================================================================================
+USING TRAINED MODELS
+================================================================================
+
+AFTER TRAINING:
+--------------
+1. **Restart Dashboard**
+   Close existing dashboard and run START_DASHBOARD.bat
+
+2. **Models Load Automatically**
+   Dashboard checks finbert_v4.4.4/models/saved_models/ at startup
+   
+3. **Verify Loading**
+   Check logs/unified_trading.log for:
+   ```
+   [LOADED] [OK] LSTM model for CBA.AX (trained 2026-03-10, acc=0.78)
+   ```
+
+4. **Trade Normally**
+   - CBA.AX now has full 5-component signal
+   - No more "LSTM failed" errors
+   - No -20% confidence penalty
+   - Full opportunity score calculation
+
+
+SIGNAL GENERATION (WITH LSTM):
+------------------------------
+Components and Weights:
+  1. FinBERT Sentiment:   25%
+  2. LSTM Prediction:     25%  ← Now available!
+  3. Technical Analysis:  25%
+  4. Momentum:            15%
+  5. Volume:              10%
+
+Combined Score: Weighted sum of all 5 components
+Confidence: 50% + (combined_score * 50%)
+
+Example:
+  - Sentiment:  0.6 (bullish)
+  - LSTM:       0.7 (strong bullish) ← Trained model
+  - Technical:  0.5 (neutral)
+  - Momentum:   0.4 (weak)
+  - Volume:     0.7 (strong)
+  
+  Combined = 0.6*0.25 + 0.7*0.25 + 0.5*0.25 + 0.4*0.15 + 0.7*0.10
+           = 0.150 + 0.175 + 0.125 + 0.060 + 0.070
+           = 0.580
+  
+  Confidence = 0.50 + 0.580 * 0.5 = 0.79 (79%)
+
+
+SIGNAL GENERATION (WITHOUT LSTM):
+---------------------------------
+Components are reweighted:
+  1. FinBERT Sentiment:   35% ↑
+  2. LSTM Prediction:      0% (unavailable)
+  3. Technical Analysis:  35% ↑
+  4. Momentum:            20% ↑
+  5. Volume:              10%
+
+Combined Score: Lower (missing 25% contribution)
+Confidence: Reduced by ~2-5%
+
+Same Example Without LSTM:
+  Combined = 0.6*0.35 + 0.0*0.0 + 0.5*0.35 + 0.4*0.20 + 0.7*0.10
+           = 0.210 + 0.0 + 0.175 + 0.080 + 0.070
+           = 0.535 (lower than 0.580)
+  
+  Confidence = 0.50 + 0.535 * 0.5 = 0.768 (76.8%)
+  
+  **Penalty: -2.2% confidence** (79% → 76.8%)
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+ISSUE: "Insufficient data to train LSTM"
+----------------------------------------
+CAUSE: Stock has < 200 days of historical data
+SOLUTION:
+  - Verify stock symbol is correct
+  - Check if stock recently listed (IPO < 1 year ago)
+  - Try different data source or wait for more trading days
+
+
+ISSUE: "Model file not found"
+-----------------------------
+CAUSE: Training completed but model not saved
+SOLUTION:
+  - Check disk space (need ~500 MB per model)
+  - Verify write permissions on finbert_v4.4.4/models/saved_models/
+  - Re-run training with logging enabled
+  - Check logs/lstm_training/individual_training.log
+
+
+ISSUE: "Symbol not recognized"
+------------------------------
+CAUSE: Invalid symbol format
+SOLUTION:
+  - AU stocks: Use .AX suffix (CBA.AX not CBA)
+  - US stocks: No suffix (AAPL not AAPL.US)
+  - UK stocks: Use .L suffix (BP.L not BP)
+
+
+ISSUE: Dashboard not loading new models
+---------------------------------------
+CAUSE: Dashboard cached old models or not restarted
+SOLUTION:
+  1. Close dashboard completely (Ctrl+C in terminal)
+  2. Delete __pycache__ folders:
+     ```
+     rmdir /s /q core\__pycache__
+     rmdir /s /q ml_pipeline\__pycache__
+     ```
+  3. Restart dashboard: START_DASHBOARD.bat
+  4. Verify models loaded in logs
+
+
+ISSUE: Training very slow (> 10 min per stock)
+----------------------------------------------
+CAUSE: Large dataset or slow CPU
+SOLUTION:
+  - Reduce epochs in lstm_trainer.py (50 → 30)
+  - Train fewer stocks at once
+  - Use GPU if available (requires TensorFlow GPU)
+  - Run training overnight
+
+
+ISSUE: Training fails with TensorFlow error
+-------------------------------------------
+CAUSE: TensorFlow/Keras not installed or incompatible version
+SOLUTION:
+  1. Activate virtual environment
+  2. Install/upgrade TensorFlow:
+     ```
+     pip install --upgrade tensorflow==2.10.0
+     pip install --upgrade keras==2.10.0
+     ```
+  3. Restart training
+
+================================================================================
+BEST PRACTICES
+================================================================================
+
+WHEN TO USE INDIVIDUAL TRAINING:
+--------------------------------
+✓ Stock appears in dashboard but shows "LSTM failed"
+✓ Large-cap stock not in overnight top 20 (e.g., CBA.AX)
+✓ You want to trade a specific stock portfolio
+✓ Quick turnaround needed (don't want to wait for overnight pipeline)
+
+WHEN TO USE OVERNIGHT PIPELINE:
+-------------------------------
+✓ Training top 20-30 highest opportunity stocks
+✓ Automated nightly model updates
+✓ Model staleness > 7 days (automatic retraining)
+✓ Comprehensive market scanning
+
+
+RECOMMENDED WORKFLOW:
+--------------------
+1. **Initial Setup**: Train your core portfolio stocks individually
+   - Example: Top 10 ASX banks, miners, energy stocks
+   - One-time setup: 30 minutes total
+
+2. **Regular Trading**: Use overnight pipeline
+   - Runs automatically before market open
+   - Keeps top 20 models fresh (retrained if > 7 days old)
+
+3. **Ad-hoc Training**: Train new stocks as needed
+   - When you want to add a new stock to portfolio
+   - When a stock appears but lacks LSTM model
+
+
+STOCK SELECTION TIPS:
+---------------------
+✓ Prioritize large-cap stocks (better data quality)
+✓ Train stocks you actively trade (not random stocks)
+✓ Consider your typical portfolio size (if you trade 10 stocks, train 10 models)
+✓ Include sector diversity (banks + miners + energy + tech)
+
+
+MAINTENANCE:
+-----------
+- Models are automatically checked for staleness (> 7 days)
+- Overnight pipeline retrains stale models in top 20
+- Manually trained models may need periodic retraining
+- Retrain after major stock events (splits, mergers, etc.)
+
+================================================================================
+MONITORING & VALIDATION
+================================================================================
+
+CHECK TRAINED MODELS:
+--------------------
+```bash
+cd ULTIMATE_v193_COMPLETE
+dir finbert_v4.4.4\models\saved_models\*.h5
+```
+
+Expected Output:
+```
+CBA.AX_lstm_model.h5
+NAB.AX_lstm_model.h5
+WBC.AX_lstm_model.h5
+...
+```
+
+
+VIEW MODEL REGISTRY:
+-------------------
+```bash
+type finbert_v4.4.4\models\saved_models\lstm_models_registry.json
+```
+
+Check for your trained stocks in the JSON output
+
+
+VIEW TRAINING LOGS:
+------------------
+```bash
+type logs\lstm_training\individual_training.log
+```
+
+Look for:
+- "[OK] LSTM training complete for {SYMBOL}"
+- Validation accuracy scores
+- Any errors or warnings
+
+
+TEST MODEL LOADING (DASHBOARD LOGS):
+------------------------------------
+```bash
+type logs\unified_trading.log | findstr "LSTM"
+```
+
+Look for:
+- "[LOADED] [OK] LSTM model for CBA.AX"
+- Model training date and accuracy
+
+
+VERIFY SIGNAL GENERATION:
+-------------------------
+In dashboard, check CBA.AX signal:
+- Should show all 5 components (not "LSTM unavailable")
+- Confidence should be higher than before
+- Combined score includes LSTM contribution
+
+================================================================================
+FREQUENTLY ASKED QUESTIONS
+================================================================================
+
+Q: How long do trained models last?
+A: Models don't expire, but become "stale" after 7 days. Overnight pipeline
+   retrains stale models automatically if they're in the top 20.
+
+Q: Can I train the same stock multiple times?
+A: Yes! The system will overwrite old models. Useful after major market events.
+
+Q: Do individually trained models appear in overnight pipeline?
+A: Yes, they're stored in the same location. Overnight pipeline will retrain
+   them if they're in the top 20 and > 7 days old.
+
+Q: How many stocks can I train at once?
+A: No hard limit, but recommended max 20 per session (60 minutes total).
+
+Q: Will training affect overnight pipeline?
+A: No conflict. Both use the same model directory. Last trained wins.
+
+Q: Can I delete models I don't need?
+A: Yes, delete both {SYMBOL}_lstm_model.h5 and {SYMBOL}_lstm_scaler.pkl files,
+   and remove the entry from lstm_models_registry.json.
+
+Q: What if I train a stock that's already in top 20?
+A: No problem! Your manually trained model will be used until overnight pipeline
+   retrains it (if > 7 days old).
+
+Q: Do models work across markets (AU/US/UK)?
+A: Yes, the training process is identical for all markets. Just use correct
+   symbol format (.AX, .L, or no suffix).
+
+================================================================================
+SUPPORT & ADDITIONAL RESOURCES
+================================================================================
+
+DOCUMENTATION FILES:
+-------------------
+- LSTM_PENALTY_AND_CBA_EXPLANATION_v193.11.6.21.txt (21 KB)
+  Comprehensive explanation of LSTM penalty system
+
+- GAP_PREDICTION_ACCURACY_FIX_v193.11.6.21.txt (15 KB)
+  Gap prediction improvements and testing
+
+- FINAL_DEPLOYMENT_SUMMARY_v193.11.6.21.txt (16 KB)
+  Complete deployment guide
+
+
+LOG FILES:
+---------
+- logs/lstm_training/individual_training.log
+  Training session logs
+
+- logs/lstm_training/lstm_training.log
+  Overnight pipeline LSTM training logs
+
+- logs/unified_trading.log
+  Dashboard and trading logs (model loading)
+
+
+CONFIGURATION:
+-------------
+- config/screening_config.json
+  LSTM training parameters (epochs, batch size, etc.)
+
+
+SOURCE CODE:
+-----------
+- train_individual_stocks.py
+  Interactive trainer script
+
+- TRAIN_INDIVIDUAL_STOCKS.bat
+  Windows batch wrapper
+
+- pipelines/models/screening/lstm_trainer.py
+  Core LSTM training module
+
+- ml_pipeline/swing_signal_generator.py
+  Signal generation with LSTM integration
+
+================================================================================
+SUMMARY
+================================================================================
+
+**TOOL**: Individual Stock LSTM Trainer
+**VERSION**: v193.11.6.21
+**PURPOSE**: Train LSTM models for specific stocks not in overnight top 20
+
+**QUICK START:**
+1. Run START.bat → Option 8 → Enter stock symbols → Confirm training
+2. Wait 3 minutes per stock
+3. Restart dashboard
+
+**BENEFITS:**
+✓ No -20% confidence penalty
+✓ Full 5-component signal generation
+✓ Same model location as overnight pipeline
+✓ Interactive and easy to use
+
+**USE FOR:**
+- CBA.AX, NAB.AX, WBC.AX (AU banks)
+- AAPL, GOOGL, MSFT (US tech)
+- BP.L, HSBA.L, VOD.L (UK large-caps)
+- Any stock showing "LSTM failed" error
+
+**NEXT STEPS:**
+1. Train your core portfolio stocks (10-20 stocks)
+2. Restart dashboard
+3. Verify models loaded in logs
+4. Trade with full confidence!
+
+================================================================================
+END OF USER GUIDE
+================================================================================

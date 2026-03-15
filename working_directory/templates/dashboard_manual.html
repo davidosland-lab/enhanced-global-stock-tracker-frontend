@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Trading Dashboard - Manual Controls</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: white;
+            padding: 20px 30px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+        }
+        
+        .status-online { background: #4CAF50; color: white; }
+        .status-paper { background: #2196F3; color: white; }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .card h2 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .metric-label {
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .metric-value {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .metric-value.positive { color: #4CAF50; }
+        .metric-value.negative { color: #f44336; }
+        
+        /* Manual Trading Controls */
+        .manual-controls {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .trading-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-group label {
+            color: #666;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .form-group input, .form-group select {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+        }
+        
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+        
+        .btn-buy {
+            background: #4CAF50;
+            color: white;
+        }
+        
+        .btn-sell {
+            background: #f44336;
+            color: white;
+        }
+        
+        .btn-update {
+            background: #2196F3;
+            color: white;
+        }
+        
+        .btn-quote {
+            background: #FF9800;
+            color: white;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .quote-display {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+            display: none;
+        }
+        
+        .quote-display.active {
+            display: block;
+        }
+        
+        .quote-price {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        /* Positions Table */
+        .positions-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        .positions-table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        .positions-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .positions-table tr:hover {
+            background: #f5f5f5;
+        }
+        
+        .position-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 0.85em;
+        }
+        
+        /* Alerts */
+        .alert {
+            padding: 12px 20px;
+            border-radius: 5px;
+            margin: 10px 0;
+            animation: slideIn 0.3s;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        .alert-success { background: #d4edda; border-left: 4px solid #28a745; }
+        .alert-warning { background: #fff3cd; border-left: 4px solid #ffc107; }
+        .alert-error { background: #f8d7da; border-left: 4px solid #dc3545; }
+        .alert-info { background: #d1ecf1; border-left: 4px solid #17a2b8; }
+        
+        .alerts-container {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        /* Loading Spinner */
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🚀 Enhanced Trading Dashboard</h1>
+            <div>
+                <span class="status-badge status-online" id="statusBadge">● ONLINE</span>
+                <span class="status-badge status-paper" id="modeBadge">PAPER TRADING</span>
+                <span id="updateTime" style="margin-left: 20px; color: #666;"></span>
+            </div>
+        </div>
+
+        <!-- Manual Trading Controls -->
+        <div class="manual-controls">
+            <h2>📊 Manual Trading Controls</h2>
+            
+            <!-- Buy Form -->
+            <div class="trading-form">
+                <div class="form-group">
+                    <label for="buySymbol">Symbol</label>
+                    <input type="text" id="buySymbol" placeholder="AAPL" style="text-transform: uppercase;">
+                </div>
+                <div class="form-group">
+                    <label for="buyShares">Shares</label>
+                    <input type="number" id="buyShares" placeholder="100" min="1">
+                </div>
+                <div class="form-group">
+                    <label for="buyStopLoss">Stop Loss ($)</label>
+                    <input type="number" id="buyStopLoss" placeholder="Optional" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label for="buyTakeProfit">Take Profit ($)</label>
+                    <input type="number" id="buyTakeProfit" placeholder="Optional" step="0.01">
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button class="btn btn-quote" onclick="getQuote()">Get Quote</button>
+                <button class="btn btn-buy" onclick="executeBuy()">Buy</button>
+                <button class="btn btn-update" onclick="validateOrder()">Validate Order</button>
+            </div>
+            
+            <div id="quoteDisplay" class="quote-display">
+                <strong>Current Quote:</strong> <span id="quoteSymbol"></span> - 
+                <span class="quote-price" id="quotePrice"></span>
+                <div style="font-size: 0.9em; color: #666; margin-top: 5px;">
+                    Estimated Cost: $<span id="estimatedCost">0.00</span> | 
+                    Available: $<span id="availableCapital">0.00</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Portfolio Summary -->
+        <div class="dashboard-grid">
+            <div class="card">
+                <h2>💰 Portfolio</h2>
+                <div class="metric">
+                    <span class="metric-label">Total Value</span>
+                    <span class="metric-value" id="totalValue">$0.00</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Cash</span>
+                    <span class="metric-value" id="cashValue">$0.00</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Invested</span>
+                    <span class="metric-value" id="investedValue">$0.00</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Total Return</span>
+                    <span class="metric-value" id="totalReturn">0.00%</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>📈 Performance</h2>
+                <div class="metric">
+                    <span class="metric-label">Total Trades</span>
+                    <span class="metric-value" id="totalTrades">0</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Win Rate</span>
+                    <span class="metric-value" id="winRate">0%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Realized P&L</span>
+                    <span class="metric-value" id="realizedPnl">$0.00</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Max Drawdown</span>
+                    <span class="metric-value" id="maxDrawdown">0%</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>🎯 Risk Metrics</h2>
+                <div class="metric">
+                    <span class="metric-label">Portfolio Heat</span>
+                    <span class="metric-value" id="portfolioHeat">0%</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Open Positions</span>
+                    <span class="metric-value" id="openPositions">0</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Market Sentiment</span>
+                    <span class="metric-value" id="marketSentiment">--</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Open Positions -->
+        <div class="card">
+            <h2>📊 Open Positions</h2>
+            <div id="positionsContainer">
+                <table class="positions-table">
+                    <thead>
+                        <tr>
+                            <th>Symbol</th>
+                            <th>Shares</th>
+                            <th>Entry</th>
+                            <th>Current</th>
+                            <th>P&L</th>
+                            <th>P&L %</th>
+                            <th>Stop Loss</th>
+                            <th>Take Profit</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="positionsTableBody">
+                        <tr>
+                            <td colspan="9" style="text-align: center; padding: 20px; color: #999;">
+                                No open positions
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Recent Alerts -->
+        <div class="card">
+            <h2>🔔 Recent Alerts</h2>
+            <div class="alerts-container" id="alertsContainer">
+                <p style="text-align: center; color: #999;">No alerts yet</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let updateInterval = null;
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            updateDashboard();
+            updateInterval = setInterval(updateDashboard, 5000); // Update every 5 seconds
+            
+            // Load available capital
+            updateAvailableCapital();
+        });
+        
+        // Update dashboard
+        async function updateDashboard() {
+            try {
+                // Update summary
+                const summaryResponse = await fetch('/api/summary');
+                const summary = await summaryResponse.json();
+                
+                if (summary.status === 'online') {
+                    document.getElementById('statusBadge').textContent = '● ONLINE';
+                    document.getElementById('statusBadge').className = 'status-badge status-online';
+                }
+                
+                // Update portfolio
+                const portfolio = summary.portfolio;
+                document.getElementById('totalValue').textContent = `$${portfolio.capital.total_value.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                document.getElementById('cashValue').textContent = `$${portfolio.capital.current_capital.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                document.getElementById('investedValue').textContent = `$${portfolio.capital.invested.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                
+                const totalReturnEl = document.getElementById('totalReturn');
+                totalReturnEl.textContent = `${portfolio.capital.total_return_pct > 0 ? '+' : ''}${portfolio.capital.total_return_pct.toFixed(2)}%`;
+                totalReturnEl.className = `metric-value ${portfolio.capital.total_return_pct >= 0 ? 'positive' : 'negative'}`;
+                
+                // Update performance
+                document.getElementById('totalTrades').textContent = portfolio.performance.total_trades;
+                document.getElementById('winRate').textContent = `${portfolio.performance.win_rate.toFixed(1)}%`;
+                
+                const realizedPnlEl = document.getElementById('realizedPnl');
+                realizedPnlEl.textContent = `$${portfolio.performance.total_realized_pnl.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                realizedPnlEl.className = `metric-value ${portfolio.performance.total_realized_pnl >= 0 ? 'positive' : 'negative'}`;
+                
+                document.getElementById('maxDrawdown').textContent = `${portfolio.performance.max_drawdown.toFixed(2)}%`;
+                
+                // Update risk metrics
+                document.getElementById('portfolioHeat').textContent = `${(portfolio.risk.portfolio_heat * 100).toFixed(1)}%`;
+                document.getElementById('openPositions').textContent = portfolio.positions.count;
+                document.getElementById('marketSentiment').textContent = summary.sentiment.combined.toFixed(1);
+                
+                // Update timestamp
+                document.getElementById('updateTime').textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+                
+                // Update positions
+                await updatePositions();
+                
+                // Update alerts
+                await updateAlerts();
+                
+            } catch (error) {
+                console.error('Error updating dashboard:', error);
+            }
+        }
+        
+        // Update positions
+        async function updatePositions() {
+            try {
+                const response = await fetch('/api/positions');
+                const data = await response.json();
+                
+                const tbody = document.getElementById('positionsTableBody');
+                
+                if (data.positions.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 20px; color: #999;">No open positions</td></tr>';
+                } else {
+                    tbody.innerHTML = data.positions.map(pos => `
+                        <tr>
+                            <td><strong>${pos.symbol}</strong></td>
+                            <td>${pos.shares}</td>
+                            <td>$${pos.entry_price.toFixed(2)}</td>
+                            <td>$${pos.current_price.toFixed(2)}</td>
+                            <td class="${pos.unrealized_pnl >= 0 ? 'positive' : 'negative'}">
+                                $${pos.unrealized_pnl.toFixed(2)}
+                            </td>
+                            <td class="${pos.unrealized_pnl_pct >= 0 ? 'positive' : 'negative'}">
+                                ${pos.unrealized_pnl_pct > 0 ? '+' : ''}${pos.unrealized_pnl_pct.toFixed(2)}%
+                            </td>
+                            <td>$${pos.stop_loss.toFixed(2)}</td>
+                            <td>$${pos.take_profit.toFixed(2)}</td>
+                            <td class="position-actions">
+                                <button class="btn btn-sell btn-small" onclick="sellPosition('${pos.symbol}')">Sell</button>
+                                <button class="btn btn-update btn-small" onclick="updatePosition('${pos.symbol}')">Update</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error updating positions:', error);
+            }
+        }
+        
+        // Update alerts
+        async function updateAlerts() {
+            try {
+                const response = await fetch('/api/alerts');
+                const data = await response.json();
+                
+                const container = document.getElementById('alertsContainer');
+                
+                if (data.alerts.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: #999;">No alerts yet</p>';
+                } else {
+                    container.innerHTML = data.alerts.slice(0, 10).map(alert => `
+                        <div class="alert alert-${alert.severity}">
+                            <strong>${alert.type.toUpperCase()}</strong>: ${alert.message}
+                            <div style="font-size: 0.85em; color: #666; margin-top: 5px;">
+                                ${new Date(alert.timestamp).toLocaleTimeString()}
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error updating alerts:', error);
+            }
+        }
+        
+        // Get quote
+        async function getQuote() {
+            const symbol = document.getElementById('buySymbol').value.toUpperCase();
+            if (!symbol) {
+                alert('Please enter a symbol');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/manual/quote/${symbol}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+                
+                document.getElementById('quoteSymbol').textContent = data.symbol;
+                document.getElementById('quotePrice').textContent = `$${data.price.toFixed(2)}`;
+                
+                // Calculate estimated cost
+                const shares = parseInt(document.getElementById('buyShares').value) || 0;
+                const estimatedCost = shares * data.price;
+                document.getElementById('estimatedCost').textContent = estimatedCost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                
+                document.getElementById('quoteDisplay').classList.add('active');
+                
+                // Update available capital
+                await updateAvailableCapital();
+                
+            } catch (error) {
+                console.error('Error getting quote:', error);
+                alert('Error getting quote');
+            }
+        }
+        
+        // Update available capital
+        async function updateAvailableCapital() {
+            try {
+                const response = await fetch('/api/manual/available_capital');
+                const data = await response.json();
+                
+                document.getElementById('availableCapital').textContent = data.buying_power.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            } catch (error) {
+                console.error('Error updating capital:', error);
+            }
+        }
+        
+        // Validate order
+        async function validateOrder() {
+            const symbol = document.getElementById('buySymbol').value.toUpperCase();
+            const shares = parseInt(document.getElementById('buyShares').value) || 0;
+            
+            if (!symbol || shares <= 0) {
+                alert('Please enter symbol and shares');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/manual/validate_order', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        shares: shares,
+                        order_type: 'BUY'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.valid) {
+                    alert(`✓ Order is valid!\n\nSymbol: ${data.symbol}\nShares: ${data.shares}\nEstimated Price: $${data.estimated_price.toFixed(2)}\nEstimated Cost: $${data.estimated_cost.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}\n\nYou can proceed with the buy order.`);
+                } else {
+                    alert(`✗ Order validation failed:\n\n${data.warnings.join('\n')}`);
+                }
+            } catch (error) {
+                console.error('Error validating order:', error);
+                alert('Error validating order');
+            }
+        }
+        
+        // Execute buy
+        async function executeBuy() {
+            const symbol = document.getElementById('buySymbol').value.toUpperCase();
+            const shares = parseInt(document.getElementById('buyShares').value) || 0;
+            const stopLoss = parseFloat(document.getElementById('buyStopLoss').value) || null;
+            const takeProfit = parseFloat(document.getElementById('buyTakeProfit').value) || null;
+            
+            if (!symbol || shares <= 0) {
+                alert('Please enter symbol and shares');
+                return;
+            }
+            
+            if (!confirm(`Confirm BUY order:\n\n${shares} shares of ${symbol}\nStop Loss: ${stopLoss ? '$' + stopLoss.toFixed(2) : 'Auto'}\nTake Profit: ${takeProfit ? '$' + takeProfit.toFixed(2) : 'Auto'}`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/manual/buy', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        symbol: symbol,
+                        shares: shares,
+                        stop_loss: stopLoss,
+                        take_profit: takeProfit
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`✓ BUY order executed!\n\n${data.message}`);
+                    
+                    // Clear form
+                    document.getElementById('buySymbol').value = '';
+                    document.getElementById('buyShares').value = '';
+                    document.getElementById('buyStopLoss').value = '';
+                    document.getElementById('buyTakeProfit').value = '';
+                    document.getElementById('quoteDisplay').classList.remove('active');
+                    
+                    // Update dashboard
+                    updateDashboard();
+                } else {
+                    alert(`✗ Error: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Error executing buy:', error);
+                alert('Error executing buy order');
+            }
+        }
+        
+        // Sell position
+        async function sellPosition(symbol) {
+            if (!confirm(`Confirm SELL order:\n\nClose position in ${symbol}?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/manual/sell', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ symbol: symbol })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`✓ SELL order executed!\n\n${data.message}`);
+                    updateDashboard();
+                } else {
+                    alert(`✗ Error: ${data.error}`);
+                }
+            } catch (error) {
+                console.error('Error executing sell:', error);
+                alert('Error executing sell order');
+            }
+        }
+        
+        // Update position
+        function updatePosition(symbol) {
+            const newStopLoss = prompt(`Enter new Stop Loss for ${symbol} (leave empty to keep current):`);
+            const newTakeProfit = prompt(`Enter new Take Profit for ${symbol} (leave empty to keep current):`);
+            
+            if (!newStopLoss && !newTakeProfit) {
+                return;
+            }
+            
+            const updates = {};
+            if (newStopLoss) updates.stop_loss = parseFloat(newStopLoss);
+            if (newTakeProfit) updates.take_profit = parseFloat(newTakeProfit);
+            
+            fetch('/api/manual/update_position', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    symbol: symbol,
+                    ...updates
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(`✓ Position updated!\n\n${data.message}`);
+                    updateDashboard();
+                } else {
+                    alert(`✗ Error: ${data.error}`);
+                }
+            })
+            .catch(error => {
+                console.error('Error updating position:', error);
+                alert('Error updating position');
+            });
+        }
+    </script>
+</body>
+</html>

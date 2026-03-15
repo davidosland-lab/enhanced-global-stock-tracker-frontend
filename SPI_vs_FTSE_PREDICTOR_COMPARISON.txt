@@ -1,0 +1,69 @@
+================================================================================
+PREDICTOR COMPARISON: SPI vs FTSE
+================================================================================
+
+COMPONENT WEIGHTS:
+=================
+
+SPI (ASX 200):
+--------------
+US Markets:     65%  (Primary driver - Pacific Rim correlation)
+Futures:        15%  (ES=F, NQ=F - actual futures work)
+UK Markets:     10%  (FTSE correlation 0.40)
+Commodities:    10%  (AUD, Iron, Oil)
+
+FTSE (UK):
+----------
+US Markets:     35%  (Overnight influence, time zone lag)
+Europe:         30%  (Same-day close, strong correlation)
+Futures:        15%  (^FTSE index as proxy - Z=F doesn't work)
+FX:             10%  (GBP/USD, EUR/GBP)
+Commodities:    10%  (Oil, Gold, Copper)
+
+ANALYSIS:
+========
+✓ Different weightings make sense:
+  - ASX more dependent on US (65%) due to Pacific Rim
+  - FTSE more dependent on Europe (30%) due to geographic proximity
+  - FTSE has FX component (10%), SPI doesn't (FX embedded in commodities)
+
+KEY FEATURES COMPARISON:
+=======================
+
+Feature                     | SPI    | FTSE   | Notes
+----------------------------|--------|--------|---------------------------------
+Timezone handling           | ✅     | ✅     | Both have proper tz
+Fallback prediction         | ✅     | ✅     | Both graceful degradation
+World risk integration      | ✅     | ✅     | Both adjust for high risk
+VIX/volatility adjustment   | ✅     | ✅     | SPI uses VIX, FTSE uses VFTSE
+Actual futures data         | ✅     | ❌     | SPI: ES/NQ work, FTSE: Z=F fails
+Component breakdown logging | ✅     | ✅     | Both comprehensive
+Test module                 | ✅     | ✅     | Both have __main__
+Error handling              | ✅     | ✅     | Both robust
+
+FUTURES TICKER STATUS:
+=====================
+
+SPI:
+  ES=F (E-mini S&P 500)     ✅ WORKS
+  NQ=F (NASDAQ 100)         ✅ WORKS
+  
+FTSE:
+  Z=F (FTSE futures)        ❌ DOESN'T EXIST on Yahoo
+  ^FTSE (Index as proxy)    ✅ WORKS (acceptable substitute)
+
+CONCLUSION:
+==========
+Both predictors are well-structured and feature-complete.
+Main difference: SPI uses actual futures, FTSE uses index as proxy.
+This is NOT a design flaw - it's a Yahoo Finance data limitation.
+
+RECOMMENDATIONS:
+===============
+1. ✅ FTSE predictor is production-ready as-is
+2. ✅ Using ^FTSE as proxy is acceptable given data constraints
+3. ✅ Both predictors follow same architectural pattern
+4. ✅ No critical improvements needed
+
+Both modules are robust and production-ready! 🚀
+================================================================================

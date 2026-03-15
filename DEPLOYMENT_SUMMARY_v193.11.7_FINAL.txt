@@ -1,0 +1,492 @@
+═══════════════════════════════════════════════════════════════════════════
+ DEPLOYMENT PACKAGE CREATED: v193.11.7 - Trading Loop Crash Fix
+ Date: 2026-03-10
+═══════════════════════════════════════════════════════════════════════════
+
+## 📦 PACKAGE INFORMATION
+
+**Package Name:** unified_trading_system_v193.11.7_FINAL.zip
+**Version:** v193.11.7
+**Release Date:** March 10, 2026
+**Critical Fix:** Trading loop exception handling
+**Status:** PRODUCTION READY
+
+═══════════════════════════════════════════════════════════════════════════
+## 🎯 WHAT'S INCLUDED
+═══════════════════════════════════════════════════════════════════════════
+
+### Critical Fixes
+
+1. **Trading Loop Crash Prevention** ⭐ NEW IN v193.11.7
+   - File: `core/paper_trading_coordinator.py`
+   - Added try/except to `run_trading_cycle()`
+   - Loop survives all transient errors
+   - Automatic recovery after 60 seconds
+   - Full error logging with tracebacks
+
+2. **Capital Tracking Fix** (from v193.11.6)
+   - File: `core/unified_trading_dashboard.py`
+   - Force Trade buttons update capital correctly
+   - State persistence after manual trades
+   - Total capital = Cash + Position Values
+
+### Startup Scripts - UPDATED
+
+1. **START.bat** (Windows)
+   - Navigates to `core/` directory
+   - Runs `unified_trading_dashboard.py`
+   - Proper path to fixed `paper_trading_coordinator.py`
+   - UTF-8 encoding configured
+   - Error handling with troubleshooting tips
+
+2. **START.sh** (Linux/Mac)
+   - Bash script with same functionality
+   - Executable permissions set
+   - Python3 compatibility
+
+### Core Components
+
+✅ **Unified Trading Dashboard**
+   - Real-time portfolio tracking
+   - Force Trade buttons (fixed)
+   - ML signal display
+   - Market sentiment integration
+   - 24-hour market chart
+
+✅ **Paper Trading Coordinator**
+   - Exception-safe trading loop
+   - Multi-market support (AU/US/UK)
+   - Gap prediction integration
+   - Sentiment-based trading gates
+   - Tax audit trail
+
+✅ **Pipeline Scripts**
+   - AU overnight pipeline
+   - US overnight pipeline
+   - UK overnight pipeline
+   - Signal adapter v3
+
+✅ **Risk Management**
+   - Macro risk gatekeeper
+   - Market entry strategy
+   - Pre-market gap prediction
+   - Position sizing
+   - Stop loss & take profit
+
+✅ **ML & Analytics**
+   - Individual stock LSTM trainer
+   - Sentiment analysis (FinBERT v4.4.4)
+   - Market monitoring system
+   - Cross-timeframe coordination
+
+### Documentation
+
+📄 **DEPLOYMENT_README_v193.11.7.txt** - Complete deployment guide
+📄 **TRADING_LOOP_CRASH_FIX_v193.11.7.txt** - Critical fix details
+📄 **CAPITAL_TRACKING_FIX_SUMMARY_v193.11.6.txt** - Previous fix
+📄 **README.md** - Installation instructions
+📄 **QUICK_START.md** - Quick start guide
+
+═══════════════════════════════════════════════════════════════════════════
+## 🚀 INSTALLATION INSTRUCTIONS
+═══════════════════════════════════════════════════════════════════════════
+
+### Windows Users
+
+1. **Extract the ZIP file**
+   - Right-click → Extract All...
+   - Choose destination folder (e.g., C:\Trading)
+
+2. **Open Command Prompt** in the extracted folder
+   - Shift + Right-click in folder → "Open PowerShell window here"
+   - Or navigate: `cd C:\Trading\unified_trading_system_v193.11.7`
+
+3. **Install Python dependencies** (first time only)
+   ```cmd
+   pip install -r requirements.txt
+   ```
+
+4. **Start the dashboard**
+   ```cmd
+   START.bat
+   ```
+
+5. **Open your browser**
+   - Navigate to: http://localhost:8050
+
+6. **Configure trading**
+   - Enter symbols: BHP.AX,CBA.AX,RIO.AX (or your preferred stocks)
+   - Set initial capital: 100000
+   - Set confidence threshold: 53 (default)
+   - Set stop loss: 5% (default)
+
+7. **Click "Start Trading"**
+   - Watch the terminal for [CYCLE] messages
+   - Monitor portfolio in the dashboard
+
+### Linux/Mac Users
+
+1. **Extract the ZIP file**
+   ```bash
+   unzip unified_trading_system_v193.11.7_FINAL.zip
+   cd unified_trading_system_v193.11.7
+   ```
+
+2. **Install Python dependencies** (first time only)
+   ```bash
+   pip3 install -r requirements.txt
+   ```
+
+3. **Start the dashboard**
+   ```bash
+   ./START.sh
+   ```
+   
+   Or manually:
+   ```bash
+   chmod +x START.sh
+   ./START.sh
+   ```
+
+4. **Open your browser** to http://localhost:8050
+
+5. **Configure and start trading** (same as Windows)
+
+═══════════════════════════════════════════════════════════════════════════
+## ✅ VERIFICATION STEPS
+═══════════════════════════════════════════════════════════════════════════
+
+### After Starting Dashboard
+
+1. **Check Terminal Output**
+   ```
+   ╔═══════════════════════════════════════════════════════════════════╗
+   ║                                                                   ║
+   ║        UNIFIED TRADING DASHBOARD v193.11.7                        ║
+   ║             Trading Loop Crash Fix Applied                        ║
+   ║                                                                   ║
+   ╚═══════════════════════════════════════════════════════════════════╝
+   
+   Starting dashboard...
+   URL: http://localhost:8050
+   ```
+
+2. **Verify Dashboard Loads**
+   - Open http://localhost:8050
+   - Should see trading configuration panel
+   - Should see market status and charts
+
+3. **Start Trading and Monitor**
+   - Click "Start Trading"
+   - Check terminal for cycle messages:
+     ```
+     [CYCLE] Trading cycle 1
+     [CYCLE] Trading cycle 2
+     [CYCLE] Trading cycle 3
+     ```
+
+4. **Verify Error Handling** (NEW!)
+   - If you see errors in logs, check for:
+     ```
+     [ERROR] Exception in trading cycle: <error message>
+     [ERROR] Traceback: ...
+     [WARN] Trading cycle failed but loop will continue
+     [CYCLE] Trading cycle N+1  ← Loop continues!
+     ```
+   - This is the NEW behavior - loop recovers automatically!
+
+5. **Check State File Created**
+   ```bash
+   ls -la state/paper_trading_state.json
+   ```
+   Should exist and update every 60 seconds
+
+═══════════════════════════════════════════════════════════════════════════
+## 🐛 BUG FIX DETAILS
+═══════════════════════════════════════════════════════════════════════════
+
+### Problem (Before v193.11.7)
+
+```python
+def run_trading_cycle(self):
+    """Run one trading cycle"""
+    # 1. Update sentiment          ← Can crash with network error
+    self.get_market_sentiment()
+    
+    # 2. Scan for opportunities    ← Can crash with API timeout
+    self.run_intraday_scan()
+    
+    # 3. Update positions          ← Can crash with missing data
+    self.update_positions()
+    
+    # ❌ NO EXCEPTION HANDLING
+    # Any error stops the loop permanently!
+```
+
+**Result:** Trading stopped, required manual restart
+
+### Solution (v193.11.7)
+
+```python
+def run_trading_cycle(self):
+    """Run one trading cycle"""
+    try:
+        # 1. Update sentiment
+        self.get_market_sentiment()
+        
+        # 2. Scan for opportunities
+        self.run_intraday_scan()
+        
+        # 3. Update positions
+        self.update_positions()
+        
+        # 4. Check exits & entries
+        self.check_exits()
+        self.evaluate_entries()
+        
+        # 5. Save state
+        self.print_status()
+        
+    except Exception as e:
+        # ✅ CATCH ALL ERRORS
+        logger.error(f"[ERROR] Exception in trading cycle: {e}")
+        logger.error(f"[ERROR] Traceback: ", exc_info=True)
+        logger.warning(f"[WARN] Trading cycle failed but loop will continue")
+        # Don't re-raise - loop continues after 60 seconds
+```
+
+**Result:** Trading continues through errors, automatic recovery
+
+### Impact
+
+| Error Type | Before v193.11.7 | After v193.11.7 |
+|------------|------------------|-----------------|
+| Network timeout | ❌ STOPS | ✅ CONTINUES |
+| API rate limit | ❌ STOPS | ✅ CONTINUES |
+| Missing data | ❌ STOPS | ✅ CONTINUES |
+| Price fetch error | ❌ STOPS | ✅ CONTINUES |
+| Calculation error | ❌ STOPS | ✅ CONTINUES |
+
+═══════════════════════════════════════════════════════════════════════════
+## 📁 FILE STRUCTURE
+═══════════════════════════════════════════════════════════════════════════
+
+```
+unified_trading_system_v193.11.7/
+│
+├── START.bat                         ← Windows startup (UPDATED)
+├── START.sh                          ← Linux/Mac startup (UPDATED)
+├── README.md                         ← Installation guide
+├── QUICK_START.md                    ← Quick start
+├── requirements.txt                  ← Python deps
+├── DEPLOYMENT_README_v193.11.7.txt   ← This file
+├── TRADING_LOOP_CRASH_FIX_v193.11.7.txt  ← Fix details
+├── CAPITAL_TRACKING_FIX_SUMMARY_v193.11.6.txt
+│
+├── core/                             ← Core system
+│   ├── unified_trading_dashboard.py  ← Dashboard UI
+│   ├── paper_trading_coordinator.py  ← Trading engine (FIXED!)
+│   ├── auth.py
+│   ├── sentiment_integration.py
+│   ├── macro_risk_gates.py
+│   ├── market_entry_strategy.py
+│   ├── pre_market_strategy.py
+│   └── ... (40+ modules)
+│
+├── scripts/                          ← Pipeline scripts
+│   ├── run_au_pipeline_v1.3.13.py
+│   ├── run_uk_full_pipeline.py
+│   ├── run_us_full_pipeline.py
+│   └── pipeline_signal_adapter_v3.py
+│
+├── pipelines/                        ← Pipeline modules
+├── ml_models/                        ← ML models
+├── config/                           ← Configuration
+├── models/                           ← Trained models
+├── reports/                          ← Pipeline reports
+└── data/                             ← Market data cache
+```
+
+═══════════════════════════════════════════════════════════════════════════
+## 🔧 TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════════════
+
+### Issue: Dashboard won't start
+
+**Solution:**
+```bash
+# Check Python version (need 3.8+)
+python --version
+
+# Reinstall dependencies
+pip install -r requirements.txt
+
+# Check port 8050 is free
+netstat -an | find "8050"      # Windows
+lsof -i :8050                  # Linux/Mac
+```
+
+### Issue: "Module not found" errors
+
+**Solution:**
+```bash
+# Make sure you're in the right directory
+cd unified_trading_system_v193.11.7
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run from correct location
+START.bat                      # Windows
+./START.sh                     # Linux/Mac
+```
+
+### Issue: Trading loop stops (should NOT happen with v193.11.7!)
+
+**Check logs:**
+```bash
+tail -100 logs/paper_trading.log | grep -E "ERROR|WARN|CYCLE"
+```
+
+**Look for:**
+```
+[WARN] Trading cycle failed but loop will continue
+```
+
+If you see this, the fix is working! The loop will recover.
+
+If you DON'T see this warning, you might be running old code.
+Make sure you extracted the NEW zip file and restarted.
+
+### Issue: Capital not updating
+
+This was fixed in v193.11.6 (included in this package).
+
+**Verify fix is active:**
+```bash
+grep -n "system.current_capital" core/paper_trading_coordinator.py
+```
+
+Should see proper capital tracking in `enter_position()` method.
+
+═══════════════════════════════════════════════════════════════════════════
+## 📊 MONITORING & LOGS
+═══════════════════════════════════════════════════════════════════════════
+
+### Watch Trading Activity
+
+```bash
+# Monitor trading cycles
+tail -f logs/paper_trading.log | grep CYCLE
+
+# Monitor errors (should continue after errors now!)
+tail -f logs/paper_trading.log | grep -E "CYCLE|ERROR|WARN"
+
+# Monitor position changes
+tail -f logs/paper_trading.log | grep -E "POSITION OPENED|POSITION CLOSED"
+```
+
+### Check State File
+
+```bash
+# View current state
+cat state/paper_trading_state.json | python -m json.tool
+
+# Watch for updates (every 60 seconds)
+watch -n 5 'ls -lh state/paper_trading_state.json'
+```
+
+═══════════════════════════════════════════════════════════════════════════
+## 🎓 NEXT STEPS
+═══════════════════════════════════════════════════════════════════════════
+
+1. **Test the System** (Recommended)
+   - Run paper trading for 1-2 weeks
+   - Monitor loop stability
+   - Verify capital tracking
+   - Check win rate and P&L
+
+2. **Configure for Your Markets**
+   - Edit `config/market_config.yaml`
+   - Set your preferred symbols
+   - Adjust risk parameters in `config/risk_config.yaml`
+
+3. **Set Up Overnight Pipelines** (Optional)
+   - Configure pipeline scripts
+   - Set up scheduled tasks/cron jobs
+   - Review pipeline reports in dashboard
+
+4. **Monitor Performance**
+   - Track win rate (target >75%)
+   - Monitor drawdown (keep <15%)
+   - Review closed trades for quality
+   - Adjust confidence threshold as needed
+
+5. **Scale Gradually**
+   - Start with small capital
+   - Increase as confidence builds
+   - Always use stop losses
+   - Never risk more than you can afford to lose
+
+═══════════════════════════════════════════════════════════════════════════
+## ⚠️ IMPORTANT NOTES
+═══════════════════════════════════════════════════════════════════════════
+
+### Paper Trading Mode
+
+This system runs in **PAPER TRADING MODE** by default:
+- ✅ No real money at risk
+- ✅ Realistic simulation with live market data
+- ✅ Full portfolio tracking
+- ✅ Safe testing environment
+
+### Production Readiness
+
+With v193.11.7, the system is now production-ready:
+- ✅ Trading loop survives transient errors
+- ✅ Automatic error recovery
+- ✅ Capital tracking verified
+- ✅ State persistence working
+- ✅ Comprehensive logging
+
+### Risk Warning
+
+⚠️ **Trading involves risk of loss. This software is for educational and 
+research purposes. Past performance does not guarantee future results. 
+Always trade responsibly and never risk more than you can afford to lose.**
+
+═══════════════════════════════════════════════════════════════════════════
+## 📞 SUPPORT
+═══════════════════════════════════════════════════════════════════════════
+
+### Documentation Files
+
+- **DEPLOYMENT_README_v193.11.7.txt** - This file
+- **TRADING_LOOP_CRASH_FIX_v193.11.7.txt** - Critical fix details
+- **CAPITAL_TRACKING_FIX_SUMMARY_v193.11.6.txt** - Capital fix
+- **README.md** - General installation
+- **QUICK_START.md** - Quick start guide
+
+### Log Files
+
+- `logs/paper_trading.log` - Trading activity
+- `logs/unified_trading.log` - Dashboard activity
+- `logs/au_pipeline.log` - AU pipeline
+- `logs/us_full_pipeline.log` - US pipeline
+- `logs/uk_full_pipeline.log` - UK pipeline
+
+═══════════════════════════════════════════════════════════════════════════
+
+**Package:** unified_trading_system_v193.11.7_FINAL.zip
+**Version:** v193.11.7
+**Release:** 2026-03-10
+**Status:** PRODUCTION READY ✅
+
+**Critical Fixes:**
+✅ Trading loop crash prevention (v193.11.7)
+✅ Capital tracking fix (v193.11.6)
+✅ Force Trade functionality (v193.11.6)
+
+**Ready to Deploy!** 🚀
+
+═══════════════════════════════════════════════════════════════════════════

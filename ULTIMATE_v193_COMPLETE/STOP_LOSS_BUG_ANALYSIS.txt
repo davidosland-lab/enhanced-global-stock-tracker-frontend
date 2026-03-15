@@ -1,0 +1,292 @@
+================================================================================
+STOP-LOSS BUG ANALYSIS - v193.11.6.20
+================================================================================
+Issue Reported: User set stop-loss to 2% but one open position dropped below
+this level and did not sell.
+
+CODE LOCATION: core/paper_trading_coordinator.py
+Lines: 2208-2292 (_check_exit_conditions method)
+
+================================================================================
+STOP-LOSS CHECK LOGIC (Line 2244-2247)
+================================================================================
+
+Current code:
+```python
+# SECONDARY CHECKS - Mechanical safety exits (always enforced)
+# Stop loss (always enforced)
+if price <= position.stop_loss:
+    return "STOP_LOSS"
+```
+
+PROBLEM IDENTIFIED:
+-------------------
+The code checks: `if price <= position.stop_loss`
+
+But position.stop_loss is calculated AT ENTRY TIME, not dynamically based
+on current price and the UI-configured stop_loss_pct.
+
+================================================================================
+ROOT CAUSE
+================================================================================
+
+ENTRY TIME (line ~1991 in enter_swing_position):
+```python
+stop_loss_pct = abs(self.ui_default_stop_loss) if self.ui_default_stop_loss is not None else self.config['swing_trading']['stop_loss_percent']
+stop_loss_price = entry_price * (1 - stop_loss_pct / 100)
+```
+
+This calculates stop_loss_price ONCE when position is opened.
+
+ISSUE:
+If user changes stop-loss setting AFTER position is opened (e.g., from 4% to 2%),
+the existing position STILL uses the OLD 4% stop-loss price.
+
+EXAMPLE:
+- Position opened yesterday with 4% stop-loss
+- Entry price: USD100.00
+- Stop loss price: USD96.00 (4% below)
+- User changes UI setting to 2% today
+- Current price drops to USD97.00 (3% loss)
+- Expected: Sell (because 3% > 2% stop-loss)
+- Actual: HOLD (because USD97.00 > USD96.00 old stop-loss)
+
+================================================================================
+VERIFICATION
+================================================================================
+
+Check position data structure (Line 196-214):
+```python
+@dataclass
+class Position:
+    symbol: str
+    position_type: str
+    entry_date: str
+    entry_price: float
+    shares: int
+    stop_loss: float           # STATIC - set at entry
+    trailing_stop: float       # UPDATES - but not same as stop_loss
+    profit_target: Optional[float]
+    ...
+```
+
+CONFIRMED: position.stop_loss is STATIC and set at entry time.
+
+Trailing stop DOES update (line 2138-2148):
+```python
+def _update_trailing_stop(self, position: Position, current_price: float):
+    stop_loss_pct = abs(self.ui_default_stop_loss) if self.ui_default_stop_loss is not None else self.config['swing_trading']['stop_loss_percent']
+    
+    if current_price > position.entry_price:
+        new_trailing = current_price * (1 - stop_loss_pct / 100)
+        
+        if new_trailing > position.trailing_stop:
+            logger.info(f"{position.symbol}: Trailing stop USD{position.trailing_stop:.2f} -> USD{new_trailing:.2f}")
+            position.trailing_stop = new_trailing
+```
+
+BUT: Trailing stop only activates when price RISES above entry.
+Initial stop-loss (for downside protection) is STATIC.
+
+================================================================================
+USER'S SCENARIO EXPLAINED
+================================================================================
+
+LIKELY SEQUENCE:
+1. Position opened with default 4% stop-loss (config.json setting)
+2. Entry price: e.g., USD50.00
+3. Stop loss set to: USD48.00 (4% below)
+4. User changed UI slider to 2% yesterday
+5. Current price dropped to USD48.50 (3% loss)
+6. Expected behavior: Sell (3% > 2% user setting)
+7. Actual behavior: Hold (USD48.50 > USD48.00 old stop-loss)
+8. Position continued to decline
+
+CONFIRMATION NEEDED:
+- Check logs/paper_trading.log for position entry
+- Check state/positions.json for stop_loss value
+- Check config.json for default stop_loss_percent
+- Compare entry stop_loss vs current UI setting
+
+================================================================================
+THE FIX - Two Options
+================================================================================
+
+OPTION 1: Dynamic Stop-Loss Check (RECOMMENDED)
+------------------------------------------------
+Always calculate stop-loss based on current UI setting:
+
+```python
+# SECONDARY CHECKS - Mechanical safety exits (always enforced)
+# Stop loss (always enforced) - v193.11.6.21: Dynamic calculation
+stop_loss_pct = abs(self.ui_default_stop_loss) if self.ui_default_stop_loss is not None else self.config['swing_trading']['stop_loss_percent']
+dynamic_stop_loss = position.entry_price * (1 - stop_loss_pct / 100)
+
+# Use the TIGHTER of: static stop_loss OR dynamic stop_loss
+effective_stop_loss = max(position.stop_loss, dynamic_stop_loss)
+
+if price <= effective_stop_loss:
+    loss_pct = ((price - position.entry_price) / position.entry_price) * 100
+    return f"STOP_LOSS_{abs(int(loss_pct))}%"
+```
+
+PRO:
+- Respects user's current stop-loss setting
+- Works even if setting changes after entry
+- Tighter stop_loss always takes precedence
+
+CON:
+- Loosening stop-loss after entry still uses entry stop-loss (safer)
+- Slight behavior change
+
+OPTION 2: Update Position Stop-Loss on Settings Change
+-------------------------------------------------------
+When UI setting changes, update ALL open positions:
+
+```python
+def update_stop_loss_for_all_positions(self, new_stop_loss_pct: float):
+    """Update stop-loss for all open positions when UI setting changes"""
+    for symbol, position in self.positions.items():
+        new_stop_loss = position.entry_price * (1 - new_stop_loss_pct / 100)
+        
+        # Only tighten stop-loss, never loosen
+        if new_stop_loss > position.stop_loss:
+            old_stop = position.stop_loss
+            position.stop_loss = new_stop_loss
+            logger.info(f"{symbol}: Stop-loss tightened USD{old_stop:.2f} -> USD{new_stop_loss:.2f} ({new_stop_loss_pct}%)")
+```
+
+PRO:
+- Explicit update when setting changes
+- User sees log message confirming change
+
+CON:
+- Requires UI to call this method on slider change
+- More complex integration
+
+================================================================================
+RECOMMENDED SOLUTION
+================================================================================
+
+IMPLEMENT OPTION 1 (Dynamic Stop-Loss):
+
+1. Modify _check_exit_conditions at line ~2244:
+   - Calculate dynamic stop-loss from current UI setting
+   - Use max(static, dynamic) for effective stop-loss
+   - This ensures tightening works, loosening doesn't override entry stop
+
+2. Add logging to show which stop-loss triggered:
+   - "STOP_LOSS_STATIC_4%" (entry-time stop)
+   - "STOP_LOSS_DYNAMIC_2%" (UI-configured stop)
+
+3. Test scenarios:
+   - Position opened with 4% stop, UI at 4% -> Uses 4% (USD96.00)
+   - Position opened with 4% stop, UI changed to 2% -> Uses 2% (USD98.00)
+   - Position opened with 2% stop, UI changed to 4% -> Uses 2% (USD98.00)
+
+IMPLEMENTATION:
+Replace lines 2244-2247 with:
+
+```python
+# SECONDARY CHECKS - Mechanical safety exits (always enforced)
+# FIX v193.11.6.21: Dynamic stop-loss respects current UI setting
+stop_loss_pct = abs(self.ui_default_stop_loss) if self.ui_default_stop_loss is not None else self.config['swing_trading']['stop_loss_percent']
+dynamic_stop_loss = position.entry_price * (1 - stop_loss_pct / 100)
+
+# Use the TIGHTER of: entry stop_loss OR current UI setting
+effective_stop_loss = max(position.stop_loss, dynamic_stop_loss)
+
+if price <= effective_stop_loss:
+    # Calculate actual loss percentage
+    loss_pct = ((price - position.entry_price) / position.entry_price) * 100
+    
+    # Log which stop triggered
+    if effective_stop_loss == dynamic_stop_loss:
+        logger.info(f"[STOP-LOSS] {symbol}: Dynamic stop triggered at USD{price:.2f} (loss: {abs(loss_pct):.2f}%, UI setting: {stop_loss_pct}%)")
+        return f"STOP_LOSS_DYNAMIC_{abs(int(loss_pct))}%"
+    else:
+        logger.info(f"[STOP-LOSS] {symbol}: Entry stop triggered at USD{price:.2f} (loss: {abs(loss_pct):.2f}%, entry setting: {(1 - position.stop_loss/position.entry_price)*100:.1f}%)")
+        return f"STOP_LOSS_STATIC_{abs(int(loss_pct))}%"
+```
+
+================================================================================
+TESTING
+================================================================================
+
+TEST CASE 1: Normal stop-loss
+- Open position USD100.00 with 4% stop (USD96.00)
+- Price drops to USD95.00
+- Expected: Exit with "STOP_LOSS_STATIC_5%"
+
+TEST CASE 2: UI tightens stop-loss
+- Open position USD100.00 with 4% stop (USD96.00)
+- User changes UI to 2% (dynamic: USD98.00)
+- Price drops to USD97.00
+- Expected: Exit with "STOP_LOSS_DYNAMIC_3%"
+- Reason: Dynamic USD98.00 > Static USD96.00, uses dynamic
+
+TEST CASE 3: UI loosens stop-loss (safety)
+- Open position USD100.00 with 2% stop (USD98.00)
+- User changes UI to 4% (dynamic: USD96.00)
+- Price drops to USD97.00
+- Expected: Hold
+- Reason: Dynamic USD96.00 < Static USD98.00, uses static (safer)
+
+TEST CASE 4: Trailing stop interaction
+- Open position USD100.00 with 2% stop (USD98.00)
+- Price rises to USD110.00
+- Trailing stop: USD107.80 (2% below USD110.00)
+- Price drops to USD107.00
+- Expected: Exit with "TRAILING_STOP"
+- Note: Trailing stop check (line 2254) runs AFTER static stop-loss
+
+================================================================================
+IMPACT ASSESSMENT
+================================================================================
+
+AFFECTED USERS:
+- Any user who changes stop-loss setting AFTER opening positions
+- Users who use UI stop-loss slider vs config file default
+
+RISK:
+- LOW - This makes stop-loss MORE responsive, not less
+- Positions will exit sooner if UI setting is tighter
+- No risk of positions running longer than intended
+
+BENEFIT:
+- User's current stop-loss preference is respected
+- Dynamic risk management based on market conditions
+- More intuitive behavior (setting change takes effect immediately)
+
+================================================================================
+RELATED ISSUES
+================================================================================
+
+TRAILING STOP:
+- Works correctly (already uses current UI setting)
+- Updates when price rises above entry
+- Line 2138-2148 already implements dynamic calculation
+
+CONFIG FILE:
+- default_stop_loss still used if UI setting is None
+- Backward compatible with existing behavior
+
+POSITION STATE PERSISTENCE:
+- Positions saved to state/positions.json
+- stop_loss field is static entry value
+- After fix, dynamic calculation happens on each check
+- No migration needed
+
+================================================================================
+NEXT STEPS
+================================================================================
+
+1. Implement dynamic stop-loss fix in _check_exit_conditions
+2. Add comprehensive logging for stop-loss triggers
+3. Test with multiple scenarios (listed above)
+4. Update VERSION.json to v193.11.6.21
+5. Document in CHANGELOG
+6. Create deployment package
+7. Test with user's actual position data
+
+================================================================================

@@ -1,0 +1,327 @@
+================================================================================
+BUG REPORT: INCORRECT REGIME DETECTION - US_BROAD_RALLY ON DOWN MARKET
+================================================================================
+Date: 2026-03-06
+Severity: HIGH
+Impact: Incorrect trading signals, poor market assessment
+File: models/market_regime_detector.py
+
+================================================================================
+THE BUG
+================================================================================
+
+Actual Market Data (2026-03-06 09:06):
+- S&P 500: -0.6% (DOWN) ❌
+- NASDAQ: -0.3% (DOWN) ❌
+- VIX: 23.8 (elevated fear)
+
+Detected Regime:
+- MarketRegime.US_BROAD_RALLY ❌
+- Explanation: "Broad US market rally" ❌
+- Confidence: 30%
+
+This is INCORRECT! Markets are DOWN, not rallying!
+
+================================================================================
+ROOT CAUSE
+================================================================================
+
+File: models/market_regime_detector.py
+Line 360:
+
+```python
+def _determine_primary_regime(...):
+    ...
+    # Select primary regime (highest score)
+    if scores:
+        primary = max(scores, key=scores.get)
+        strength = min(scores[primary], 1.0)
+        return primary, strength
+    
+    # Default to neutral
+    return MarketRegime.US_BROAD_RALLY, 0.3  # ← BUG IS HERE!
+```
+
+**Problem**: When NO regimes match the detection criteria (all thresholds fail), 
+it defaults to US_BROAD_RALLY with 30% confidence.
+
+This is a POOR DEFAULT CHOICE because:
+1. "Rally" implies markets are UP
+2. Should use a truly neutral regime
+3. Misleading for traders
+4. Can cause wrong sector allocations
+
+================================================================================
+WHEN THE BUG TRIGGERS
+================================================================================
+
+The bug triggers when:
+1. S&P < 0.8% (not strong enough for broad rally)
+2. NASDAQ < 1.0% (not strong enough for tech rally)
+3. Not down enough to trigger US_RISK_OFF (< -0.5%)
+4. Commodities don't trigger strong/weak thresholds
+5. FX moves don't trigger thresholds
+6. Rate moves don't trigger thresholds
+
+Result: Empty `scores` dict → falls through to default → US_BROAD_RALLY (wrong!)
+
+Your Case Today:
+- S&P: -0.6% (not < -0.5%, so no US_RISK_OFF) ✗
+- NASDAQ: -0.3% (not < -0.5%, so no TECH_RISK_OFF) ✗
+- No commodity/FX/rate regimes triggered
+- Falls through to default: US_BROAD_RALLY (WRONG!)
+
+The thresholds were TOO TIGHT:
+- Line 237: `sp500 < -0.5` to trigger RISK_OFF
+- Your data: `sp500 = -0.6`
+- **SHOULD have triggered US_RISK_OFF!**
+
+But wait... -0.6 IS < -0.5! Let me check line 237 more carefully...
+
+================================================================================
+DEEPER ANALYSIS
+================================================================================
+
+Line 236-238:
+```python
+# Risk off: Both down and VIX high
+elif sp500 < -0.5 and nasdaq < -0.5 and vix > 20:
+    return MarketRegime.US_RISK_OFF
+```
+
+Your data:
+- sp500 = -0.6 ✓ (< -0.5)
+- nasdaq = -0.3 ✗ (NOT < -0.5)
+- vix = 23.8 ✓ (> 20)
+
+The condition requires ALL THREE to be true:
+- sp500 < -0.5 ✓
+- nasdaq < -0.5 ✗ (FAILED - nasdaq only down 0.3%)
+- vix > 20 ✓
+
+Because NASDAQ wasn't down enough (-0.3% vs required -0.5%), the US_RISK_OFF 
+regime didn't trigger, even though S&P was down and VIX was elevated!
+
+This is a LOGIC ERROR: The condition is too strict. It should detect risk-off 
+when S&P is down OR NASDAQ is down significantly, not require BOTH.
+
+================================================================================
+THE FIX
+================================================================================
+
+Multiple issues need fixing:
+
+Issue 1: Wrong default regime (Line 360)
+-----------------------------------------
+Current:
+```python
+# Default to neutral
+return MarketRegime.US_BROAD_RALLY, 0.3
+```
+
+Fix:
+```python
+# Default to neutral/mixed when no clear regime detected
+# Don't call it a rally when we have no positive signals!
+return MarketRegime.US_RISK_OFF if vix > 20 else MarketRegime.US_BROAD_RALLY, 0.2
+```
+
+Better Fix (add a new enum):
+```python
+# Add to MarketRegime enum:
+NEUTRAL_MIXED = "NEUTRAL_MIXED"  # No clear regime
+
+# Then use it as default:
+return MarketRegime.NEUTRAL_MIXED, 0.2
+```
+
+
+Issue 2: US_RISK_OFF threshold too strict (Line 236-238)
+---------------------------------------------------------
+Current:
+```python
+# Risk off: Both down and VIX high
+elif sp500 < -0.5 and nasdaq < -0.5 and vix > 20:
+    return MarketRegime.US_RISK_OFF
+```
+
+Fix (use OR instead of AND for index checks):
+```python
+# Risk off: Major index down OR both slightly down with VIX elevated
+elif ((sp500 < -0.5 or nasdaq < -0.5) and vix > 20) or (sp500 < -0.3 and nasdaq < -0.3 and vix > 25):
+    return MarketRegime.US_RISK_OFF
+```
+
+This will catch:
+- S&P down >0.5% with elevated VIX, OR
+- NASDAQ down >0.5% with elevated VIX, OR
+- Both down >0.3% with high VIX (>25)
+
+
+Issue 3: Add MILD_RISK_OFF regime for small declines
+-----------------------------------------------------
+Add new regime for markets down but not crashing:
+
+```python
+# Add to MarketRegime enum:
+US_MILD_RISK_OFF = "US_MILD_RISK_OFF"  # Slight market decline
+
+# Add detection (before US_RISK_OFF check):
+elif sp500 < 0 and nasdaq < 0:  # Both negative
+    return MarketRegime.US_MILD_RISK_OFF
+```
+
+================================================================================
+RECOMMENDED FIX (COMPLETE)
+================================================================================
+
+Step 1: Add new regime to enum (line 26):
+```python
+class MarketRegime(Enum):
+    # US Market Regimes
+    US_TECH_RISK_ON = "US_TECH_RISK_ON"
+    US_TECH_RISK_OFF = "US_TECH_RISK_OFF"
+    US_BROAD_RALLY = "US_BROAD_RALLY"
+    US_RISK_OFF = "US_RISK_OFF"
+    US_MILD_RISK_OFF = "US_MILD_RISK_OFF"  # ← NEW: Small market decline
+    NEUTRAL_MIXED = "NEUTRAL_MIXED"         # ← NEW: No clear regime
+```
+
+Step 2: Update detection logic (line 222):
+```python
+def _detect_us_market_regime(self, sp500: float, nasdaq: float, vix: float) -> Optional[MarketRegime]:
+    """Detect US market regime"""
+    nasdaq_threshold = self.thresholds['nasdaq_tech_threshold']
+    sp500_threshold = self.thresholds['sp500_broad_threshold']
+    outperformance = self.thresholds['nasdaq_outperformance']
+    
+    # Tech-led rally: NASDAQ up strong and outperforming S&P
+    if nasdaq > nasdaq_threshold and (nasdaq - sp500) > outperformance:
+        return MarketRegime.US_TECH_RISK_ON
+    
+    # Broad rally: S&P strong, NASDAQ not dramatically outperforming
+    elif sp500 > sp500_threshold and abs(nasdaq - sp500) < outperformance:
+        return MarketRegime.US_BROAD_RALLY
+    
+    # Risk off: Major index down >0.5% OR both down with elevated VIX
+    elif ((sp500 < -0.5 or nasdaq < -0.5) and vix > 20) or \
+         (sp500 < -0.3 and nasdaq < -0.3 and vix > 25):
+        return MarketRegime.US_RISK_OFF
+    
+    # Mild risk-off: Both markets negative (new condition)
+    elif sp500 < 0 and nasdaq < 0:
+        return MarketRegime.US_MILD_RISK_OFF
+    
+    # Tech selling: NASDAQ down more than S&P
+    elif nasdaq < -0.5 and (sp500 - nasdaq) > outperformance:
+        return MarketRegime.US_TECH_RISK_OFF
+    
+    return None
+```
+
+Step 3: Update default regime (line 360):
+```python
+# Default to neutral/mixed when no clear regime detected
+if vix > 20:
+    # Elevated fear but no clear direction
+    return MarketRegime.US_MILD_RISK_OFF, 0.2
+else:
+    # Truly neutral
+    return MarketRegime.NEUTRAL_MIXED, 0.2
+```
+
+Step 4: Add explanations (line 420+):
+```python
+regime_explanations = {
+    ...
+    MarketRegime.US_MILD_RISK_OFF: "Minor US market decline. ASX may see modest weakness.",
+    MarketRegime.NEUTRAL_MIXED: "Mixed signals, no clear market regime. ASX direction uncertain.",
+    ...
+}
+```
+
+================================================================================
+EXPECTED BEHAVIOR AFTER FIX
+================================================================================
+
+With your data:
+- S&P: -0.6%
+- NASDAQ: -0.3%
+- VIX: 23.8
+
+New Detection Flow:
+1. Check tech rally: NO (both negative)
+2. Check broad rally: NO (sp500 < 0.8)
+3. Check risk off: YES! (sp500 < -0.5 AND vix > 20) ✓
+4. Return: MarketRegime.US_RISK_OFF
+
+OR if condition 3 still fails:
+4. Check mild risk-off: YES! (both negative) ✓
+5. Return: MarketRegime.US_MILD_RISK_OFF
+
+Result: Correct regime detection matching actual market conditions!
+
+================================================================================
+IMPACT OF BUG
+================================================================================
+
+Current (Buggy) Behavior:
+- Detects "Broad US market rally" when markets are DOWN
+- Confidence: 30% (system knows it's uncertain)
+- Sector impacts: Assumes positive spillover to ASX
+- Trading signals: May be too optimistic
+
+After Fix:
+- Correctly detects "US Risk Off" or "Mild Risk Off"
+- More accurate sector impact predictions
+- Better trading decisions
+- Realistic market assessment
+
+================================================================================
+TESTING SCENARIOS
+================================================================================
+
+Scenario 1: Your Case (S&P -0.6%, NASDAQ -0.3%, VIX 23.8)
+Current: US_BROAD_RALLY (wrong!)
+Fixed: US_RISK_OFF (correct!)
+
+Scenario 2: Small decline (S&P -0.2%, NASDAQ -0.1%, VIX 18)
+Current: US_BROAD_RALLY (wrong!)
+Fixed: US_MILD_RISK_OFF (correct!)
+
+Scenario 3: Mixed (S&P +0.3%, NASDAQ -0.2%, VIX 20)
+Current: US_BROAD_RALLY (wrong!)
+Fixed: NEUTRAL_MIXED (correct!)
+
+Scenario 4: Actual rally (S&P +1.2%, NASDAQ +1.5%, VIX 15)
+Current: US_BROAD_RALLY (correct!)
+Fixed: US_BROAD_RALLY (still correct!)
+
+================================================================================
+PRIORITY
+================================================================================
+
+Severity: HIGH
+Impact: Trading decisions, sector allocation, risk assessment
+Urgency: MEDIUM (system still works, but gives wrong regime labels)
+
+This should be fixed in next release (v193.11.5)
+
+================================================================================
+WORKAROUND (IMMEDIATE)
+================================================================================
+
+Until fix is deployed, interpret low confidence (<50%) regime detections 
+with caution:
+
+- US_BROAD_RALLY at 30% confidence = likely wrong, check actual data
+- Look at raw market data (S&P, NASDAQ, VIX) yourself
+- Don't rely solely on regime label when confidence < 50%
+
+The low confidence (30%) is the system's way of saying "I'm not sure" - 
+which is actually accurate! The label is wrong, but the low confidence 
+reveals the uncertainty.
+
+================================================================================
+END OF BUG REPORT
+================================================================================

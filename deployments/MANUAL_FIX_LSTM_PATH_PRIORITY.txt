@@ -1,0 +1,193 @@
+===============================================================================
+URGENT FIX: LSTM Training "No module named 'models.train_lstm'" Error
+===============================================================================
+
+VERSION: v1.3.15.141
+DATE: 2026-02-15
+ISSUE: LSTM training using wrong FinBERT location (AATelS instead of local)
+
+===============================================================================
+QUICK FIX - Apply This Patch Now!
+===============================================================================
+
+FILE TO EDIT:
+  C:\Users\david\REgime trading V4 restored\unified_trading_system_v1.3.15.129_COMPLETE\pipelines\models\screening\lstm_trainer.py
+
+LINES TO CHANGE: ~203-217 (search for "Try multiple FinBERT locations")
+
+-------------------------------------------------------------------------------
+STEP 1: Open the file in Notepad
+-------------------------------------------------------------------------------
+Right-click lstm_trainer.py → Open with → Notepad
+
+-------------------------------------------------------------------------------
+STEP 2: Find this OLD code (around line 203):
+-------------------------------------------------------------------------------
+            # Try multiple FinBERT locations
+            finbert_path_aatels = Path(r'C:\Users\david\AATelS\finbert_v4.4.4')
+            finbert_path_relative = BASE_PATH / 'finbert_v4.4.4'
+            
+            # Use whichever exists
+            if finbert_path_aatels.exists():
+                finbert_path = finbert_path_aatels
+                logger.info(f"Using FinBERT from AATelS: {finbert_path}")
+            elif finbert_path_relative.exists():
+                finbert_path = finbert_path_relative
+                logger.info(f"Using FinBERT from relative path: {finbert_path}")
+            else:
+                raise FileNotFoundError(
+                    f"FinBERT not found. Tried:\n"
+                    f"  1. {finbert_path_aatels}\n"
+                    f"  2. {finbert_path_relative}"
+                )
+
+-------------------------------------------------------------------------------
+STEP 3: Replace with this NEW code:
+-------------------------------------------------------------------------------
+            # Try multiple FinBERT locations (prioritize local installation)
+            finbert_path_relative = BASE_PATH / 'finbert_v4.4.4'
+            finbert_path_aatels = Path(r'C:\Users\david\AATelS\finbert_v4.4.4')
+            
+            # Use local installation FIRST (most up-to-date), fallback to AATelS
+            if finbert_path_relative.exists():
+                finbert_path = finbert_path_relative
+                logger.info(f"Using FinBERT from local installation: {finbert_path}")
+            elif finbert_path_aatels.exists():
+                finbert_path = finbert_path_aatels
+                logger.info(f"Using FinBERT from AATelS (fallback): {finbert_path}")
+            else:
+                raise FileNotFoundError(
+                    f"FinBERT not found. Tried:\n"
+                    f"  1. {finbert_path_relative} (local)\n"
+                    f"  2. {finbert_path_aatels} (AATelS)"
+                )
+
+-------------------------------------------------------------------------------
+STEP 4: Save the file (Ctrl+S)
+-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------
+STEP 5: Verify the fix
+-------------------------------------------------------------------------------
+Re-run your pipeline:
+  python scripts\run_au_pipeline_v1.3.13.py --symbols BHP.AX
+
+You should now see:
+  [INFO] Using FinBERT from local installation: C:\Users\david\REgime trading V4 restored\unified_trading_system_v1.3.15.129_COMPLETE\finbert_v4.4.4
+  [INFO] Fetching training data for BHP.AX...
+  [OK] BHP.AX: Training completed in 45.2s
+
+Instead of:
+  [INFO] Using FinBERT from AATelS: C:\Users\david\AATelS\finbert_v4.4.4
+  [ERROR] No module named 'models.train_lstm'
+
+===============================================================================
+WHY THIS FIX WORKS
+===============================================================================
+
+PROBLEM:
+The code was checking the AATelS FinBERT location FIRST. When it found it,
+it used that version, but:
+  1. That version might be outdated
+  2. The sys.path fix doesn't work with that directory structure
+  3. It couldn't find models.train_lstm
+
+SOLUTION:
+By reversing the priority to check the LOCAL installation FIRST, the code
+now uses the FinBERT that came with your current package. This version:
+  ✓ Has all the latest fixes
+  ✓ Has the correct directory structure
+  ✓ Has models/train_lstm.py (confirmed 14,618 bytes)
+  ✓ Works with the v1.3.15.140 sys.path fix
+
+===============================================================================
+WHAT CHANGED
+===============================================================================
+
+Key changes:
+  1. Swapped variable declaration order:
+     - finbert_path_relative defined FIRST (line 204)
+     - finbert_path_aatels defined SECOND (line 205)
+
+  2. Reversed if/elif priority:
+     - Check finbert_path_relative FIRST (line 208)
+     - Fallback to finbert_path_aatels SECOND (line 211)
+
+  3. Updated log messages:
+     - "local installation" for relative path
+     - "AATelS (fallback)" for AATelS path
+
+===============================================================================
+VERIFICATION CHECKLIST
+===============================================================================
+
+After applying the fix, verify:
+
+□ File edited and saved
+□ Code matches the NEW code exactly (including indentation)
+□ No syntax errors (Python will complain on next run if there are)
+□ Run a test training
+□ Log shows "Using FinBERT from local installation"
+□ Training completes without "No module named" error
+
+===============================================================================
+IF THE FIX DOESN'T WORK
+===============================================================================
+
+If you still see "No module named 'models.train_lstm'" after this fix:
+
+1. Check that train_lstm.py exists:
+   dir C:\Users\david\REgime trading V4 restored\unified_trading_system_v1.3.15.129_COMPLETE\finbert_v4.4.4\models\train_lstm.py
+
+   You should see a file ~14 KB.
+
+2. If file doesn't exist, you need to download the updated package.
+
+3. If file exists but error persists, the v1.3.15.140 fix might not be
+   applied. Check around line 226-230 for:
+   
+   if finbert_models not in sys.path:
+       sys.path.insert(0, finbert_models)
+   
+   If you don't see "finbert_models", you need the v1.3.15.140 fix too.
+
+===============================================================================
+NEED BOTH FIXES?
+===============================================================================
+
+This fix (v1.3.15.141) depends on the previous fix (v1.3.15.140).
+
+If you ALSO need v1.3.15.140, around line 226, ensure you have:
+
+            # Add FinBERT base directory AND models subdirectory to path
+            # Insert at position 0 to ensure FinBERT's models/ is searched before root models/
+            finbert_base = str(finbert_path)
+            finbert_models = str(finbert_path / 'models')
+            
+            if finbert_models not in sys.path:
+                sys.path.insert(0, finbert_models)
+            if finbert_base not in sys.path:
+                sys.path.insert(0, finbert_base)
+
+Instead of:
+
+            if str(finbert_path) not in sys.path:
+                sys.path.insert(0, str(finbert_path))
+
+If you need both fixes, see MANUAL_FIX_LSTM_TRAINER.txt for the v1.3.15.140 fix.
+
+===============================================================================
+SUMMARY
+===============================================================================
+
+What: Reversed FinBERT path priority to check local installation first
+Why: Was using outdated AATelS version, causing import errors
+How: Swap if/elif order to prioritize finbert_path_relative
+Result: Training uses local FinBERT with all latest fixes
+
+File: pipelines\models\screening\lstm_trainer.py
+Lines: ~203-217
+Version: v1.3.15.141
+Time to apply: 2 minutes
+
+===============================================================================

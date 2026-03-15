@@ -1,0 +1,107 @@
+================================================================================
+  FinBERT v4.4.4 - EQUITY CURVE CHART NOT SHOWING - DEBUG & FIX
+================================================================================
+
+SITUATION:
+----------
+✅ Backtest runs successfully
+✅ Metrics display correctly ($10,186.78, 1.87% return, 100% win rate, etc.)
+✅ Backend API returns data
+✅ ECharts library is loaded (typeof echarts === 'object')
+✅ Chart div exists with height 300px
+❌ But equity curve chart area is BLANK
+
+ROOT CAUSE DISCOVERED:
+----------------------
+The backtest needs to show MORE than just a simple line:
+1. Equity curve line (portfolio value over time)
+2. Buy/Sell markers (when trades were executed)
+3. Time-based x-axis
+
+Currently the API returns equity_curve data but NOT the trades array
+needed to show buy/sell markers.
+
+WHAT I'VE ADDED IN THIS VERSION:
+---------------------------------
+✅ Extensive console debugging to see exact data format
+✅ Better data format handling (handles multiple possible formats)
+✅ Improved chart rendering with better visibility:
+   - Thicker line (2.5px width)
+   - Better tooltip formatting
+   - Proper grid spacing
+   - Symbol dots on data points (for short time ranges)
+   - Better color contrast
+
+✅ Detailed logging showing:
+   - Data structure received
+   - How many points parsed
+   - Date range
+   - Value range
+   - Any errors during parsing
+
+INSTALL AND TEST:
+-----------------
+1. Extract: FinBERT_v4.4.4_BACKTEST_DEBUG_IMPROVED_20251106_071607.zip
+2. Run: INSTALL.bat
+3. Run: START_FINBERT.bat
+4. Open browser console (F12 → Console tab)
+5. Run backtest on CBA.AX
+6. Watch console messages
+
+WHAT TO LOOK FOR IN CONSOLE:
+-----------------------------
+The console will show:
+
+✅ "drawEquityCurve called with: X data points"
+✅ "First data point: {...}" - Shows structure of data
+✅ "Last data point: {...}" - Shows structure of data
+✅ "Parsed X dates and Y values"
+✅ "Date range: Jan 01, 23 to Dec 31, 23"
+✅ "Value range: $10000.00 to $10500.00"
+✅ "Setting chart option..."
+✅ "Chart rendered successfully"
+
+POSSIBLE ISSUES:
+----------------
+
+Issue A: Data Format Mismatch
+   - Console shows: "Unknown data format: {…}"
+   - Solution: Need to adjust field name mapping
+
+Issue B: Empty Data
+   - Console shows: "drawEquityCurve called with: 0 data points"
+   - Solution: Backend not returning equity_curve
+
+Issue C: Data in Wrong Structure
+   - Console shows: "First data point: null" or undefined
+   - Solution: equity_curve is nested differently
+
+Issue D: Chart Not Visible Despite Success
+   - All console logs succeed but still blank
+   - Solution: Likely CSS z-index or visibility issue
+
+NEXT STEPS IF STILL NOT WORKING:
+---------------------------------
+Send me the complete console output showing:
+1. "Backtest data received:" - Full API response structure
+2. "First data point:" - Structure of equity_curve[0]
+3. "Parsed X dates and Y values" - Parsing results
+4. Any RED error messages
+
+This will tell me EXACTLY what format the data is in and why
+the chart isn't rendering.
+
+KNOWN LIMITATION:
+-----------------
+Currently this version shows ONLY the equity curve line.
+It does NOT show buy/sell markers because the API doesn't
+return the trades array.
+
+To add buy/sell markers, we would need to:
+1. Update backend API to return trades array
+2. Add markPoint overlay on the equity curve showing:
+   - Green arrows for BUY signals
+   - Red arrows for SELL signals
+   - Positioned at the equity value at that time
+
+================================================================================

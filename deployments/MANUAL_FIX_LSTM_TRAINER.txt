@@ -1,0 +1,61 @@
+MANUAL FIX FOR LSTM TRAINER IMPORT ERROR
+=========================================
+
+FILE: pipelines/models/screening/lstm_trainer.py
+LINES: ~220-224
+
+FIND THIS CODE (OLD):
+---------------------
+            if str(finbert_path) not in sys.path:
+                sys.path.insert(0, str(finbert_path))
+            
+            from models.train_lstm import train_model_for_symbol
+
+
+REPLACE WITH (NEW):
+-------------------
+            # Add FinBERT base directory AND models subdirectory to path
+            # Insert at position 0 to ensure FinBERT's models/ is searched before root models/
+            finbert_base = str(finbert_path)
+            finbert_models = str(finbert_path / 'models')
+            
+            if finbert_models not in sys.path:
+                sys.path.insert(0, finbert_models)
+            if finbert_base not in sys.path:
+                sys.path.insert(0, finbert_base)
+            
+            # Now import will find finbert's models.train_lstm before root models/
+            from models.train_lstm import train_model_for_symbol
+
+
+HOW TO APPLY:
+-------------
+1. Open: C:\Users\david\REgime trading V4 restored\unified_trading_system_v1.3.15.129_COMPLETE\pipelines\models\screening\lstm_trainer.py
+2. Find the section around line 220-224 (search for "if str(finbert_path) not in sys.path")
+3. Replace the OLD code with the NEW code above
+4. Save the file
+5. Re-run your training
+
+
+EXPLANATION:
+------------
+The fix adds BOTH finbert_base AND finbert_models to sys.path, with finbert_models 
+inserted FIRST (position 0). This ensures Python searches finbert_v4.4.4/models/ 
+BEFORE the root models/ package, preventing the import collision.
+
+Before: Python searches root models/ first → doesn't find train_lstm.py → ERROR
+After: Python searches finbert_v4.4.4/models/ first → finds train_lstm.py → SUCCESS
+
+
+VERIFICATION:
+-------------
+After applying the fix, run:
+  python scripts/run_au_pipeline_v1.3.13.py --symbols BHP.AX
+
+You should see:
+  [OK] BHP.AX: Training completed in 45.2s
+  Loss: 0.0234
+
+Instead of:
+  [X] BHP.AX: Training failed after 0.0s
+  Error: No module named 'models.train_lstm'

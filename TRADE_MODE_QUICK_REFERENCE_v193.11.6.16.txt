@@ -1,0 +1,188 @@
+================================================================================
+TRADE MODE QUICK REFERENCE - v193.11.6.16
+================================================================================
+
+QUESTION: "Is the HOLD signal overriding my 53% confidence setting?"
+ANSWER: YES (in v193.11.6.15 and earlier) - NOW CONFIGURABLE in v193.11.6.16
+
+================================================================================
+TWO MODES
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ MODE 1: "strict" (DEFAULT - Conservative)                               │
+├─────────────────────────────────────────────────────────────────────────┤
+│ ✓ Only trade BUY/STRONG_BUY signals                                     │
+│ ✓ Only exit on SELL/STRONG_SELL signals                                │
+│ ✗ HOLD signals always blocked                                           │
+│                                                                          │
+│ Use when: You trust ML model's directional predictions                  │
+└─────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ MODE 2: "confidence_based" (NEW - Aggressive)                           │
+├─────────────────────────────────────────────────────────────────────────┤
+│ ✓ Confidence ≥53% is primary filter                                    │
+│ ✓ High-quality HOLD (score ≥60) → Trade as BUY                         │
+│ ✓ Low-quality HOLD (score ≤40) + position → Trade as SELL              │
+│ ✗ Neutral HOLD (40<score<60) → Still blocked                           │
+│                                                                          │
+│ Use when: You want to trade high-quality stocks despite HOLD signal     │
+└─────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+EXAMPLES
+================================================================================
+
+CNA.L: Score 70.7, Signal HOLD, Confidence 53.6%
+  strict: BLOCKED ❌
+  confidence_based: TRADED AS BUY ✅ (score 70.7 ≥ 60)
+
+BA.L: Score 60.7, Signal HOLD, Confidence 53.6%
+  strict: BLOCKED ❌
+  confidence_based: TRADED AS BUY ✅ (score 60.7 ≥ 60)
+
+Poor stock: Score 35, Signal HOLD, Confidence 55%
+  strict: BLOCKED ❌
+  confidence_based: TRADED AS SELL ✅ (if position exists)
+
+Neutral stock: Score 50, Signal HOLD, Confidence 60%
+  Both: BLOCKED ❌ (truly neutral, 40 < 50 < 60)
+
+================================================================================
+HOW TO CHANGE MODE
+================================================================================
+
+Method 1: Dashboard UI (Recommended)
+-------------------------------------
+1. Start dashboard: python core/unified_trading_dashboard.py
+2. Find "Trade Mode" section (below Stop Loss slider)
+3. Select mode:
+   ○ Strict (BUY/SELL only)
+   ○ Confidence-Based (Allow high-confidence HOLD)
+4. Click "Start Trading"
+   → Config saved automatically
+
+Method 2: Edit config.json
+---------------------------
+1. Open: config/config.json
+2. Find "paper_trading" section
+3. Change:
+   {
+     "paper_trading": {
+       "trade_mode": "confidence_based",  // ← Change this
+       "min_confidence": 53.0,
+       "hold_override_min_score": 60.0
+     }
+   }
+4. Save and restart trading
+
+================================================================================
+WHAT TO EXPECT
+================================================================================
+
+Strict Mode Logs:
+  [BLOCK] CNA.L: Signal not actionable (strict mode)
+  [BLOCK] BA.L: Signal not actionable (strict mode)
+
+Confidence_Based Mode Logs:
+  [HOLD→BUY] CNA.L: Overriding HOLD signal - score=70.7, conf=53.6%
+  [HOLD→BUY] BA.L: Overriding HOLD signal - score=60.7, conf=53.6%
+
+================================================================================
+THRESHOLDS (Adjustable in config.json)
+================================================================================
+
+min_confidence: 53.0
+  → Minimum confidence to trade (applies to all signals in confidence_based mode)
+
+hold_override_min_score: 60.0
+  → HOLD signals with score ≥60 treated as BUY (if confidence met)
+
+hold_override_max_score: 40.0
+  → HOLD signals with score ≤40 treated as SELL (if position exists & confidence met)
+
+================================================================================
+RECOMMENDATION
+================================================================================
+
+1. Start with "strict" mode (safe default)
+2. Paper trade for 1-2 weeks to understand signal quality
+3. If you notice high-quality HOLD signals being missed (like CNA.L at 70.7):
+   → Switch to "confidence_based" mode
+4. Monitor results and adjust thresholds if needed
+
+Conservative users: Stay with "strict"
+Aggressive users: Use "confidence_based" with score ≥65 threshold
+Balanced users: Use "confidence_based" with default settings (score ≥60)
+
+================================================================================
+TECHNICAL DETAILS
+================================================================================
+
+How HOLD Signals Are Generated:
+  - ML ensemble combines 5 models (LSTM, sentiment, technical, momentum, volume)
+  - Ensemble direction: weighted average of predictions
+  - If direction > 0.3: BUY
+  - If direction < -0.3: SELL
+  - If -0.3 ≤ direction ≤ 0.3: HOLD (weak or conflicting signals)
+
+Why HOLD Can Have High Confidence:
+  - HOLD = "System is confident the stock is neutral/weak"
+  - Example: All 5 models agree it's neutral → High confidence HOLD
+  - But stock may have strong fundamentals (high score)
+  - confidence_based mode uses score as tie-breaker
+
+Signal vs Score:
+  - Signal (HOLD/BUY/SELL): ML model's directional prediction
+  - Score (0-100): Fundamental quality (financial health, value, growth)
+  - Confidence (0-100): How certain the system is about the prediction
+  - In confidence_based mode: If ML says HOLD but score is high, trade anyway
+
+================================================================================
+FILES MODIFIED
+================================================================================
+
+core/paper_trading_coordinator.py
+  - Rewrote _evaluate_pipeline_recommendation() with mode logic
+
+config/config.json
+  - Added "paper_trading" section with trade_mode config
+
+core/unified_trading_dashboard.py
+  - Added trade mode radio buttons
+  - Updated callback to save mode
+
+VERSION.json
+  - Bumped to v193.11.6.16
+  - Added comprehensive changelog
+
+================================================================================
+VERSION HISTORY
+================================================================================
+
+v193.11.6.16 (2026-03-09): Added hybrid trade_mode (this fix)
+v193.11.6.15 (2026-03-09): Fixed Unicode encoding errors
+v193.11.6.14 (2026-03-09): Fixed inverted logic (HOLD being traded)
+v193.11.6.13 (2026-03-09): Fixed US pipeline AttributeError
+v193.11.6.12 (2026-03-09): Sentiment incorporates gap prediction
+v193.11.6.11 (2026-03-09): US gap prediction using futures
+
+================================================================================
+SUPPORT
+================================================================================
+
+If HOLD signals still blocked in confidence_based mode:
+  1. Check config.json has "trade_mode": "confidence_based"
+  2. Check logs for "[HOLD→BUY]" or "[HOLD→SELL]" messages
+  3. Verify score ≥60 and confidence ≥53 for the HOLD signal
+  4. Check sentiment ≥45 (another requirement for HOLD→BUY)
+
+If too many HOLD signals being traded:
+  1. Increase hold_override_min_score from 60.0 to 65.0 or 70.0
+  2. Increase min_confidence from 53.0 to 60.0 or 65.0
+  3. Or switch back to "strict" mode
+
+For more details: See TRADE_MODE_FIX_v193.11.6.16_COMPLETE.txt
+
+================================================================================

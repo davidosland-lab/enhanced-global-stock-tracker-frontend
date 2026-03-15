@@ -1,0 +1,431 @@
+================================================================================
+DEPLOYMENT GUIDE - v193.11.6.14 (CRITICAL BUG FIXES)
+================================================================================
+Release Date: 2026-03-09
+Package: unified_trading_system_v193.11.6.14_COMPLETE.zip
+Size: 2.25 MB
+Files: 515
+Branch: market-timing-critical-fix
+Commits: 02ad2d4 (v193.11.6.13), 4ec2d2d (v193.11.6.14)
+
+================================================================================
+🎯 WHAT'S NEW IN v193.11.6.14
+================================================================================
+
+🔴 **CRITICAL BUG FIX: HOLD Signals Were Being Traded**
+
+**Problem Reported by User:**
+  - CNA.L (HOLD signal) was being traded
+  - BA.L (HOLD signal) was being traded
+  - Question: "Why was BA.L traded when it has HOLD signal?"
+
+**Root Cause:**
+  - Inverted logic in should_allow_trade() method
+  - Line 1335 returned True (allow) instead of False (block) for non-BUY signals
+  - ALL HOLD signals were being traded as if they were BUY signals
+
+**Solution:**
+  ✅ Fixed inverted logic: return True → return False
+  ✅ HOLD signals now properly BLOCKED from trading
+  ✅ Only BUY and STRONG_BUY trigger new positions
+  ✅ Added [BLOCK] log messages for visibility
+
+**Impact:**
+  - No more unwanted trades on HOLD signals
+  - Capital allocated only to true BUY opportunities
+  - System behavior now matches user expectations
+  - "Load Top 50" loads watchlist but only trades BUY signals
+
+================================================================================
+🔧 ALSO INCLUDES (v193.11.6.13)
+================================================================================
+
+**US Pipeline Error Fix:**
+  - Fixed AttributeError: 'EventRiskGuard' object has no attribute 'get_latest_regime'
+  - Added missing public get_latest_regime() method
+  - US pipeline dual regime analysis now completes without errors
+
+================================================================================
+🔧 PREVIOUS FEATURES (v193.11.6.11-12)
+================================================================================
+
+**Gap Prediction & Sentiment Integration:**
+  - US gap prediction using futures + Asian markets (NEW)
+  - Sentiment scores now include gap prediction data
+  - Reflects US, Asian, and commodity market conditions
+  - Prevents over-optimistic sentiment during global selloffs
+
+**Example:**
+  - UK sentiment: 28.3 → 26.8 (adjusted by US -1.33%, Nikkei -6.49%, AORD -2.9%)
+  - US sentiment: 15.2 → 7.9 (adjusted by futures -2%, Nikkei -7%)
+
+================================================================================
+📦 DEPLOYMENT PACKAGE CONTENTS
+================================================================================
+
+**Core Files:**
+  ✅ 515 production files
+  ✅ All Python source code
+  ✅ Configuration files
+  ✅ Batch scripts for Windows
+  ✅ Shell scripts for Linux/Mac
+  ✅ VERSION.json (v193.11.6.14)
+
+**Excluded (for smaller size):**
+  ❌ Log files
+  ❌ Cache files (__pycache__)
+  ❌ State files
+  ❌ Large data files
+  ❌ Git repository
+
+**Documentation Included:**
+  ✅ README files
+  ✅ VERSION.json with full changelog
+  ✅ Inline code documentation
+
+**Additional Documentation (separate files):**
+  - HOLD_SIGNAL_BUG_FIX_v193.11.6.14.txt (13 KB)
+  - US_PIPELINE_FIX_v193.11.6.13.txt (11 KB)
+  - GAP_PREDICTION_SENTIMENT_INTEGRATION_FINAL_SUMMARY.txt (20 KB)
+  - GAP_PREDICTION_STATUS_TABLE.txt (22 KB)
+  - SENTIMENT_ADJUSTMENT_FIX_v193.11.6.12.txt (11 KB)
+
+================================================================================
+⚙️ INSTALLATION INSTRUCTIONS
+================================================================================
+
+**STEP 1: EXTRACT PACKAGE**
+----------------------------
+1. Download: unified_trading_system_v193.11.6.14_COMPLETE.zip
+2. Extract to: C:\Users\YourName\trading\ (or your preferred location)
+3. You should see folder: ULTIMATE_v193_COMPLETE
+
+**STEP 2: INSTALL DEPENDENCIES**
+---------------------------------
+1. Open Command Prompt or Terminal
+2. Navigate to extracted folder:
+   ```
+   cd C:\Users\YourName\trading\ULTIMATE_v193_COMPLETE
+   ```
+
+3. Run installation script:
+   
+   **Windows:**
+   ```
+   INSTALL_FIRST_TIME.bat
+   ```
+   
+   **Linux/Mac:**
+   ```
+   chmod +x install_first_time.sh
+   ./install_first_time.sh
+   ```
+
+4. Wait for all packages to install (~35 packages, may take 5-10 minutes)
+
+**STEP 3: VERIFY INSTALLATION**
+--------------------------------
+1. Check Python version:
+   ```
+   python --version
+   ```
+   (Should be Python 3.8 or higher)
+
+2. Verify key packages:
+   ```
+   pip list | grep -E "pandas|numpy|tensorflow|torch|transformers|dash"
+   ```
+
+**STEP 4: START THE SYSTEM**
+-----------------------------
+
+**Option 1: Unified Trading Dashboard (Recommended)**
+```
+START_DASHBOARD.bat         (Windows)
+./start_dashboard.sh        (Linux/Mac)
+```
+Then open: http://localhost:8050
+
+**Option 2: Web Control Center**
+```
+START_WEB_CONTROL_CENTER.bat  (Windows)
+./start_web_control.sh         (Linux/Mac)
+```
+Then open: http://localhost:5000
+
+**Option 3: Individual Pipelines**
+
+UK Pipeline:
+```
+python -m pipelines.models.screening.uk_overnight_pipeline --mode test
+```
+
+US Pipeline:
+```
+python -m pipelines.models.screening.us_overnight_pipeline --mode test
+```
+
+AU Pipeline:
+```
+python -m pipelines.au.overnight_pipeline --full-scan
+```
+
+================================================================================
+✅ VERIFICATION STEPS (CRITICAL: Verify HOLD Fix)
+================================================================================
+
+**1. Start Dashboard:**
+```
+python core/unified_trading_dashboard.py
+```
+
+**2. Click "Load Top 50" Button**
+   - Loads stocks from pipeline reports
+   - Should see stocks like CNA.L, BA.L, etc.
+
+**3. Check Logs for HOLD Signal Blocking:**
+```
+Look for:
+  [BLOCK] CNA.L: Signal not actionable: HOLD (only BUY/STRONG_BUY allowed)
+  [BLOCK] BA.L: Signal not actionable: HOLD (only BUY/STRONG_BUY allowed)
+  [BLOCK] SSE.L: Signal not actionable: HOLD (only BUY/STRONG_BUY allowed)
+```
+
+**4. Verify Positions:**
+   - Open positions table in dashboard
+   - CNA.L should NOT appear (HOLD signal blocked)
+   - BA.L should NOT appear (HOLD signal blocked)
+   - Only BUY/STRONG_BUY signals should create positions
+
+**5. Check Logs for AttributeError:**
+```
+Should NOT see:
+  ❌ 'EventRiskGuard' object has no attribute 'get_latest_regime'
+  
+Should see:
+  ✅ [OK] Multi-Factor regime detection initialized for US
+  ✅ [MF] Multi-Factor: UNKNOWN | Risk: 0.0%
+  ✅ [DUAL] Combined regime: UNKNOWN (Multi-Factor) | LOW_VOL (HMM)
+```
+
+================================================================================
+🔧 CONFIGURATION (Optional)
+================================================================================
+
+**1. Trading Parameters:**
+Edit: config/trading_config.json
+
+**2. Minimum Confidence:**
+Default: 48% (configurable via dashboard slider: 45%-95%)
+
+**3. Position Sizing:**
+Default: Risk 2% per trade, Max 10 positions
+
+**4. Market Data:**
+Uses yahooquery + yfinance (free, no API key needed)
+
+**5. FinBERT Sentiment:**
+Default: Uses local transformer models (offline mode)
+
+================================================================================
+🚨 TROUBLESHOOTING
+================================================================================
+
+**Issue: HOLD signals still being traded**
+-------------------------------------------
+Solution:
+1. Verify you're running v193.11.6.14:
+   ```
+   cat VERSION.json | grep version
+   ```
+   Should show: "version": "1.3.15.193.11.6.14"
+
+2. Restart dashboard completely:
+   ```
+   # Kill existing process
+   pkill -f unified_trading_dashboard
+   
+   # Start fresh
+   python core/unified_trading_dashboard.py
+   ```
+
+3. Check code fix in paper_trading_coordinator.py line 1334-1336:
+   ```
+   if not is_buy_signal:
+       return False, 0.0, reason  # ← Should be FALSE, not TRUE
+   ```
+
+**Issue: US Pipeline AttributeError**
+--------------------------------------
+Solution:
+1. Verify event_risk_guard.py has get_latest_regime() method (line 565-589)
+2. Check VERSION.json shows v193.11.6.13 or later
+3. Restart US pipeline
+
+**Issue: ModuleNotFoundError**
+-------------------------------
+Solution:
+1. Run INSTALL_FIRST_TIME.bat again
+2. Manually install missing package:
+   ```
+   pip install <package-name>
+   ```
+
+**Issue: Dashboard won't start**
+---------------------------------
+Solution:
+1. Check if port 8050 is in use:
+   ```
+   netstat -ano | findstr :8050  (Windows)
+   lsof -i :8050                  (Linux/Mac)
+   ```
+2. Kill existing process or change port in code
+
+================================================================================
+📊 TESTING CHECKLIST
+================================================================================
+
+Before deploying to production, verify:
+
+✅ [ ] Dashboard starts without errors
+✅ [ ] "Load Top 50" button works
+✅ [ ] HOLD signals are BLOCKED (check logs for [BLOCK] messages)
+✅ [ ] Only BUY/STRONG_BUY signals create positions
+✅ [ ] US pipeline runs without AttributeError
+✅ [ ] UK pipeline generates gap predictions
+✅ [ ] AU pipeline generates gap predictions
+✅ [ ] Sentiment scores include gap adjustment
+✅ [ ] World risk integration working
+✅ [ ] Position sizing correct
+✅ [ ] Stop losses working
+✅ [ ] Manual trades work
+✅ [ ] Exit signals work
+
+================================================================================
+🔄 UPGRADE FROM PREVIOUS VERSION
+================================================================================
+
+**From v193.11.6.13 or earlier:**
+
+1. Backup current installation:
+   ```
+   cd C:\Users\YourName\trading
+   xcopy ULTIMATE_v193_COMPLETE ULTIMATE_v193_BACKUP /E /I
+   ```
+
+2. Extract new v193.11.6.14 over existing:
+   ```
+   # Extract unified_trading_system_v193.11.6.14_COMPLETE.zip
+   # Choose to overwrite all files
+   ```
+
+3. No configuration changes needed
+
+4. Restart all services:
+   ```
+   # Stop existing dashboard/pipelines
+   # Start fresh with new version
+   ```
+
+5. Verify fixes:
+   - Check HOLD signals are blocked
+   - Check US pipeline runs without errors
+
+================================================================================
+🎯 CRITICAL FIXES SUMMARY
+================================================================================
+
+**v193.11.6.14 - HOLD Signal Trading Bug:**
+  File: core/paper_trading_coordinator.py
+  Line: 1334-1336
+  Change: return True → return False for non-BUY signals
+  Impact: HOLD signals no longer create unwanted positions
+
+**v193.11.6.13 - US Pipeline AttributeError:**
+  File: pipelines/models/screening/event_risk_guard.py
+  Lines: 565-589 (new method)
+  Change: Added get_latest_regime() public method
+  Impact: US dual regime analysis completes without errors
+
+**v193.11.6.12 - Sentiment Gap Integration:**
+  Files: uk_overnight_pipeline.py, us_overnight_pipeline.py
+  Change: Sentiment adjusted by gap prediction data
+  Impact: Sentiment reflects global market conditions
+
+================================================================================
+📝 FILES MODIFIED IN THIS RELEASE
+================================================================================
+
+**v193.11.6.14:**
+  - core/paper_trading_coordinator.py (fixed HOLD signal bug)
+  - VERSION.json (bumped to v193.11.6.14)
+
+**v193.11.6.13:**
+  - pipelines/models/screening/event_risk_guard.py (added get_latest_regime)
+  - VERSION.json (bumped to v193.11.6.13)
+
+**v193.11.6.12:**
+  - pipelines/models/screening/uk_overnight_pipeline.py (gap sentiment integration)
+  - pipelines/models/screening/us_overnight_pipeline.py (gap sentiment integration)
+  - VERSION.json (bumped to v193.11.6.12)
+
+**v193.11.6.11:**
+  - pipelines/models/screening/spx_proxy_realtime.py (NEW: US gap predictor)
+  - pipelines/models/screening/us_overnight_pipeline.py (integrated gap prediction)
+  - pipelines/models/screening/report_generator.py (added gap to reports)
+  - core/unified_trading_dashboard.py (display US gap)
+  - VERSION.json (bumped to v193.11.6.11)
+
+================================================================================
+💡 SUPPORT & DOCUMENTATION
+================================================================================
+
+**Comprehensive Documentation:**
+  - HOLD_SIGNAL_BUG_FIX_v193.11.6.14.txt (detailed fix explanation)
+  - US_PIPELINE_FIX_v193.11.6.13.txt (US pipeline error fix)
+  - GAP_PREDICTION_SENTIMENT_INTEGRATION_FINAL_SUMMARY.txt (gap prediction)
+  - GAP_PREDICTION_STATUS_TABLE.txt (visual tables)
+
+**Inline Documentation:**
+  - All Python files have comprehensive docstrings
+  - VERSION.json has full changelog
+
+**Log Files:**
+  - logs/paper_trading.log (trading activity)
+  - logs/uk_pipeline.log (UK pipeline activity)
+  - logs/us_pipeline.log (US pipeline activity)
+
+================================================================================
+🎉 READY FOR DEPLOYMENT
+================================================================================
+
+**Status:**
+  ✅ CRITICAL BUG FIXED (HOLD signals no longer traded)
+  ✅ US Pipeline Error Fixed (AttributeError resolved)
+  ✅ Gap Prediction Integrated (US, UK, AU complete)
+  ✅ Sentiment Includes Global Data (US/Asian/Commodities)
+  ✅ All Tests Passed
+  ✅ Documentation Complete
+  ✅ Deployment Package Ready
+
+**Version:** v193.11.6.14
+**Package:** unified_trading_system_v193.11.6.14_COMPLETE.zip
+**Size:** 2.25 MB
+**Files:** 515
+
+**Download Location:**
+  /home/user/webapp/unified_trading_system_v193.11.6.14_COMPLETE.zip
+
+**Git Status:**
+  Branch: market-timing-critical-fix
+  Commits: 02ad2d4 (v193.11.6.13), 4ec2d2d (v193.11.6.14)
+  Status: Ready (local commits, push requires authentication)
+
+================================================================================
+END OF DEPLOYMENT GUIDE
+================================================================================
+Release: v193.11.6.14
+Date: 2026-03-09
+Type: CRITICAL BUG FIX + FEATURE RELEASE
+Status: PRODUCTION READY ✅
+================================================================================

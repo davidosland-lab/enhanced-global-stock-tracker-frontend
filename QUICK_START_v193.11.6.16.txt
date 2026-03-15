@@ -1,0 +1,127 @@
+================================================================================
+QUICK START GUIDE - v193.11.6.16
+================================================================================
+
+NEW IN v193.11.6.16: Configurable HOLD Signal Handling!
+
+Trade Mode Options:
+  "strict" (default) = Only trade BUY/SELL signals (conservative)
+  "confidence_based" = Allow high-quality HOLD signals (aggressive)
+
+Example: CNA.L (score 70.7, HOLD, 53.6%)
+  Strict: BLOCKED ❌
+  Confidence_based: TRADED AS BUY ✅
+
+================================================================================
+INSTALLATION (3 STEPS)
+================================================================================
+
+1. Extract Package
+   └─ Unzip to desired location
+
+2. Install Dependencies (FIRST TIME ONLY)
+   Windows: Double-click INSTALL_FIRST_TIME.bat
+   Linux/Mac: ./install_first_time.sh
+
+3. Start Dashboard
+   Windows: Double-click START_DASHBOARD.bat
+   Linux/Mac: ./start_dashboard.sh
+   Manual: python core/unified_trading_dashboard.py
+
+   → Opens at http://localhost:8050
+
+================================================================================
+USAGE (DASHBOARD)
+================================================================================
+
+1. Load Stocks
+   - Manual: Enter "AAPL,GOOGL,MSFT" (comma-separated)
+   - Auto: Click "Load Top 50 from Pipeline Reports"
+
+2. Set Parameters
+   - Capital: 100000
+   - Confidence: 48-95% (default 48%)
+   - Stop Loss: 1-20% (default 10%)
+   - Trade Mode: Select "Strict" or "Confidence-Based"
+
+3. Start Trading
+   - Click "Start Trading"
+   - Monitor positions and performance
+
+================================================================================
+TRADE MODE SELECTION
+================================================================================
+
+In Dashboard, find "Trade Mode" section:
+
+○ Strict (BUY/SELL only)
+   → Conservative, only clear signals
+   → HOLD always blocked
+
+○ Confidence-Based (Allow high-confidence HOLD)
+   → Aggressive, trade high-quality HOLD stocks
+   → HOLD with score≥60 & conf≥53% → BUY
+   → HOLD with score≤40 → SELL (if position)
+
+Recommendation: Start with "Strict", switch to "Confidence-Based" if missing opportunities
+
+================================================================================
+QUICK REFERENCE
+================================================================================
+
+Dashboard: http://localhost:8050
+Web Control Center: http://localhost:5000 (python web_control_center.py)
+
+Pipelines:
+  AU: python pipelines/models/screening/overnight_pipeline.py --market AU --full-scan
+  UK: python pipelines/models/screening/uk_overnight_pipeline.py --mode full
+  US: python pipelines/models/screening/us_overnight_pipeline.py --mode full
+
+Config File: config/config.json
+  "trade_mode": "strict" or "confidence_based"
+  "min_confidence": 53.0
+  "hold_override_min_score": 60.0
+
+Logs:
+  Strict: [BLOCK] Symbol: Signal not actionable (strict mode)
+  Confidence_based: [HOLD→BUY] Symbol: score=X, conf=Y%
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+Problem: HOLD signals blocked
+Solution: Switch to "confidence_based" mode in dashboard
+
+Problem: Too many HOLD signals
+Solution: Increase thresholds or switch to "strict" mode
+
+Problem: ModuleNotFoundError
+Solution: Run INSTALL_FIRST_TIME.bat again
+
+Problem: Dashboard won't start
+Solution: Kill process on port 8050 or change port
+
+================================================================================
+DOCUMENTATION
+================================================================================
+
+Full Guide: DEPLOYMENT_GUIDE_v193.11.6.16_FINAL.txt
+Trade Mode: TRADE_MODE_QUICK_REFERENCE_v193.11.6.16.txt
+Complete Fix: TRADE_MODE_FIX_v193.11.6.16_COMPLETE.txt
+Analysis: SIGNAL_VS_CONFIDENCE_ANALYSIS.txt
+
+================================================================================
+SUPPORT
+================================================================================
+
+All Bugs Fixed in v193.11.6.16:
+✅ US pipeline AttributeError
+✅ HOLD signal inverted logic
+✅ Unicode encoding errors
+✅ Sentiment gap integration
+✅ Trade mode configurability
+
+Ready for production deployment!
+
+================================================================================

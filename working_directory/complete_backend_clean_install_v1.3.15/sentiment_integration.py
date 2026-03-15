@@ -1,0 +1,420 @@
+"""
+Sentiment Integration Module
+Combines overnight pipeline sentiment with FinBERT v4.4.4 analysis
+
+This module provides unified sentiment analysis by integrating:
+1. Morning Report Sentiment (from overnight pipeline with FinBERT v4.4.4)
+2. FinBERT v4.4.4 News Sentiment (stock-specific)
+3. Combined trading decisions
+
+Purpose: Ensure trading platform respects negative sentiment warnings
+Version: v1.3.15.45 - Unified FinBERT v4.4.4 Integration
+"""
+
+import json
+import logging
+import time
+import sys
+from typing import Dict, List, Optional
+from datetime import datetime
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
+
+# Import FinBERT v4.4.4 directly (NOT ml_pipeline version)
+def _find_finbert_path() -> Optional[Path]:
+    """Find FinBERT v4.4.4 installation"""
+    finbert_paths = [
+        # Priority 1: Local installation (same directory as complete_backend)
+        Path(r'C:\Users\david\Regime_trading\complete_backend_clean_install_v1.3.15\finbert_v4.4.4'),
+        # Priority 2: Relative to this file
+        Path(__file__).parent / 'finbert_v4.4.4',
+        # Priority 3: Current working directory
+        Path.cwd() / 'finbert_v4.4.4',
+        # Priority 4: Parent directory
+        Path.cwd().parent / 'finbert_v4.4.4',
+        # Priority 5: AATelS (fallback - may not have transformers installed)
+        Path(r'C:\Users\david\AATelS\finbert_v4.4.4')
+    ]
+    
+    for path in finbert_paths:
+        if path.exists():
+            logger.info(f"[FINBERT v4.4.4] Found at: {path}")
+            return path
+    
+    logger.warning("[FINBERT v4.4.4] Not found in standard locations")
+    return None
+
+# Try to import FinBERT v4.4.4
+FINBERT_AVAILABLE = False
+try:
+    finbert_path = _find_finbert_path()
+    if finbert_path:
+        sys.path.insert(0, str(finbert_path / 'models'))
+        from finbert_sentiment import FinBERTSentimentAnalyzer
+        FINBERT_AVAILABLE = True
+        logger.info(f"[FINBERT v4.4.4] Successfully imported from {finbert_path}")
+except ImportError as e:
+    logger.warning(f"[FINBERT v4.4.4] Import failed: {e}")
+    FINBERT_AVAILABLE = False
+
+
+class IntegratedSentimentAnalyzer:
+    """
+    Integrated sentiment analyzer combining multiple sources
+    
+    Features:
+    - Morning report sentiment (market-wide)
+    - FinBERT news sentiment (stock-specific)
+    - Trading decision gates
+    - Sentiment-based position sizing
+    """
+    
+    def __init__(self, use_finbert: bool = True):
+        """
+        Initialize integrated sentiment analyzer
+        
+        Args:
+            use_finbert: Whether to use FinBERT for stock-specific sentiment
+        """
+        self.use_finbert = use_finbert and FINBERT_AVAILABLE
+        self.finbert_analyzer = None
+        self.morning_sentiment_cache = {}
+        self.last_report_load = 0
+        
+        # Initialize FinBERT v4.4.4 if available
+        if self.use_finbert:
+            try:
+                self.finbert_analyzer = FinBERTSentimentAnalyzer(model_name="ProsusAI/finbert")
+                logger.info("[SENTIMENT] FinBERT v4.4.4 analyzer initialized")
+            except Exception as e:
+                logger.error(f"[SENTIMENT] Failed to initialize FinBERT v4.4.4: {e}")
+                self.use_finbert = False
+        
+        logger.info(f"[SENTIMENT] Integrated analyzer initialized "
+                   f"(FinBERT v4.4.4: {'Enabled' if self.use_finbert else 'Disabled'})")
+    
+    def load_morning_sentiment(self, market: str = 'au', max_age_hours: int = 24) -> Optional[Dict]:
+        """
+        Load sentiment from overnight pipeline morning report
+        
+        Args:
+            market: Market code ('au', 'us', 'uk')
+            max_age_hours: Maximum age of report to accept (hours)
+        
+        Returns:
+            Sentiment data from morning report, or None if unavailable
+        """
+        try:
+            # Check cache first (refresh every 5 minutes)
+            cache_key = market
+            if cache_key in self.morning_sentiment_cache:
+                if time.time() - self.last_report_load < 300:  # 5 minutes
+                    return self.morning_sentiment_cache[cache_key]
+            
+            # Path to morning report
+            report_path = Path('reports/screening') / f'{market}_morning_report.json'
+            
+            if not report_path.exists():
+                logger.warning(f"[SENTIMENT] Morning report not found: {report_path}")
+                return None
+            
+            # Check if report is recent
+            file_age_seconds = time.time() - report_path.stat().st_mtime
+            file_age_hours = file_age_seconds / 3600
+            
+            if file_age_hours > max_age_hours:
+                logger.warning(f"[SENTIMENT] Morning report is stale ({file_age_hours:.1f} hours old)")
+                return None
+            
+            # Load report
+            with open(report_path, 'r') as f:
+                report = json.load(f)
+            
+            # Extract sentiment data (including NEW FinBERT v4.4.4 breakdown)
+            sentiment_data = {
+                'overall_sentiment': report.get('overall_sentiment', 50),
+                'confidence': report.get('confidence', 'MODERATE'),
+                'risk_rating': report.get('risk_rating', 'Moderate'),
+                'volatility_level': report.get('volatility_level', 'Normal'),
+                'recommendation': report.get('recommendation', 'HOLD'),
+                'spi_sentiment': report.get('spi_sentiment', {}),
+                
+                # NEW: FinBERT v4.4.4 breakdown from morning report
+                'finbert_sentiment': report.get('finbert_sentiment', {
+                    'overall_scores': {
+                        'negative': 0.33,
+                        'neutral': 0.34,
+                        'positive': 0.33
+                    },
+                    'compound': 0.0,
+                    'sentiment_label': 'neutral',
+                    'confidence': 50,
+                    'stocks_analyzed': 0,
+                    'method': 'Default'
+                }),
+                
+                'report_date': report.get('report_date'),
+                'generated_at': report.get('generated_at'),
+                'file_age_hours': file_age_hours
+            }
+            
+            # Cache it
+            self.morning_sentiment_cache[cache_key] = sentiment_data
+            self.last_report_load = time.time()
+            
+            logger.info(f"[SENTIMENT] Loaded {market.upper()} morning report: "
+                       f"{sentiment_data['overall_sentiment']:.1f}/100 "
+                       f"({sentiment_data['recommendation']}) "
+                       f"[{file_age_hours:.1f}h old]")
+            
+            return sentiment_data
+            
+        except Exception as e:
+            logger.error(f"[SENTIMENT] Error loading morning sentiment: {e}")
+            return None
+    
+    def get_stock_sentiment(self, symbol: str, news_items: List[str] = None) -> Dict:
+        """
+        Get FinBERT sentiment for a specific stock
+        
+        Args:
+            symbol: Stock symbol
+            news_items: List of news headlines/texts (optional)
+        
+        Returns:
+            FinBERT sentiment analysis
+        """
+        if not self.use_finbert or not self.finbert_analyzer:
+            return self._get_neutral_sentiment()
+        
+        try:
+            if not news_items or len(news_items) == 0:
+                logger.debug(f"[FINBERT] No news for {symbol}, using neutral")
+                return self._get_neutral_sentiment()
+            
+            # Analyze news with FinBERT
+            sentiment = self.finbert_analyzer.analyze_news_batch(news_items)
+            
+            logger.info(f"[FINBERT] {symbol}: {sentiment['sentiment'].upper()} "
+                       f"({sentiment['confidence']:.1f}% confidence, "
+                       f"compound: {sentiment['compound']:.3f})")
+            
+            return sentiment
+            
+        except Exception as e:
+            logger.error(f"[FINBERT] Error analyzing {symbol}: {e}")
+            return self._get_neutral_sentiment()
+    
+    def get_comprehensive_sentiment(self, symbol: str, news_items: List[str] = None, 
+                                   market: str = 'au') -> Dict:
+        """
+        Get comprehensive sentiment combining market and stock-specific analysis
+        
+        Args:
+            symbol: Stock symbol
+            news_items: News headlines for stock-specific sentiment
+            market: Market code
+        
+        Returns:
+            Comprehensive sentiment with trading decision
+        """
+        # Get market-wide sentiment from morning report
+        morning_data = self.load_morning_sentiment(market=market)
+        
+        if morning_data:
+            market_sentiment = morning_data['overall_sentiment']
+            market_rec = morning_data['recommendation']
+            market_confidence = morning_data['confidence']
+            risk_rating = morning_data['risk_rating']
+        else:
+            market_sentiment = 50.0
+            market_rec = 'HOLD'
+            market_confidence = 'MODERATE'
+            risk_rating = 'Moderate'
+        
+        # Get stock-specific FinBERT sentiment
+        stock_sentiment = self.get_stock_sentiment(symbol, news_items)
+        
+        # Combine for trading decision
+        decision = self._determine_trading_decision(
+            market_sentiment=market_sentiment,
+            market_rec=market_rec,
+            stock_sentiment=stock_sentiment,
+            risk_rating=risk_rating
+        )
+        
+        return {
+            'symbol': symbol,
+            'market': {
+                'sentiment': market_sentiment,
+                'recommendation': market_rec,
+                'confidence': market_confidence,
+                'risk_rating': risk_rating
+            },
+            'stock': {
+                'sentiment_label': stock_sentiment.get('sentiment', 'neutral'),
+                'confidence': stock_sentiment.get('confidence', 50),
+                'compound': stock_sentiment.get('compound', 0),
+                'scores': stock_sentiment.get('scores', {
+                    'negative': 0.33,
+                    'neutral': 0.34,
+                    'positive': 0.33
+                })
+            },
+            'trading_decision': decision['decision'],
+            'decision_reason': decision['reason'],
+            'position_size_multiplier': decision['size_multiplier'],
+            'timestamp': datetime.now().isoformat()
+        }
+    
+    def _determine_trading_decision(self, market_sentiment: float, market_rec: str,
+                                   stock_sentiment: Dict, risk_rating: str) -> Dict:
+        """
+        Determine trading decision based on combined sentiment
+        
+        Returns:
+            {
+                'decision': 'BLOCK'|'REDUCE'|'CAUTION'|'ALLOW',
+                'reason': 'explanation',
+                'size_multiplier': 0.0 to 1.0
+            }
+        """
+        reasons = []
+        size_multiplier = 1.0
+        decision = 'ALLOW'
+        
+        # Critical market gates
+        if market_rec in ['STRONG_SELL', 'AVOID']:
+            decision = 'BLOCK'
+            size_multiplier = 0.0
+            reasons.append(f"Market {market_rec}")
+        
+        # Bearish market gate
+        elif market_rec == 'SELL' or market_sentiment < 35:
+            decision = 'BLOCK'
+            size_multiplier = 0.0
+            reasons.append(f"Bearish market ({market_sentiment:.1f}/100)")
+        
+        # Caution gate
+        elif market_rec in ['CAUTION', 'HOLD'] and market_sentiment < 45:
+            decision = 'REDUCE'
+            size_multiplier = 0.5  # 50% position size
+            reasons.append(f"Market CAUTION ({market_sentiment:.1f}/100)")
+        
+        # High risk gate
+        if risk_rating in ['High', 'Elevated'] and market_sentiment < 50:
+            if decision == 'ALLOW':
+                decision = 'REDUCE'
+            size_multiplier = min(size_multiplier, 0.6)
+            reasons.append(f"High risk ({risk_rating})")
+        
+        # Stock-specific gates (FinBERT)
+        stock_compound = stock_sentiment.get('compound', 0)
+        stock_label = stock_sentiment.get('sentiment', 'neutral')
+        
+        # Strong negative stock sentiment
+        if stock_compound < -0.4:
+            decision = 'BLOCK'
+            size_multiplier = 0.0
+            reasons.append(f"Strong negative stock sentiment ({stock_compound:.2f})")
+        
+        # Moderate negative stock sentiment
+        elif stock_compound < -0.2:
+            if decision == 'ALLOW':
+                decision = 'REDUCE'
+            size_multiplier = min(size_multiplier, 0.7)
+            reasons.append(f"Negative stock sentiment ({stock_compound:.2f})")
+        
+        # Weak negative sentiment
+        elif stock_label == 'negative' and stock_compound < 0:
+            if decision == 'ALLOW':
+                decision = 'CAUTION'
+            size_multiplier = min(size_multiplier, 0.85)
+            reasons.append(f"Weak negative sentiment ({stock_compound:.2f})")
+        
+        # Positive sentiment boost
+        if stock_compound > 0.3 and market_sentiment > 55:
+            size_multiplier = min(1.2, size_multiplier * 1.2)  # 20% boost
+            reasons.append(f"Positive sentiment boost ({stock_compound:.2f})")
+        
+        # Final decision
+        reason = ' + '.join(reasons) if reasons else 'No restrictions'
+        
+        return {
+            'decision': decision,
+            'reason': reason,
+            'size_multiplier': round(size_multiplier, 2)
+        }
+    
+    def _get_neutral_sentiment(self) -> Dict:
+        """Return neutral sentiment"""
+        return {
+            'sentiment': 'neutral',
+            'confidence': 50.0,
+            'compound': 0.0,
+            'scores': {
+                'negative': 0.33,
+                'neutral': 0.34,
+                'positive': 0.33
+            },
+            'method': 'Default',
+            'timestamp': datetime.now().isoformat()
+        }
+    
+    def should_allow_trade(self, symbol: str, news_items: List[str] = None, 
+                          market: str = 'au') -> bool:
+        """
+        Quick check if trade should be allowed
+        
+        Args:
+            symbol: Stock symbol
+            news_items: News for sentiment analysis
+            market: Market code
+        
+        Returns:
+            True if trade is allowed, False if blocked
+        """
+        analysis = self.get_comprehensive_sentiment(symbol, news_items, market)
+        decision = analysis['trading_decision']
+        
+        if decision == 'BLOCK':
+            logger.warning(f"[SENTIMENT BLOCK] {symbol}: {analysis['decision_reason']}")
+            return False
+        elif decision in ['REDUCE', 'CAUTION']:
+            logger.warning(f"[SENTIMENT WARNING] {symbol}: {analysis['decision_reason']}")
+            # Still allow trade but with reduced size
+            return True
+        else:
+            logger.info(f"[SENTIMENT OK] {symbol}: {analysis['decision_reason']}")
+            return True
+    
+    def get_position_size_multiplier(self, symbol: str, news_items: List[str] = None,
+                                    market: str = 'au') -> float:
+        """
+        Get position size multiplier based on sentiment
+        
+        Returns:
+            Multiplier (0.0 to 1.2)
+        """
+        analysis = self.get_comprehensive_sentiment(symbol, news_items, market)
+        return analysis['position_size_multiplier']
+
+
+# Singleton instance
+_sentiment_analyzer = None
+
+def get_sentiment_analyzer(use_finbert: bool = True) -> IntegratedSentimentAnalyzer:
+    """
+    Get singleton sentiment analyzer instance
+    
+    Args:
+        use_finbert: Whether to use FinBERT
+    
+    Returns:
+        IntegratedSentimentAnalyzer instance
+    """
+    global _sentiment_analyzer
+    if _sentiment_analyzer is None:
+        _sentiment_analyzer = IntegratedSentimentAnalyzer(use_finbert=use_finbert)
+    return _sentiment_analyzer

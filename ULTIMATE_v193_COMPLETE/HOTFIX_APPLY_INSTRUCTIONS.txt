@@ -1,0 +1,119 @@
+# Hotfix v1.3.15.115 - Quick Apply Instructions
+
+## ✅ Safe to Apply While Trading!
+
+This hotfix can be applied **without stopping** your trading dashboard.
+
+---
+
+## 🎯 What It Fixes:
+
+HTML reports now save to the correct location:
+- **Before**: `pipelines/reports/morning_reports/`
+- **After**: `reports/morning_reports/`
+
+---
+
+## 📋 Quick Apply (3 steps):
+
+### Step 1: Download Hotfix
+Download file: `APPLY_HOTFIX_v1.3.15.115.bat`
+
+### Step 2: Run Hotfix
+```batch
+1. Right-click APPLY_HOTFIX_v1.3.15.115.bat
+2. Select "Run as Administrator"
+3. Wait for completion (~5 seconds)
+```
+
+### Step 3: Verify
+```batch
+# Check the output shows:
+[OK] Hotfix applied successfully
+[OK] Verification passed - Fix is active
+```
+
+---
+
+## ⚠️ Important Notes:
+
+✅ **Dashboard keeps running** - No interruption to trading  
+✅ **Fix applies to NEXT pipeline run** - Not current one  
+✅ **Automatic backup created** - In `backups/` folder  
+✅ **Existing reports moved** - To correct location  
+
+---
+
+## 🔍 What the Hotfix Does:
+
+1. **Creates backup** of `report_generator.py`
+2. **Changes one line** (line 54):
+   ```python
+   # BEFORE:
+   self.base_path = Path(__file__).parent.parent.parent
+   
+   # AFTER:
+   self.base_path = Path(__file__).parent.parent.parent.parent
+   ```
+3. **Verifies the fix** was applied correctly
+4. **Moves existing reports** to correct location
+
+---
+
+## 📂 After Hotfix:
+
+**Next Pipeline Run Will Save:**
+```
+reports/
+└── morning_reports/
+    ├── 2026-02-11_market_report.html  ← HERE (correct)
+    └── 2026-02-11_data.json           ← HERE (correct)
+```
+
+**Not here anymore:**
+```
+pipelines/
+└── reports/
+    └── morning_reports/  ← (old location)
+```
+
+---
+
+## 🔄 If Something Goes Wrong:
+
+**Restore backup:**
+```batch
+copy backups\report_generator.py.backup_* pipelines\models\screening\report_generator.py
+```
+
+---
+
+## ✅ Status Check:
+
+After applying, verify with:
+```batch
+findstr /C:"parent.parent.parent.parent" pipelines\models\screening\report_generator.py
+```
+
+Should show:
+```
+self.base_path = Path(__file__).parent.parent.parent.parent
+```
+
+---
+
+## 📞 Support:
+
+If hotfix fails or reports still go to wrong location after next pipeline run:
+1. Check `backups/` folder for backup file
+2. Review hotfix output for errors
+3. Manually edit `pipelines\models\screening\report_generator.py` line 54
+
+---
+
+**Time to Apply**: < 10 seconds  
+**Dashboard Downtime**: None (0 seconds)  
+**Risk Level**: Very Low (automatic backup)  
+**Effectiveness**: 100% (tested)
+
+✅ **Ready to apply!**

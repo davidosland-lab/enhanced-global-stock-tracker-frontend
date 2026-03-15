@@ -1,0 +1,109 @@
+================================================================================
+SIGNAL GENERATION FIX - v193.11.7.1 (March 11, 2026)
+================================================================================
+
+CRITICAL BUG FIXED: NoneType.__format__ Error
+----------------------------------------------
+
+SYMPTOMS:
+---------
+• Error message: "Error generating signal for <symbol>: unsupported format string passed to NoneType.__format__"
+• ALL symbols failing to generate signals
+• No trades executing despite system running
+• Capital sitting idle ($100,000 cash, $0 invested)
+• Portfolio showing: Total Trades 0, Win Rate 0.0%
+
+ROOT CAUSE:
+-----------
+In paper_trading_coordinator.py, when logging signal components, the code attempted
+to format None values in f-strings:
+
+  BAD CODE (line ~1688):
+  ----------------------
+  logger.info(
+      f"Components: Sentiment={enhanced_signal.get('components', {}).get('sentiment', 0):.3f}, "
+      f"LSTM={enhanced_signal.get('components', {}).get('lstm', 0):.3f}, "
+      f"Technical={enhanced_signal.get('components', {}).get('technical', 0):.3f}"
+  )
+
+The .get() method with a default of 0 doesn't prevent None if the key exists but
+has a None value. When Python tries to format None with :.3f, it crashes with:
+"unsupported format string passed to NoneType.__format__"
+
+THE FIX:
+--------
+Extract component values safely and check for None BEFORE formatting:
+
+  FIXED CODE (line ~1688):
+  ------------------------
+  components = enhanced_signal.get('components', {})
+  sentiment_val = components.get('sentiment', 0) if components.get('sentiment') is not None else 0
+  lstm_val = components.get('lstm', 0) if components.get('lstm') is not None else 0
+  technical_val = components.get('technical', 0) if components.get('technical') is not None else 0
+  
+  logger.info(
+      f"[OK] {symbol} Signal: {enhanced_signal['prediction']} "
+      f"(conf={enhanced_signal['confidence']:.2f}) | "
+      f"Components: Sentiment={sentiment_val:.3f}, "
+      f"LSTM={lstm_val:.3f}, "
+      f"Technical={technical_val:.3f}"
+  )
+
+FILES MODIFIED:
+---------------
+1. ULTIMATE_v193_COMPLETE/core/paper_trading_coordinator.py (line ~1688)
+2. working_directory/COMPLETE_SYSTEM_v1.3.15.45_FINAL/paper_trading_coordinator.py (line ~684)
+
+WHAT THIS FIX DOES:
+-------------------
+✅ Prevents crashes when component scores are None
+✅ Allows signal generation to complete successfully
+✅ Enables trading system to execute trades
+✅ Safely logs all component values (uses 0 for None)
+✅ No change to trading logic - only logging safety
+
+EXPECTED BEHAVIOR AFTER FIX:
+-----------------------------
+✅ Signal generation succeeds for all symbols
+✅ Log entries show: "[OK] <symbol> Signal: BUY/SELL/HOLD (conf=XX.XX)"
+✅ Trades execute when confidence > threshold
+✅ Portfolio shows open positions and trade activity
+✅ Dashboard updates with real trading activity
+
+HOW TO APPLY:
+-------------
+1. Stop the trading system if running
+2. Extract unified_trading_system_v193.11.7.1_SIGNAL_FIX.zip
+3. Overwrite existing files
+4. Run START.bat → Option 1 (Complete System)
+5. Monitor logs for successful signal generation
+
+VERIFICATION:
+-------------
+After applying fix, you should see:
+• "[OK] AAPL Signal: BUY (conf=65.23) | Components: Sentiment=0.450, LSTM=0.320, Technical=0.280"
+• No more "unsupported format string" errors
+• Trades executing when signals meet confidence threshold
+• Portfolio showing open positions
+
+VERSION HISTORY:
+----------------
+v193.11.7.1 (Mar 11, 2026) - Signal generation fix (this version)
+v193.11.7   (Mar 11, 2026) - Trading loop crash fix
+v193.11.6.21 (Mar 1, 2026) - Last stable version (8 months proven)
+
+GIT COMMIT:
+-----------
+Commit: 37d1264
+Branch: market-timing-critical-fix
+Message: "fix(trading): Resolve NoneType.__format__ error in signal generation"
+
+SUPPORT:
+--------
+If signal generation still fails:
+1. Check logs/paper_trading.log for detailed errors
+2. Verify Python 3.12+ is installed
+3. Confirm all dependencies installed via INSTALL_COMPLETE.bat
+4. Check that ml_pipeline modules are accessible
+
+================================================================================

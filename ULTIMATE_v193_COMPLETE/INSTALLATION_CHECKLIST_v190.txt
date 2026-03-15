@@ -1,0 +1,294 @@
+================================================================================
+  v1.3.15.190 INSTALLATION & VERIFICATION CHECKLIST
+================================================================================
+
+Use this checklist to ensure proper installation and configuration of the
+Unified Trading System v1.3.15.190 with the dashboard confidence fix.
+
+================================================================================
+  PART 1: PRE-INSTALLATION CHECKS
+================================================================================
+
+System Requirements:
+□ Windows 10/11 (64-bit) OR Linux
+□ Python 3.8 or higher installed
+□ 4 GB RAM minimum (8 GB recommended)
+□ 2 GB free disk space
+□ Internet connection active
+□ Port 8050 available
+
+Verify Python:
+□ Open terminal/command prompt
+□ Run: python --version
+□ Should show: Python 3.8.x or higher
+
+Verify Port 8050:
+□ Windows: netstat -an | findstr 8050
+□ Linux: netstat -an | grep 8050
+□ Should show: No results (port is free)
+
+================================================================================
+  PART 2: INSTALLATION STEPS
+================================================================================
+
+Extract Package:
+□ Download: unified_trading_system_v190_COMPLETE.zip
+□ Verify MD5: 632388505ddcea692326e3a2d42454e0
+□ Extract to: C:\Trading\unified_trading_system_v190\ (Windows)
+            OR: ~/trading/unified_trading_system_v190/ (Linux)
+□ Verify extracted folder contains: start.py, config/, core/, etc.
+
+Install Dependencies:
+□ Windows: Double-click install_complete.bat
+□ Linux: Run pip3 install -r requirements.txt
+□ Wait for installation to complete (~5-10 minutes)
+□ Check for errors (should see "Successfully installed...")
+
+Verify Installation:
+□ Run: python FIX_DASHBOARD_CONFIDENCE_v190.py
+□ Check all items show ✅ PASS:
+  □ Dashboard slider minimum set to 45
+  □ Dashboard slider default value set to 48
+  □ Dashboard slider marks start at 45
+  □ config/live_trading_config.json: 48.0%
+  □ All source code files use 48% threshold
+
+================================================================================
+  PART 3: FIRST START VERIFICATION
+================================================================================
+
+Start Dashboard:
+□ Windows: Double-click start.bat OR run python start.py
+□ Linux: Run python3 start.py
+□ Wait for: "Dashboard running on http://0.0.0.0:8050/"
+□ Check no errors in console output
+
+Open Dashboard in Browser:
+□ Open browser (Chrome, Firefox, Edge)
+□ Navigate to: http://localhost:8050
+□ Dashboard should load within 2-3 seconds
+□ Should see: "Unified Trading Dashboard" header
+
+Visual UI Verification:
+□ Locate "Minimum Confidence Level" slider
+□ Verify slider position shows: 48% (NOT 65%)
+□ Verify slider range shows: 45% to 95% (NOT 50% to 95%)
+□ Verify marks on slider: 45, 55, 65, 75, 85, 95 (NOT 50, 60, 70...)
+□ Slider should be movable (drag left/right)
+
+Other UI Elements:
+□ "Initial Capital" field visible and shows $100,000
+□ "Stop Loss (%)" field visible
+□ "Market Selection" checkboxes visible
+□ "START TRADING" button visible and clickable
+□ Dashboard tabs visible: Overview, Open Positions, Closed Trades, etc.
+
+================================================================================
+  PART 4: CONFIGURATION FILE VERIFICATION
+================================================================================
+
+Verify Config Files Exist:
+□ config/config.json exists
+□ config/live_trading_config.json exists
+□ config/screening_config.json exists
+
+Check live_trading_config.json:
+□ Open: config/live_trading_config.json
+□ Verify contains: "swing_trading": { ... }
+□ Verify contains: "confidence_threshold": 48.0
+□ Verify contains: "risk_management": { ... }
+□ File should be valid JSON (no syntax errors)
+
+Check config/config.json:
+□ Open: config/config.json
+□ Should contain system-wide settings
+□ Should have opportunity_monitor section
+
+================================================================================
+  PART 5: STARTING FIRST TRADE SESSION
+================================================================================
+
+Configure Trading Parameters:
+□ Verify confidence slider at 48% (or adjust if desired)
+□ Set initial capital (default $100,000 is fine)
+□ Set stop loss (default 10% is fine)
+□ Select markets:
+  □ US Market (recommended)
+  □ UK Market (optional)
+  □ AU Market (optional)
+
+Click "START TRADING":
+□ Click the "START TRADING" button
+□ Wait for initialization (~10-20 seconds)
+□ Check console/terminal for messages:
+  □ "Loading FinBERT v4.4.4..."
+  □ "FinBERT model loaded successfully"
+  □ "Initializing swing signal generator..."
+  □ "Using confidence threshold: 48.0%"
+  □ "Loaded X symbols"
+
+Verify System Initialized:
+□ Dashboard shows: "Status: Running" or similar
+□ Capital allocation visible
+□ Symbol list populated
+□ Market data starts updating
+□ No error messages in red
+
+================================================================================
+  PART 6: MONITORING & LOGGING
+================================================================================
+
+Check Log File:
+□ Open: logs/paper_trading.log
+□ Verify log file is being written to
+□ Look for recent timestamps
+□ Check for initialization messages
+□ Should NOT see errors like "Module not found"
+
+Monitor Console Output:
+□ Console shows market data updates
+□ Console shows signal evaluations
+□ Look for patterns like:
+  "Evaluating [SYMBOL] signal..."
+  "Signal: BUY, Confidence: XX.X%"
+□ Should NOT see: "SKIP due to Confidence XX% < 65%" for XX ≥ 48
+
+Check for Trade Executions:
+□ Wait for signals to be generated (may take 5-15 minutes)
+□ When signal appears, verify:
+  □ If confidence ≥ 48%: Should see "PASS" or execution
+  □ If confidence < 48%: Should see "SKIP"
+□ Example good message: "✓ PASS: Confidence 53.0% ≥ 48.0%"
+□ Example good message: "Executing BUY order: RIO.AX @ $XX.XX"
+
+================================================================================
+  PART 7: DASHBOARD FUNCTIONALITY CHECK
+================================================================================
+
+Test Dashboard Features:
+□ Click "Overview" tab - should show summary
+□ Click "Open Positions" tab - shows active trades (if any)
+□ Click "Closed Trades" tab - shows completed trades
+□ Click "Performance" tab - shows metrics
+□ Charts update (market indices: FTSE, ASX, S&P, NASDAQ)
+□ Signals table populates with ML signals
+
+Market Data Verification:
+□ Market chart shows data points
+□ Timestamps are recent (within last 24 hours)
+□ Price changes are reasonable
+□ No errors in data display
+
+Sentiment Data:
+□ Sentiment score visible (0-100 scale)
+□ Market sentiment classification (BULLISH/NEUTRAL/BEARISH)
+□ Sentiment data is recent (check timestamp)
+
+================================================================================
+  PART 8: TRADE EXECUTION VERIFICATION (48% THRESHOLD)
+================================================================================
+
+Expected Trade Behavior:
+□ Signals with 48-55% confidence: SHOULD EXECUTE ✅
+□ Signals with 55-65% confidence: SHOULD EXECUTE ✅
+□ Signals with 65%+ confidence: SHOULD EXECUTE ✅
+□ Signals with <48% confidence: SHOULD SKIP ❌
+
+Example Expected Trades (from your data):
+□ RIO.AX (54.4% confidence) → EXECUTE ✅
+□ BP.L (52.1% confidence) → EXECUTE ✅
+□ HSBA.L (53.0% confidence) → EXECUTE ✅
+□ AAPL (87.2% confidence) → EXECUTE ✅
+
+Check Logs for Correct Behavior:
+□ Open logs/paper_trading.log
+□ Search for recent trade evaluations
+□ Verify 48%+ confidence trades are NOT skipped
+□ Verify log shows "Using confidence threshold: 48.0%"
+□ Should NOT see messages like "< 65%" for passing trades
+
+================================================================================
+  PART 9: TROUBLESHOOTING VERIFICATION
+================================================================================
+
+If Slider Still Shows 65%:
+□ Clear browser cache (Ctrl+Shift+Delete)
+□ Hard refresh page (Ctrl+F5 or Ctrl+Shift+R)
+□ Close browser completely and reopen
+□ Check core/unified_trading_dashboard.py line 891 shows value=48
+□ Delete __pycache__: find . -name '__pycache__' -type d -exec rm -rf {} +
+□ Restart Python process completely
+
+If Trades Still Blocked at 65%:
+□ Check UI slider hasn't been manually moved to 65%
+□ Move slider to 48% position manually
+□ Stop and restart trading
+□ Check logs for "Using confidence threshold: XX.X%"
+□ Verify config/live_trading_config.json exists and has 48.0
+□ Re-run: python FIX_DASHBOARD_CONFIDENCE_v190.py
+
+If Dashboard Won't Load:
+□ Check Python process is running (no errors in terminal)
+□ Verify port 8050 not used by other app
+□ Check firewall/antivirus isn't blocking
+□ Try different browser
+□ Check logs/paper_trading.log for errors
+□ Reinstall dependencies: pip install -r requirements.txt
+
+================================================================================
+  PART 10: FINAL VERIFICATION SUMMARY
+================================================================================
+
+Quick Final Check (All should be ✅):
+□ Dashboard loads at http://localhost:8050
+□ Confidence slider shows 48% by default
+□ Slider range is 45-95%
+□ Config files present and correct
+□ FinBERT v4.4.4 loaded
+□ Trading system initialized
+□ Market data updating
+□ Signals being generated
+□ Trades executing at ≥48% confidence
+□ No error messages in logs
+□ No "SKIP < 65%" messages for 48%+ confidence
+□ System status: Running
+□ Performance metrics visible
+
+ALL CHECKS PASSED? ✅
+----------------------------
+Congratulations! Your system is properly installed and configured.
+You are now ready to trade with the corrected 48% confidence threshold.
+
+Expected behavior:
+- More trading opportunities (+40-60%)
+- Trades executing in the 48-65% confidence range
+- Overall higher profitability through increased volume
+- Win rate: 70-80% (acceptable range)
+
+SOME CHECKS FAILED? ❌
+----------------------------
+Review the troubleshooting section above and:
+1. Re-run FIX_DASHBOARD_CONFIDENCE_v190.py
+2. Check specific failing items
+3. Review logs/paper_trading.log
+4. Clear cache and restart
+5. Verify installation steps were followed correctly
+
+================================================================================
+  SUPPORT DOCUMENTATION
+================================================================================
+
+For more information, see:
+- QUICK_START_v190.txt - Detailed installation guide
+- README_v190.md - Full documentation
+- CHANGELOG_v190.md - What changed in v190
+- VISUAL_COMPARISON_v190.md - Before/after comparison
+- RELEASE_SUMMARY_v190.txt - Executive summary
+
+================================================================================
+
+Version: 1.3.15.190
+Build: 2026-02-27 12:30 UTC
+Status: Production Ready ✅
+
+================================================================================

@@ -1,0 +1,599 @@
+====================================================================================
+TRADING SYSTEM WEB CONTROL CENTER - COMPLETE GUIDE
+====================================================================================
+
+Version: 1.0.0
+Date: 2026-03-07
+Purpose: Unified web interface for controlling all trading system services
+
+====================================================================================
+OVERVIEW
+====================================================================================
+
+The Web Control Center provides a single interface to:
+
+✅ Start/Stop Services:
+   - AU Overnight Pipeline
+   - UK Overnight Pipeline
+   - US Overnight Pipeline
+   - Trading Dashboard
+   - FinBERT Sentiment Service
+
+✅ Monitor Real-Time:
+   - Live terminal output streaming
+   - Service status (running/stopped, PID)
+   - Process health monitoring
+
+✅ View Dashboard:
+   - Embedded live trading dashboard
+   - Direct iframe integration (port 8050)
+
+✅ Access Methods:
+   - Local: http://localhost:5000
+   - Network: http://<your-ip>:5000
+   - Remote: Via port forwarding or VPN
+
+====================================================================================
+INSTALLATION
+====================================================================================
+
+STEP 1: Install Required Packages
+------------------------
+cd "C:\Users\david\Regime trading V5\ULTIMATE_v193_COMPLETE"
+
+pip install flask flask-cors
+
+# That's it! Only 2 dependencies needed.
+
+STEP 2: Verify File Structure
+------------------------
+Required files:
+  ✅ web_control_center.py (backend server)
+  ✅ templates/control_panel.html (frontend UI)
+
+Optional (will be created automatically):
+  - logs/ directory (for system logs)
+
+====================================================================================
+USAGE - LOCAL ACCESS
+====================================================================================
+
+STEP 1: Start the Web Control Center
+------------------------
+cd "C:\Users\david\Regime trading V5\ULTIMATE_v193_COMPLETE"
+python web_control_center.py
+
+Expected output:
+  ================================================================================
+  TRADING SYSTEM WEB CONTROL CENTER
+  ================================================================================
+  
+  Starting web server...
+  
+  Access Points:
+    Local:   http://localhost:5000
+    Network: http://<your-ip>:5000
+  
+  Services Available:
+    - AU Pipeline
+    - UK Pipeline
+    - US Pipeline
+    - Trading Dashboard
+    - FinBERT Service
+  
+  Press Ctrl+C to stop
+  ================================================================================
+
+STEP 2: Open in Browser
+------------------------
+1. Open your web browser
+2. Navigate to: http://localhost:5000
+3. You'll see the control panel with 5 service cards
+
+STEP 3: Start Services
+------------------------
+Click the green "▶ Start" button for each service you want to run:
+
+1. Dashboard (start first) - Runs on port 8050
+2. AU Pipeline - Australian market screening
+3. UK Pipeline - UK market screening
+4. US Pipeline - US market screening
+5. FinBERT - Sentiment analysis service
+
+Services will show:
+  - Green badge: "RUNNING"
+  - PID: Process ID number
+
+STEP 4: View Logs
+------------------------
+1. Select service from dropdown: "Select service..."
+2. OR click "📋 Logs" button on any service card
+3. Terminal output streams in real-time
+4. Auto-scroll keeps you at the bottom
+5. Click "Clear" to reset log view
+
+STEP 5: View Dashboard
+------------------------
+When Dashboard service is running:
+  - Dashboard iframe appears automatically below logs
+  - Shows live trading dashboard (port 8050)
+  - Click "Refresh" to reload iframe
+
+STEP 6: Stop Services
+------------------------
+Click red "⏹ Stop" button to gracefully shutdown a service.
+
+====================================================================================
+USAGE - NETWORK ACCESS (Same House/WiFi)
+====================================================================================
+
+GOAL: Access control center from phone, tablet, or another computer in your house.
+
+STEP 1: Find Your Computer's IP Address
+------------------------
+Windows:
+  ipconfig
+  
+  Look for "IPv4 Address" under your active network adapter:
+  Example: 192.168.1.100
+
+macOS/Linux:
+  ifconfig
+  
+  Look for "inet" address:
+  Example: 192.168.1.100
+
+STEP 2: Start Control Center
+------------------------
+python web_control_center.py
+
+Note the "Network:" line in output - this is your access URL.
+
+STEP 3: Access from Another Device
+------------------------
+On your phone/tablet/laptop (connected to SAME WiFi):
+
+1. Open browser
+2. Go to: http://192.168.1.100:5000
+   (Replace with YOUR IP from Step 1)
+3. Control panel loads - works exactly like local!
+
+STEP 4: Bookmark for Easy Access
+------------------------
+Save bookmark on phone home screen for quick access.
+
+====================================================================================
+USAGE - REMOTE ACCESS (Outside Your House)
+====================================================================================
+
+GOAL: Access control center from anywhere in the world.
+
+⚠️ WARNING: Remote access requires security! See SECURITY section below.
+
+OPTION A: Port Forwarding (Advanced)
+------------------------
+1. Log into your router admin panel
+   - Usually: http://192.168.1.1 or http://192.168.0.1
+   - Router manual has credentials
+
+2. Find "Port Forwarding" or "NAT" settings
+
+3. Create port forward rule:
+   - External Port: 5000
+   - Internal IP: <your-computer-ip> (e.g., 192.168.1.100)
+   - Internal Port: 5000
+   - Protocol: TCP
+   - Save
+
+4. Find your public IP:
+   - Visit: https://whatismyipaddress.com/
+   - Note your public IP (e.g., 203.45.67.89)
+
+5. Access from anywhere:
+   - http://<your-public-ip>:5000
+   - Example: http://203.45.67.89:5000
+
+⚠️ SECURITY REQUIRED:
+   - Add authentication (see SECURITY section)
+   - Use HTTPS (requires SSL certificate)
+   - Consider VPN instead
+
+OPTION B: VPN (Recommended)
+------------------------
+Safer than port forwarding:
+
+1. Set up VPN server on your home network:
+   - Windows: Built-in VPN server
+   - Router: Many routers have VPN features
+   - Third-party: OpenVPN, WireGuard
+
+2. Connect to VPN from remote location
+
+3. Access as if on local network:
+   - http://192.168.1.100:5000
+
+====================================================================================
+SECURITY (REQUIRED FOR REMOTE ACCESS)
+====================================================================================
+
+⚠️ CRITICAL: Never expose control center publicly without authentication!
+
+OPTION 1: Add Basic Authentication (Quick)
+------------------------
+Edit web_control_center.py and add at the top of file:
+
+from flask import request
+from functools import wraps
+
+# Username and password (change these!)
+USERNAME = "admin"
+PASSWORD = "your-secure-password-here"
+
+def require_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        auth = request.authorization
+        if not auth or auth.username != USERNAME or auth.password != PASSWORD:
+            return jsonify({'error': 'Authentication required'}), 401
+        return f(*args, **kwargs)
+    return decorated
+
+# Then add @require_auth before each route:
+@app.route('/')
+@require_auth
+def index():
+    ...
+
+OPTION 2: Use Nginx Reverse Proxy with SSL
+------------------------
+1. Install Nginx
+2. Get SSL certificate (Let's Encrypt)
+3. Configure Nginx to proxy to localhost:5000
+4. Add HTTP Basic Auth in Nginx config
+
+OPTION 3: VPN Only Access (Safest)
+------------------------
+Don't expose to internet at all - use VPN to access.
+
+====================================================================================
+FEATURES BREAKDOWN
+====================================================================================
+
+1. Service Cards
+------------------------
+Each service has a card showing:
+  - Name and description
+  - Status badge (RUNNING/STOPPED)
+  - Control buttons (Start/Stop/Logs)
+  - Process ID when running
+
+2. Live Terminal Output
+------------------------
+  - Real-time log streaming using Server-Sent Events (SSE)
+  - 1000 line buffer (automatically trims old lines)
+  - Color-coded messages:
+    * Green: Info/Success messages
+    * Yellow: Warnings
+    * Red: Errors
+  - Auto-scroll (toggle on/off)
+  - Clear button to reset view
+
+3. Embedded Dashboard
+------------------------
+  - Appears automatically when Dashboard service runs
+  - Full iframe of trading dashboard (port 8050)
+  - Refresh button to reload
+  - 800px height (adjustable in HTML)
+
+4. Status Monitoring
+------------------------
+  - Auto-refreshes every 5 seconds
+  - Shows PID for running processes
+  - Updates card borders (green = running)
+  - Enables/disables buttons based on state
+
+====================================================================================
+TROUBLESHOOTING
+====================================================================================
+
+ISSUE: "Address already in use" error
+------------------------
+Another process is using port 5000.
+
+Solution:
+  # Windows - Kill process on port 5000
+  netstat -ano | findstr :5000
+  taskkill /PID <process-id> /F
+  
+  # Or change port in web_control_center.py:
+  app.run(host='0.0.0.0', port=5001, ...)
+
+ISSUE: Can't access from network (404 error)
+------------------------
+Windows Firewall is blocking port 5000.
+
+Solution:
+  1. Windows Security → Firewall
+  2. Advanced settings
+  3. Inbound Rules → New Rule
+  4. Port → TCP → 5000
+  5. Allow connection
+  6. Apply to all profiles
+
+ISSUE: Services fail to start
+------------------------
+Check paths in web_control_center.py are correct.
+
+Solution:
+  Verify these paths exist:
+  - self.scripts_path = base_path / 'scripts'
+  - self.core_path = base_path / 'core'
+  - self.finbert_path = base_path / 'finbert_v4.4.4'
+
+ISSUE: Logs not streaming
+------------------------
+EventSource connection failed.
+
+Solution:
+  1. Check browser console for errors
+  2. Verify service is actually running
+  3. Try different browser (Chrome/Firefox recommended)
+
+ISSUE: Dashboard iframe blank
+------------------------
+Dashboard service not running or wrong port.
+
+Solution:
+  1. Ensure Dashboard service shows "RUNNING"
+  2. Check port 8050 is not blocked
+  3. Try opening http://localhost:8050 directly
+  4. If that works, iframe should work too
+
+ISSUE: Can't stop service
+------------------------
+Process not responding to SIGTERM.
+
+Solution:
+  Control center will force-kill after 10 seconds.
+  If still stuck:
+  - Use Task Manager to kill manually
+  - Restart control center
+
+====================================================================================
+ADVANCED CUSTOMIZATION
+====================================================================================
+
+Change Ports
+------------------------
+Edit web_control_center.py:
+
+  # Control center port (default 5000)
+  app.run(host='0.0.0.0', port=5001, ...)
+  
+  # Dashboard port (if changed from 8050)
+  @app.route('/api/dashboard/url')
+  def api_dashboard_url():
+      return jsonify({'url': 'http://localhost:8080'})
+
+Add More Services
+------------------------
+Edit web_control_center.py:
+
+  # In ProcessManager.__init__():
+  self.processes['my_service'] = None
+  self.output_buffers['my_service'] = deque(maxlen=1000)
+  self.output_queues['my_service'] = queue.Queue(maxsize=100)
+  
+  # In start_process():
+  elif service_name == 'my_service':
+      cmd = [sys.executable, 'path/to/script.py']
+      cwd = self.base_path
+
+Edit templates/control_panel.html:
+
+  // Add to services array:
+  const services = [
+      ...existing services...,
+      { id: 'my_service', name: 'My Service', desc: 'Description' }
+  ];
+
+Change Log Colors
+------------------------
+Edit templates/control_panel.html CSS:
+
+  .log-error { color: #ff5555; }    /* Red for errors */
+  .log-warning { color: #ffaa00; }  /* Orange for warnings */
+  .log-info { color: #00ff00; }     /* Green for info */
+
+Change Theme
+------------------------
+Edit templates/control_panel.html CSS:
+
+  body { background: #0a0e27; }     /* Dark blue background */
+  .service-card { background: #1a1f3a; }  /* Card background */
+
+====================================================================================
+API REFERENCE
+====================================================================================
+
+All API endpoints return JSON.
+
+GET /api/status
+------------------------
+Get status of all services.
+
+Response:
+  {
+    "au_pipeline": {"running": true, "pid": 12345},
+    "uk_pipeline": {"running": false, "pid": null},
+    ...
+  }
+
+GET /api/status/<service>
+------------------------
+Get status of specific service.
+
+Example: GET /api/status/au_pipeline
+
+Response:
+  {
+    "au_pipeline": {"running": true, "pid": 12345}
+  }
+
+POST /api/start/<service>
+------------------------
+Start a service.
+
+Body:
+  {
+    "mode": "production"  // or "test"
+  }
+
+Response:
+  {
+    "success": true,
+    "message": "au_pipeline started successfully",
+    "pid": 12345
+  }
+
+POST /api/stop/<service>
+------------------------
+Stop a service.
+
+Response:
+  {
+    "success": true,
+    "message": "au_pipeline stopped successfully"
+  }
+
+GET /api/logs/<service>?lines=100
+------------------------
+Get recent log lines.
+
+Response:
+  {
+    "logs": [
+      "[12:34:56] Starting pipeline...",
+      "[12:34:57] Loading data..."
+    ]
+  }
+
+GET /api/logs/<service>/stream
+------------------------
+Stream live logs (Server-Sent Events).
+
+Response: text/event-stream
+  data: [12:34:58] Processing stocks...
+  
+  data: [12:34:59] Completed scan
+
+====================================================================================
+PERFORMANCE & LIMITS
+====================================================================================
+
+Log Buffer:
+  - 1000 lines per service in memory
+  - Older lines automatically dropped
+  - No disk writes (all in RAM)
+
+Update Frequency:
+  - Status: Every 5 seconds
+  - Logs: Real-time (instant)
+  - Dashboard: Embedded, updates independently
+
+Concurrent Users:
+  - Flask development server: ~10 users
+  - For production: Use Gunicorn/uWSGI
+
+Resource Usage:
+  - Control center: ~50 MB RAM
+  - Each pipeline: 200-500 MB RAM
+  - Dashboard: 100-300 MB RAM
+
+====================================================================================
+PRODUCTION DEPLOYMENT (Optional)
+====================================================================================
+
+For serious remote access, use production WSGI server:
+
+OPTION 1: Gunicorn (Linux/Mac)
+------------------------
+pip install gunicorn
+
+gunicorn -w 4 -b 0.0.0.0:5000 web_control_center:app
+
+OPTION 2: Waitress (Windows)
+------------------------
+pip install waitress
+
+waitress-serve --host 0.0.0.0 --port 5000 web_control_center:app
+
+OPTION 3: Docker
+------------------------
+Create Dockerfile and deploy as container.
+
+====================================================================================
+MAINTENANCE
+====================================================================================
+
+Stopping Control Center
+------------------------
+Press Ctrl+C in terminal where it's running.
+
+All managed services will continue running - control center just monitors them.
+
+To stop everything:
+  1. Click Stop on each service card
+  2. Then Ctrl+C to stop control center
+
+Restarting Control Center
+------------------------
+Control center remembers nothing - it's stateless.
+Existing services keep running.
+
+When you restart:
+  - It detects already-running services
+  - You can control them immediately
+
+Logs
+------------------------
+Control center itself logs to console.
+Service logs are captured and displayed in UI.
+No log files are created by control center.
+
+====================================================================================
+SUPPORT & TROUBLESHOOTING CHECKLIST
+====================================================================================
+
+Before reporting issues, check:
+
+□ Python version: python --version (need 3.10+)
+□ Flask installed: pip list | findstr Flask
+□ Correct directory: cd to ULTIMATE_v193_COMPLETE
+□ Port available: netstat -an | findstr 5000
+□ Firewall off or exception added
+□ Browser console open (F12) - check for JS errors
+□ Try different browser
+□ Check service scripts exist and are executable
+□ Try starting services manually first (verify they work)
+
+====================================================================================
+SUMMARY
+====================================================================================
+
+✅ Single command to start: python web_control_center.py
+✅ Access locally: http://localhost:5000
+✅ Access on network: http://<your-ip>:5000
+✅ Start/stop all services with clicks
+✅ Real-time log streaming
+✅ Embedded live dashboard
+✅ Runs on Windows, Linux, macOS
+✅ No database required
+✅ Lightweight (2 dependencies)
+
+For remote access:
+  ⚠️ Add authentication first!
+  ⚠️ Use HTTPS in production
+  ⚠️ Or use VPN (recommended)
+
+====================================================================================

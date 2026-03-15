@@ -1,0 +1,232 @@
+===============================================================================
+COMPLETE FIX FOR LSTM TRAINING - ALL ISSUES RESOLVED
+===============================================================================
+
+VERSION: v1.3.15.142 (includes v1.3.15.140, v1.3.15.141, v1.3.15.142)
+DATE: 2026-02-15
+APPLIES: All three critical fixes for LSTM training
+
+===============================================================================
+ISSUE SUMMARY
+===============================================================================
+
+Your LSTM training is failing with:
+  [INFO] Using FinBERT from AATelS (fallback): C:\Users\david\AATelS\finbert_v4.4.4
+  [ERROR] No module named 'models.train_lstm'
+
+This is caused by THREE separate bugs that need to be fixed together.
+
+===============================================================================
+ROOT CAUSES
+===============================================================================
+
+BUG #1 (v1.3.15.140): Module shadowing - sys.path not adding finbert/models/
+BUG #2 (v1.3.15.141): Path priority - checking AATelS before local
+BUG #3 (v1.3.15.142): BASE_PATH wrong - pointing to pipelines/ not root
+
+All three must be fixed for LSTM training to work.
+
+===============================================================================
+COMPLETE FIX - Apply All Changes Below
+===============================================================================
+
+FILE TO EDIT:
+  C:\Users\david\REgime trading V4 restored\unified_trading_system_v1.3.15.129_COMPLETE\pipelines\models\screening\lstm_trainer.py
+
+Make THREE changes to this file:
+
+===============================================================================
+CHANGE #1: Fix BASE_PATH (Line ~25)
+===============================================================================
+
+FIND:
+-----
+# Setup logging
+BASE_PATH = Path(__file__).parent.parent.parent
+log_dir = BASE_PATH / 'logs' / 'screening'
+
+REPLACE WITH:
+-------------
+# Setup logging
+# BASE_PATH should be the project root (4 levels up: screening -> models -> pipelines -> root)
+BASE_PATH = Path(__file__).parent.parent.parent.parent
+log_dir = BASE_PATH / 'logs' / 'screening'
+
+WHY: BASE_PATH was 3 levels up (pointing to pipelines/), needs to be 4 levels up (project root)
+
+===============================================================================
+CHANGE #2: Fix Path Priority & Add Debug Logging (Lines ~204-219)
+===============================================================================
+
+FIND:
+-----
+            # Try multiple FinBERT locations
+            finbert_path_aatels = Path(r'C:\Users\david\AATelS\finbert_v4.4.4')
+            finbert_path_relative = BASE_PATH / 'finbert_v4.4.4'
+            
+            # Use whichever exists
+            if finbert_path_aatels.exists():
+                finbert_path = finbert_path_aatels
+                logger.info(f"Using FinBERT from AATelS: {finbert_path}")
+            elif finbert_path_relative.exists():
+                finbert_path = finbert_path_relative
+                logger.info(f"Using FinBERT from relative path: {finbert_path}")
+            else:
+                raise FileNotFoundError(
+                    f"FinBERT not found. Tried:\n"
+                    f"  1. {finbert_path_aatels}\n"
+                    f"  2. {finbert_path_relative}"
+                )
+
+REPLACE WITH:
+-------------
+            # Try multiple FinBERT locations (prioritize local installation)
+            finbert_path_relative = BASE_PATH / 'finbert_v4.4.4'
+            finbert_path_aatels = Path(r'C:\Users\david\AATelS\finbert_v4.4.4')
+            
+            # Debug: show which paths we're checking
+            logger.debug(f"Checking local FinBERT: {finbert_path_relative} (exists: {finbert_path_relative.exists()})")
+            logger.debug(f"Checking AATelS FinBERT: {finbert_path_aatels} (exists: {finbert_path_aatels.exists()})")
+            
+            # Use local installation FIRST (most up-to-date), fallback to AATelS
+            if finbert_path_relative.exists():
+                finbert_path = finbert_path_relative
+                logger.info(f"Using FinBERT from local installation: {finbert_path}")
+            elif finbert_path_aatels.exists():
+                finbert_path = finbert_path_aatels
+                logger.info(f"Using FinBERT from AATelS (fallback): {finbert_path}")
+                logger.warning(f"Local FinBERT not found at: {finbert_path_relative}")
+                logger.warning(f"This may cause import errors. Please verify FinBERT installation.")
+            else:
+                raise FileNotFoundError(
+                    f"FinBERT not found. Tried:\n"
+                    f"  1. {finbert_path_relative} (local)\n"
+                    f"  2. {finbert_path_aatels} (AATelS)"
+                )
+
+WHY: Check local FIRST (not AATelS), add debug logging to diagnose path issues
+
+===============================================================================
+CHANGE #3: Fix sys.path Module Shadowing (Lines ~226-232)
+===============================================================================
+
+FIND:
+-----
+            if str(finbert_path) not in sys.path:
+                sys.path.insert(0, str(finbert_path))
+            
+            from models.train_lstm import train_model_for_symbol
+
+REPLACE WITH:
+-------------
+            # Add FinBERT base directory AND models subdirectory to path
+            # Insert at position 0 to ensure FinBERT's models/ is searched before root models/
+            finbert_base = str(finbert_path)
+            finbert_models = str(finbert_path / 'models')
+            
+            if finbert_models not in sys.path:
+                sys.path.insert(0, finbert_models)
+            if finbert_base not in sys.path:
+                sys.path.insert(0, finbert_base)
+            
+            # Now import will find finbert's models.train_lstm before root models/
+            from models.train_lstm import train_model_for_symbol
+
+WHY: Add finbert_v4.4.4/models/ to sys.path FIRST to avoid module shadowing with root models/
+
+===============================================================================
+VERIFICATION AFTER APPLYING ALL FIXES
+===============================================================================
+
+After making all three changes, save the file and run:
+
+  python scripts\run_au_pipeline_v1.3.13.py --symbols BHP.AX
+
+Expected output:
+  [DEBUG] Checking local FinBERT: C:\Users\david\...\finbert_v4.4.4 (exists: True)
+  [INFO] Using FinBERT from local installation: C:\Users\david\...\finbert_v4.4.4
+  [INFO] Fetching training data for BHP.AX (period: 2y)
+  [INFO] Training LSTM model with 8 features...
+  [INFO] Epoch 1/50 - Loss: 0.0456 - Val Loss: 0.0512
+  ...
+  [INFO] Epoch 50/50 - Loss: 0.0234 - Val Loss: 0.0312
+  [OK] BHP.AX: Training completed in 45.2s
+     Loss: 0.0234
+     Val Loss: 0.0312
+
+===============================================================================
+TROUBLESHOOTING
+===============================================================================
+
+If you still see "AATelS (fallback)" after all fixes:
+  → LOCAL FinBERT doesn't exist at the expected path
+  → Check: does C:\Users\david\REgime trading V4 restored\unified_trading_system_v1.3.15.129_COMPLETE\finbert_v4.4.4 exist?
+  → If NO: Download and extract the updated package
+
+If you see "No module named 'models.train_lstm'" after all fixes:
+  → Check: does finbert_v4.4.4\models\train_lstm.py exist?
+  → Run: dir "C:\Users\david\REgime trading V4 restored\unified_trading_system_v1.3.15.129_COMPLETE\finbert_v4.4.4\models\train_lstm.py"
+  → If missing: Download the updated package
+
+If debug logs don't show:
+  → Change logging level in lstm_trainer.py from INFO to DEBUG
+  → Line ~29: level=logging.DEBUG (instead of logging.INFO)
+
+===============================================================================
+SUMMARY OF CHANGES
+===============================================================================
+
+Change #1 (Line 25):
+  OLD: BASE_PATH = Path(__file__).parent.parent.parent
+  NEW: BASE_PATH = Path(__file__).parent.parent.parent.parent
+  WHY: Was pointing to pipelines/, needs to point to project root
+
+Change #2 (Lines 204-221):
+  - Swap finbert_path_relative and finbert_path_aatels declaration order
+  - Check finbert_path_relative.exists() FIRST
+  - Add debug logging for both paths
+  - Add warning when using AATelS fallback
+  WHY: Prioritize local installation over outdated AATelS
+
+Change #3 (Lines 226-232):
+  - Create finbert_models = finbert_path / 'models'
+  - Insert finbert_models to sys.path at position 0
+  - Insert finbert_base to sys.path at position 0
+  WHY: Avoid module shadowing between finbert/models/ and root/models/
+
+===============================================================================
+FILE LOCATIONS
+===============================================================================
+
+File to edit:
+  C:\Users\david\REgime trading V4 restored\unified_trading_system_v1.3.15.129_COMPLETE\pipelines\models\screening\lstm_trainer.py
+
+FinBERT should be at:
+  C:\Users\david\REgime trading V4 restored\unified_trading_system_v1.3.15.129_COMPLETE\finbert_v4.4.4\
+
+train_lstm.py should be at:
+  C:\Users\david\REgime trading V4 restored\unified_trading_system_v1.3.15.129_COMPLETE\finbert_v4.4.4\models\train_lstm.py
+
+===============================================================================
+TIME TO APPLY
+===============================================================================
+
+Total: 5-10 minutes
+  - Change #1: 1 minute
+  - Change #2: 3 minutes
+  - Change #3: 2 minutes
+  - Testing: 3 minutes
+
+===============================================================================
+PACKAGE DOWNLOAD (ALTERNATIVE)
+===============================================================================
+
+If you prefer not to manually edit, download the fixed package:
+
+  unified_trading_system_v1.3.15.129_COMPLETE.zip (1.7 MB)
+  Version: v1.3.15.142
+  All fixes included
+
+Extract, run INSTALL_COMPLETE.bat, and training will work immediately.
+
+===============================================================================
