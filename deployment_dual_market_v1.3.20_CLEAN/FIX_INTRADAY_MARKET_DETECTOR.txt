@@ -1,0 +1,127 @@
+================================================================================
+INTRADAY MONITORING FIX - Market Hours Detector
+================================================================================
+
+ERROR YOU'RE SEEING:
+    TypeError: MarketHoursDetector.__init__() got an unexpected keyword 
+    argument 'market'
+    
+    ASX intraday not running
+
+THE PROBLEM:
+    intraday_scheduler.py is calling:
+        MarketHoursDetector(market=market)
+    
+    But the MarketHoursDetector class doesn't accept a 'market' parameter
+    in __init__(). Instead, the market parameter should be passed to the
+    is_market_open() method.
+
+================================================================================
+THE FIX (Manual)
+================================================================================
+
+Open this file:
+    C:\Users\david\AATelS\models\scheduling\intraday_scheduler.py
+
+CHANGE 1 - Line 62:
+    BEFORE:
+        self.market_detector = MarketHoursDetector(market=market)
+    
+    AFTER:
+        self.market_detector = MarketHoursDetector()
+
+CHANGE 2 - Line 85:
+    BEFORE:
+        market_status = self.market_detector.is_market_open()
+    
+    AFTER:
+        market_status = self.market_detector.is_market_open(market=self.market)
+
+CHANGE 3 - Line 114:
+    BEFORE:
+        market_status = self.market_detector.is_market_open()
+    
+    AFTER:
+        market_status = self.market_detector.is_market_open(market=self.market)
+
+================================================================================
+OR USE GIT
+================================================================================
+
+cd C:\Users\david\AATelS
+git pull origin finbert-v4.0-development
+
+This will download the fixed version automatically.
+
+================================================================================
+VERIFICATION
+================================================================================
+
+After applying the fix, test it:
+
+cd C:\Users\david\AATelS
+python models\scheduling\intraday_scheduler.py --market ASX --interval 15
+
+Expected output:
+    ✓ Market Hours Detector initialized
+    ✓ STARTING INTRADAY MONITORING SESSION
+    ✓ ASX Market is OPEN (or appropriate status)
+
+Should NOT see:
+    ✗ TypeError: __init__() got an unexpected keyword argument 'market'
+
+================================================================================
+WHAT THIS FIXES
+================================================================================
+
+BEFORE (Broken):
+    Line 62: MarketHoursDetector(market=market)
+             ↓
+             TypeError: unexpected keyword argument 'market'
+             ↓
+             Crash - Intraday monitoring doesn't start
+
+AFTER (Fixed):
+    Line 62: MarketHoursDetector()
+    Line 85: is_market_open(market=self.market)
+             ↓
+             Works correctly
+             ↓
+             Intraday monitoring starts successfully
+
+================================================================================
+FILE LOCATIONS
+================================================================================
+
+File to fix:
+    C:\Users\david\AATelS\models\scheduling\intraday_scheduler.py
+
+Related file (for reference):
+    C:\Users\david\AATelS\models\screening\market_hours_detector.py
+    (This file defines MarketHoursDetector class)
+
+================================================================================
+DETAILED EXPLANATION
+================================================================================
+
+The MarketHoursDetector class is designed like this:
+
+    class MarketHoursDetector:
+        def __init__(self):              # No parameters!
+            # Initialize
+        
+        def is_market_open(self, market='ASX'):  # Market goes here!
+            # Check if market is open
+
+But intraday_scheduler.py was calling it incorrectly:
+
+    # WRONG:
+    detector = MarketHoursDetector(market='ASX')  # Error!
+    
+    # CORRECT:
+    detector = MarketHoursDetector()              # OK
+    status = detector.is_market_open(market='ASX')  # OK
+
+The fix moves the 'market' parameter from __init__() to is_market_open().
+
+================================================================================

@@ -1,0 +1,200 @@
+================================================================================
+ROLLBACK INSTRUCTIONS - Revert to $10,000
+================================================================================
+
+If you need to undo the $100K patch and go back to $10,000:
+
+================================================================================
+METHOD 1: RESTORE FROM BACKUP (EASIEST)
+================================================================================
+
+The installer automatically created a backup when you ran it.
+
+Step 1: Find Your Backup
+-------------------------
+Location: C:\Users\david\AATelS\finbert_v4.4.4\BACKUP_PAPER_TRADING_YYYYMMDD_HHMMSS\
+
+Example: BACKUP_PAPER_TRADING_20241204_143025\
+
+Step 2: Restore Files
+----------------------
+cd C:\Users\david\AATelS\finbert_v4.4.4
+
+REM Copy from backup to restore original files
+copy /Y BACKUP_PAPER_TRADING_20241204_143025\models\trading\*.py models\trading\
+copy /Y BACKUP_PAPER_TRADING_20241204_143025\app_finbert_v4_dev.py .
+copy /Y BACKUP_PAPER_TRADING_20241204_143025\templates\*.html templates\
+
+Step 3: Clear Python Cache
+---------------------------
+cd C:\Users\david\AATelS\finbert_v4.4.4
+del /s /q models\trading\__pycache__
+
+Step 4: Reset Account to $10,000
+---------------------------------
+cd C:\Users\david\AATelS\finbert_v4.4.4
+python -c "from models.trading.paper_trading_engine import PaperTradingEngine; PaperTradingEngine().reset_account(10000); print('Account reset to $10,000')"
+
+Step 5: Verify
+--------------
+python -c "from models.trading.paper_trading_engine import PaperTradingEngine; account = PaperTradingEngine().get_account_summary()['account']; print(f'Balance: ${account[\"cash_balance\"]:,.2f}')"
+
+Expected: Balance: $10,000.00
+
+================================================================================
+METHOD 2: MANUAL ROLLBACK (IF NO BACKUP)
+================================================================================
+
+If you don't have a backup, manually change values back to 10000.
+
+File 1: models/trading/trade_database.py
+-----------------------------------------
+Find and change these lines:
+
+Line ~90-94:
+  FROM: DEFAULT 100000
+  TO:   DEFAULT 10000
+  (4 occurrences)
+
+Line ~106:
+  FROM: VALUES (1, 100000, 100000, 100000)
+  TO:   VALUES (1, 10000, 10000, 10000)
+
+Line ~158:
+  FROM: def reset_account(self, initial_capital: float = 100000):
+  TO:   def reset_account(self, initial_capital: float = 10000):
+
+File 2: models/trading/paper_trading_engine.py
+-----------------------------------------------
+Line ~321:
+  FROM: def reset_account(self, initial_capital: float = 100000) -> Dict:
+  TO:   def reset_account(self, initial_capital: float = 10000) -> Dict:
+
+File 3: models/trading/portfolio_manager.py
+--------------------------------------------
+Line ~114:
+  FROM: def reset_portfolio(self, initial_capital: float = 100000) -> Dict:
+  TO:   def reset_portfolio(self, initial_capital: float = 10000) -> Dict:
+
+File 4: app_finbert_v4_dev.py
+------------------------------
+Find ALL (3 locations):
+  FROM: "initial_capital": 100000
+  TO:   "initial_capital": 10000
+
+  FROM: initial_capital, 100000
+  TO:   initial_capital, 10000
+
+File 5: templates/finbert_v4_enhanced_ui.html
+----------------------------------------------
+Line ~2876:
+  FROM: showTradeMessage('Account reset successfully to $100,000', 'success');
+  TO:   showTradeMessage('Account reset successfully to $10,000', 'success');
+
+Line ~3458:
+  FROM: value="100000" step="10000"
+  TO:   value="10000" step="1000"
+
+Line ~3773:
+  FROM: value="100000" step="10000"
+  TO:   value="10000" step="1000"
+
+After Manual Changes:
+---------------------
+1. Clear Python cache:
+   cd C:\Users\david\AATelS\finbert_v4.4.4
+   del /s /q models\trading\__pycache__
+
+2. Reset account:
+   python -c "from models.trading.paper_trading_engine import PaperTradingEngine; PaperTradingEngine().reset_account(10000)"
+
+3. Restart Web UI:
+   python app_finbert_v4_dev.py
+   (Press Ctrl+F5 to clear browser cache)
+
+================================================================================
+METHOD 3: RE-DOWNLOAD ORIGINAL FILES
+================================================================================
+
+If you have access to the original FinBERT v4.4.4 installation:
+
+1. Download fresh copies of these 5 files
+2. Copy them to finbert_v4.4.4\
+3. Clear Python cache
+4. Reset account to $10,000
+
+================================================================================
+VERIFICATION AFTER ROLLBACK
+================================================================================
+
+Test 1: Check Code
+------------------
+cd C:\Users\david\AATelS\finbert_v4.4.4
+findstr /C:"DEFAULT 10000" models\trading\trade_database.py
+
+Expected: Should find "DEFAULT 10000" in the file
+
+Test 2: Check Balance
+---------------------
+python -c "from models.trading.paper_trading_engine import PaperTradingEngine; account = PaperTradingEngine().get_account_summary()['account']; print(f'Balance: ${account[\"cash_balance\"]:,.2f}')"
+
+Expected: Balance: $10,000.00
+
+Test 3: Web UI
+--------------
+1. Run: python app_finbert_v4_dev.py
+2. Open: http://localhost:5000 (Ctrl+F5 to refresh)
+3. Go to Paper Trading
+4. Click Reset Account
+5. Expected message: "Account reset successfully to $10,000"
+6. Expected balance: $10,000.00
+
+================================================================================
+IF ROLLBACK FAILS
+================================================================================
+
+Issue: Files won't restore
+---------------------------
+1. Check backup directory exists
+2. Verify files in backup are correct size
+3. Close any open Python processes
+4. Try copying files one by one
+
+Issue: Balance still shows $100,000
+------------------------------------
+1. Delete trading.db:
+   cd C:\Users\david\AATelS\finbert_v4.4.4
+   del trading.db
+
+2. Restart application (will recreate with current defaults)
+
+Issue: Web UI still shows $100,000
+-----------------------------------
+1. Clear browser cache (Ctrl+Shift+Delete)
+2. Hard refresh (Ctrl+F5)
+3. Restart Web UI:
+   python app_finbert_v4_dev.py
+
+================================================================================
+RECOMMENDED APPROACH
+================================================================================
+
+1. Always use Method 1 (Restore from Backup) - fastest and safest
+2. Verify backup was created before attempting rollback
+3. Test after rollback to confirm $10,000 is working
+4. Keep backup directory until you're sure rollback worked
+
+================================================================================
+SUMMARY
+================================================================================
+
+Easiest: Restore from backup (2 minutes)
+Manual: Change 13 values back to 10000 (10 minutes)
+Last Resort: Re-download original files (5 minutes)
+
+After any method:
+1. Clear Python cache
+2. Reset account to $10,000
+3. Verify balance shows $10,000.00
+
+================================================================================

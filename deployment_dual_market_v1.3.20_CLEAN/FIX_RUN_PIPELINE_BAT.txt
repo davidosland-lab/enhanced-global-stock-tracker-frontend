@@ -1,0 +1,66 @@
+================================================================================
+SIMPLE FIX: Enable Telegram Notifications in RUN_PIPELINE.bat
+================================================================================
+
+ROOT CAUSE:
+  The batch file was changing directory into models\screening before running
+  the pipeline, which broke the relative imports for TelegramNotifier.
+
+SOLUTION:
+  Run the pipeline from the root directory instead.
+
+================================================================================
+MANUAL FIX
+================================================================================
+
+FILE: C:\Users\david\AATelS\RUN_PIPELINE.bat
+
+FIND (around line 28-35):
+----------------------------
+cd /d "%~dp0"
+cd models\screening
+
+echo.
+echo Starting pipeline...
+echo.
+
+python overnight_pipeline.py
+
+
+REPLACE WITH:
+----------------------------
+cd /d "%~dp0"
+
+echo.
+echo Starting pipeline...
+echo.
+
+python models\screening\overnight_pipeline.py
+
+
+================================================================================
+WHAT CHANGED:
+  ✓ Removed: cd models\screening
+  ✓ Changed: python overnight_pipeline.py
+  ✓ To: python models\screening\overnight_pipeline.py
+
+================================================================================
+VERIFICATION
+================================================================================
+
+After applying the fix:
+
+1. Double-click RUN_PIPELINE.bat
+
+2. Check the startup logs for:
+   BEFORE: Telegram notifications disabled (module not available)
+   AFTER: ✓ Telegram notifications enabled
+
+3. At the end of the pipeline (after ~10-15 min), you should receive:
+   - Telegram message with summary
+   - HTML report attachment
+   - CSV file attachment
+
+================================================================================
+NOTE: RUN_US_PIPELINE.bat is already correct and doesn't need changes
+================================================================================

@@ -1,0 +1,151 @@
+================================================================================
+MANUAL PATCH: Add Telegram Notifications to US Pipeline
+================================================================================
+
+ISSUE: Your us_overnight_pipeline.py is missing the Telegram initialization code
+
+LOCATION: After the Macro News Monitor section, before Event Risk Guard
+
+================================================================================
+STEP 1: Find the insertion point
+================================================================================
+
+Open: C:\Users\david\AATelS\models\screening\us_overnight_pipeline.py
+
+Search for this section (around line 230-237):
+
+            # Optional: Macro News Monitor
+            if MacroNewsMonitor is not None:
+                self.macro_monitor = MacroNewsMonitor(market='US')
+                logger.info("✓ Macro News Monitor enabled (Fed/economic data)")
+            else:
+                self.macro_monitor = None
+                logger.info("  Macro News Monitor disabled")
+            
+            # Optional: Event Risk Guard
+
+
+================================================================================
+STEP 2: Insert this code BETWEEN the sections above
+================================================================================
+
+INSERT THIS CODE after "Macro News Monitor disabled" and BEFORE "Event Risk Guard":
+
+            # Optional: Telegram notifications
+            if TelegramNotifier is not None:
+                try:
+                    # Load Telegram config from intraday config
+                    telegram_config_path = Path(__file__).parent.parent.parent / 'config' / 'intraday_rescan_config.json'
+                    if telegram_config_path.exists():
+                        with open(telegram_config_path, 'r') as f:
+                            full_config = json.load(f)
+                            telegram_cfg = full_config.get('notifications', {}).get('telegram', {})
+                            
+                            if telegram_cfg.get('enabled', False):
+                                bot_token = telegram_cfg.get('bot_token')
+                                chat_id = telegram_cfg.get('chat_id')
+                                
+                                if bot_token and chat_id:
+                                    self.telegram = TelegramNotifier(bot_token=bot_token, chat_id=chat_id)
+                                    logger.info("✓ Telegram notifications enabled")
+                                    logger.info(f"  Bot: {self.telegram.bot.get_me().username}")
+                                    logger.info(f"  Chat ID: {chat_id}")
+                                else:
+                                    self.telegram = None
+                                    logger.info("  Telegram notifications disabled (missing credentials)")
+                            else:
+                                self.telegram = None
+                                logger.info("  Telegram notifications disabled in config")
+                    else:
+                        self.telegram = None
+                        logger.info("  Telegram notifications disabled (config not found)")
+                except Exception as e:
+                    self.telegram = None
+                    logger.warning(f"  Telegram initialization failed: {e}")
+            else:
+                self.telegram = None
+                logger.info("  Telegram notifications disabled (module not available)")
+            
+
+
+================================================================================
+STEP 3: Verify the result
+================================================================================
+
+After adding the code, the section should look like this:
+
+            # Optional: Macro News Monitor
+            if MacroNewsMonitor is not None:
+                self.macro_monitor = MacroNewsMonitor(market='US')
+                logger.info("✓ Macro News Monitor enabled (Fed/economic data)")
+            else:
+                self.macro_monitor = None
+                logger.info("  Macro News Monitor disabled")
+            
+            # Optional: Telegram notifications
+            if TelegramNotifier is not None:
+                try:
+                    # Load Telegram config from intraday config
+                    telegram_config_path = Path(__file__).parent.parent.parent / 'config' / 'intraday_rescan_config.json'
+                    if telegram_config_path.exists():
+                        with open(telegram_config_path, 'r') as f:
+                            full_config = json.load(f)
+                            telegram_cfg = full_config.get('notifications', {}).get('telegram', {})
+                            
+                            if telegram_cfg.get('enabled', False):
+                                bot_token = telegram_cfg.get('bot_token')
+                                chat_id = telegram_cfg.get('chat_id')
+                                
+                                if bot_token and chat_id:
+                                    self.telegram = TelegramNotifier(bot_token=bot_token, chat_id=chat_id)
+                                    logger.info("✓ Telegram notifications enabled")
+                                    logger.info(f"  Bot: {self.telegram.bot.get_me().username}")
+                                    logger.info(f"  Chat ID: {chat_id}")
+                                else:
+                                    self.telegram = None
+                                    logger.info("  Telegram notifications disabled (missing credentials)")
+                            else:
+                                self.telegram = None
+                                logger.info("  Telegram notifications disabled in config")
+                    else:
+                        self.telegram = None
+                        logger.info("  Telegram notifications disabled (config not found)")
+                except Exception as e:
+                    self.telegram = None
+                    logger.warning(f"  Telegram initialization failed: {e}")
+            else:
+                self.telegram = None
+                logger.info("  Telegram notifications disabled (module not available)")
+            
+            # Optional: Event Risk Guard
+
+
+================================================================================
+STEP 4: Test
+================================================================================
+
+After saving the file:
+
+cd C:\Users\david\AATelS
+python models\screening\us_overnight_pipeline.py --stocks-per-sector 5
+
+Look for in the startup logs:
+  ✓ Telegram notifications enabled
+  Bot: YourBotName
+  Chat ID: 123456789
+
+And at the end of the pipeline:
+  Sending Telegram morning report notification...
+  ✓ Telegram report sent: 2025-12-04_us_market_report.html
+  ✓ CSV file sent: 2025-12-04_screening_results.csv
+
+================================================================================
+IMPORTANT NOTES:
+================================================================================
+
+1. Make sure indentation matches (should be 12 spaces for the "if TelegramNotifier" line)
+2. The code must go AFTER Macro News Monitor and BEFORE Event Risk Guard
+3. Save the file before running the pipeline
+4. If you see syntax errors, check that all lines are properly indented
+
+================================================================================

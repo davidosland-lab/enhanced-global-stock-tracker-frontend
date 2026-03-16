@@ -1,0 +1,225 @@
+================================================================================
+MANUAL INSTALLATION GUIDE
+================================================================================
+
+If you prefer to install the patch manually, follow these steps.
+
+================================================================================
+STEP 1: BACKUP YOUR FILES
+================================================================================
+
+Before making any changes, backup these files:
+
+1. C:\Users\david\AATelS\RUN_PIPELINE.bat
+   Copy to: RUN_PIPELINE.bat.backup
+
+2. C:\Users\david\AATelS\models\screening\us_overnight_pipeline.py
+   Copy to: us_overnight_pipeline.py.backup
+
+3. C:\Users\david\AATelS\models\screening\overnight_pipeline.py
+   Copy to: overnight_pipeline.py.backup
+
+================================================================================
+STEP 2: UPDATE RUN_PIPELINE.BAT
+================================================================================
+
+File: C:\Users\david\AATelS\RUN_PIPELINE.bat
+
+FIND (around line 28-35):
+  cd /d "%~dp0"
+  cd models\screening
+  
+  echo.
+  echo Starting pipeline...
+  echo.
+  
+  python overnight_pipeline.py
+
+REPLACE WITH:
+  cd /d "%~dp0"
+  
+  echo.
+  echo Starting pipeline...
+  echo.
+  
+  python models\screening\overnight_pipeline.py
+
+WHAT CHANGED:
+  - Removed: cd models\screening
+  - Changed: python overnight_pipeline.py
+  - To: python models\screening\overnight_pipeline.py
+
+================================================================================
+STEP 3: UPDATE US_OVERNIGHT_PIPELINE.PY
+================================================================================
+
+File: C:\Users\david\AATelS\models\screening\us_overnight_pipeline.py
+
+Option A: Replace the entire file
+  - Copy us_overnight_pipeline.py from this patch
+  - Replace your existing file
+
+Option B: Manual edit (if you have custom changes)
+  - See detailed instructions below
+
+--- OPTION B INSTRUCTIONS ---
+
+Find the "Macro News Monitor" section (around line 240):
+
+            # Optional: Macro News Monitor
+            if MacroNewsMonitor is not None:
+                self.macro_monitor = MacroNewsMonitor(market='US')
+                logger.info("✓ Macro News Monitor enabled (Fed/economic data)")
+            else:
+                self.macro_monitor = None
+                logger.info("  Macro News Monitor disabled")
+            
+            # Optional: Event Risk Guard    <--- INSERT BEFORE THIS LINE
+
+ADD THIS CODE between Macro News Monitor and Event Risk Guard:
+
+            # Optional: Telegram notifications
+            if TelegramNotifier is not None:
+                try:
+                    # Load Telegram config from intraday config
+                    telegram_config_path = Path(__file__).parent.parent.parent / 'config' / 'intraday_rescan_config.json'
+                    if telegram_config_path.exists():
+                        with open(telegram_config_path, 'r') as f:
+                            full_config = json.load(f)
+                            telegram_cfg = full_config.get('notifications', {}).get('telegram', {})
+                            
+                            if telegram_cfg.get('enabled', False):
+                                bot_token = telegram_cfg.get('bot_token')
+                                chat_id = telegram_cfg.get('chat_id')
+                                
+                                if bot_token and chat_id:
+                                    self.telegram = TelegramNotifier(bot_token=bot_token, chat_id=chat_id)
+                                    logger.info("✓ Telegram notifications enabled")
+                                else:
+                                    self.telegram = None
+                                    logger.info("  Telegram notifications disabled (missing credentials)")
+                            else:
+                                self.telegram = None
+                                logger.info("  Telegram notifications disabled in config")
+                    else:
+                        self.telegram = None
+                        logger.info("  Telegram notifications disabled (config not found)")
+                except Exception as e:
+                    self.telegram = None
+                    logger.warning(f"  Telegram initialization failed: {e}")
+            else:
+                self.telegram = None
+                logger.info("  Telegram notifications disabled (module not available)")
+            
+
+ALSO UPDATE THE IMPORT SECTION (around line 64):
+
+FIND:
+  # Telegram notification support
+  try:
+      from ..notifications.telegram_notifier import TelegramNotifier
+  except ImportError:
+      try:
+          from models.notifications.telegram_notifier import TelegramNotifier
+      except ImportError:
+          TelegramNotifier = None
+
+REPLACE WITH:
+  # Telegram notification support
+  try:
+      from ..notifications.telegram_notifier import TelegramNotifier
+  except ImportError:
+      try:
+          from models.notifications.telegram_notifier import TelegramNotifier
+      except ImportError:
+          try:
+              # Fallback: Add parent directory to path and import
+              import sys
+              from pathlib import Path
+              parent_dir = Path(__file__).parent.parent.parent
+              if str(parent_dir) not in sys.path:
+                  sys.path.insert(0, str(parent_dir))
+              from models.notifications.telegram_notifier import TelegramNotifier
+          except ImportError as e:
+              TelegramNotifier = None
+              print(f"⚠️ Telegram import failed: {e}", file=sys.stderr)
+
+================================================================================
+STEP 4: UPDATE OVERNIGHT_PIPELINE.PY (OPTIONAL BUT RECOMMENDED)
+================================================================================
+
+File: C:\Users\david\AATelS\models\screening\overnight_pipeline.py
+
+This adds better import fallback handling.
+
+FIND (around line 58):
+  # Telegram notification support
+  try:
+      from ..notifications.telegram_notifier import TelegramNotifier
+  except ImportError:
+      try:
+          from models.notifications.telegram_notifier import TelegramNotifier
+      except ImportError:
+          TelegramNotifier = None
+
+REPLACE WITH:
+  # Telegram notification support
+  try:
+      from ..notifications.telegram_notifier import TelegramNotifier
+  except ImportError:
+      try:
+          from models.notifications.telegram_notifier import TelegramNotifier
+      except ImportError:
+          try:
+              # Fallback: Add parent directory to path and import
+              import sys
+              from pathlib import Path
+              parent_dir = Path(__file__).parent.parent.parent
+              if str(parent_dir) not in sys.path:
+                  sys.path.insert(0, str(parent_dir))
+              from models.notifications.telegram_notifier import TelegramNotifier
+          except ImportError as e:
+              TelegramNotifier = None
+              print(f"⚠️ Telegram import failed: {e}", file=sys.stderr)
+
+================================================================================
+STEP 5: VERIFICATION
+================================================================================
+
+After making all changes:
+
+1. Test Telegram import:
+   cd C:\Users\david\AATelS
+   python -c "from models.notifications.telegram_notifier import TelegramNotifier; print('OK')"
+
+2. Test Australian pipeline:
+   Double-click: RUN_PIPELINE.bat
+   Look for: "✓ Telegram notifications enabled"
+
+3. Test US pipeline:
+   python models\screening\us_overnight_pipeline.py --stocks-per-sector 5
+   Look for: "✓ Telegram notifications enabled"
+
+4. Run full pipeline and check for Telegram notification at the end
+
+================================================================================
+ROLLBACK
+================================================================================
+
+If something goes wrong, restore from your backups:
+
+1. Copy RUN_PIPELINE.bat.backup to RUN_PIPELINE.bat
+2. Copy us_overnight_pipeline.py.backup to models\screening\us_overnight_pipeline.py
+3. Copy overnight_pipeline.py.backup to models\screening\overnight_pipeline.py
+
+================================================================================
+TIPS
+================================================================================
+
+- Watch indentation carefully when editing Python files
+- Use a text editor that preserves indentation (VS Code, Notepad++, etc.)
+- Don't use regular Notepad - it can mess up line endings
+- Save files with UTF-8 encoding
+- Test after each change to isolate any issues
+
+================================================================================

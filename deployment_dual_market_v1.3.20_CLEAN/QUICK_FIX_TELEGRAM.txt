@@ -1,0 +1,114 @@
+================================================================================
+QUICK FIX: Telegram Module Missing Error
+================================================================================
+
+ERROR: name 'TelegramNotifier' is not defined
+
+CAUSE: Your local machine is missing the telegram_notifier.py file
+
+================================================================================
+SOLUTION (Choose ONE):
+================================================================================
+
+OPTION 1: Pull Latest Code (FASTEST - 30 seconds)
+--------------------------------------------------
+
+cd C:\Users\david\AATelS
+git pull origin finbert-v4.0-development
+
+This will download:
+  - models/notifications/telegram_notifier.py (the missing file)
+  - All other latest fixes
+  
+Then run your pipeline again.
+
+
+OPTION 2: Disable Telegram Temporarily (QUICKEST - 2 minutes)
+--------------------------------------------------------------
+
+Edit: models\screening\overnight_pipeline.py
+
+Find line ~245:
+    if TelegramNotifier is not None:
+
+Change to:
+    if False:  # Temporarily disable Telegram
+    
+This skips Telegram initialization entirely.
+
+Then at the end, find Phase 8 section (~line 500):
+    try:
+        logger.info("\n" + "="*80)
+        logger.info("PHASE 8: TELEGRAM NOTIFICATIONS")
+        logger.info("="*80)
+        
+        self._send_telegram_report_notification(
+
+Change to:
+    try:
+        logger.info("\n" + "="*80)
+        logger.info("PHASE 8: TELEGRAM NOTIFICATIONS")
+        logger.info("="*80)
+        
+        if hasattr(self, 'telegram') and self.telegram is not None:
+            self._send_telegram_report_notification(
+
+Add after the closing parenthesis:
+            )
+        else:
+            logger.info("  Telegram not configured, skipping")
+
+
+OPTION 3: Get telegram_notifier.py File Only
+---------------------------------------------
+
+Download just this file from GitHub:
+https://github.com/davidosland-lab/enhanced-global-stock-tracker-frontend/raw/finbert-v4.0-development/models/notifications/telegram_notifier.py
+
+Save it to:
+C:\Users\david\AATelS\models\notifications\telegram_notifier.py
+
+Make sure the notifications folder exists first:
+  mkdir C:\Users\david\AATelS\models\notifications
+
+Then run your pipeline.
+
+
+================================================================================
+RECOMMENDED: Option 1 (Pull Latest Code)
+================================================================================
+
+This is the cleanest solution and gets you all the latest fixes:
+
+cd C:\Users\david\AATelS
+git pull origin finbert-v4.0-development
+
+If you have local changes that conflict:
+
+git stash
+git pull origin finbert-v4.0-development
+git stash pop
+
+================================================================================
+WHY THIS HAPPENED:
+================================================================================
+
+The Phase 8 patch added code that CALLS TelegramNotifier, but your local
+installation doesn't have the TelegramNotifier CLASS file yet.
+
+The file exists in the repository but wasn't on your machine.
+
+================================================================================
+TEST AFTER FIX:
+================================================================================
+
+Run your pipeline:
+cd C:\Users\david\AATelS
+python models\screening\overnight_pipeline.py
+
+Look for:
+  ✓ Telegram notifications enabled
+OR
+  Telegram notifications disabled (no error)
+
+================================================================================

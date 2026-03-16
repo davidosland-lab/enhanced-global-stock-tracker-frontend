@@ -59,7 +59,7 @@ class IntradayScheduler:
         """
         self.market = market
         self.rescan_interval = rescan_interval
-        self.market_detector = MarketHoursDetector(market=market)
+        self.market_detector = MarketHoursDetector()
         self.rescan_manager = IntradayRescanManager(market=market)
         
         self.is_running = False
@@ -82,7 +82,7 @@ class IntradayScheduler:
         logger.info("="*80)
         
         # Check if market is open
-        market_status = self.market_detector.is_market_open()
+        market_status = self.market_detector.is_market_open(market=self.market)
         
         if not market_status['is_open']:
             logger.warning("❌ Market is closed. Intraday monitoring not started.")
@@ -111,7 +111,7 @@ class IntradayScheduler:
         try:
             while self.is_running:
                 # Check if market is still open
-                market_status = self.market_detector.is_market_open()
+                market_status = self.market_detector.is_market_open(market=self.market)
                 
                 if not market_status['is_open']:
                     logger.info("\n🔔 Market has closed. Stopping intraday monitoring.")
